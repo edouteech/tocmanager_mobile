@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "136858056384",
+    "project_id": "tocmanager-db984",
+    "storage_bucket": "tocmanager-db984.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:136858056384:android:ff751b7914f6cfd1805f25",
+        "android_client_info": {
+          "package_name": "com.example.tocmanager"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "136858056384-2btc42730b9nauaorf7qe8ngitqfthgr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBDkcwS4OVNr74SIYPTqDOSdl-hAJ4cCDM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "136858056384-2btc42730b9nauaorf7qe8ngitqfthgr.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
