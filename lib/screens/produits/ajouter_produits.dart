@@ -29,7 +29,7 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
   final List<String> list = [];
 
   /* Controller list of categories */
-  String _selectedItem = 'Select Country';
+  String _selectedItem = 'Select Catégorie';
   TextEditingController nameProduit = TextEditingController();
   TextEditingController quantiteProduit = TextEditingController();
   TextEditingController prixVenteProduit = TextEditingController();

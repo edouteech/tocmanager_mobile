@@ -1,4 +1,5 @@
 // ignore_for_file: avoid_unnecessary_containers, use_build_context_synchronously, constant_identifier_names, non_constant_identifier_names, deprecated_member_use, sized_box_for_whitespace
+import 'package:date_field/date_field.dart';
 import 'package:flutter/material.dart';
 import 'package:tocmanager/screens/categories/ajouter_categorie.dart';
 import 'package:tocmanager/screens/home_page.dart';
@@ -7,7 +8,6 @@ import '../../services/auth_service.dart';
 import '../../widgets/widgets.dart';
 import '../home_widgets/drawer_header.dart';
 import '../login_page.dart';
-import 'package:date_field/date_field.dart';
 
 class AjouterVentePage extends StatefulWidget {
   const AjouterVentePage({Key? key}) : super(key: key);

@@ -1,6 +1,7 @@
 // ignore_for_file: avoid_unnecessary_containers, non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, sized_box_for_whitespace, deprecated_member_use, unused_field, prefer_final_fields, avoid_print, unused_local_variable, prefer_collection_literals
 import 'package:flutter/material.dart';
 import 'package:tocmanager/database/sqfdb.dart';
+import 'package:tocmanager/screens/achats/ajouter_achats.dart';
 import 'package:tocmanager/screens/categories/categorielist.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/widgets.dart';
@@ -114,6 +115,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
               currentPage = DrawerSections.vente;
             } else if (id == 5) {
               currentPage = DrawerSections.achat;
+              nextScreen(context, const AjouterAchatPage());
             } else if (id == 6) {
               currentPage = DrawerSections.facture;
             } else if (id == 7) {

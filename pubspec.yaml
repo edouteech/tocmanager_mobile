@@ -34,7 +34,7 @@ dependencies:
   data_table_2: ^2.3.7
   date_field: ^3.0.1
   datetime_picker_formfield: ^2.0.1
-  find_dropdown: ^1.0.0
+  dropdown_textfield: ^1.0.4
   firebase_auth: ^3.6.4
   firebase_core: ^1.21.0
   flutter:

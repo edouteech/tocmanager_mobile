@@ -1,6 +1,7 @@
-// ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, depend_on_referenced_packages
+// ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, depend_on_referenced_packages, unnecessary_string_interpolations, avoid_print, body_might_complete_normally_nullable, unnecessary_this, import_of_legacy_library_into_null_safe, unused_field
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 import 'package:flutter/material.dart';
+import '../../database/sqfdb.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/widgets.dart';
 import '../categories/ajouter_categorie.dart';
@@ -18,16 +19,80 @@ class AjouterAchatPage extends StatefulWidget {
 }
 
 class _AjouterAchatPageState extends State<AjouterAchatPage> {
-  final format = DateFormat("yyyy-MM-dd hh:mm:ss");
-  TextEditingController dateController = TextEditingController();
+  /* List of all variables */
   AuthService authService = AuthService();
   var currentPage = DrawerSections.achat;
+  SqlDb sqlDb = SqlDb();
+  final format = DateFormat("yyyy-MM-dd HH:mm:ss");
+  final List<String> list = [];
+  String? selectedValue;
+  final _dropdownFormKey = GlobalKey<FormState>();
+  List produits = [];
+
+  /* List achat */
+  List<Map> achat = [
+    
+  ];
+
+  /* Read data for database */
+  Future readData() async {
+    List<Map> response = await sqlDb.readData("SELECT * FROM 'Produits'");
+    produits.addAll(response);
+    if (this.mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void initState() {
+    readData();
+    super.initState();
+  }
+
+  /* Dropdown items */
+  List<DropdownMenuItem<String>> get dropdownItems {
+    List<DropdownMenuItem<String>> menuItems = [];
+    for (var i = 0; i < produits.length; i++) {
+      menuItems.add(DropdownMenuItem(
+        value: "${produits[i]["id"]}",
+        child: Text("${produits[i]["nameProduit"]}"),
+      ));
+    }
+    return menuItems;
+  }
+
+  /* Fields Controller */
+  TextEditingController fournisseurController = TextEditingController();
+  TextEditingController dateController = TextEditingController();
+  TextEditingController produitController = TextEditingController();
+  TextEditingController prixUnitaireController = TextEditingController();
+  TextEditingController quantiteController = TextEditingController();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         floatingActionButton: FloatingActionButton(
           onPressed: () {
-            print("${dateController.text}");
+            // if ((fournisseurController.text).isNotEmpty){
+            //   print(fournisseurController.text);
+            //   if ((dateController.text).isNotEmpty) {
+            //      print(dateController.text);
+            //      setState(() {
+            //        achat.add({
+            //         "fournisseur":"${fournisseurController.text}",
+            //         "date":"${dateController.text}"
+            //        });
+            //        print(achat);
+
+            //      });
+            //   }
+
+            // }
+            setState(() {
+              quantiteController.text = "1";
+            });
+
+            _showFormDialog(context);
           },
           backgroundColor: Colors.blue,
           child: const Icon(
@@ -58,78 +123,72 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
           ),
         ),
         body: SingleChildScrollView(
-          child: Row(
+          child: Column(
             children: [
-              Expanded(
-                child: Container(
-                  alignment: Alignment.center,
-                  margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
-                  padding: const EdgeInsets.only(left: 20, right: 20),
-                  height: 45,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(50),
-                    color: Colors.grey[200],
-                    boxShadow: const [
-                      BoxShadow(
-                          offset: Offset(0, 10),
-                          blurRadius: 50,
-                          color: Color(0xffEEEEEE)),
-                    ],
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                        alignment: Alignment.center,
+                        margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
+                        child: TextFormField(
+                          controller: fournisseurController,
+                          decoration: textInputDecoration.copyWith(
+                            label: const Text("Fournisseur"),
+                            labelStyle:
+                                const TextStyle(fontSize: 13, color: Colors.black),
+                          ),
+                          
+                        )),
                   ),
-                  child: TextFormField(
-                    cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                    decoration: const InputDecoration(
-                      hintText: "Fournisseur",
-                      hintStyle: TextStyle(color: Colors.black45),
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Container(
-                  alignment: Alignment.center,
-                  margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
-                  padding: const EdgeInsets.only(left: 10, right: 0),
-                  height: 45,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(50),
-                    color: Colors.grey[200],
-                    boxShadow: const [
-                      BoxShadow(
-                          offset: Offset(0, 10),
-                          blurRadius: 50,
-                          color: Color(0xffEEEEEE)),
-                    ],
-                  ),
-                  child: DateTimeField(
-                    controller: dateController,
-                    decoration: const InputDecoration(
-                      hintText: "Date",
-                      hintStyle: TextStyle(color: Colors.black45),
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      icon: Icon(
-                        Icons.calendar_today,
-                        color: Color.fromARGB(255, 45, 157, 220),
-                        size: 20,
+                  Expanded(
+                    child: Container(
+                      margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
+                      child: DateTimeField(
+                        controller: dateController,
+                        decoration: textInputDecoration.copyWith(
+                          label: const Text("Date"),
+                          labelStyle:
+                              const TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                        format: format,
+                        onShowPicker: (context, currentValue) async {
+                          final date = await showDatePicker(
+                              context: context,
+                              firstDate: DateTime(1900),
+                              initialDate: currentValue ?? DateTime.now(),
+                              lastDate: DateTime(2100));
+                          if (date != null) {
+                            final time = TimeOfDay.fromDateTime(DateTime.now());
+                            return DateTimeField.combine(date, time);
+                          }
+                        },
                       ),
                     ),
-                    format: format,
-                    onShowPicker:
-                        (BuildContext context, DateTime? currentValue) {
-                      return showDatePicker(
-                          context: context,
-                          firstDate: DateTime(1900),
-                          initialDate: currentValue ?? DateTime.now(),
-                          lastDate: DateTime(2100));
-                    },
                   ),
-                ),
+                  
+                  // Row(
+                  //   children: [
+                  //     ListView.builder(
+                  //       itemCount: achat.length,
+                  //       itemBuilder: (context, i){
+                  //         return Card(
+                  //           child: ListTile(
+                  //             leading: Text("${achat[i]['idProduit']}"),
+                  //             title: Text("${achat[i]['fournisseur']}"),
+                  //             subtitle: Text("${achat[i]['total']}"),
+                  //             ),
+                  //         );
+                  //       }
+                  //     ),
+                  //   ],
+                  // )
+                ],
+                
               ),
             ],
           ),
+          
         ));
   }
 
@@ -246,6 +305,117 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
         ),
       ),
     );
+  }
+
+  _showFormDialog(BuildContext context) {
+    return showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (param) {
+          return AlertDialog(
+            actions: [
+              TextButton(
+                child: const Text(
+                  'Annuler',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onPressed: () async {
+                  print(achat);
+                  Navigator.of(context).pop();
+                },
+              ),
+              TextButton(
+                child: const Text('Valider',
+                    style: TextStyle(color: Colors.green)),
+                onPressed: () {
+                  setState(() {
+                    var prix = int.parse("${prixUnitaireController.text}");
+                    var quantite = int.parse("${quantiteController.text}");
+                    var total = quantite * prix;
+                    achat.add({
+                      "idProduit":"${produitController.text}",
+                      "prixUnitaire" :"${prixUnitaireController.text}",
+                      "quantite":"${quantiteController.text}",
+                      "total": "$total",
+                    });
+                    print(achat);
+
+                  });
+                  Navigator.of(context).pushReplacement(MaterialPageRoute(
+                      builder: (context) => const AjouterAchatPage()));
+                },
+              ),
+            ],
+            title: const Text('Ajouter achat'),
+            content: SingleChildScrollView(
+              child: Form(
+                key: _dropdownFormKey,
+                child: Column(
+                  children: [
+                    //Nom produit
+                    Container(
+                        padding: const EdgeInsets.only(left: 20, right: 20),
+                        margin: const EdgeInsets.only(top: 10),
+                        child: DropdownButtonFormField(
+                            decoration: textInputDecoration.copyWith(
+                              label: const Text("Nom Produit"),
+                              labelStyle: const TextStyle(
+                                  fontSize: 13, color: Colors.black),
+                            ),
+                            dropdownColor: Colors.white,
+                            value: selectedValue,
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                selectedValue = newValue!;
+                                if (selectedValue != null) {
+                                  setState(() async {
+                                    var prix = await sqlDb.readData(
+                                        "SELECT prixAchatProduit FROM Produits WHERE id =$selectedValue");
+                                    setState(() {
+                                      prixUnitaireController.text =
+                                          "${prix[0]["prixAchatProduit"]}";
+                                    });
+                                  });
+                                }
+                              });
+                            },
+                            items: dropdownItems)),
+
+                    //Prix unitaire
+                    Container(
+                        alignment: Alignment.center,
+                        margin:
+                            const EdgeInsets.only(left: 20, right: 20, top: 30),
+                        
+                        child: TextFormField(
+                          controller: prixUnitaireController,
+                          decoration: textInputDecoration.copyWith(
+                            label: const Text("Prix unitaire"),
+                            labelStyle: const TextStyle(
+                                fontSize: 13, color: Colors.black),
+                          ),
+                        )),
+
+                    //Quantité
+                    Container(
+                        alignment: Alignment.center,
+                        margin:
+                            const EdgeInsets.only(left: 20, right: 20, top: 30),
+                        
+                        child: TextFormField(
+                          controller: quantiteController,
+                          decoration: textInputDecoration.copyWith(
+                            label: const Text("Quantité"),
+                            labelStyle: const TextStyle(
+                                fontSize: 13, color: Colors.black),
+                          ),
+                        ))
+                  ],
+                ),
+              ),
+            ),
+          );
+        });
   }
 }
 

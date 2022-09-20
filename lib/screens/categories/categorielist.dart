@@ -5,12 +5,8 @@ import 'package:tocmanager/database/sqfdb.dart';
 import 'ajouter_categorie.dart';
 
 class CategorieList extends StatefulWidget {
-  final id;
-  final nameCategorie;
-  final categorieParente;
-  const CategorieList(
-      {Key? key, this.id, this.nameCategorie, this.categorieParente})
-      : super(key: key);
+
+  const CategorieList({Key? key}) : super(key: key);
 
   @override
   State<CategorieList> createState() => _CategorieListState();
@@ -19,6 +15,7 @@ class CategorieList extends StatefulWidget {
 class _CategorieListState extends State<CategorieList> {
   SqlDb sqlDb = SqlDb();
   List categories = [];
+  var idCategorie = "";
   TextEditingController nameCategorie = TextEditingController();
   TextEditingController categorirParente = TextEditingController();
 
@@ -33,13 +30,6 @@ class _CategorieListState extends State<CategorieList> {
   @override
   void initState() {
     readData();
-    super.initState();
-  }
-  //edit partie
-
-  void initState2() {
-    categorirParente.text = widget.categorieParente;
-    nameCategorie.text = widget.nameCategorie;
     super.initState();
   }
 
@@ -63,6 +53,11 @@ class _CategorieListState extends State<CategorieList> {
                         child: IconButton(
                             icon: const Icon(Icons.edit, color: Colors.blue),
                             onPressed: () {
+                              setState(() {
+                                nameCategorie.text = "${categories[i]['name']}";
+                                categorirParente.text = "${categories[i]['categorieParente']}";
+                                idCategorie = "${categories[i]['id']}";
+                              });
                               _editCategorie(context);
                             }),
                       ),
@@ -100,7 +95,7 @@ class _CategorieListState extends State<CategorieList> {
         builder: (param) {
           return AlertDialog(
             actions: [
-              FlatButton(
+              TextButton(
                 child: const Text(
                   'Annuler',
                   style: TextStyle(color: Colors.red),
@@ -109,13 +104,13 @@ class _CategorieListState extends State<CategorieList> {
                   Navigator.of(context).pop();
                 },
               ),
-              FlatButton(
+              TextButton(
                 child: const Text('Valider',
                     style: TextStyle(color: Colors.green)),
                 onPressed: () async {
                   int response = await sqlDb.updateData('''
                     UPDATE Categories SET name ="${nameCategorie.text}", 
-                    categorieParente ="${categorirParente.text}" WHERE id ="${widget.id}"
+                    categorieParente ="${categorirParente.text}" WHERE id ="$idCategorie"
                   ''');
                   print(response);
                   Navigator.of(context).pushReplacement(MaterialPageRoute(
@@ -145,13 +140,10 @@ class _CategorieListState extends State<CategorieList> {
                             color: Color(0xffEEEEEE)),
                       ],
                     ),
-                    child: TextField(
+                    child: TextFormField(
                       controller: nameCategorie,
                       cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                      decoration:  InputDecoration(
-                        
-                        hintText: "${widget.nameCategorie}",
-                        hintStyle: const TextStyle(color: Colors.black45),
+                      decoration:  const InputDecoration(
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
                       ),
@@ -176,9 +168,7 @@ class _CategorieListState extends State<CategorieList> {
                     ),
                     child: TextFormField(
                       controller: categorirParente,
-                      decoration:  InputDecoration(
-                        hintStyle: const TextStyle(color: Colors.black45),
-                        hintText: "${widget.categorieParente}",
+                      decoration:  const InputDecoration(
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
                       ),
