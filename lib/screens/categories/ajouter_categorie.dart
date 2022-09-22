@@ -1,8 +1,11 @@
 // ignore_for_file: avoid_unnecessary_containers, non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, sized_box_for_whitespace, deprecated_member_use, unused_field, prefer_final_fields, avoid_print, unused_local_variable, prefer_collection_literals
 import 'package:flutter/material.dart';
+import 'package:form_field_validator/form_field_validator.dart';
 import 'package:tocmanager/database/sqfdb.dart';
 import 'package:tocmanager/screens/achats/ajouter_achats.dart';
 import 'package:tocmanager/screens/categories/categorielist.dart';
+import 'package:tocmanager/screens/fournisseurs/ajouter_fournisseur.dart';
+import 'package:tocmanager/screens/ventes/ajouter_vente.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/widgets.dart';
 import '../home_page.dart';
@@ -21,14 +24,23 @@ class AjouterCategoriePage extends StatefulWidget {
 class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
   // database
   SqlDb sqlDb = SqlDb();
-  TextEditingController nameCategorie = TextEditingController();
-  TextEditingController categorirParente = TextEditingController();
+
+  //Fields Controller
+  TextEditingController name = TextEditingController();
+
+  //Auth service
   AuthService authService = AuthService();
+
+  //Current page
   var currentPage = DrawerSections.categorie;
+
+  //Form key
+  final _formKey = GlobalKey<FormState>();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[300],
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           _showFormDialog(context);
@@ -46,7 +58,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
           iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
           title: const Text(
             'Catégories',
-            style: TextStyle(color: Colors.black, fontFamily: 'RobotoMono'),
+            style: TextStyle(color: Colors.black, fontSize: 20),
           )),
       drawer: Drawer(
         child: SingleChildScrollView(
@@ -62,7 +74,8 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
           )),
         ),
       ),
-      body: const CategorieList(),
+      body: Container(
+          margin: const EdgeInsets.all(8), child: const CategorieList()),
     );
   }
 
@@ -81,14 +94,16 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
               currentPage == DrawerSections.vente ? true : false),
           MenuItem(5, "Achats", Icons.notifications_outlined,
               currentPage == DrawerSections.achat ? true : false),
-          MenuItem(6, "Factures", Icons.settings_outlined,
+          MenuItem(6, "Fournisseurs", Icons.notifications_outlined,
+              currentPage == DrawerSections.achat ? true : false),
+          MenuItem(7, "Factures", Icons.settings_outlined,
               currentPage == DrawerSections.facture ? true : false),
           MenuItem(
-              7,
+              8,
               "Politique de confidentialité",
               Icons.privacy_tip_outlined,
               currentPage == DrawerSections.privacy_policy ? true : false),
-          MenuItem(8, "Deconnexion", Icons.logout_outlined,
+          MenuItem(9, "Deconnexion", Icons.logout_outlined,
               currentPage == DrawerSections.logout ? true : false),
         ],
       ),
@@ -113,14 +128,18 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
               nextScreen(context, const AjouterProduitPage());
             } else if (id == 4) {
               currentPage = DrawerSections.vente;
+              nextScreen(context, const AjouterVentePage());
             } else if (id == 5) {
               currentPage = DrawerSections.achat;
               nextScreen(context, const AjouterAchatPage());
             } else if (id == 6) {
-              currentPage = DrawerSections.facture;
+              currentPage = DrawerSections.fournisseur;
+              nextScreen(context, const AjouterFournisseurPage());
             } else if (id == 7) {
-              currentPage = DrawerSections.privacy_policy;
+              currentPage = DrawerSections.facture;
             } else if (id == 8) {
+              currentPage = DrawerSections.privacy_policy;
+            } else if (id == 9) {
               showDialog(
                   barrierDismissible: false,
                   context: context,
@@ -188,7 +207,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
         builder: (param) {
           return AlertDialog(
             actions: [
-              FlatButton(
+              TextButton(
                 child: const Text(
                   'Annuler',
                   style: TextStyle(color: Colors.red),
@@ -197,79 +216,49 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
                   Navigator.of(context).pop();
                 },
               ),
-              FlatButton(
+              TextButton(
                 child: const Text('Valider',
                     style: TextStyle(color: Colors.green)),
                 onPressed: () async {
-                  int response = await sqlDb.inserData(
-                      "INSERT INTO Categories(name, categorieParente) VALUES('${nameCategorie.text}','${categorirParente.text}')");
-                    var res =
-                      await sqlDb.readData('SELECT COUNT(*) FROM Categories');
-                  print(res);
-                  print(response);
-                  Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context)=> const AjouterCategoriePage()));
+                  if (_formKey.currentState!.validate()) {
+                    int response = await sqlDb.inserData('''
+                    INSERT INTO Categories(name) VALUES('${name.text}')
+                  ''');
+                    print("===$response==== INSERTION DONE ==========");
+                    Navigator.of(context).pushReplacement(MaterialPageRoute(
+                        builder: (context) => const AjouterCategoriePage()));
+                  }
                 },
               ),
             ],
-            title: const Text('Ajouter Catégorie'),
+            title: const Center(child: Text('Ajouter Catégorie')),
             content: SingleChildScrollView(
-              child: Column(
-                children: [
-                  //Nom
-                  Container(
-                    alignment: Alignment.center,
-                    margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
-                    padding: const EdgeInsets.only(left: 20, right: 20),
-                    height: 45,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(50),
-                      color: Colors.grey[200],
-                      boxShadow: const [
-                        BoxShadow(
-                            offset: Offset(0, 10),
-                            blurRadius: 50,
-                            color: Color(0xffEEEEEE)),
-                      ],
+              child: Form(
+                key: _formKey,
+                //name categorie create
+                child: Container(
+                  alignment: Alignment.center,
+                  margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
+                  child: TextFormField(
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    controller: name,
+                    cursorColor: const Color.fromARGB(255, 45, 157, 220),
+                    decoration: const InputDecoration(
+                      enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                              color: Color.fromARGB(255, 45, 157, 220)),
+                          borderRadius: BorderRadius.all(Radius.circular(10))),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(10))),
+                      label: Text("Nom de la catégorie"),
+                      labelStyle: TextStyle(fontSize: 13, color: Colors.black),
                     ),
-                    child: TextField(
-                      controller: nameCategorie,
-                      cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                      decoration: const InputDecoration(
-                        hintText: "Nom de la catégorie",
-                        hintStyle: TextStyle(color: Colors.black45),
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                      ),
-                    ),
+                    validator: MultiValidator([
+                      RequiredValidator(
+                          errorText: "Veuillez entrer une catégorie")
+                    ]),
                   ),
-
-                  //Catégorie parente
-                  Container(
-                    alignment: Alignment.center,
-                    margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
-                    padding: const EdgeInsets.only(left: 20, right: 20),
-                    height: 45,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(50),
-                      color: Colors.grey[200],
-                      boxShadow: const [
-                        BoxShadow(
-                            offset: Offset(0, 10),
-                            blurRadius: 50,
-                            color: Color(0xffEEEEEE)),
-                      ],
-                    ),
-                    child: TextFormField(
-                      controller: categorirParente,
-                      decoration: const InputDecoration(
-                        hintStyle: TextStyle(color: Colors.black45),
-                        hintText: "Catégorie parente",
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           );
@@ -283,6 +272,7 @@ enum DrawerSections {
   produit,
   vente,
   achat,
+  fournisseur,
   facture,
   privacy_policy,
   logout,

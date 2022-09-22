@@ -1,13 +1,16 @@
 // ignore_for_file: use_build_context_synchronously, avoid_unnecessary_containers, non_constant_identifier_names, constant_identifier_names, sized_box_for_whitespace, no_leading_underscores_for_local_identifiers
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:tocmanager/screens/home_widgets/profile/profile_page.dart';
 import 'package:tocmanager/screens/ventes/ajouter_vente.dart';
+import '../database/sqfdb.dart';
 import '../helper/helper_function.dart';
 import '../services/auth_service.dart';
 import '../widgets/widgets.dart';
 import 'achats/ajouter_achats.dart';
 import 'categories/ajouter_categorie.dart';
+import 'fournisseurs/ajouter_fournisseur.dart';
 import 'home_widgets/card.dart';
 import 'home_widgets/drawer_header.dart';
 import 'home_widgets/my_button.dart';
@@ -23,6 +26,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  SqlDb sqlDb = SqlDb();
   String userName = "";
   String email = "";
   AuthService authService = AuthService();
@@ -62,8 +66,12 @@ class _HomePageState extends State<HomePage> {
     final _controller = PageController();
     return Scaffold(
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          nextScreen(context, const AjouterVentePage());
+        onPressed: () async{
+          var delete = await sqlDb.mydeleteDatabase();
+          if (kDebugMode) {
+            print(delete);
+          }
+          // nextScreen(context, const AjouterVentePage());
         },
         backgroundColor: Colors.blue,
         child: const Icon(
@@ -84,15 +92,19 @@ class _HomePageState extends State<HomePage> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 20),
-            child:IconButton(
-              onPressed: (){
-                nextScreen(context,  ProfilePage(email: '', userName: '',));
-              }, 
-              icon: const Icon(
-                Icons.account_circle,
-                size: 30,
-              )
-            ) ,
+            child: IconButton(
+                onPressed: () {
+                  nextScreen(
+                      context,
+                      ProfilePage(
+                        email: '',
+                        userName: '',
+                      ));
+                },
+                icon: const Icon(
+                  Icons.account_circle,
+                  size: 30,
+                )),
           ),
         ],
       ),
@@ -188,7 +200,7 @@ class _HomePageState extends State<HomePage> {
                       iconImagePath: 'assets/statistics.png',
                       titleName: 'Statistiques',
                       titleSubName: 'titleSubName'),
-      
+
                   MyListTitle(
                       iconImagePath: 'assets/statistics.png',
                       titleName: 'Statistiques',
@@ -217,14 +229,16 @@ class _HomePageState extends State<HomePage> {
               currentPage == DrawerSections.achat ? true : false),
           MenuItem(5, "Achats", Icons.notifications_outlined,
               currentPage == DrawerSections.achat ? true : false),
-          MenuItem(6, "Factures", Icons.settings_outlined,
+          MenuItem(6, "Fournisseurs", Icons.notifications_outlined,
+              currentPage == DrawerSections.achat ? true : false),
+          MenuItem(7, "Factures", Icons.settings_outlined,
               currentPage == DrawerSections.facture ? true : false),
           MenuItem(
-              7,
+              8,
               "Politique de confidentialité",
               Icons.privacy_tip_outlined,
               currentPage == DrawerSections.privacy_policy ? true : false),
-          MenuItem(8, "Deconnexion", Icons.logout_outlined,
+          MenuItem(9, "Deconnexion", Icons.logout_outlined,
               currentPage == DrawerSections.logout ? true : false),
         ],
       ),
@@ -248,14 +262,18 @@ class _HomePageState extends State<HomePage> {
               nextScreen(context, const AjouterProduitPage());
             } else if (id == 4) {
               currentPage = DrawerSections.vente;
+              nextScreen(context, const AjouterVentePage());
             } else if (id == 5) {
               currentPage = DrawerSections.achat;
               nextScreen(context, const AjouterAchatPage());
             } else if (id == 6) {
-              currentPage = DrawerSections.facture;
+              currentPage = DrawerSections.fournisseur;
+              nextScreen(context, const AjouterFournisseurPage());
             } else if (id == 7) {
-              currentPage = DrawerSections.privacy_policy;
+              currentPage = DrawerSections.facture;
             } else if (id == 8) {
+              currentPage = DrawerSections.privacy_policy;
+            } else if (id == 9) {
               showDialog(
                   barrierDismissible: false,
                   context: context,
@@ -315,8 +333,6 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-
-  
 }
 
 enum DrawerSections {
@@ -325,6 +341,7 @@ enum DrawerSections {
   produit,
   vente,
   achat,
+  fournisseur,
   facture,
   privacy_policy,
   logout,

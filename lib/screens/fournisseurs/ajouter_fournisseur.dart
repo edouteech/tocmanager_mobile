@@ -1,7 +1,8 @@
-// ignore_for_file: use_build_context_synchronously, constant_identifier_names, non_constant_identifier_names
-import 'package:flutter/material.dart';
+// ignore_for_file: constant_identifier_names, non_constant_identifier_names, use_build_context_synchronously
 
-import '../../services/auth_service.dart';
+import 'package:flutter/material.dart';
+import 'package:tocmanager/services/auth_service.dart';
+
 import '../../widgets/widgets.dart';
 import '../achats/ajouter_achats.dart';
 import '../categories/ajouter_categorie.dart';
@@ -9,21 +10,20 @@ import '../home_page.dart';
 import '../home_widgets/drawer_header.dart';
 import '../login_page.dart';
 import '../produits/ajouter_produits.dart';
+import '../ventes/ajouter_vente.dart';
 
-class AjouterVentePage extends StatefulWidget {
-  const AjouterVentePage({Key? key}) : super(key: key);
+
+
+class AjouterFournisseurPage extends StatefulWidget {
+  const AjouterFournisseurPage({super.key});
 
   @override
-  State<AjouterVentePage> createState() => _AjouterVentePageState();
+  State<AjouterFournisseurPage> createState() => _AjouterFournisseurPageState();
 }
 
-class _AjouterVentePageState extends State<AjouterVentePage> {
-  // final format = DateFormat("yyyy-MM-dd HH:mm:ss");
-  var currentPage = DrawerSections.vente;
+class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
   AuthService authService = AuthService();
-
-  TextEditingController dateController = TextEditingController();
-  
+  var currentPage = DrawerSections.fournisseur;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -36,83 +36,31 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      backgroundColor: Colors.grey[300],
       appBar: AppBar(
           centerTitle: true,
           backgroundColor: Colors.grey[100],
           iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
           title: const Text(
-            'Ventes',
+            'Fournisseurs',
             style: TextStyle(color: Colors.black, fontFamily: 'RobotoMono'),
           )),
-            drawer: Drawer(
+      drawer: Drawer(
         child: SingleChildScrollView(
           child: Column(
             children: [
-          const MyHeaderDrawer(),
-          MyDrawerList(),
-          const SizedBox(
-            height: 20,
-          ),
+              const MyHeaderDrawer(),
+              MyDrawerList(),
+              const SizedBox(
+                height: 20,
+              ),
             ],
           ),
         ),
       ),
-      body: SingleChildScrollView(
-          child: Column(
-            children: [
-              Row(children: [
-                Expanded(
-                  child: Container(
-                      alignment: Alignment.center,
-                      margin:
-                          const EdgeInsets.only(left: 20, right: 20, top: 30),
-                      child: TextFormField(
-                        // controller: fournisseurController,
-                        decoration: textInputDecoration.copyWith(
-                          label: const Text("Fournisseur"),
-                          labelStyle: const TextStyle(
-                              fontSize: 13, color: Colors.black),
-                        ),
-                      )),
-                ),
-                // Expanded(
-                //   child: Container(
-                //     margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
-                //     child: DateTimeField(
-                //       controller: dateController,
-                //       decoration: textInputDecoration.copyWith(
-                //         label: const Text("Date"),
-                //         labelStyle:
-                //             const TextStyle(fontSize: 13, color: Colors.black),
-                //       ),
-                //       format: format,
-                //       onShowPicker: (context, currentValue) async {
-                //         final date = await showDatePicker(
-                //             context: context,
-                //             firstDate: DateTime(1900),
-                //             initialDate: currentValue ?? DateTime.now(),
-                //             lastDate: DateTime(2100));
-                //         if (date != null) {
-                //           final time = TimeOfDay.fromDateTime(DateTime.now());
-                //           return DateTimeField.combine(date, time);
-                //         }
-                //         return null;
-                //       },
-                //     ),
-                //   ),
-                // ),
-              ]),
-              const SizedBox(height: 20,),
-              
-            ],
-          ),
-        ),
     );
   }
 
-
-    Widget MyDrawerList() {
+  Widget MyDrawerList() {
     return Container(
       padding: const EdgeInsets.only(top: 15),
       child: Column(
@@ -127,6 +75,8 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
               currentPage == DrawerSections.vente ? true : false),
           MenuItem(5, "Achats", Icons.notifications_outlined,
               currentPage == DrawerSections.achat ? true : false),
+          MenuItem(6, "Fournisseurs", Icons.notifications_outlined,
+              currentPage == DrawerSections.fournisseur ? true : false),
           MenuItem(6, "Factures", Icons.settings_outlined,
               currentPage == DrawerSections.facture ? true : false),
           MenuItem(
@@ -164,10 +114,13 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
               currentPage = DrawerSections.achat;
               nextScreen(context, const AjouterAchatPage());
             } else if (id == 6) {
-              currentPage = DrawerSections.facture;
+              currentPage = DrawerSections.fournisseur;
+              nextScreen(context, const AjouterFournisseurPage());
             } else if (id == 7) {
-              currentPage = DrawerSections.privacy_policy;
+              currentPage = DrawerSections.facture;
             } else if (id == 8) {
+              currentPage = DrawerSections.privacy_policy;
+            } else if (id == 9) {
               showDialog(
                   barrierDismissible: false,
                   context: context,
@@ -227,14 +180,15 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
       ),
     );
   }
-
 }
+
 enum DrawerSections {
   dashboard,
   categorie,
   produit,
   vente,
   achat,
+  fournisseur,
   facture,
   privacy_policy,
   logout,

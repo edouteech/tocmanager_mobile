@@ -1,11 +1,10 @@
 // ignore_for_file: sized_box_for_whitespace, avoid_print, use_build_context_synchronously, deprecated_member_use, unnecessary_this, prefer_typing_uninitialized_variables
 import 'package:flutter/material.dart';
+import 'package:form_field_validator/form_field_validator.dart';
 import 'package:tocmanager/database/sqfdb.dart';
-
 import 'ajouter_categorie.dart';
 
 class CategorieList extends StatefulWidget {
-
   const CategorieList({Key? key}) : super(key: key);
 
   @override
@@ -15,10 +14,15 @@ class CategorieList extends StatefulWidget {
 class _CategorieListState extends State<CategorieList> {
   SqlDb sqlDb = SqlDb();
   List categories = [];
-  var idCategorie = "";
-  TextEditingController nameCategorie = TextEditingController();
-  TextEditingController categorirParente = TextEditingController();
+  var id = "";
 
+  //Form key
+  final _formKey = GlobalKey<FormState>();
+
+  //Fields Controller
+  TextEditingController name = TextEditingController();
+
+//Read data into database
   Future readData() async {
     List<Map> response = await sqlDb.readData("SELECT * FROM 'Categories'");
     categories.addAll(response);
@@ -40,11 +44,13 @@ class _CategorieListState extends State<CategorieList> {
         physics: const NeverScrollableScrollPhysics(),
         itemCount: categories.length,
         itemBuilder: (context, i) {
-          return Card(
+          return Container(
+            margin: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20), color: Colors.white),
             child: ListTile(
-                leading: const Icon(Icons.sell),
-                title: Text("${categories[i]['name']}"),
-                subtitle: Text("${categories[i]['categorieParente']}"),
+                leading: const Icon(Icons.inbox, size: 30,color: Color.fromARGB(255,45,157,220),),
+                title: Center(child: Text("${categories[i]['name']}", style: const TextStyle(fontSize: 20, fontWeight:FontWeight.bold),)),
                 trailing: Container(
                   width: 80,
                   child: Row(
@@ -54,9 +60,8 @@ class _CategorieListState extends State<CategorieList> {
                             icon: const Icon(Icons.edit, color: Colors.blue),
                             onPressed: () {
                               setState(() {
-                                nameCategorie.text = "${categories[i]['name']}";
-                                categorirParente.text = "${categories[i]['categorieParente']}";
-                                idCategorie = "${categories[i]['id']}";
+                                name.text = "${categories[i]['name']}";
+                                id = "${categories[i]['id']}";
                               });
                               _editCategorie(context);
                             }),
@@ -66,13 +71,13 @@ class _CategorieListState extends State<CategorieList> {
                             icon: const Icon(
                               Icons.delete,
                               color: Colors.red,
-                              
                             ),
                             onPressed: () async {
                               int response = await sqlDb.deleteData(
                                   "DELETE FROM Categories WHERE id =${categories[i]['id']}");
                               if (response > 0) {
-                                categories.removeWhere((element) =>
+                                categories.removeWhere((element)=>
+                                
                                     element['id'] == categories[i]['id']);
                                 setState(() {});
                                 print("Delete ==== $response");
@@ -88,6 +93,7 @@ class _CategorieListState extends State<CategorieList> {
         });
   }
 
+  //Edit Form
   _editCategorie(BuildContext context) {
     return showDialog(
         context: context,
@@ -108,13 +114,15 @@ class _CategorieListState extends State<CategorieList> {
                 child: const Text('Valider',
                     style: TextStyle(color: Colors.green)),
                 onPressed: () async {
-                  int response = await sqlDb.updateData('''
-                    UPDATE Categories SET name ="${nameCategorie.text}", 
-                    categorieParente ="${categorirParente.text}" WHERE id ="$idCategorie"
+                  if (_formKey.currentState!.validate()) {
+                    int response = await sqlDb.updateData('''
+                    UPDATE Categories SET name ="${name.text}" WHERE id="$id"
                   ''');
-                  print(response);
-                  Navigator.of(context).pushReplacement(MaterialPageRoute(
-                      builder: (context) => const AjouterCategoriePage()));
+                    print("===$response==== UPDATE DONE ==========");
+                    
+                    Navigator.of(context).pushReplacement(MaterialPageRoute(
+                        builder: (context) => const AjouterCategoriePage()));
+                  }
                 },
               ),
             ],
@@ -122,59 +130,32 @@ class _CategorieListState extends State<CategorieList> {
               child: Text("Modifier"),
             ),
             content: SingleChildScrollView(
-              child: Column(
-                children: [
-                  //Nom
-                  Container(
-                    alignment: Alignment.center,
-                    margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
-                    padding: const EdgeInsets.only(left: 20, right: 20),
-                    height: 45,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(50),
-                      color: Colors.grey[200],
-                      boxShadow: const [
-                        BoxShadow(
-                            offset: Offset(0, 10),
-                            blurRadius: 50,
-                            color: Color(0xffEEEEEE)),
-                      ],
+              //Name catgorie edit
+              child: Form(
+                key: _formKey,
+                child: Container(
+                  alignment: Alignment.center,
+                  margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
+                  child: TextFormField(
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    controller: name,
+                    cursorColor: const Color.fromARGB(255, 45, 157, 220),
+                    decoration: const InputDecoration(
+                      enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                              color: Color.fromARGB(255, 45, 157, 220)),
+                          borderRadius: BorderRadius.all(Radius.circular(10))),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(10))),
+                      label: Text("Nom de la catégorie"),
+                      labelStyle: TextStyle(fontSize: 13, color: Colors.black),
                     ),
-                    child: TextFormField(
-                      controller: nameCategorie,
-                      cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                      decoration:  const InputDecoration(
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                      ),
-                    ),
+                    validator: MultiValidator([
+                      RequiredValidator(
+                          errorText: "Veuillez entrer une catégorie")
+                    ]),
                   ),
-
-                  //Catégorie parente
-                  Container(
-                    alignment: Alignment.center,
-                    margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
-                    padding: const EdgeInsets.only(left: 20, right: 20),
-                    height: 45,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(50),
-                      color: Colors.grey[200],
-                      boxShadow: const [
-                        BoxShadow(
-                            offset: Offset(0, 10),
-                            blurRadius: 50,
-                            color: Color(0xffEEEEEE)),
-                      ],
-                    ),
-                    child: TextFormField(
-                      controller: categorirParente,
-                      decoration:  const InputDecoration(
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           );

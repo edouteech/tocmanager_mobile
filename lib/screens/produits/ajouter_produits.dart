@@ -1,14 +1,16 @@
 // ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, deprecated_member_use, unnecessary_this, import_of_legacy_library_into_null_safe, unnecessary_brace_in_string_interps, avoid_unnecessary_containers, avoid_print, unnecessary_string_interpolations
-import 'package:awesome_dropdown/awesome_dropdown.dart';
 import 'package:flutter/material.dart';
+import 'package:form_field_validator/form_field_validator.dart';
 import '../../database/sqfdb.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/widgets.dart';
 import '../achats/ajouter_achats.dart';
 import '../categories/ajouter_categorie.dart';
+import '../fournisseurs/ajouter_fournisseur.dart';
 import '../home_page.dart';
 import '../home_widgets/drawer_header.dart';
 import '../login_page.dart';
+import '../ventes/ajouter_vente.dart';
 import 'listproduits.dart';
 
 class AjouterProduitPage extends StatefulWidget {
@@ -26,29 +28,19 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
 
   /*List of categories */
   List categories = [];
-  final List<String> list = [];
 
-  /* Controller list of categories */
-  String _selectedItem = 'Select Catégorie';
-  TextEditingController nameProduit = TextEditingController();
-  TextEditingController quantiteProduit = TextEditingController();
-  TextEditingController prixVenteProduit = TextEditingController();
-  TextEditingController prixAchatProduit = TextEditingController();
+  /* Controller list  */
+  TextEditingController name = TextEditingController();
+  TextEditingController quantity = TextEditingController();
+  TextEditingController price_sell = TextEditingController();
+  TextEditingController price_buy = TextEditingController();
 
   /* Read data for database */
   Future readData() async {
     List<Map> response = await sqlDb.readData("SELECT * FROM 'Categories'");
     categories.addAll(response);
-    if (categories.isNotEmpty) {
-      setState(() {
-        for (var i = 0; i < categories.length; i++) {
-          list.add(categories[i]["name"]);
-        }
-      });
-    } else {
-      setState(() {
-        list.add("Pas de catégorie disponible");
-      });
+    if (this.mounted) {
+      setState(() {});
     }
   }
 
@@ -58,11 +50,28 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
     super.initState();
   }
 
+  /* Dropdown items */
+  String? selectedValue;
+  final _formKey = GlobalKey<FormState>();
+  List<DropdownMenuItem<String>> get dropdownItems {
+    List<DropdownMenuItem<String>> menuItems = [];
+    for (var i = 0; i < categories.length; i++) {
+      menuItems.add(DropdownMenuItem(
+        value: "${categories[i]["id"]}",
+        child: Text("${categories[i]["name"]}"),
+      ));
+    }
+    return menuItems;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+          setState(() {
+            quantity.text = "1";
+          });
           _showFormDialog(context);
         },
         backgroundColor: Colors.blue,
@@ -93,7 +102,7 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
           ),
         ),
       ),
-      body:const  ProduitListPage(),
+      body: const ProduitListPage(),
     );
   }
 
@@ -144,14 +153,18 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
               nextScreen(context, const AjouterProduitPage());
             } else if (id == 4) {
               currentPage = DrawerSections.vente;
+              nextScreen(context, const AjouterVentePage());
             } else if (id == 5) {
               currentPage = DrawerSections.achat;
               nextScreen(context, const AjouterAchatPage());
             } else if (id == 6) {
-              currentPage = DrawerSections.facture;
+              currentPage = DrawerSections.fournisseur;
+              nextScreen(context, const AjouterFournisseurPage());
             } else if (id == 7) {
-              currentPage = DrawerSections.privacy_policy;
+              currentPage = DrawerSections.facture;
             } else if (id == 8) {
+              currentPage = DrawerSections.privacy_policy;
+            } else if (id == 9) {
               showDialog(
                   barrierDismissible: false,
                   context: context,
@@ -212,6 +225,7 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
     );
   }
 
+  //Formulaire
   _showFormDialog(BuildContext context) {
     return showDialog(
         context: context,
@@ -219,7 +233,7 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
         builder: (param) {
           return AlertDialog(
             actions: [
-              FlatButton(
+              TextButton(
                 child: const Text(
                   'Annuler',
                   style: TextStyle(color: Colors.red),
@@ -228,171 +242,180 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
                   Navigator.of(context).pop();
                 },
               ),
-              FlatButton(
+              TextButton(
                 child: const Text('Valider',
                     style: TextStyle(color: Colors.green)),
-                onPressed: () async{
-                  int response = await sqlDb.inserData('''
-                    INSERT INTO Produits(nameCategorie, nameProduit, quantiteProduit,prixVenteProduit ,prixAchatProduit)
-                    VALUES("${_selectedItem}","${nameProduit.text}","${quantiteProduit.text}","${prixVenteProduit.text}","${prixAchatProduit.text}")
+                onPressed: () async {
+                  if (_formKey.currentState!.validate()) {
+                    int response = await sqlDb.inserData('''
+                    INSERT INTO Products( name, quantity,price_sell ,price_buy,category_id)
+                    VALUES("${name.text}","${quantity.text}","${price_sell.text}","${price_buy.text}","$selectedValue")
                   ''');
-                 var res =
-                      await sqlDb.readData('SELECT COUNT(*) FROM Produits');
-                  print(res);
-                  print(response);
+
+                  print("===$response==== INSERTION DONE ==========");
+
                   Navigator.of(context).pushReplacement(MaterialPageRoute(
                       builder: (context) => const AjouterProduitPage()));
+                  }
+                  
                 },
-            
               ),
             ],
             title: const Center(child: Text('Ajouter Produit')),
             content: SingleChildScrollView(
-              child: Column(
-                children: [
-                  //Liste des catégories
-                  Container(
-                      child: AwesomeDropDown(
-                    // isPanDown: false,
-                    // isBackPressedOrTouchedOutSide:false,
-                    padding: 8,
-                    dropDownIcon: const Icon(
-                      Icons.arrow_drop_down,
-                      color: Colors.grey,
-                      size: 23,
-                    ),
-                    dropDownList: list,
-                    dropDownIconBGColor: Colors.transparent,
-                    dropDownOverlayBGColor: Colors.transparent,
-                    dropDownBGColor: const Color.fromRGBO(238, 238, 238, 1),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    //Liste des catégories
+                    Container(
+                        padding: const EdgeInsets.only(left: 20, right: 20),
+                        margin: const EdgeInsets.only(top: 10),
+                        child: DropdownButtonFormField(
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
+                            decoration: const InputDecoration(
+                              enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color.fromARGB(255, 45, 157, 220)),
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(10))),
+                              border: OutlineInputBorder(
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(10))),
+                              label: Text("Nom catégorie"),
+                              labelStyle:
+                                  TextStyle(fontSize: 13, color: Colors.black),
+                            ),
+                            dropdownColor: Colors.white,
+                            value: selectedValue,
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                selectedValue = newValue!;
+                              });
+                            },
+                            items: dropdownItems,
+                            validator:(value) => value == null ? 'Sélectionner une catégorie' : null)),
 
-                    numOfListItemToShow: 5,
-                    selectedItemTextStyle: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 16,
+                    //Nom du produit
+                    Container(
+                      alignment: Alignment.center,
+                      margin:
+                          const EdgeInsets.only(left: 20, right: 20, top: 30),
+                      child: TextFormField(
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
+                          controller: name,
+                          cursorColor: const Color.fromARGB(255, 45, 157, 220),
+                          decoration: const InputDecoration(
+                            enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                    color: Color.fromARGB(255, 45, 157, 220)),
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(10))),
+                            border: OutlineInputBorder(
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(10))),
+                            label: Text("Nom du produit"),
+                            labelStyle:
+                                TextStyle(fontSize: 13, color: Colors.black),
+                          ),
+                          validator: MultiValidator([
+                            RequiredValidator(
+                                errorText: "Veuillez entrer le nom du produit")
+                          ])),
                     ),
-                    dropDownListTextStyle: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 20,
-                        backgroundColor: Colors.transparent),
-                    selectedItem: _selectedItem,
-                    onDropDownItemClick: (selectedItem) {
-                      _selectedItem = selectedItem;
-                    },
-                  )),
 
-                  //Nom du produit
-                  Container(
-                    alignment: Alignment.center,
-                    margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
-                    padding: const EdgeInsets.only(left: 20, right: 20),
-                    height: 45,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(50),
-                      color: Colors.grey[200],
-                      boxShadow: const [
-                        BoxShadow(
-                            offset: Offset(0, 10),
-                            blurRadius: 50,
-                            color: Color(0xffEEEEEE)),
-                      ],
-                    ),
-                    child: TextFormField(
-                      controller: nameProduit,
-                      cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                      decoration: const InputDecoration(
-                        hintText: "Nom du produit",
-                        hintStyle: TextStyle(color: Colors.black45),
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
+                    //Quantité
+                    Container(
+                      alignment: Alignment.center,
+                      margin:
+                          const EdgeInsets.only(left: 20, right: 20, top: 30),
+                      child: TextFormField(
+                        keyboardType: TextInputType.number,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        controller: quantity,
+                        cursorColor: const Color.fromARGB(255, 45, 157, 220),
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Quantité"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                        validator: MultiValidator([
+                          RequiredValidator(
+                              errorText: "Veuillez entrer une quantité")
+                        ]),
                       ),
                     ),
-                  ),
 
-                  //Quantité
-                  Container(
-                    alignment: Alignment.center,
-                    margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
-                    padding: const EdgeInsets.only(left: 20, right: 20),
-                    height: 45,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(50),
-                      color: Colors.grey[200],
-                      boxShadow: const [
-                        BoxShadow(
-                            offset: Offset(0, 10),
-                            blurRadius: 50,
-                            color: Color(0xffEEEEEE)),
-                      ],
-                    ),
-                    child: TextFormField(
-                      controller: quantiteProduit,
-                      cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                      decoration: const InputDecoration(
-                        hintText: "Quantité",
-                        hintStyle: TextStyle(color: Colors.black45),
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
+                    //Prix d'achat
+                    Container(
+                      alignment: Alignment.center,
+                      margin:
+                          const EdgeInsets.only(left: 20, right: 20, top: 30),
+                      child: TextFormField(
+                        keyboardType: TextInputType.number,
+                        controller: price_buy,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        cursorColor: const Color.fromARGB(255, 45, 157, 220),
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Prix achat"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                        validator: MultiValidator([
+                          RequiredValidator(
+                              errorText: "Veuillez entrer un prix d'acchat")
+                        ]),
                       ),
                     ),
-                  ),
 
-                  //Prix d'achat
-                  Container(
-                    alignment: Alignment.center,
-                    margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
-                    padding: const EdgeInsets.only(left: 20, right: 20),
-                    height: 45,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(50),
-                      color: Colors.grey[200],
-                      boxShadow: const [
-                        BoxShadow(
-                            offset: Offset(0, 10),
-                            blurRadius: 50,
-                            color: Color(0xffEEEEEE)),
-                      ],
-                    ),
-                    child: TextFormField(
-                      controller: prixAchatProduit,
-                      cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                      decoration: const InputDecoration(
-                        hintText: "Prix d'achat",
-                        hintStyle: TextStyle(color: Colors.black45),
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
+                    //Prix de vente
+                    Container(
+                      alignment: Alignment.center,
+                      margin:
+                          const EdgeInsets.only(left: 20, right: 20, top: 30),
+                      child: TextFormField(
+                        keyboardType: TextInputType.number,
+                        controller: price_sell,
+                        cursorColor: const Color.fromARGB(255, 45, 157, 220),
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Prix vente"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                        validator: MultiValidator([
+                          RequiredValidator(
+                              errorText: "Veuillez entrer un prix de vente")
+                        ]),
                       ),
                     ),
-                  ),
-
-                  //Prix de vente
-                  Container(
-                    alignment: Alignment.center,
-                    margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
-                    padding: const EdgeInsets.only(left: 20, right: 20),
-                    height: 45,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(50),
-                      color: Colors.grey[200],
-                      boxShadow: const [
-                        BoxShadow(
-                            offset: Offset(0, 10),
-                            blurRadius: 50,
-                            color: Color(0xffEEEEEE)),
-                      ],
-                    ),
-                    child: TextFormField(
-                      controller: prixVenteProduit,
-                      cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                      decoration: const InputDecoration(
-                        hintText: "Prix de vente",
-                        hintStyle: TextStyle(color: Colors.black45),
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
@@ -406,6 +429,7 @@ enum DrawerSections {
   produit,
   vente,
   achat,
+  fournisseur,
   facture,
   privacy_policy,
   logout,
