@@ -121,6 +121,8 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
               currentPage == DrawerSections.vente ? true : false),
           MenuItem(5, "Achats", Icons.notifications_outlined,
               currentPage == DrawerSections.achat ? true : false),
+          MenuItem(5, "Fournisseurs", Icons.notifications_outlined,
+              currentPage == DrawerSections.fournisseur ? true : false),
           MenuItem(6, "Factures", Icons.settings_outlined,
               currentPage == DrawerSections.facture ? true : false),
           MenuItem(
@@ -252,12 +254,11 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
                     VALUES("${name.text}","${quantity.text}","${price_sell.text}","${price_buy.text}","$selectedValue")
                   ''');
 
-                  print("===$response==== INSERTION DONE ==========");
+                    print("===$response==== INSERTION DONE ==========");
 
-                  Navigator.of(context).pushReplacement(MaterialPageRoute(
-                      builder: (context) => const AjouterProduitPage()));
+                    Navigator.of(context).pushReplacement(MaterialPageRoute(
+                        builder: (context) => const AjouterProduitPage()));
                   }
-                  
                 },
               ),
             ],
@@ -295,7 +296,9 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
                               });
                             },
                             items: dropdownItems,
-                            validator:(value) => value == null ? 'Sélectionner une catégorie' : null)),
+                            validator: (value) => value == null
+                                ? 'Sélectionner une catégorie'
+                                : null)),
 
                     //Nom du produit
                     Container(
@@ -421,6 +424,8 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
           );
         });
   }
+
+  
 }
 
 enum DrawerSections {

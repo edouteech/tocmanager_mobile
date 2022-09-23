@@ -51,7 +51,7 @@ class _CategorieListState extends State<CategorieList> {
             child: ListTile(
                 leading: const Icon(Icons.inbox, size: 30,color: Color.fromARGB(255,45,157,220),),
                 title: Center(child: Text("${categories[i]['name']}", style: const TextStyle(fontSize: 20, fontWeight:FontWeight.bold),)),
-                trailing: Container(
+                trailing: SizedBox(
                   width: 80,
                   child: Row(
                     children: [

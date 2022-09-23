@@ -1,210 +1,122 @@
-// ignore_for_file: constant_identifier_names, non_constant_identifier_names, use_build_context_synchronously, avoid_print
+// ignore_for_file: avoid_print, unnecessary_this, no_leading_underscores_for_local_identifiers, use_build_context_synchronously
 
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
-import 'package:tocmanager/services/auth_service.dart';
+import 'package:tocmanager/database/sqfdb.dart';
 
-import '../../database/sqfdb.dart';
-import '../../widgets/widgets.dart';
-import '../achats/ajouter_achats.dart';
-import '../categories/ajouter_categorie.dart';
-import '../home_page.dart';
-import '../home_widgets/drawer_header.dart';
-import '../login_page.dart';
-import '../produits/ajouter_produits.dart';
-import '../ventes/ajouter_vente.dart';
-import 'list_fournisseur.dart';
+import 'ajouter_fournisseur.dart';
 
-class AjouterFournisseurPage extends StatefulWidget {
-  const AjouterFournisseurPage({super.key});
+class ListFournisseur extends StatefulWidget {
+  const ListFournisseur({Key? key}) : super(key: key);
 
   @override
-  State<AjouterFournisseurPage> createState() => _AjouterFournisseurPageState();
+  State<ListFournisseur> createState() => _ListFournisseurState();
 }
 
-class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
+class _ListFournisseurState extends State<ListFournisseur> {
+  SqlDb sqlDb = SqlDb();
+  List suppliers = [];
+  var id = "";
   //Formkey
   final _formKey = GlobalKey<FormState>();
-
-    /* Database*/
-  SqlDb sqlDb = SqlDb();
-  /* Auth service*/
-  AuthService authService = AuthService();
-
-  /* Current page*/
-  var currentPage = DrawerSections.fournisseur;
-
   /* Fields controller*/
   TextEditingController name = TextEditingController();
   TextEditingController email = TextEditingController();
   TextEditingController phone = TextEditingController();
   TextEditingController address = TextEditingController();
 
+//Read data into database
+  Future readData() async {
+    List<Map> response = await sqlDb.readData("SELECT * FROM 'Suppliers'");
+    suppliers.addAll(response);
+    if (this.mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void initState() {
+    readData();
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[300],
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _showFormDialog(context);
-        },
-        backgroundColor: Colors.blue,
-        child: const Icon(
-          Icons.add,
-          size: 32,
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      appBar: AppBar(
-          centerTitle: true,
-          backgroundColor: Colors.grey[100],
-          iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
-          title: const Text(
-            'Fournisseurs',
-            style: TextStyle(color: Colors.black, fontFamily: 'RobotoMono'),
-          )),
-      drawer: Drawer(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              const MyHeaderDrawer(),
-              MyDrawerList(),
-              const SizedBox(
-                height: 20,
-              ),
-            ],
-          ),
-        ),
-      ),
-      body: Container(
-          margin: const EdgeInsets.all(8), child: const ListFournisseur()),
-    );
-  }
-
-  Widget MyDrawerList() {
-    return Container(
-      padding: const EdgeInsets.only(top: 15),
-      child: Column(
-        children: [
-          MenuItem(1, "Dashboard", Icons.dashboard_outlined,
-              currentPage == DrawerSections.dashboard ? true : false),
-          MenuItem(2, "Categories", Icons.people_alt_outlined,
-              currentPage == DrawerSections.categorie ? true : false),
-          MenuItem(3, "Produits", Icons.event,
-              currentPage == DrawerSections.produit ? true : false),
-          MenuItem(4, "Ventes", Icons.notes,
-              currentPage == DrawerSections.vente ? true : false),
-          MenuItem(5, "Achats", Icons.notifications_outlined,
-              currentPage == DrawerSections.achat ? true : false),
-          MenuItem(6, "Fournisseurs", Icons.notifications_outlined,
-              currentPage == DrawerSections.fournisseur ? true : false),
-          MenuItem(6, "Factures", Icons.settings_outlined,
-              currentPage == DrawerSections.facture ? true : false),
-          MenuItem(
-              7,
-              "Politique de confidentialité",
-              Icons.privacy_tip_outlined,
-              currentPage == DrawerSections.privacy_policy ? true : false),
-          MenuItem(8, "Deconnexion", Icons.logout_outlined,
-              currentPage == DrawerSections.logout ? true : false),
-        ],
-      ),
-    );
-  }
-
-  Widget MenuItem(int id, String title, IconData icon, bool selected) {
-    return Material(
-      color: selected ? Colors.grey[200] : Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          Navigator.pop(context);
-          setState(() async {
-            if (id == 1) {
-              currentPage = DrawerSections.dashboard;
-              nextScreen(context, const HomePage());
-            } else if (id == 2) {
-              currentPage = DrawerSections.categorie;
-              nextScreen(context, const AjouterCategoriePage());
-            } else if (id == 3) {
-              currentPage = DrawerSections.produit;
-              nextScreen(context, const AjouterProduitPage());
-            } else if (id == 4) {
-              currentPage = DrawerSections.vente;
-              nextScreen(context, const AjouterVentePage());
-            } else if (id == 5) {
-              currentPage = DrawerSections.achat;
-              nextScreen(context, const AjouterAchatPage());
-            } else if (id == 6) {
-              currentPage = DrawerSections.fournisseur;
-              nextScreen(context, const AjouterFournisseurPage());
-            } else if (id == 7) {
-              currentPage = DrawerSections.facture;
-            } else if (id == 8) {
-              currentPage = DrawerSections.privacy_policy;
-            } else if (id == 9) {
-              showDialog(
-                  barrierDismissible: false,
-                  context: context,
-                  builder: (context) {
-                    return AlertDialog(
-                      title: const Text("Deconnexion"),
-                      content: const Text(
-                          "Êtes-vous sûr de vouloir vous déconnecter?"),
-                      actions: [
-                        IconButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
-                          icon: const Icon(
-                            Icons.cancel,
-                            color: Colors.red,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () async {
-                            await authService.signOut();
-                            Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(
-                                    builder: (context) => const LoginPage()),
-                                (route) => false);
-                          },
-                          icon: const Icon(
-                            Icons.done,
-                            color: Colors.green,
-                          ),
-                        ),
-                      ],
-                    );
-                  });
-            }
-          });
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(15.0),
-          child: Row(
-            children: [
-              Expanded(
-                  child: Icon(
-                icon,
-                size: 20,
-                color: const Color.fromARGB(255, 45, 157, 220),
-              )),
-              Expanded(
-                  flex: 3,
-                  child: Text(
-                    title,
-                    style: const TextStyle(color: Colors.black, fontSize: 16),
-                  ))
-            ],
-          ),
-        ),
-      ),
-    );
+    return ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: suppliers.length,
+        itemBuilder: (context, i) {
+          return Container(
+            margin: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20), color: Colors.white),
+            child: ListTile(
+                onTap: () {
+                  showDialogFunc(
+                      context,
+                      suppliers[i]['name'],
+                      suppliers[i]['email'],
+                      suppliers[i]['phone'],
+                      suppliers[i]['address']);
+                },
+                leading: const Icon(
+                  Icons.inbox,
+                  size: 30,
+                  color: Color.fromARGB(255, 45, 157, 220),
+                ),
+                title: Center(
+                    child: Text(
+                  "${suppliers[i]['name']}",
+                  style: const TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.bold),
+                )),
+                trailing: SizedBox(
+                  width: 80,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.blue),
+                            onPressed: () {
+                              setState(() {
+                                name.text = "${suppliers[i]['name']}";
+                                email.text = "${suppliers[i]['email']}";
+                                phone.text = "${suppliers[i]['phone']}";
+                                address.text = "${suppliers[i]['address']}";
+                                id = "${suppliers[i]['id']}";
+                              });
+                              _editSuppliers(context);
+                            }),
+                      ),
+                      Expanded(
+                        child: IconButton(
+                            icon: const Icon(
+                              Icons.delete,
+                              color: Colors.red,
+                            ),
+                            onPressed: () async {
+                              int response = await sqlDb.deleteData(
+                                  "DELETE FROM Suppliers WHERE id =${suppliers[i]['id']}");
+                              if (response > 0) {
+                                suppliers.removeWhere((element) =>
+                                    element['id'] == suppliers[i]['id']);
+                                setState(() {});
+                                print("Delete ==== $response");
+                              } else {
+                                print("Delete ==== null");
+                              }
+                            }),
+                      ),
+                    ],
+                  ),
+                )),
+          );
+        });
   }
 
   //Formulaire
-  _showFormDialog(BuildContext context) {
+  _editSuppliers(BuildContext context) {
     return showDialog(
         context: context,
         barrierDismissible: true,
@@ -225,12 +137,10 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
                     style: TextStyle(color: Colors.green)),
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
-                    int response = await sqlDb.inserData('''
-                    INSERT INTO Suppliers( name, email,phone ,address)
-                    VALUES("${name.text}","${email.text}","${phone.text}","${address.text}")
+                    int response = await sqlDb.updateData('''
+                    UPDATE Suppliers SET name ="${name.text}", email="${email.text}", phone="${phone.text}", address="${address.text}" WHERE id="$id"
                   ''');
-
-                     print("===$response==== INSERTION DONE ==========");
+                    print("===$response==== UPDATE DONE ==========");
 
                     Navigator.of(context).pushReplacement(MaterialPageRoute(
                         builder: (context) => const AjouterFournisseurPage()));
@@ -280,7 +190,7 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
                       child: TextFormField(
                         keyboardType: TextInputType.emailAddress,
                         autovalidateMode: AutovalidateMode.onUserInteraction,
-                         controller: email,
+                        controller: email,
                         cursorColor: const Color.fromARGB(255, 45, 157, 220),
                         decoration: const InputDecoration(
                           enabledBorder: OutlineInputBorder(
@@ -311,7 +221,7 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
                       margin:
                           const EdgeInsets.only(left: 20, right: 20, top: 30),
                       child: TextFormField(
-                         controller: phone,
+                        controller: phone,
                         autovalidateMode: AutovalidateMode.onUserInteraction,
                         cursorColor: const Color.fromARGB(255, 45, 157, 220),
                         decoration: const InputDecoration(
@@ -340,7 +250,7 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
                       margin:
                           const EdgeInsets.only(left: 20, right: 20, top: 30),
                       child: TextFormField(
-                         controller: address,
+                        controller: address,
                         cursorColor: const Color.fromARGB(255, 45, 157, 220),
                         autovalidateMode: AutovalidateMode.onUserInteraction,
                         decoration: const InputDecoration(
@@ -371,14 +281,47 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
   }
 }
 
-enum DrawerSections {
-  dashboard,
-  categorie,
-  produit,
-  vente,
-  achat,
-  fournisseur,
-  facture,
-  privacy_policy,
-  logout,
+// This is a block of Model Dialog
+showDialogFunc(
+    context, suppliersName, suppliersEmail, suppliersPhone, suppliersAddress) {
+  return showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (param) {
+        return AlertDialog(
+          actions: [
+            TextButton(
+              child: const Text(
+                'Fermer',
+                style: TextStyle(color: Colors.red),
+              ),
+              onPressed: () async {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+          title: const Center(
+            child: Text("Information du fournisseur"),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              children: [
+                Text("Nom : $suppliersName"),
+                const SizedBox(
+                  height: 20,
+                ),
+                Text("Email: $suppliersEmail"),
+                const SizedBox(
+                  height: 20,
+                ),
+                Text("Numéro: $suppliersPhone"),
+                const SizedBox(
+                  height: 20,
+                ),
+                Text("Adresse: $suppliersAddress")
+              ],
+            ),
+          ),
+        );
+      });
 }

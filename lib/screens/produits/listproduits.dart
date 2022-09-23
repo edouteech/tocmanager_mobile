@@ -2,6 +2,7 @@
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
+import 'package:tocmanager/screens/produits/ajouter_produits.dart';
 
 import '../../database/sqfdb.dart';
 
@@ -17,7 +18,7 @@ class _ProduitListPageState extends State<ProduitListPage> {
   SqlDb sqlDb = SqlDb();
   List produits = [];
   List<Map> listProduit = [];
-  var idProduit = "";
+  var id = "";
 
   /*List of categories */
   List categories = [];
@@ -138,7 +139,7 @@ class _ProduitListPageState extends State<ProduitListPage> {
                                         '${produits[index]["price_sell"]}';
                                     price_buy.text =
                                         '${produits[index]["price_buy"]}';
-                                    idProduit = '${produits[index]["id"]}';
+                                    id = '${produits[index]["id"]}';
                                   });
                                   _showFormDialog(context);
                                 }),
@@ -151,12 +152,12 @@ class _ProduitListPageState extends State<ProduitListPage> {
                                 ),
                                 onPressed: () async {
                                   int response = await sqlDb.deleteData(
-                                      "DELETE FROM Produits WHERE id =${produits[index]['id']}");
+                                      "DELETE FROM Products WHERE id =${produits[index]['id']}");
                                   if (response > 0) {
                                     produits.removeWhere((element) =>
                                         element['id'] == produits[index]['id']);
                                     setState(() {});
-                                    print("Delete ==== $response");
+                                    print("$response ===Delete ==== DONE");
                                   } else {
                                     print("Delete ==== null");
                                   }
@@ -185,7 +186,6 @@ class _ProduitListPageState extends State<ProduitListPage> {
                 ),
                 onPressed: () async {
                   Navigator.of(context).pop();
-                  print(name.text);
                 },
               ),
               TextButton(
@@ -193,17 +193,15 @@ class _ProduitListPageState extends State<ProduitListPage> {
                     style: TextStyle(color: Colors.green)),
                 onPressed: () async {
 
-                  // if (_formKey.currentState!.validate()) {
-                  //   int response = await sqlDb.inserData('''
-                  //   INSERT INTO Products( name, quantity,price_sell ,price_buy,category_id)
-                  //   VALUES("${name.text}","${quantity.text}","${price_sell.text}","${price_buy.text}","$selectedValue")
-                  // ''');
+                  if (_formKey.currentState!.validate()) {
+                    int response = await sqlDb.updateData('''
+                    UPDATE Products SET name ="${name.text}", quantity="${quantity.text}", price_sell="${price_sell.text}", price_buy="${price_buy.text}", category_id="$selectedValue" WHERE id="$id"
+                  ''');
+                    print("===$response==== UPDATE DONE ==========");
 
-                  // print("===$response==== INSERTION DONE ==========");
-
-                  // Navigator.of(context).pushReplacement(MaterialPageRoute(
-                  //     builder: (context) => const AjouterProduitPage()));
-                  // }
+                  Navigator.of(context).pushReplacement(MaterialPageRoute(
+                      builder: (context) => const AjouterProduitPage()));
+                  }
                 },
               ),
             ],
