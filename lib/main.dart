@@ -42,8 +42,16 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       theme: ThemeData(
-          primaryColor: Constants().primaryColor,
-          scaffoldBackgroundColor: Colors.white),
+        primaryColor: Constants().primaryColor,
+        scaffoldBackgroundColor: Colors.white,
+        scrollbarTheme: ScrollbarThemeData(
+          interactive: true,
+          radius: const Radius.circular(10.0),
+          thumbColor: MaterialStateProperty.all(Colors.blue[500]),
+          thickness: MaterialStateProperty.all(5.0),
+          
+        ),
+      ),
       debugShowCheckedModeBanner: false,
       home: _isSignedIn ? const HomePage() : const LoginPage(),
     );

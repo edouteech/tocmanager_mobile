@@ -102,7 +102,7 @@ class SqlDb {
           "product_id" INT NOT NULL,
           "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (buy_id) REFERENCES Buys (id),
+          FOREIGN KEY (buy_id) REFERENCES Buys (id) ON DELETE CASCADE,
           FOREIGN KEY (product_id) REFERENCES Products (id)
         )
     ''');

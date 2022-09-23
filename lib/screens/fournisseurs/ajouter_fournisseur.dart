@@ -2,11 +2,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
+import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/services/auth_service.dart';
-
 import '../../database/sqfdb.dart';
 import '../../widgets/widgets.dart';
-import '../achats/ajouter_achats.dart';
 import '../categories/ajouter_categorie.dart';
 import '../home_page.dart';
 import '../home_widgets/drawer_header.dart';
@@ -134,7 +133,7 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
               nextScreen(context, const AjouterVentePage());
             } else if (id == 5) {
               currentPage = DrawerSections.achat;
-              nextScreen(context, const AjouterAchatPage());
+              nextScreen(context, const AchatHomePage());
             } else if (id == 6) {
               currentPage = DrawerSections.fournisseur;
               nextScreen(context, const AjouterFournisseurPage());

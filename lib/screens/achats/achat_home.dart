@@ -1,82 +1,158 @@
-// ignore_for_file: avoid_unnecessary_containers, non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, sized_box_for_whitespace, deprecated_member_use, unused_field, prefer_final_fields, avoid_print, unused_local_variable, prefer_collection_literals
+// ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, unnecessary_this, avoid_print
+import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
-import 'package:form_field_validator/form_field_validator.dart';
-import 'package:tocmanager/database/sqfdb.dart';
-import 'package:tocmanager/screens/achats/achat_home.dart';
-import 'package:tocmanager/screens/categories/categorielist.dart';
 import 'package:tocmanager/screens/fournisseurs/ajouter_fournisseur.dart';
 import 'package:tocmanager/screens/ventes/ajouter_vente.dart';
+import '../../database/sqfdb.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/widgets.dart';
+import '../categories/ajouter_categorie.dart';
 import '../home_page.dart';
 import '../home_widgets/drawer_header.dart';
 import '../login_page.dart';
 import '../produits/ajouter_produits.dart';
 
-class AjouterCategoriePage extends StatefulWidget {
-  const AjouterCategoriePage({
-    Key? key,
-  }) : super(key: key);
+class AchatHomePage extends StatefulWidget {
+  const AchatHomePage({Key? key}) : super(key: key);
+  
   @override
-  State<AjouterCategoriePage> createState() => _AjouterCategoriePageState();
+  State<AchatHomePage> createState() => _AchatHomePageState();
 }
 
-class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
-  // database
+class _AchatHomePageState extends State<AchatHomePage> {
+  /* Database */
   SqlDb sqlDb = SqlDb();
+  /* =============================Buys=================== */
+  /* List products */
+  List buys = [];
 
-  //Fields Controller
-  TextEditingController name = TextEditingController();
+  /* Read data for database */
+  Future readSuppliersData() async {
+    List<Map> response = await sqlDb.readData(
+      "SELECT Buys.*,Suppliers.name as supplier_name FROM 'Buys','Suppliers' WHERE Buys.supplier_id = Suppliers.id");
+    buys.addAll(response);
+    if (this.mounted) {
+      setState(() {});
+    }
+  }
+  @override
+  void initState() {
+    readSuppliersData();
+    super.initState();
+    
+  }
 
-  //Auth service
+  /* =============================End Buys=================== */
+
   AuthService authService = AuthService();
-
-  //Current page
-  var currentPage = DrawerSections.categorie;
-
-  //Form key
-  final _formKey = GlobalKey<FormState>();
-
+  var currentPage = DrawerSections.achat;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[300],
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _showFormDialog(context);
-        },
-        backgroundColor: Colors.blue,
-        child: const Icon(
-          Icons.add,
-          size: 32,
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            
+          },
+          backgroundColor: const Color.fromARGB(255,45,157,220),
+          child: const Icon(
+            Icons.add,
+            size: 32,
+          ),
         ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      appBar: AppBar(
-          centerTitle: true,
-          backgroundColor: Colors.grey[100],
-          iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
-          title: const Text(
-            'Catégories',
-            style: TextStyle(color: Colors.black, fontSize: 20),
-          )),
-      drawer: Drawer(
-        child: SingleChildScrollView(
-          child: Container(
-              child: Column(
-            children: [
-              const MyHeaderDrawer(),
-              MyDrawerList(),
-              const SizedBox(
-                height: 20,
-              ),
-            ],
-          )),
+        floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+        appBar: AppBar(
+            centerTitle: true,
+            backgroundColor: Colors.grey[100],
+            iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
+            title: const Text(
+              'Achats',
+              style: TextStyle(color: Colors.black, fontFamily: 'RobotoMono'),
+            )),
+        drawer: Drawer(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                const MyHeaderDrawer(),
+                MyDrawerList(),
+                const SizedBox(
+                  height: 20,
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
-      body: Container(
-          margin: const EdgeInsets.all(8), child: const CategorieList()),
-    );
+        body: DataTable2(
+        
+          showBottomBorder: true,
+          border: TableBorder.all(color: Colors.black),
+          headingTextStyle: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 15,
+          ),
+          dataRowColor: MaterialStateProperty.all(Colors.red[200]),
+          headingRowColor: MaterialStateProperty.all(Colors.amber[200]),
+          decoration: BoxDecoration(
+            color: Colors.green[200],
+          ),
+          columnSpacing: 12,
+          horizontalMargin: 12,
+          minWidth: 600,
+          columns: const [
+            DataColumn2(
+              label: Center(child: Text('Nom fournisseur')),
+              size: ColumnSize.L,
+            ),
+            DataColumn(
+              label: Center(child: Text('Montant')),
+            ),
+            DataColumn(
+              label: Center(child: Text('Date')),
+            ),
+            DataColumn(
+              label: Center(child: Text('Action')),
+            ),
+
+
+          ],
+          rows: List<DataRow>.generate(
+              buys.length,
+              (index) => DataRow(cells: [
+                    DataCell(Center(child: Text('${buys[index]["supplier_name"]}'))),
+                    DataCell(Center(child: Text('${buys[index]["amount"]}'))),
+                    DataCell(Center(child: Text('${buys[index]["date_buy"]}'))),
+                    
+                    DataCell(SizedBox(
+                      width: 80,
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 3,),
+
+                          Expanded(
+                            child: IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                ),
+                                onPressed: () async {
+                                  int response = await sqlDb.deleteData(
+                                      "DELETE FROM Buys WHERE id =${buys[index]['id']}");
+                                  if (response > 0) {
+                                    buys.removeWhere((element) =>
+                                        element['id'] == buys[index]['id']);
+                                    setState(() {});
+                                    print("$response ===Delete ==== DONE");
+                                  } else {
+                                    print("Delete ==== null");
+                                  }
+                                }),
+                          ),
+                          
+                          
+                        ],
+                      ),
+                    )),
+                  ]))),
+      );
   }
 
   Widget MyDrawerList() {
@@ -95,7 +171,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
           MenuItem(5, "Achats", Icons.notifications_outlined,
               currentPage == DrawerSections.achat ? true : false),
           MenuItem(6, "Fournisseurs", Icons.notifications_outlined,
-              currentPage == DrawerSections.achat ? true : false),
+              currentPage == DrawerSections.fournisseur ? true : false),
           MenuItem(7, "Factures", Icons.settings_outlined,
               currentPage == DrawerSections.facture ? true : false),
           MenuItem(
@@ -103,7 +179,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
               "Politique de confidentialité",
               Icons.privacy_tip_outlined,
               currentPage == DrawerSections.privacy_policy ? true : false),
-          MenuItem(9, "Deconnexion", Icons.logout_outlined,
+          MenuItem(8, "Deconnexion", Icons.logout_outlined,
               currentPage == DrawerSections.logout ? true : false),
         ],
       ),
@@ -200,70 +276,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
     );
   }
 
-  _showFormDialog(BuildContext context) {
-    return showDialog(
-        context: context,
-        barrierDismissible: true,
-        builder: (param) {
-          return AlertDialog(
-            actions: [
-              TextButton(
-                child: const Text(
-                  'Annuler',
-                  style: TextStyle(color: Colors.red),
-                ),
-                onPressed: () async {
-                  Navigator.of(context).pop();
-                },
-              ),
-              TextButton(
-                child: const Text('Valider',
-                    style: TextStyle(color: Colors.green)),
-                onPressed: () async {
-                  if (_formKey.currentState!.validate()) {
-                    int response = await sqlDb.inserData('''
-                    INSERT INTO Categories(name) VALUES('${name.text}')
-                  ''');
-                    print("===$response==== INSERTION DONE ==========");
-                    Navigator.of(context).pushReplacement(MaterialPageRoute(
-                        builder: (context) => const AjouterCategoriePage()));
-                  }
-                },
-              ),
-            ],
-            title: const Center(child: Text('Ajouter Catégorie')),
-            content: SingleChildScrollView(
-              child: Form(
-                key: _formKey,
-                //name categorie create
-                child: Container(
-                  alignment: Alignment.center,
-                  margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
-                  child: TextFormField(
-                    autovalidateMode: AutovalidateMode.onUserInteraction,
-                    controller: name,
-                    cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                    decoration: const InputDecoration(
-                      enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(
-                              color: Color.fromARGB(255, 45, 157, 220)),
-                          borderRadius: BorderRadius.all(Radius.circular(10))),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(10))),
-                      label: Text("Nom de la catégorie"),
-                      labelStyle: TextStyle(fontSize: 13, color: Colors.black),
-                    ),
-                    validator: MultiValidator([
-                      RequiredValidator(
-                          errorText: "Veuillez entrer une catégorie")
-                    ]),
-                  ),
-                ),
-              ),
-            ),
-          );
-        });
-  }
+  
 }
 
 enum DrawerSections {

@@ -1,10 +1,10 @@
 // ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, deprecated_member_use, unnecessary_this, import_of_legacy_library_into_null_safe, unnecessary_brace_in_string_interps, avoid_unnecessary_containers, avoid_print, unnecessary_string_interpolations
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
+import 'package:tocmanager/screens/achats/achat_home.dart';
 import '../../database/sqfdb.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/widgets.dart';
-import '../achats/ajouter_achats.dart';
 import '../categories/ajouter_categorie.dart';
 import '../fournisseurs/ajouter_fournisseur.dart';
 import '../home_page.dart';
@@ -121,16 +121,16 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
               currentPage == DrawerSections.vente ? true : false),
           MenuItem(5, "Achats", Icons.notifications_outlined,
               currentPage == DrawerSections.achat ? true : false),
-          MenuItem(5, "Fournisseurs", Icons.notifications_outlined,
+          MenuItem(6, "Fournisseurs", Icons.notifications_outlined,
               currentPage == DrawerSections.fournisseur ? true : false),
-          MenuItem(6, "Factures", Icons.settings_outlined,
+          MenuItem(7, "Factures", Icons.settings_outlined,
               currentPage == DrawerSections.facture ? true : false),
           MenuItem(
-              7,
+              8,
               "Politique de confidentialité",
               Icons.privacy_tip_outlined,
               currentPage == DrawerSections.privacy_policy ? true : false),
-          MenuItem(8, "Deconnexion", Icons.logout_outlined,
+          MenuItem(9, "Deconnexion", Icons.logout_outlined,
               currentPage == DrawerSections.logout ? true : false),
         ],
       ),
@@ -158,10 +158,10 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
               nextScreen(context, const AjouterVentePage());
             } else if (id == 5) {
               currentPage = DrawerSections.achat;
-              nextScreen(context, const AjouterAchatPage());
+              nextScreen(context, const AchatHomePage());
             } else if (id == 6) {
               currentPage = DrawerSections.fournisseur;
-              nextScreen(context, const AjouterFournisseurPage());
+               nextScreen(context, const AjouterFournisseurPage());
             } else if (id == 7) {
               currentPage = DrawerSections.facture;
             } else if (id == 8) {

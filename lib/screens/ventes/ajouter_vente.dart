@@ -1,9 +1,9 @@
 // ignore_for_file: use_build_context_synchronously, constant_identifier_names, non_constant_identifier_names
 import 'package:flutter/material.dart';
+import 'package:tocmanager/screens/achats/achat_home.dart';
 
 import '../../services/auth_service.dart';
 import '../../widgets/widgets.dart';
-import '../achats/ajouter_achats.dart';
 import '../categories/ajouter_categorie.dart';
 import '../home_page.dart';
 import '../home_widgets/drawer_header.dart';
@@ -162,7 +162,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
               nextScreen(context, const AjouterVentePage());
             } else if (id == 5) {
               currentPage = DrawerSections.achat;
-              nextScreen(context, const AjouterAchatPage());
+              nextScreen(context, const AchatHomePage());
             } else if (id == 6) {
               currentPage = DrawerSections.facture;
             } else if (id == 7) {

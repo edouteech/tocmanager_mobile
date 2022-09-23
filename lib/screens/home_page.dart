@@ -2,13 +2,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/home_widgets/profile/profile_page.dart';
 import 'package:tocmanager/screens/ventes/ajouter_vente.dart';
 import '../database/sqfdb.dart';
 import '../helper/helper_function.dart';
 import '../services/auth_service.dart';
 import '../widgets/widgets.dart';
-import 'achats/ajouter_achats.dart';
 import 'categories/ajouter_categorie.dart';
 import 'fournisseurs/ajouter_fournisseur.dart';
 import 'home_widgets/card.dart';
@@ -265,7 +265,7 @@ class _HomePageState extends State<HomePage> {
               nextScreen(context, const AjouterVentePage());
             } else if (id == 5) {
               currentPage = DrawerSections.achat;
-              nextScreen(context, const AjouterAchatPage());
+              nextScreen(context, const AchatHomePage());
             } else if (id == 6) {
               currentPage = DrawerSections.fournisseur;
               nextScreen(context, const AjouterFournisseurPage());
