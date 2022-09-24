@@ -2,10 +2,10 @@
 
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 import 'package:flutter/material.dart';
+import 'package:form_field_validator/form_field_validator.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/achats/line_achat.dart';
 import '../../database/sqfdb.dart';
-import '../../widgets/widgets.dart';
 import 'package:intl/intl.dart';
 
 class AjouterAchatPage extends StatefulWidget {
@@ -202,27 +202,29 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                 child: const Text('Valider',
                     style: TextStyle(color: Colors.green)),
                 onPressed: () {
-                  var prix = double.parse("${priceProductController.text}");
-                  var quantite = int.parse("${quantityController.text}");
-                  setState(() {
-                    total = (quantite * prix).toString();
-                  });
-                  Elements elmt = Elements(
-                      name: '${nameProductsController.text}',
-                      total: '$total',
-                      quantity: '${quantityController.text}');
-                  setState(() {
-                    elements.add(elmt);
-                    achats.add({
-                      "id":"$selectedProductValue",
-                      "name": "${nameProductsController.text}",
-                      "total": '$total',
-                      "quantity": '${quantityController.text}'
+                  if (_formKey.currentState!.validate()) {
+                    var prix = double.parse("${priceProductController.text}");
+                    var quantite = int.parse("${quantityController.text}");
+                    setState(() {
+                      total = (quantite * prix).toString();
                     });
+                    Elements elmt = Elements(
+                        name: '${nameProductsController.text}',
+                        total: '$total',
+                        quantity: '${quantityController.text}');
+                    setState(() {
+                      elements.add(elmt);
+                      achats.add({
+                        "id": "$selectedProductValue",
+                        "name": "${nameProductsController.text}",
+                        "total": '$total',
+                        "quantity": '${quantityController.text}'
+                      });
 
-                    sum = (sum + (double.parse(total)));
-                  });
-                  Navigator.of(context).pop();
+                      sum = (sum + (double.parse(total)));
+                    });
+                    Navigator.of(context).pop();
+                  }
                 },
               ),
             ],
@@ -236,10 +238,20 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                     padding: const EdgeInsets.only(left: 20, right: 20),
                     margin: const EdgeInsets.only(top: 10),
                     child: DropdownButtonFormField(
-                        decoration: textInputDecoration.copyWith(
-                          label: const Text("Nom Produit"),
-                          labelStyle: const TextStyle(
-                              fontSize: 13, color: Colors.black),
+                        validator: (value) =>
+                            value == null ? 'Sélectionner un produit' : null,
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Nom du produit"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
                         ),
                         dropdownColor: Colors.white,
                         value: selectedProductValue,
@@ -267,24 +279,50 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                     alignment: Alignment.center,
                     margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
                     child: TextFormField(
-                      controller: priceProductController,
-                      decoration: textInputDecoration.copyWith(
-                        label: const Text("Prix unitaire"),
-                        labelStyle:
-                            const TextStyle(fontSize: 13, color: Colors.black),
-                      ),
-                    )),
+                        validator: MultiValidator([
+                          RequiredValidator(
+                              errorText: "Veuillez entrer un prix")
+                        ]),
+                        controller: priceProductController,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Prix unitaire"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ))),
 
                 //Quantité
                 Container(
                     alignment: Alignment.center,
                     margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
                     child: TextFormField(
+                      keyboardType: TextInputType.number,
                       controller: quantityController,
-                      decoration: textInputDecoration.copyWith(
-                        label: const Text("Quantité"),
+                      validator: MultiValidator([
+                        RequiredValidator(
+                            errorText: "Veuillez entrer une quantité")
+                      ]),
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      decoration: const InputDecoration(
+                        enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                                color: Color.fromARGB(255, 45, 157, 220)),
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(10))),
+                        border: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(10))),
+                        label: Text("Quantité"),
                         labelStyle:
-                            const TextStyle(fontSize: 13, color: Colors.black),
+                            TextStyle(fontSize: 13, color: Colors.black),
                       ),
                     ))
               ]),
@@ -312,8 +350,9 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
               TextButton(
                 child: const Text('Valider',
                     style: TextStyle(color: Colors.green)),
-                onPressed: ()async{
-                  int response = await sqlDb.inserData('''
+                onPressed: () async {
+                  if (_formKey.currentState!.validate()) {
+                    int response = await sqlDb.inserData('''
                     INSERT INTO Buys(supplier_id, date_buy, amount) VALUES('$selectedSuppliersValue', '${dateController.text}','$sum')
                   ''');
                     print("===$response==== INSERTION DONE ==========");
@@ -321,23 +360,24 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                     var response2 = await sqlDb.readData('''
                     SELECT * FROM Buys ORDER BY id DESC LIMIT 1
                   ''');
-                  for (var i = 0; i < achats.length; i++) {
-                    int response3 = await sqlDb.inserData('''
+                    for (var i = 0; i < achats.length; i++) {
+                      int response3 = await sqlDb.inserData('''
                     INSERT INTO Buy_lines(quantity, amount, buy_id, product_id) VALUES('${achats[i]["quantity"]}', '${achats[i]["total"]}','${response2[0]["id"]}', '${achats[i]["id"]}')
                   ''');
-                  print("===$response3==== INSERTION DONE ==========");
-                  }
-                  var response4 = await sqlDb.readData('''
+                      print("===$response3==== INSERTION DONE ==========");
+                    }
+                    var response4 = await sqlDb.readData('''
                     SELECT * FROM Buy_lines 
-                  ''');        
-                  print(response4);
-                    
-
-
+                  ''');
+                    setState(() {
+                      elements.clear();
+                      sum = 0;
+                    });
+                    print(response4);
 
                     Navigator.of(context).pushReplacement(MaterialPageRoute(
                         builder: (context) => const AchatHomePage()));
-                  
+                  }
                 },
               ),
             ],
@@ -351,12 +391,24 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                     padding: const EdgeInsets.only(left: 20, right: 20),
                     margin: const EdgeInsets.only(top: 10),
                     child: DropdownButtonFormField(
-                        decoration: textInputDecoration.copyWith(
-                          label: const Text("Nom fournisseur"),
-                          labelStyle: const TextStyle(
-                              fontSize: 13, color: Colors.black),
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Nom fournisseur"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
                         ),
                         dropdownColor: Colors.white,
+                        validator: (value) => value == null
+                            ? 'Sélectionner un fournisseur'
+                            : null,
                         value: selectedSuppliersValue,
                         onChanged: (String? newValue) {
                           setState(() {
@@ -377,13 +429,19 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                         items: dropdownSuppliersItems)),
 
                 Container(
-                  margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
+                  padding: const EdgeInsets.only(left: 20, right: 20),
+                  margin: const EdgeInsets.only(top: 10),
                   child: DateTimeField(
                     controller: dateController,
-                    decoration: textInputDecoration.copyWith(
-                      label: const Text("Date"),
-                      labelStyle:
-                          const TextStyle(fontSize: 13, color: Colors.black),
+                    decoration: const InputDecoration(
+                      enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                              color: Color.fromARGB(255, 45, 157, 220)),
+                          borderRadius: BorderRadius.all(Radius.circular(10))),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(10))),
+                      label: Text("Date"),
+                      labelStyle: TextStyle(fontSize: 13, color: Colors.black),
                     ),
                     format: format,
                     onShowPicker: (context, currentValue) async {

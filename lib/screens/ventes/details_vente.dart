@@ -1,30 +1,25 @@
-// ignore_for_file: avoid_print
-
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 
 import '../../database/sqfdb.dart';
 
-class AchatDetails extends StatefulWidget {
+class DetailsVentes extends StatefulWidget {
   final String id;
-  const AchatDetails({
-    Key? key,
-    required this.id,
-  }) : super(key: key);
+  const DetailsVentes({Key? key, required this.id}) : super(key: key);
+
   @override
-  State<AchatDetails> createState() => _AchatDetailsState();
+  State<DetailsVentes> createState() => _DetailsVentesState();
 }
 
-class _AchatDetailsState extends State<AchatDetails> {
+class _DetailsVentesState extends State<DetailsVentes> {
   /* Read data for database */
   /* Database */
   SqlDb sqlDb = SqlDb();
-  List buyline = [];
-  Future readBuyLineData() async {
+  List sell_line = [];
+  Future readSellLineData() async {
     List<Map> response = await sqlDb.readData(
-        "SELECT Buy_lines.*,Products.name as product_name FROM 'Products','Buy_lines' WHERE Buy_lines.product_id = Products.id AND buy_id='${widget.id}'");
-    buyline.addAll(response);
-    print(buyline);
+        "SELECT Sell_lines.*,Products.name as product_name FROM 'Products','Sell_lines' WHERE Sell_lines.product_id = Products.id AND sell_id='${widget.id}'");
+    sell_line.addAll(response);
     if (mounted) {
       setState(() {});
     }
@@ -32,10 +27,9 @@ class _AchatDetailsState extends State<AchatDetails> {
 
   @override
   void initState() {
-    readBuyLineData();
+    readSellLineData();
     super.initState();
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -44,7 +38,7 @@ class _AchatDetailsState extends State<AchatDetails> {
           backgroundColor: Colors.grey[100],
           iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
           title: const Text(
-            'Détails Achat',
+            'Détails vente',
             style: TextStyle(color: Colors.black, fontFamily: 'RobotoMono'),
           )),
       body: DataTable2(
@@ -78,17 +72,18 @@ class _AchatDetailsState extends State<AchatDetails> {
             ),
           ],
           rows: List<DataRow>.generate(
-              buyline.length,
+              sell_line.length,
               (index) => DataRow(cells: [
                     DataCell(Center(
-                        child: Text('${buyline[index]["product_name"]}'))),
+                        child: Text('${sell_line[index]["product_name"]}'))),
                     DataCell(
-                        Center(child: Text('${buyline[index]["quantity"]}'))),
+                        Center(child: Text('${sell_line[index]["quantity"]}'))),
                     DataCell(
-                        Center(child: Text('${buyline[index]["amount"]}'))),
+                        Center(child: Text('${sell_line[index]["amount"]}'))),
                     DataCell(
-                        Center(child: Text('${buyline[index]["created_at"]}'))),
+                        Center(child: Text('${sell_line[index]["created_at"]}'))),
                   ]))),
+    
     );
   }
 }

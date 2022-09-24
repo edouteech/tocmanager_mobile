@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
+import 'package:tocmanager/screens/ventes/vente_home.dart';
 import 'package:tocmanager/services/auth_service.dart';
 import '../../database/sqfdb.dart';
 import '../../widgets/widgets.dart';
@@ -11,7 +12,6 @@ import '../home_page.dart';
 import '../home_widgets/drawer_header.dart';
 import '../login_page.dart';
 import '../produits/ajouter_produits.dart';
-import '../ventes/ajouter_vente.dart';
 import 'list_fournisseur.dart';
 
 class AjouterFournisseurPage extends StatefulWidget {
@@ -130,7 +130,7 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
               nextScreen(context, const AjouterProduitPage());
             } else if (id == 4) {
               currentPage = DrawerSections.vente;
-              nextScreen(context, const AjouterVentePage());
+              nextScreen(context, const VenteHome());
             } else if (id == 5) {
               currentPage = DrawerSections.achat;
               nextScreen(context, const AchatHomePage());

@@ -1,10 +1,11 @@
 // ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, unnecessary_this, avoid_print
+
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
-import 'package:tocmanager/screens/achats/achat_details.dart';
-import 'package:tocmanager/screens/achats/ajouter_achat.dart';
-import 'package:tocmanager/screens/fournisseurs/ajouter_fournisseur.dart';
-import 'package:tocmanager/screens/ventes/vente_home.dart';
+import 'package:tocmanager/screens/achats/achat_home.dart';
+import 'package:tocmanager/screens/ventes/ajouter_vente.dart';
+import 'package:tocmanager/screens/ventes/details_vente.dart';
+
 import '../../database/sqfdb.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/widgets.dart';
@@ -14,25 +15,28 @@ import '../home_widgets/drawer_header.dart';
 import '../login_page.dart';
 import '../produits/ajouter_produits.dart';
 
-class AchatHomePage extends StatefulWidget {
-  const AchatHomePage({Key? key}) : super(key: key);
+class VenteHome extends StatefulWidget {
+  const VenteHome({Key? key}) : super(key: key);
 
   @override
-  State<AchatHomePage> createState() => _AchatHomePageState();
+  State<VenteHome> createState() => _VenteHomeState();
 }
 
-class _AchatHomePageState extends State<AchatHomePage> {
-  /* Database */
+class _VenteHomeState extends State<VenteHome> {
+  var currentPage = DrawerSections.vente;
+  AuthService authService = AuthService();
+
+   /* Database */
   SqlDb sqlDb = SqlDb();
-  /* =============================Buys=================== */
+  /* =============================sells=================== */
   /* List products */
-  List buys = [];
+  List sells = [];
 
   /* Read data for database */
-  Future readSuppliersData() async {
+  Future readProductsData() async {
     List<Map> response = await sqlDb.readData(
-        "SELECT Buys.*,Suppliers.name as supplier_name FROM 'Buys','Suppliers' WHERE Buys.supplier_id = Suppliers.id");
-    buys.addAll(response);
+        "SELECT * FROM Sells");
+    sells.addAll(response);
     if (this.mounted) {
       setState(() {});
     }
@@ -40,34 +44,31 @@ class _AchatHomePageState extends State<AchatHomePage> {
 
   @override
   void initState() {
-    readSuppliersData();
+    readProductsData();
     super.initState();
   }
 
-  /* =============================End Buys=================== */
-
-  AuthService authService = AuthService();
-  var currentPage = DrawerSections.achat;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          nextScreen(context, const AjouterAchatPage());
+          nextScreen(context, const AjouterVentePage());
         },
-        backgroundColor: const Color.fromARGB(255, 45, 157, 220),
+        backgroundColor: Colors.blue,
         child: const Icon(
           Icons.add,
           size: 32,
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+      backgroundColor: Colors.grey[300],
       appBar: AppBar(
           centerTitle: true,
           backgroundColor: Colors.grey[100],
           iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
           title: const Text(
-            'Achats',
+            'Ventes',
             style: TextStyle(color: Colors.black, fontFamily: 'RobotoMono'),
           )),
       drawer: Drawer(
@@ -84,6 +85,7 @@ class _AchatHomePageState extends State<AchatHomePage> {
         ),
       ),
       body: DataTable2(
+        
           showBottomBorder: true,
           border: TableBorder.all(color: Colors.black),
           headingTextStyle: const TextStyle(
@@ -100,7 +102,7 @@ class _AchatHomePageState extends State<AchatHomePage> {
           minWidth: 600,
           columns: const [
             DataColumn2(
-              label: Center(child: Text('Nom fournisseur')),
+              label: Center(child: Text('Nom du client')),
               size: ColumnSize.L,
             ),
             DataColumn(
@@ -117,12 +119,12 @@ class _AchatHomePageState extends State<AchatHomePage> {
             ),
           ],
           rows: List<DataRow>.generate(
-              buys.length,
+              sells.length,
               (index) => DataRow(cells: [
                     DataCell(
-                        Center(child: Text('${buys[index]["supplier_name"]}'))),
-                    DataCell(Center(child: Text('${buys[index]["amount"]}'))),
-                    DataCell(Center(child: Text('${buys[index]["date_buy"]}'))),
+                        Center(child: Text('${sells[index]["client_name"]}'))),
+                    DataCell(Center(child: Text('${sells[index]["amount"]}'))),
+                    DataCell(Center(child: Text('${sells[index]["date_sell"]}'))),
                      DataCell(Center(
                       child: IconButton(
                           icon: const Icon(
@@ -131,7 +133,7 @@ class _AchatHomePageState extends State<AchatHomePage> {
                           ),
                           onPressed: () {
                             nextScreen(context,
-                                AchatDetails(id: '${buys[index]["id"]}'));
+                                DetailsVentes(id: '${sells[index]["id"]}'));
                           }),
                     )),
                     DataCell(Center(
@@ -142,10 +144,10 @@ class _AchatHomePageState extends State<AchatHomePage> {
                           ),
                           onPressed: () async {
                             int response = await sqlDb.deleteData(
-                                "DELETE FROM Buys WHERE id =${buys[index]['id']}");
+                                "DELETE FROM sells WHERE id =${sells[index]['id']}");
                             if (response > 0) {
-                              buys.removeWhere((element) =>
-                                  element['id'] == buys[index]['id']);
+                              sells.removeWhere((element) =>
+                                  element['id'] == sells[index]['id']);
                               setState(() {});
                               print("$response ===Delete ==== DONE");
                             } else {
@@ -173,12 +175,10 @@ class _AchatHomePageState extends State<AchatHomePage> {
               currentPage == DrawerSections.vente ? true : false),
           MenuItem(5, "Achats", Icons.notifications_outlined,
               currentPage == DrawerSections.achat ? true : false),
-          MenuItem(6, "Fournisseurs", Icons.notifications_outlined,
-              currentPage == DrawerSections.fournisseur ? true : false),
-          MenuItem(7, "Factures", Icons.settings_outlined,
+          MenuItem(6, "Factures", Icons.settings_outlined,
               currentPage == DrawerSections.facture ? true : false),
           MenuItem(
-              8,
+              7,
               "Politique de confidentialité",
               Icons.privacy_tip_outlined,
               currentPage == DrawerSections.privacy_policy ? true : false),
@@ -212,13 +212,10 @@ class _AchatHomePageState extends State<AchatHomePage> {
               currentPage = DrawerSections.achat;
               nextScreen(context, const AchatHomePage());
             } else if (id == 6) {
-              currentPage = DrawerSections.fournisseur;
-              nextScreen(context, const AjouterFournisseurPage());
-            } else if (id == 7) {
               currentPage = DrawerSections.facture;
-            } else if (id == 8) {
+            } else if (id == 7) {
               currentPage = DrawerSections.privacy_policy;
-            } else if (id == 9) {
+            } else if (id == 8) {
               showDialog(
                   barrierDismissible: false,
                   context: context,
@@ -286,7 +283,6 @@ enum DrawerSections {
   produit,
   vente,
   achat,
-  fournisseur,
   facture,
   privacy_policy,
   logout,

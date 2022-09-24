@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/home_widgets/profile/profile_page.dart';
-import 'package:tocmanager/screens/ventes/ajouter_vente.dart';
+import 'package:tocmanager/screens/ventes/vente_home.dart';
 import '../database/sqfdb.dart';
 import '../helper/helper_function.dart';
 import '../services/auth_service.dart';
@@ -262,7 +262,7 @@ class _HomePageState extends State<HomePage> {
               nextScreen(context, const AjouterProduitPage());
             } else if (id == 4) {
               currentPage = DrawerSections.vente;
-              nextScreen(context, const AjouterVentePage());
+              nextScreen(context, const VenteHome());
             } else if (id == 5) {
               currentPage = DrawerSections.achat;
               nextScreen(context, const AchatHomePage());

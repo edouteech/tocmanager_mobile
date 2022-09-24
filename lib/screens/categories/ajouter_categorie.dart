@@ -5,13 +5,13 @@ import 'package:tocmanager/database/sqfdb.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/categories/categorielist.dart';
 import 'package:tocmanager/screens/fournisseurs/ajouter_fournisseur.dart';
-import 'package:tocmanager/screens/ventes/ajouter_vente.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/widgets.dart';
 import '../home_page.dart';
 import '../home_widgets/drawer_header.dart';
 import '../login_page.dart';
 import '../produits/ajouter_produits.dart';
+import '../ventes/vente_home.dart';
 
 class AjouterCategoriePage extends StatefulWidget {
   const AjouterCategoriePage({
@@ -128,7 +128,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
               nextScreen(context, const AjouterProduitPage());
             } else if (id == 4) {
               currentPage = DrawerSections.vente;
-              nextScreen(context, const AjouterVentePage());
+              nextScreen(context, const VenteHome());
             } else if (id == 5) {
               currentPage = DrawerSections.achat;
               nextScreen(context, const AchatHomePage());
