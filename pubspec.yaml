@@ -40,8 +40,10 @@ dependencies:
   firebase_core: ^1.21.0
   flutter:
     sdk: flutter
+  flutter_gen: ^4.3.0
   form_field_validator: ^1.1.0
   path_provider: ^2.0.11
+  printing: ^5.9.3
   shared_preferences: ^2.0.15
   smooth_page_indicator: ^1.0.0+2
   sqflite: ^2.0.3+1

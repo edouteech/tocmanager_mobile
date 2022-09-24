@@ -5,6 +5,11 @@ import 'package:flutter/material.dart';
 
 import '../../database/sqfdb.dart';
 
+import 'package:printing/printing.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+
 class AchatDetails extends StatefulWidget {
   final String id;
   const AchatDetails({
@@ -24,7 +29,7 @@ class _AchatDetailsState extends State<AchatDetails> {
     List<Map> response = await sqlDb.readData(
         "SELECT Buy_lines.*,Products.name as product_name FROM 'Products','Buy_lines' WHERE Buy_lines.product_id = Products.id AND buy_id='${widget.id}'");
     buyline.addAll(response);
-    print(buyline);
+    
     if (mounted) {
       setState(() {});
     }
@@ -39,6 +44,17 @@ class _AchatDetailsState extends State<AchatDetails> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          _createPdf(context);
+        },
+        backgroundColor: const Color.fromARGB(255, 45, 157, 220),
+        child: const Icon(
+          Icons.print,
+          size: 32,
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       appBar: AppBar(
           centerTitle: true,
           backgroundColor: Colors.grey[100],
@@ -91,4 +107,23 @@ class _AchatDetailsState extends State<AchatDetails> {
                   ]))),
     );
   }
+   void _createPdf(BuildContext context) async {
+    final doc = pw.Document();
+    
+
+    doc.addPage(
+      pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          build: (pw.Context context) {
+            return pw.Center(
+                child: pw.Text("Hello Text",
+                    ));
+          }),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => doc.save());
+  }
+
+ 
 }
