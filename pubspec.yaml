@@ -28,16 +28,16 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
   awesome_dropdown: ^0.0.4
-  cloud_firestore: ^3.4.5
+  cloud_firestore: ^3.4.9
   cool_dropdown: ^1.4.2
-  cupertino_icons: ^1.0.2
+  cupertino_icons: ^1.0.5
   data_table_2: ^2.3.7
   date_field: ^3.0.1
   datetime_picker_formfield: ^2.0.1
-  dropdown_textfield: ^1.0.4
+  dropdown_textfield: ^1.0.5
   expandable: ^5.0.1
-  firebase_auth: ^3.6.4
-  firebase_core: ^1.21.0
+  firebase_auth: ^3.10.0
+  firebase_core: ^1.23.0
   flutter:
     sdk: flutter
   flutter_gen: ^4.3.0
@@ -46,11 +46,11 @@ dependencies:
   printing: ^5.9.3
   shared_preferences: ^2.0.15
   smooth_page_indicator: ^1.0.0+2
-  sqflite: ^2.0.3+1
+  sqflite: ^2.1.0
 
 dev_dependencies:
-  flutter_native_splash: ^2.2.8
-  flutter_lints: ^2.0.0
+  flutter_native_splash: ^2.2.10
+  flutter_lints: ^2.0.1
   flutter_test:
     sdk: flutter
   flutter_launcher_icons: ^0.10.0

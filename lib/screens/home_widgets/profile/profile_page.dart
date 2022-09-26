@@ -84,15 +84,12 @@ class _ProfilePageState extends State<ProfilePage> {
               //     Text(widget.email, style: const TextStyle(fontSize: 17)),
               //   ],
               // ),
-      
+
               //Nom complet
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: FlatButton(
-                    padding: const EdgeInsets.all(15),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15)),
-                    color: const Color(0xFFF5F6F9),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: TextButton(
                     onPressed: (() {}),
                     child: Row(
                       children: [
@@ -107,15 +104,12 @@ class _ProfilePageState extends State<ProfilePage> {
                       ],
                     )),
               ),
-      
+
               //Email
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: FlatButton(
-                    padding: const EdgeInsets.all(15),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15)),
-                    color: const Color(0xFFF5F6F9),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: TextButton(
                     onPressed: (() {}),
                     child: Row(
                       children: [
@@ -130,15 +124,12 @@ class _ProfilePageState extends State<ProfilePage> {
                       ],
                     )),
               ),
-      
+
               // Numéro de téléphone
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: FlatButton(
-                    padding: const EdgeInsets.all(15),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15)),
-                    color: const Color(0xFFF5F6F9),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: TextButton(
                     onPressed: (() {}),
                     child: Row(
                       children: [
@@ -153,15 +144,12 @@ class _ProfilePageState extends State<ProfilePage> {
                       ],
                     )),
               ),
-      
+
               // Pays
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: FlatButton(
-                    padding: const EdgeInsets.all(15),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15)),
-                    color: const Color(0xFFF5F6F9),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: TextButton(
                     onPressed: (() {}),
                     child: Row(
                       children: [
@@ -176,10 +164,11 @@ class _ProfilePageState extends State<ProfilePage> {
                       ],
                     )),
               ),
-      
+
               //Mettre à jour profile
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 child: GestureDetector(
                   onTap: () {
                     nextScreen(context, const UpdateProfile());
@@ -206,10 +195,11 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
               ),
-      
+
               //Mettre à jour mot de passe
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 child: GestureDetector(
                   onTap: () {
                     nextScreen(context, const UpdatePassword());
