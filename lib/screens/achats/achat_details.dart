@@ -1,14 +1,10 @@
-// ignore_for_file: avoid_print
+// ignore_for_file: avoid_print, depend_on_referenced_packages
 
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
-
+import 'package:tocmanager/screens/print/print_page.dart';
 import '../../database/sqfdb.dart';
-
-import 'package:printing/printing.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
+import '../../widgets/widgets.dart';
 
 class AchatDetails extends StatefulWidget {
   final String id;
@@ -21,15 +17,15 @@ class AchatDetails extends StatefulWidget {
 }
 
 class _AchatDetailsState extends State<AchatDetails> {
-  /* Read data for database */
   /* Database */
   SqlDb sqlDb = SqlDb();
+  /* Read data for database */
   List buyline = [];
   Future readBuyLineData() async {
     List<Map> response = await sqlDb.readData(
         "SELECT Buy_lines.*,Products.name as product_name FROM 'Products','Buy_lines' WHERE Buy_lines.product_id = Products.id AND buy_id='${widget.id}'");
     buyline.addAll(response);
-    
+
     if (mounted) {
       setState(() {});
     }
@@ -46,7 +42,7 @@ class _AchatDetailsState extends State<AchatDetails> {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          _createPdf(context);
+          nextScreen(context, const PrintPage());
         },
         backgroundColor: const Color.fromARGB(255, 45, 157, 220),
         child: const Icon(
@@ -107,23 +103,4 @@ class _AchatDetailsState extends State<AchatDetails> {
                   ]))),
     );
   }
-   void _createPdf(BuildContext context) async {
-    final doc = pw.Document();
-    
-
-    doc.addPage(
-      pw.Page(
-          pageFormat: PdfPageFormat.a4,
-          build: (pw.Context context) {
-            return pw.Center(
-                child: pw.Text("Hello Text",
-                    ));
-          }),
-    );
-
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => doc.save());
-  }
-
- 
 }

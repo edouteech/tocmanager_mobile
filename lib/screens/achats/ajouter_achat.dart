@@ -128,7 +128,7 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
         child: Column(
           children: [
             SizedBox(
-              height: 600,
+              height: 400,
               child: ListView.builder(
                 primary: true,
                 itemCount: elements.length,
