@@ -42,7 +42,7 @@ class _AchatDetailsState extends State<AchatDetails> {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          nextScreen(context, const PrintPage());
+          nextScreen(context,  PrintPage( buy_id: widget.id,));
         },
         backgroundColor: const Color.fromARGB(255, 45, 157, 220),
         child: const Icon(

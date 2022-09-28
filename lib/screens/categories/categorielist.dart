@@ -45,7 +45,7 @@ class _CategorieListState extends State<CategorieList> {
         itemCount: categories.length,
         itemBuilder: (context, i) {
           return Container(
-            margin: const EdgeInsets.all(10),
+            margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20), color: Colors.white),
             child: ListTile(

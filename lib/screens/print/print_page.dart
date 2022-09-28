@@ -1,10 +1,12 @@
-// ignore_for_file: avoid_print
+// ignore_for_file: avoid_print, non_constant_identifier_names
 
 import 'package:flutter/material.dart';
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
+import 'package:tocmanager/database/sqfdb.dart';
 
 class PrintPage extends StatefulWidget {
-  const PrintPage({super.key});
+    final String buy_id;
+  const PrintPage({super.key, required this.buy_id, });
 
   @override
   State<PrintPage> createState() => _PrintPageState();
@@ -18,6 +20,8 @@ class _PrintPageState extends State<PrintPage> {
   void initState() {
     super.initState();
     getDevices();
+    readBuyLineData();
+    readData();
   }
 
   void getDevices() async {
@@ -25,6 +29,32 @@ class _PrintPageState extends State<PrintPage> {
     setState(() {});
     if (devices.isEmpty) setState(() => _devicesMsg = 'No Devices');
     print(devices);
+  }
+   List buyline = [];
+  /* Database */
+  SqlDb sqlDb = SqlDb();
+  /* Read data for database */
+
+  Future readBuyLineData() async {
+    List<Map> response = await sqlDb.readData(
+        "SELECT Buy_lines.*,Products.name as product_name FROM 'Products','Buy_lines' WHERE Buy_lines.product_id = Products.id AND buy_id='${widget.buy_id}'");
+    buyline.addAll(response);
+    print(buyline);
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  List buys = [];
+  Future readData() async {
+    List<Map> response = await sqlDb.readData(''' 
+     SELECT Buys.*,Suppliers.name as supplier_name FROM 'Buys','Suppliers' WHERE Buys.supplier_id = Suppliers.id AND Buys.id='${widget.buy_id}' 
+     ''');
+    buys.addAll(response);
+    print(buys);
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -56,45 +86,36 @@ class _PrintPageState extends State<PrintPage> {
                     printer.connect(devices[i]);
                     if ((await printer.isConnected)!) {
                       printer.printNewLine();
-                      printer.printImage("assets/logo_blanc.png");
+                      printer.printCustom("TOC MANAGER", 3, 1);
                       printer.printNewLine();
-                      printer.printCustom("HEADER", 3, 1);
+                      printer.printCustom("-------------", 2, 1);
                       printer.printNewLine();
+                      printer.printLeftRight("Time", "${buys[0]['created_at']}", 0);
+                      printer.printNewLine();
+                      printer.printLeftRight("Nom du fournisseur", "${buys[0]['supplier_name']}", 0);
+                      printer.printNewLine();
+                      printer.print3Column("Nom du produit ", "Quantité", "Montant", 0, charset: "utf-8");
+                      for (var i = 0; i < buyline.length; i++) {
 
-                      printer.printNewLine();
-                      //      printer.printImageBytes(bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes));
-                      printer.printLeftRight("LEFT", "RIGHT", 0);
-                      printer.printLeftRight("LEFT", "RIGHT", 1);
-                      printer.printLeftRight("LEFT", "RIGHT", 1,
-                          format: "%-15s %15s %n");
-                      printer.printNewLine();
-                      printer.printLeftRight("LEFT", "RIGHT", 2);
-                      printer.printLeftRight("LEFT", "RIGHT", 3);
-                      printer.printLeftRight("LEFT", "RIGHT", 4);
-                      printer.printNewLine();
-                      printer.print3Column("Col1", "Col2", "Col3", 1);
-                      printer.print3Column("Col1", "Col2", "Col3", 1,
-                          format: "%-10s %10s %10s %n");
-                      printer.printNewLine();
-                      printer.print4Column("Col1", "Col2", "Col3", "Col4", 1);
-                      printer.print4Column("Col1", "Col2", "Col3", "Col4", 1,
-                          format: "%-8s %7s %7s %7s %n");
-                      printer.printNewLine();
-                      String testString = " čĆžŽšŠ-H-ščđ";
-                      printer.printCustom(testString, 1, 1,
-                          charset: "windows-1250");
-                      printer.printLeftRight("Številka:", "18000001", 1,
-                          charset: "windows-1250");
-                      printer.printCustom("Body left", 1, 0);
-                      printer.printCustom("Body right", 0, 2);
-                      printer.printNewLine();
-                      printer.printCustom("Thank You", 2, 1);
+                        printer.print3Column("${buyline[i]['product_name']}", "${buyline[i]['quantity']}", "${buyline[0]['amount']}", 0);
+                        printer.printNewLine();
+                      }
+                      printer.printCustom("-------------", 2, 1);
+                      
+                      printer.printLeftRight("Montant reçu:", "${buys[0]['amount']}", 0, charset: "UTF-8");
+                      printer.printLeftRight("Total:", "${buys[0]['amount']}", 1,);
+                      printer.printLeftRight("Reste:", "0", 1,);
+                      printer.printCustom("Merci d'être passé", 2, 1, charset:"UTF-8");
                       printer.printNewLine();
                       printer.printQRcode(
-                          "Insert Your Own Text to Generate", 200, 200, 1);
+                          widget.buy_id, 200, 200, 1);
                       printer.printNewLine();
                       printer.printNewLine();
                       printer.paperCut();
+
+
+                     
+                    
                       //Size
                       // 0 :normal
                       // 1 : Normal _ bold
