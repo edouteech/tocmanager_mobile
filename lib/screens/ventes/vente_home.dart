@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/ventes/ajouter_vente.dart';
 import 'package:tocmanager/screens/ventes/details_vente.dart';
+import 'package:tocmanager/screens/ventes/encaissement.dart';
 
 import '../../database/sqfdb.dart';
 import '../../services/auth_service.dart';
@@ -26,7 +27,7 @@ class _VenteHomeState extends State<VenteHome> {
   var currentPage = DrawerSections.vente;
   AuthService authService = AuthService();
 
-   /* Database */
+  /* Database */
   SqlDb sqlDb = SqlDb();
   /* =============================sells=================== */
   /* List products */
@@ -34,8 +35,7 @@ class _VenteHomeState extends State<VenteHome> {
 
   /* Read data for database */
   Future readProductsData() async {
-    List<Map> response = await sqlDb.readData(
-        "SELECT * FROM Sells");
+    List<Map> response = await sqlDb.readData("SELECT * FROM Sells");
     sells.addAll(response);
     if (this.mounted) {
       setState(() {});
@@ -85,35 +85,37 @@ class _VenteHomeState extends State<VenteHome> {
         ),
       ),
       body: DataTable2(
-        
           showBottomBorder: true,
           border: TableBorder.all(color: Colors.black),
           headingTextStyle: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 15,
           ),
-          dataRowColor: MaterialStateProperty.all(Colors.red[200]),
-          headingRowColor: MaterialStateProperty.all(Colors.amber[200]),
-          decoration: BoxDecoration(
-            color: Colors.green[200],
-          ),
+          dataRowColor: MaterialStateProperty.all(Colors.white),
+          headingRowColor: MaterialStateProperty.all(Colors.blue[200]),
+          // decoration: BoxDecoration(
+          //   color: Colors.green[200],
+          // ),
           columnSpacing: 12,
           horizontalMargin: 12,
-          minWidth: 600,
+          minWidth: 700,
           columns: const [
             DataColumn2(
               label: Center(child: Text('Nom du client')),
               size: ColumnSize.L,
             ),
-            DataColumn(
+            DataColumn2(
               label: Center(child: Text('Montant')),
             ),
-            DataColumn(
-              label: Center(child: Text('Date')),
+            DataColumn2(
+              label: Center(child: Text('Reste')),
             ),
-            DataColumn(
+            DataColumn2(label: Center(child: Text('Date')), size: ColumnSize.L),
+            DataColumn2(
               label: Center(child: Text('Détails')),
             ),
+            DataColumn2(
+                label: Center(child: Text('Encaissement')), size: ColumnSize.L),
             DataColumn(
               label: Center(child: Text('Effacer')),
             ),
@@ -124,8 +126,10 @@ class _VenteHomeState extends State<VenteHome> {
                     DataCell(
                         Center(child: Text('${sells[index]["client_name"]}'))),
                     DataCell(Center(child: Text('${sells[index]["amount"]}'))),
-                    DataCell(Center(child: Text('${sells[index]["date_sell"]}'))),
-                     DataCell(Center(
+                    DataCell(Center(child: Text('${sells[index]["reste"]}'))),
+                    DataCell(
+                        Center(child: Text('${sells[index]["date_sell"]}'))),
+                    DataCell(Center(
                       child: IconButton(
                           icon: const Icon(
                             Icons.info,
@@ -134,6 +138,17 @@ class _VenteHomeState extends State<VenteHome> {
                           onPressed: () {
                             nextScreen(context,
                                 DetailsVentes(id: '${sells[index]["id"]}'));
+                          }),
+                    )),
+                    DataCell(Center(
+                      child: IconButton(
+                          icon: const Icon(
+                            Icons.monetization_on_sharp,
+                            color: Colors.green,
+                          ),
+                          onPressed: () {
+                            nextScreen(context,
+                                EncaissementPage(id: '${sells[index]["id"]}', reste: '${sells[index]["reste"]}',));
                           }),
                     )),
                     DataCell(Center(
@@ -155,7 +170,6 @@ class _VenteHomeState extends State<VenteHome> {
                             }
                           }),
                     )),
-                   
                   ]))),
     );
   }

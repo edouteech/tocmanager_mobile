@@ -27,6 +27,7 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  flutter_svg: ^1.1.5-nullsafety.3
   blue_print_pos: ^0.0.13
   blue_thermal_printer: ^1.2.3
   cloud_firestore: ^3.4.9

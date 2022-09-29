@@ -66,7 +66,7 @@ class _HomePageState extends State<HomePage> {
     final _controller = PageController();
     return Scaffold(
       floatingActionButton: FloatingActionButton(
-        onPressed: () async{
+        onPressed: () async {
           var delete = await sqlDb.mydeleteDatabase();
           if (kDebugMode) {
             print(delete);
@@ -197,14 +197,14 @@ class _HomePageState extends State<HomePage> {
                 children: const [
                   //statistic
                   MyListTitle(
-                      iconImagePath: 'assets/statistics.png',
-                      titleName: 'Statistiques',
-                      titleSubName: 'titleSubName'),
+                    iconImagePath: 'assets/statistics.png',
+                    titleName: 'Encaissement',
+                  ),
 
                   MyListTitle(
-                      iconImagePath: 'assets/statistics.png',
-                      titleName: 'Statistiques',
-                      titleSubName: 'titleSubName'),
+                    iconImagePath: 'assets/statistics.png',
+                    titleName: 'Décaissement',
+                  ),
                 ],
               ),
             )
@@ -226,19 +226,21 @@ class _HomePageState extends State<HomePage> {
           MenuItem(3, "Produits", Icons.event,
               currentPage == DrawerSections.produit ? true : false),
           MenuItem(4, "Ventes", Icons.notes,
-              currentPage == DrawerSections.achat ? true : false),
+              currentPage == DrawerSections.vente ? true : false),
           MenuItem(5, "Achats", Icons.notifications_outlined,
               currentPage == DrawerSections.achat ? true : false),
           MenuItem(6, "Fournisseurs", Icons.notifications_outlined,
-              currentPage == DrawerSections.achat ? true : false),
-          MenuItem(7, "Factures", Icons.settings_outlined,
+              currentPage == DrawerSections.fournisseur ? true : false),
+          MenuItem(7, "Encaissement", Icons.notifications_outlined,
+              currentPage == DrawerSections.encaissement ? true : false),
+          MenuItem(8, "Factures", Icons.settings_outlined,
               currentPage == DrawerSections.facture ? true : false),
           MenuItem(
-              8,
+              9,
               "Politique de confidentialité",
               Icons.privacy_tip_outlined,
               currentPage == DrawerSections.privacy_policy ? true : false),
-          MenuItem(9, "Deconnexion", Icons.logout_outlined,
+          MenuItem(10, "Deconnexion", Icons.logout_outlined,
               currentPage == DrawerSections.logout ? true : false),
         ],
       ),
@@ -270,10 +272,13 @@ class _HomePageState extends State<HomePage> {
               currentPage = DrawerSections.fournisseur;
               nextScreen(context, const AjouterFournisseurPage());
             } else if (id == 7) {
-              currentPage = DrawerSections.facture;
+              currentPage = DrawerSections.encaissement;
+              // nextScreen(context, const EncaissementPage());
             } else if (id == 8) {
-              currentPage = DrawerSections.privacy_policy;
+              currentPage = DrawerSections.facture;
             } else if (id == 9) {
+              currentPage = DrawerSections.privacy_policy;
+            } else if (id == 10) {
               showDialog(
                   barrierDismissible: false,
                   context: context,
@@ -342,6 +347,7 @@ enum DrawerSections {
   vente,
   achat,
   fournisseur,
+  encaissement,
   facture,
   privacy_policy,
   logout,

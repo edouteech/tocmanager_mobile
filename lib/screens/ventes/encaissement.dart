@@ -1,49 +1,63 @@
-// ignore_for_file: non_constant_identifier_names
-
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 
 import '../../database/sqfdb.dart';
-
-class DetailsVentes extends StatefulWidget {
+class EncaissementPage extends StatefulWidget {
   final String id;
-  const DetailsVentes({Key? key, required this.id}) : super(key: key);
+  final String reste ;
+  const EncaissementPage({super.key, required this.id, required this.reste});
+  
 
   @override
-  State<DetailsVentes> createState() => _DetailsVentesState();
+  State<EncaissementPage> createState() => _EncaissementPageState();
 }
 
-class _DetailsVentesState extends State<DetailsVentes> {
-  /* Read data for database */
+  
+
+class _EncaissementPageState extends State<EncaissementPage> {
+  
+    /* Read data for database */
   /* Database */
   SqlDb sqlDb = SqlDb();
-  List sell_line = [];
-  Future readSellLineData() async {
+  List encaissement = [];
+  Future readData() async {
     List<Map> response = await sqlDb.readData(
-        "SELECT Sell_lines.*,Products.name as product_name FROM 'Products','Sell_lines' WHERE Sell_lines.product_id = Products.id AND sell_id='${widget.id}'");
-    sell_line.addAll(response);
+        "SELECT * FROM Encaissements  WHERE sell_id ='${widget.id}'");
+    encaissement.addAll(response);
     if (mounted) {
-      setState(() {});
+      setState(() {
+       
+      });
     }
   }
-
+  
+  
   @override
   void initState() {
-    readSellLineData();
+    readData();
+    
     super.initState();
   }
+  
   @override
   Widget build(BuildContext context) {
+    var reste = double.parse(widget.reste);
+    
     return Scaffold(
+      
+      floatingActionButton:reste != 0.0 ?FloatingActionButton.extended(label:Text("Reste : $reste"), onPressed: () {  },
+        
+      ):null,
+      backgroundColor: Colors.grey[300],
       appBar: AppBar(
-          centerTitle: true,
-          backgroundColor: Colors.grey[300],
+          centerTitle: true, 
+          backgroundColor: Colors.grey[100],
           iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
           title: const Text(
-            'Détails vente',
+            'Encaissement',
             style: TextStyle(color: Colors.black, fontFamily: 'RobotoMono'),
           )),
-      body: DataTable2(
+          body: DataTable2(
           showBottomBorder: true,
           border: TableBorder.all(color: Colors.black),
           headingTextStyle: const TextStyle(
@@ -52,19 +66,17 @@ class _DetailsVentesState extends State<DetailsVentes> {
           ),
           dataRowColor: MaterialStateProperty.all(Colors.white),
           headingRowColor: MaterialStateProperty.all(Colors.blue[200]),
-          decoration: BoxDecoration(
-            color: Colors.green[200],
-          ),
+         
           columnSpacing: 12,
           horizontalMargin: 12,
           minWidth: 600,
           columns: const [
             DataColumn2(
-              label: Center(child: Text('Nom du produit')),
+              label: Center(child: Text('Nom du client')),
               size: ColumnSize.L,
             ),
             DataColumn(
-              label: Center(child: Text('Quantité')),
+              label: Center(child: Text('Date')),
             ),
             DataColumn(
               label: Center(child: Text('Montant')),
@@ -74,18 +86,17 @@ class _DetailsVentesState extends State<DetailsVentes> {
             ),
           ],
           rows: List<DataRow>.generate(
-              sell_line.length,
+              encaissement.length,
               (index) => DataRow(cells: [
                     DataCell(Center(
-                        child: Text('${sell_line[index]["product_name"]}'))),
+                        child: Text('${encaissement[index]["client_name"]}'))),
                     DataCell(
-                        Center(child: Text('${sell_line[index]["quantity"]}'))),
+                        Center(child: Text('${encaissement[index]["date_encaissement"]}'))),
                     DataCell(
-                        Center(child: Text('${sell_line[index]["amount"]}'))),
+                        Center(child: Text('${encaissement[index]["amount"]}'))),
                     DataCell(
-                        Center(child: Text('${sell_line[index]["created_at"]}'))),
+                        Center(child: Text('${encaissement[index]["created_at"]}'))),
                   ]))),
-    
     );
   }
 }

@@ -30,8 +30,6 @@ class SqlDb {
   }
 
   _onUpgrade(Database db, int oldversion, int newversion) async {
- 
-
     print("onUpgrade=======================");
   }
 
@@ -67,7 +65,7 @@ class SqlDb {
     ''');
 
     //Create suppliers
-      await db.execute('''
+    await db.execute('''
         CREATE TABLE "Suppliers"(
           "id" INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
           "name" TEXT NOT NULL,
@@ -79,21 +77,22 @@ class SqlDb {
         )
     ''');
 
-        //Create buys
-      await db.execute('''
+    //Create buys
+    await db.execute('''
         CREATE TABLE "Buys"(
           "id" INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
           "date_buy" TEXT NOT NULL,
           "amount" DOUBLE NOT NULL,
           "supplier_id" INT NOT NULL,
+          "reste" DOUBLE NOT NULL,
           "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (supplier_id) REFERENCES Suppliers (id)
         )
     ''');
 
-      //Create buy_lines
-      await db.execute('''
+    //Create buy_lines
+    await db.execute('''
         CREATE TABLE "Buy_lines"(
           "id" INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
           "quantity" INT NOT NULL,
@@ -107,20 +106,21 @@ class SqlDb {
         )
     ''');
 
-      //Create Sells
-      await db.execute('''
+    //Create Sells
+    await db.execute('''
         CREATE TABLE "Sells"(
           "id" INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
           "date_sell" TEXT NOT NULL,
           "amount" DOUBLE NOT NULL,
           "client_name" TEXT NOT NULL,
+          "reste" DOUBLE NOT NULL,
           "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''');
 
-          //Create sell_line
-      await db.execute('''
+    //Create sell_line
+    await db.execute('''
         CREATE TABLE "Sell_lines"(
           "id" INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
           "quantity" INT NOT NULL,
@@ -129,11 +129,41 @@ class SqlDb {
           "product_id" INT NOT NULL,
           "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (sell_id) REFERENCES Sells (id),
+          FOREIGN KEY (sell_id) REFERENCES Sells (id)  ON DELETE CASCADE,
           FOREIGN KEY (product_id) REFERENCES Products (id)
         )
     ''');
 
+    //encaissement
+    await db.execute('''
+        CREATE TABLE "Encaissements"(
+          "id" INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
+          "amount" DOUBLE NOT NULL,
+          "date_encaissement" TEXT NOT NULL,
+          "client_name" TEXT NOT NULL,
+          "sell_id" INT NOT NULL,
+          "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (sell_id) REFERENCES Sells (id) ON DELETE CASCADE
+    
+        )
+    ''');
+
+        //décaissement
+    await db.execute('''
+        CREATE TABLE "Decaissements"(
+          "id" INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
+          "amount" DOUBLE NOT NULL,
+          "date_encaissement" TEXT NOT NULL,
+          "supplier_id" INT NOT NULL,
+          "buy_id" INT NOT NULL,
+          "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (buy_id) REFERENCES Buys (id)  ON DELETE CASCADE,
+          FOREIGN KEY (supplier_id) REFERENCES Suppliers (id)
+    
+        )
+    ''');
     print("onCreate =======================");
   }
 

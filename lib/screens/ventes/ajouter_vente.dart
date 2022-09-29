@@ -8,7 +8,6 @@ import 'package:form_field_validator/form_field_validator.dart';
 import '../../database/sqfdb.dart';
 import 'package:intl/intl.dart';
 
-
 class AjouterVentePage extends StatefulWidget {
   const AjouterVentePage({Key? key}) : super(key: key);
 
@@ -21,6 +20,7 @@ List elements = [];
 List ventes = [];
 var total = "";
 var sum = 0.0;
+var reste = 0.0;
 
 class _AjouterVentePageState extends State<AjouterVentePage> {
   AuthService authService = AuthService();
@@ -42,6 +42,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
       setState(() {});
     }
   }
+
   @override
   void initState() {
     readData();
@@ -63,8 +64,6 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
 
   /* =============================End Products=================== */
 
-
-
   /* Fields Controller */
   TextEditingController productsController = TextEditingController();
   TextEditingController nameProductsController = TextEditingController();
@@ -72,6 +71,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
   TextEditingController quantityController = TextEditingController();
   TextEditingController dateController = TextEditingController();
   TextEditingController nameClientController = TextEditingController();
+  TextEditingController sommeclientController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -326,29 +326,40 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                 child: const Text('Valider',
                     style: TextStyle(color: Colors.green)),
                 onPressed: () async {
+                  var sommeclient = int.parse(sommeclientController.text);
+                  setState(() {
+                    reste = sum - sommeclient;
+                  });
                   if (_formKey.currentState!.validate()) {
+                    // Sells
                     int response = await sqlDb.inserData('''
-                    INSERT INTO Sells(date_sell, amount, client_name) VALUES('${dateController.text}','$sum', '${nameClientController.text}')
+                    INSERT INTO Sells(date_sell, amount, client_name, reste) VALUES('${dateController.text}','$sum', '${nameClientController.text}', '$reste')
                   ''');
-                    print("===$response==== INSERTION DONE ==========");
 
+                    print("===$response==== SELLS INSERTION DONE ==========");
+                    //read last sells
                     var response2 = await sqlDb.readData('''
                     SELECT * FROM Sells ORDER BY id DESC LIMIT 1
                   ''');
+                    //Insert sell_line
                     for (var i = 0; i < ventes.length; i++) {
                       int response3 = await sqlDb.inserData('''
                     INSERT INTO Sell_lines(quantity, amount, sell_id, product_id) VALUES('${ventes[i]["quantity"]}', '${ventes[i]["total"]}','${response2[0]["id"]}', '${ventes[i]["id"]}')
                   ''');
                       print("===$response3==== INSERTION DONE ==========");
                     }
-                    var response4 = await sqlDb.readData('''
-                    SELECT * FROM Sell_lines 
+                    //Encaissement
+
+                    int response_encaissement = await sqlDb.inserData('''
+                    INSERT INTO Encaissements(amount, date_encaissement, client_name, sell_id) VALUES('$sommeclient', '${dateController.text}','${nameClientController.text}', '${response2[0]["id"]}')
                   ''');
+                    print(response_encaissement);
+                    print("===$response==== SELLS INSERTION DONE ==========");
+
                     setState(() {
                       elements.clear();
                       sum = 0;
                     });
-                    print(response4);
 
                     Navigator.of(context).pushReplacement(MaterialPageRoute(
                         builder: (context) => const VenteHome()));
@@ -361,7 +372,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                 child: Form(
               key: _formKey,
               child: Column(children: [
-                //Nom du client 
+                //Nom du client
                 Container(
                     padding: const EdgeInsets.only(left: 20, right: 20),
                     margin: const EdgeInsets.only(top: 10),
@@ -416,6 +427,33 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                     },
                   ),
                 ),
+
+                //Somme perçue
+                Container(
+                    padding: const EdgeInsets.only(left: 20, right: 20),
+                    margin: const EdgeInsets.only(top: 10),
+                    child: TextFormField(
+                      keyboardType: TextInputType.number,
+                      controller: sommeclientController,
+                      validator: MultiValidator([
+                        RequiredValidator(
+                            errorText: "Veuillez entrer un montant")
+                      ]),
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      decoration: const InputDecoration(
+                        enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                                color: Color.fromARGB(255, 45, 157, 220)),
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(10))),
+                        border: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(10))),
+                        label: Text("Somme reçue"),
+                        labelStyle:
+                            TextStyle(fontSize: 13, color: Colors.black),
+                      ),
+                    )),
               ]),
             )),
           );

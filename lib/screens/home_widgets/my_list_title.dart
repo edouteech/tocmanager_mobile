@@ -3,11 +3,9 @@ import 'package:flutter/material.dart';
 class MyListTitle extends StatelessWidget {
   final String iconImagePath;
   final String titleName;
-  final String titleSubName;
   const MyListTitle({Key? key, 
   required this.iconImagePath,
-   required this.titleName, 
-   required this.titleSubName}) : super(key: key);
+   required this.titleName, }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -41,10 +39,7 @@ class MyListTitle extends StatelessWidget {
                   const SizedBox(
                     height: 15,
                   ),
-                  Text(
-                    titleSubName,
-                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                  )
+                  
                 ],
               ),
             ],
