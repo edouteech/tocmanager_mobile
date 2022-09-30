@@ -20,6 +20,7 @@ List elements = [];
 List achats = [];
 var total = "";
 var sum = 0.0;
+var reste = 0.0;
 
 class _AjouterAchatPageState extends State<AjouterAchatPage> {
   final format = DateFormat("yyyy-MM-dd HH:mm:ss");
@@ -97,6 +98,7 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
   TextEditingController priceProductController = TextEditingController();
   TextEditingController quantityController = TextEditingController();
   TextEditingController dateController = TextEditingController();
+    TextEditingController sommeclientController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -351,9 +353,13 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                 child: const Text('Valider',
                     style: TextStyle(color: Colors.green)),
                 onPressed: () async {
+                  var sommeclient = int.parse(sommeclientController.text);
+                  setState(() {
+                    reste = sum - sommeclient;
+                  });
                   if (_formKey.currentState!.validate()) {
                     int response = await sqlDb.inserData('''
-                    INSERT INTO Buys(supplier_id, date_buy, amount) VALUES('$selectedSuppliersValue', '${dateController.text}','$sum')
+                    INSERT INTO Buys(supplier_id, date_buy, amount, reste) VALUES('$selectedSuppliersValue', '${dateController.text}','$sum', '$reste')
                   ''');
                     print("===$response==== INSERTION DONE ==========");
 
@@ -366,14 +372,19 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                   ''');
                       print("===$response3==== INSERTION DONE ==========");
                     }
-                    var response4 = await sqlDb.readData('''
-                    SELECT * FROM Buy_lines 
+                    //Encaissement
+
+                    int response_decaissement = await sqlDb.inserData('''
+                    INSERT INTO Decaissements(amount, date_encaissement, buy_id, supplier_id) VALUES('$sommeclient', '${dateController.text}','${response2[0]["id"]}', '${response2[0]["supplier_id"]}')
                   ''');
+                    
+                    print("===$response_decaissement==== DECAISSEMENT  INSERTION DONE ==========");
+
                     setState(() {
                       elements.clear();
                       sum = 0;
                     });
-                    print(response4);
+                   
 
                     Navigator.of(context).pushReplacement(MaterialPageRoute(
                         builder: (context) => const AchatHomePage()));
@@ -457,6 +468,33 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                     },
                   ),
                 ),
+
+                //Somme perçue
+                Container(
+                    padding: const EdgeInsets.only(left: 20, right: 20),
+                    margin: const EdgeInsets.only(top: 10),
+                    child: TextFormField(
+                      keyboardType: TextInputType.number,
+                      controller: sommeclientController,
+                      validator: MultiValidator([
+                        RequiredValidator(
+                            errorText: "Veuillez entrer un montant")
+                      ]),
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      decoration: const InputDecoration(
+                        enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                                color: Color.fromARGB(255, 45, 157, 220)),
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(10))),
+                        border: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(10))),
+                        label: Text("Somme reçue"),
+                        labelStyle:
+                            TextStyle(fontSize: 13, color: Colors.black),
+                      ),
+                    )),
               ]),
             )),
           );

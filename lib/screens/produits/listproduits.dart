@@ -239,6 +239,7 @@ class _ProduitListPageState extends State<ProduitListPage> {
                               });
                             },
                             items: dropdownItems,
+                            
                             validator:(value) => value == null ? 'Sélectionner une catégorie' : null)),
 
                     //Nom du produit

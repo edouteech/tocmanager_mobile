@@ -240,7 +240,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
 
                                 setState(() {
                                   priceProductController.text =
-                                      "${prix[0]["price_buy"]}";
+                                      "${prix[0]["price_sell"]}";
                                   nameProductsController.text =
                                       "${prix[0]["name"]}";
                                 });

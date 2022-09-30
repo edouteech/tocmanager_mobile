@@ -106,12 +106,17 @@ class _AchatHomePageState extends State<AchatHomePage> {
             DataColumn(
               label: Center(child: Text('Montant')),
             ),
+            DataColumn2(
+              label: Center(child: Text('Reste')),
+            ),
             DataColumn(
               label: Center(child: Text('Date')),
             ),
             DataColumn(
               label: Center(child: Text('Détails')),
             ),
+            DataColumn2(
+                label: Center(child: Text('Décaissement')), size: ColumnSize.L),
             DataColumn(
               label: Center(child: Text('Effacer')),
             ),
@@ -122,8 +127,9 @@ class _AchatHomePageState extends State<AchatHomePage> {
                     DataCell(
                         Center(child: Text('${buys[index]["supplier_name"]}'))),
                     DataCell(Center(child: Text('${buys[index]["amount"]}'))),
+                    DataCell(Center(child: Text('${buys[index]["reste"]}'))),
                     DataCell(Center(child: Text('${buys[index]["date_buy"]}'))),
-                     DataCell(Center(
+                    DataCell(Center(
                       child: IconButton(
                           icon: const Icon(
                             Icons.info,
@@ -132,6 +138,17 @@ class _AchatHomePageState extends State<AchatHomePage> {
                           onPressed: () {
                             nextScreen(context,
                                 AchatDetails(id: '${buys[index]["id"]}'));
+                          }),
+                    )),
+                    DataCell(Center(
+                      child: IconButton(
+                          icon: const Icon(
+                            Icons.monetization_on_sharp,
+                            color: Colors.green,
+                          ),
+                          onPressed: () {
+                            // nextScreen(context,
+                            //     EncaissementPage(id: '${sells[index]["id"]}', reste: '${sells[index]["reste"]}',));
                           }),
                     )),
                     DataCell(Center(
@@ -153,7 +170,6 @@ class _AchatHomePageState extends State<AchatHomePage> {
                             }
                           }),
                     )),
-                   
                   ]))),
     );
   }
