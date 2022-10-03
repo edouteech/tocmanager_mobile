@@ -1,4 +1,4 @@
-// ignore_for_file: avoid_unnecessary_containers, non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, sized_box_for_whitespace, deprecated_member_use, unused_field, prefer_final_fields, avoid_print, unused_local_variable, prefer_collection_literals
+// ignore_for_file: avoid_unnecessary_containers, non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, sized_box_for_whitespace, deprecated_member_use, unused_field, prefer_final_fields, avoid_print, unused_local_variable, prefer_collection_literals, unnecessary_this
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:tocmanager/database/sqfdb.dart';
@@ -24,6 +24,39 @@ class AjouterCategoriePage extends StatefulWidget {
 class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
   // database
   SqlDb sqlDb = SqlDb();
+
+  /* Read data for database */
+
+  /*List of categories */
+  List categories = [];
+  Future readData() async {
+    List<Map> response = await sqlDb.readData("SELECT * FROM 'Categories'");
+    categories.addAll(response);
+    if (this.mounted) {
+      setState(() {
+
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    readData();
+    super.initState();
+  }
+
+  /* Dropdown items */
+  String? selectedValue;
+  List<DropdownMenuItem<String>> get dropdownItems {
+    List<DropdownMenuItem<String>> menuItems = [];
+    for (var i = 0; i < categories.length; i++) {
+      menuItems.add(DropdownMenuItem(
+        value: "${categories[i]["id"]}",
+        child: Text("${categories[i]["name"]}"),
+      ));
+    }
+    return menuItems;
+  }
 
   //Fields Controller
   TextEditingController name = TextEditingController();
@@ -74,8 +107,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
           )),
         ),
       ),
-      body: Container(
-          margin: const EdgeInsets.all(8), child: const CategorieList()),
+      body: const CategorieList(),
     );
   }
 
@@ -222,7 +254,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
                     int response = await sqlDb.inserData('''
-                    INSERT INTO Categories(name) VALUES('${name.text}')
+                    INSERT INTO Categories(name, categoryParente_id) VALUES('${name.text}', '$selectedValue')
                   ''');
                     print("===$response==== INSERTION DONE ==========");
                     Navigator.of(context).pushReplacement(MaterialPageRoute(
@@ -236,28 +268,65 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
               child: Form(
                 key: _formKey,
                 //name categorie create
-                child: Container(
-                  alignment: Alignment.center,
-                  margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
-                  child: TextFormField(
-                    autovalidateMode: AutovalidateMode.onUserInteraction,
-                    controller: name,
-                    cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                    decoration: const InputDecoration(
-                      enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(
-                              color: Color.fromARGB(255, 45, 157, 220)),
-                          borderRadius: BorderRadius.all(Radius.circular(10))),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(10))),
-                      label: Text("Nom de la catégorie"),
-                      labelStyle: TextStyle(fontSize: 13, color: Colors.black),
+                child: Column(
+                  children: [
+                    Container(
+                      alignment: Alignment.center,
+                      margin:
+                          const EdgeInsets.only(left: 20, right: 20, top: 30),
+                      child: TextFormField(
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        controller: name,
+                        cursorColor: const Color.fromARGB(255, 45, 157, 220),
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Nom de la catégorie"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                        validator: MultiValidator([
+                          RequiredValidator(
+                              errorText: "Veuillez entrer une catégorie")
+                        ]),
+                      ),
                     ),
-                    validator: MultiValidator([
-                      RequiredValidator(
-                          errorText: "Veuillez entrer une catégorie")
-                    ]),
-                  ),
+
+                    //Catégorie parente
+                    Container(
+                        padding: const EdgeInsets.only(left: 20, right: 20),
+                        margin: const EdgeInsets.only(top: 10),
+                        child: DropdownButtonFormField(
+                            decoration: const InputDecoration(
+                              enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color.fromARGB(255, 45, 157, 220)),
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(10))),
+                              border: OutlineInputBorder(
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(10))),
+                              label: Text("Catégorie Parente"),
+                              labelStyle:
+                                  TextStyle(fontSize: 13, color: Colors.black),
+                            ),
+                            dropdownColor: Colors.white,
+                            value: selectedValue,
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                selectedValue = newValue!;
+                              });
+                            },
+                            items: dropdownItems,
+                            )),
+                        
+                  ],
                 ),
               ),
             ),

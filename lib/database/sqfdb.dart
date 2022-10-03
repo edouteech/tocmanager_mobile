@@ -45,6 +45,7 @@ class SqlDb {
         CREATE TABLE "Categories"(
         "id" INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
         "name" TEXT NOT NULL,
+        "categoryParente_id" INT NOT NULL,
         "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
     ''');

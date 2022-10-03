@@ -1,5 +1,4 @@
 // ignore_for_file: sized_box_for_whitespace, avoid_print, use_build_context_synchronously, deprecated_member_use, unnecessary_this, prefer_typing_uninitialized_variables
-import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:tocmanager/database/sqfdb.dart';
@@ -25,13 +24,10 @@ class _CategorieListState extends State<CategorieList> {
 
 //Read data into database
   Future readData() async {
-    List<Map> response = await sqlDb.readData(
-        "SELECT Categories.*, parent.name as parent_name from Categories left join Categories as parent on Categories.categoryParente_id = parent.id");
+    List<Map> response = await sqlDb.readData("SELECT * FROM 'Categories'");
     categories.addAll(response);
     if (this.mounted) {
-      setState(() {
-        print(categories);
-      });
+      setState(() {});
     }
   }
 
@@ -43,80 +39,58 @@ class _CategorieListState extends State<CategorieList> {
 
   @override
   Widget build(BuildContext context) {
-    return DataTable2(
-        showBottomBorder: true,
-        border: TableBorder.all(color: Colors.black),
-        headingTextStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 15,
-        ),
-        dataRowColor: MaterialStateProperty.all(Colors.white),
-        headingRowColor: MaterialStateProperty.all(Colors.blue[200]),
-        columnSpacing: 12,
-        horizontalMargin: 12,
-        minWidth: 600,
-        columns: const [
-          DataColumn2(
-            label: Center(child: Text('Catégorie')),
-            size: ColumnSize.L,
-          ),
-          DataColumn(
-            label: Center(child: Text('Catégorie Parente')),
-          ),
-          DataColumn(
-            label: Center(child: Text('Editer')),
-          ),
-          DataColumn(
-            label: Center(child: Text('Supprimer')),
-          ),
-        ],
-        rows: List<DataRow>.generate(
-            categories.length,
-            (index) => DataRow(cells: [
-                  DataCell(Center(
-                      child:
-                          Center(child: Text('${categories[index]["name"]}')))),
-                  "${categories[index]["categoryParente_id"]}" != "null"
-                      ? DataCell(Center(
-                          child: Center(
-                          child: Text("${categories[index]["parent_name"]}"),
-                        )))
-                      : const DataCell(Center(
-                          child: Center(
-                          child: Text("-"),
-                        ))),
-                  DataCell(Center(
-                    child: IconButton(
-                        icon: const Icon(
-                          Icons.info,
-                          color: Colors.blue,
-                        ),
-                        onPressed: () {
-                          // nextScreen(context,
-                          //     AchatDetails(id: '${buys[index]["id"]}'));
-                        }),
-                  )),
-                  DataCell(Center(
-                    child: IconButton(
-                        icon: const Icon(
-                          Icons.delete,
-                          color: Colors.red,
-                        ),
-                        onPressed: () async {
-                          int response = await sqlDb.deleteData(
-                              "DELETE FROM Categories WHERE id =${categories[index]['id']}");
-                          if (response > 0) {
-                            categories.removeWhere((element) =>
-                                element['id'] == categories[index]['id']);
-                            setState(() {});
-                            
-                            print("$response ===Delete ==== DONE");
-                          } else {
-                            print("Delete ==== null");
-                          }
-                        }),
-                  )),
-                ])));
+    return ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: categories.length,
+        itemBuilder: (context, i) {
+          return Container(
+            margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20), color: Colors.white),
+            child: ListTile(
+                leading: const Icon(Icons.inbox, size: 30,color: Color.fromARGB(255,45,157,220),),
+                title: Center(child: Text("${categories[i]['name']}", style: const TextStyle(fontSize: 20, fontWeight:FontWeight.bold),)),
+                trailing: SizedBox(
+                  width: 80,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.blue),
+                            onPressed: () {
+                              setState(() {
+                                name.text = "${categories[i]['name']}";
+                                id = "${categories[i]['id']}";
+                              });
+                              _editCategorie(context);
+                            }),
+                      ),
+                      Expanded(
+                        child: IconButton(
+                            icon: const Icon(
+                              Icons.delete,
+                              color: Colors.red,
+                            ),
+                            onPressed: () async {
+                              int response = await sqlDb.deleteData(
+                                  "DELETE FROM Categories WHERE id =${categories[i]['id']}");
+                              if (response > 0) {
+                                categories.removeWhere((element)=>
+                                
+                                    element['id'] == categories[i]['id']);
+                                setState(() {});
+                                print("Delete ==== $response");
+                              } else {
+                                print("Delete ==== null");
+                              }
+                            }),
+                      ),
+                    ],
+                  ),
+                )),
+          );
+        });
   }
 
   //Edit Form
@@ -145,7 +119,7 @@ class _CategorieListState extends State<CategorieList> {
                     UPDATE Categories SET name ="${name.text}" WHERE id="$id"
                   ''');
                     print("===$response==== UPDATE DONE ==========");
-
+                    
                     Navigator.of(context).pushReplacement(MaterialPageRoute(
                         builder: (context) => const AjouterCategoriePage()));
                   }
