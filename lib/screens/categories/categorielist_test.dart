@@ -62,6 +62,7 @@ class _CategorieListState extends State<CategorieList> {
                               setState(() {
                                 name.text = "${categories[i]['name']}";
                                 id = "${categories[i]['id']}";
+                                
                               });
                               _editCategorie(context);
                             }),

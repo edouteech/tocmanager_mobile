@@ -33,9 +33,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
     List<Map> response = await sqlDb.readData("SELECT * FROM 'Categories'");
     categories.addAll(response);
     if (this.mounted) {
-      setState(() {
-
-      });
+      setState(() {});
     }
   }
 
@@ -52,7 +50,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
     for (var i = 0; i < categories.length; i++) {
       menuItems.add(DropdownMenuItem(
         value: "${categories[i]["id"]}",
-        child: Text("${categories[i]["name"]}"),
+        child: Text("${categories[i]["name"]}", style: "${categories[i]["name"]}".length > 20 ? const TextStyle(fontSize: 15):null,),
       ));
     }
     return menuItems;
@@ -66,6 +64,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
 
   //Current page
   var currentPage = DrawerSections.categorie;
+  String? verif;
 
   //Form key
   final _formKey = GlobalKey<FormState>();
@@ -249,19 +248,18 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
                 },
               ),
               TextButton(
-                child: const Text('Valider',
-                    style: TextStyle(color: Colors.green)),
-                onPressed: () async {
-                  if (_formKey.currentState!.validate()) {
-                    int response = await sqlDb.inserData('''
+                  child: const Text('Valider',
+                      style: TextStyle(color: Colors.green)),
+                  onPressed: () async {
+                    if (_formKey.currentState!.validate()) {
+                      int response = await sqlDb.inserData('''
                     INSERT INTO Categories(name, categoryParente_id) VALUES('${name.text}', '$selectedValue')
                   ''');
-                    print("===$response==== INSERTION DONE ==========");
-                    Navigator.of(context).pushReplacement(MaterialPageRoute(
-                        builder: (context) => const AjouterCategoriePage()));
-                  }
-                },
-              ),
+                      print("===$response==== INSERTION DONE ==========");
+                      Navigator.of(context).pushReplacement(MaterialPageRoute(
+                          builder: (context) => const AjouterCategoriePage()));
+                    }
+                  }),
             ],
             title: const Center(child: Text('Ajouter Catégorie')),
             content: SingleChildScrollView(
@@ -303,29 +301,28 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
                         padding: const EdgeInsets.only(left: 20, right: 20),
                         margin: const EdgeInsets.only(top: 10),
                         child: DropdownButtonFormField(
-                            decoration: const InputDecoration(
-                              enabledBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                      color: Color.fromARGB(255, 45, 157, 220)),
-                                  borderRadius:
-                                      BorderRadius.all(Radius.circular(10))),
-                              border: OutlineInputBorder(
-                                  borderRadius:
-                                      BorderRadius.all(Radius.circular(10))),
-                              label: Text("Catégorie Parente"),
-                              labelStyle:
-                                  TextStyle(fontSize: 13, color: Colors.black),
-                            ),
-                            dropdownColor: Colors.white,
-                            value: selectedValue,
-                            onChanged: (String? newValue) {
-                              setState(() {
-                                selectedValue = newValue!;
-                              });
-                            },
-                            items: dropdownItems,
-                            )),
-                        
+                          decoration: const InputDecoration(
+                            enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                    color: Color.fromARGB(255, 45, 157, 220)),
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(10))),
+                            border: OutlineInputBorder(
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(10))),
+                            label: Text("Catégorie Parente"),
+                            labelStyle:
+                                TextStyle(fontSize: 13, color: Colors.black),
+                          ),
+                          dropdownColor: Colors.white,
+                          value: selectedValue,
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              selectedValue = newValue!;
+                            });
+                          },
+                          items: dropdownItems,
+                        )),
                   ],
                 ),
               ),

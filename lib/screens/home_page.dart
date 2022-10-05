@@ -1,9 +1,9 @@
 // ignore_for_file: use_build_context_synchronously, avoid_unnecessary_containers, non_constant_identifier_names, constant_identifier_names, sized_box_for_whitespace, no_leading_underscores_for_local_identifiers
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/home_widgets/profile/profile_page.dart';
+import 'package:tocmanager/screens/ventes/ajouter_vente.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 import '../database/sqfdb.dart';
 import '../helper/helper_function.dart';
@@ -67,11 +67,11 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          var delete = await sqlDb.mydeleteDatabase();
-          if (kDebugMode) {
-            print(delete);
-          }
-          // nextScreen(context, const AjouterVentePage());
+          // var delete = await sqlDb.mydeleteDatabase();
+          // if (kDebugMode) {
+          //   print(delete);
+          // }
+          nextScreen(context, const AjouterVentePage());
         },
         backgroundColor: Colors.blue,
         child: const Icon(

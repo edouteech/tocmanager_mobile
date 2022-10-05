@@ -29,9 +29,7 @@ class _CategorieListState extends State<CategorieList> {
         "SELECT Categories.*, parent.name as parent_name from Categories left join Categories as parent on Categories.categoryParente_id = parent.id");
     categories.addAll(response);
     if (this.mounted) {
-      setState(() {
-        print(categories);
-      });
+      setState(() {});
     }
   }
 
@@ -39,6 +37,24 @@ class _CategorieListState extends State<CategorieList> {
   void initState() {
     readData();
     super.initState();
+  }
+
+  /* Dropdown items */
+  String? selectedValue;
+  List<DropdownMenuItem<String>> get dropdownItems {
+    List<DropdownMenuItem<String>> menuItems = [];
+    for (var i = 0; i < categories.length; i++) {
+      menuItems.add(DropdownMenuItem(
+        value: "${categories[i]["id"]}",
+        child: Text(
+          "${categories[i]["name"]}",
+          style: "${categories[i]["name"]}".length > 20
+              ? const TextStyle(fontSize: 15)
+              : null,
+        ),
+      ));
+    }
+    return menuItems;
   }
 
   @override
@@ -88,12 +104,22 @@ class _CategorieListState extends State<CategorieList> {
                   DataCell(Center(
                     child: IconButton(
                         icon: const Icon(
-                          Icons.info,
+                          Icons.edit,
                           color: Colors.blue,
                         ),
                         onPressed: () {
-                          // nextScreen(context,
-                          //     AchatDetails(id: '${buys[index]["id"]}'));
+                          setState(() {
+                            name.text = "${categories[index]['name']}";
+                            id = "${categories[index]['id']}";
+                            if ("${categories[index]['categoryParente_id']}" !=
+                                'null') {
+                              setState(() {
+                                selectedValue =
+                                    "${categories[index]['categoryParente_id']}";
+                              });
+                            }
+                          });
+                          _editCategorie(context);
                         }),
                   )),
                   DataCell(Center(
@@ -109,7 +135,12 @@ class _CategorieListState extends State<CategorieList> {
                             categories.removeWhere((element) =>
                                 element['id'] == categories[index]['id']);
                             setState(() {});
-                            
+                            Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const AjouterCategoriePage()));
+
                             print("$response ===Delete ==== DONE");
                           } else {
                             print("Delete ==== null");
@@ -142,7 +173,7 @@ class _CategorieListState extends State<CategorieList> {
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
                     int response = await sqlDb.updateData('''
-                    UPDATE Categories SET name ="${name.text}" WHERE id="$id"
+                    UPDATE Categories SET name ="${name.text}", categoryParente_id='$selectedValue' WHERE id="$id"
                   ''');
                     print("===$response==== UPDATE DONE ==========");
 
@@ -159,28 +190,64 @@ class _CategorieListState extends State<CategorieList> {
               //Name catgorie edit
               child: Form(
                 key: _formKey,
-                child: Container(
-                  alignment: Alignment.center,
-                  margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
-                  child: TextFormField(
-                    autovalidateMode: AutovalidateMode.onUserInteraction,
-                    controller: name,
-                    cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                    decoration: const InputDecoration(
-                      enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(
-                              color: Color.fromARGB(255, 45, 157, 220)),
-                          borderRadius: BorderRadius.all(Radius.circular(10))),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(10))),
-                      label: Text("Nom de la catégorie"),
-                      labelStyle: TextStyle(fontSize: 13, color: Colors.black),
+                child: Column(
+                  children: [
+                    Container(
+                      alignment: Alignment.center,
+                      margin:
+                          const EdgeInsets.only(left: 20, right: 20, top: 30),
+                      child: TextFormField(
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        controller: name,
+                        cursorColor: const Color.fromARGB(255, 45, 157, 220),
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Nom de la catégorie"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                        validator: MultiValidator([
+                          RequiredValidator(
+                              errorText: "Veuillez entrer une catégorie")
+                        ]),
+                      ),
                     ),
-                    validator: MultiValidator([
-                      RequiredValidator(
-                          errorText: "Veuillez entrer une catégorie")
-                    ]),
-                  ),
+
+                    //Catégorie parente
+                    Container(
+                        padding: const EdgeInsets.only(left: 20, right: 20),
+                        margin: const EdgeInsets.only(top: 10),
+                        child: DropdownButtonFormField(
+                          decoration: const InputDecoration(
+                            enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                    color: Color.fromARGB(255, 45, 157, 220)),
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(10))),
+                            border: OutlineInputBorder(
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(10))),
+                            label: Text("Catégorie Parente"),
+                            labelStyle:
+                                TextStyle(fontSize: 13, color: Colors.black),
+                          ),
+                          dropdownColor: Colors.white,
+                          value: selectedValue,
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              selectedValue = newValue!;
+                            });
+                          },
+                          items: dropdownItems,
+                        )),
+                  ],
                 ),
               ),
             ),

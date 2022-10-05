@@ -58,7 +58,7 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
     for (var i = 0; i < categories.length; i++) {
       menuItems.add(DropdownMenuItem(
         value: "${categories[i]["id"]}",
-        child: Text("${categories[i]["name"]}"),
+        child: Text("${categories[i]["name"]}",style: "${categories[i]["name"]}".length > 20 ? const TextStyle(fontSize: 15):null, )
       ));
     }
     return menuItems;
