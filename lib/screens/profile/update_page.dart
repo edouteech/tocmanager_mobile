@@ -18,8 +18,8 @@ class _UpdateProfileState extends State<UpdateProfile> {
         backgroundColor: Colors.grey[100],
         iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
         title: const Text(
-          'Mettre à jour profile',
-          style: TextStyle(color: Colors.black, fontFamily: 'RobotoMono'),
+          'Mettre à jour profil',
+          style: TextStyle(color: Colors.black,),
         ),
       ),
       body: SingleChildScrollView(

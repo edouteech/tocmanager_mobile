@@ -13,7 +13,7 @@ class _MyHeaderDrawerState extends State<MyHeaderDrawer> {
     return Container(
       color: Theme.of(context).primaryColor,
       width: double.infinity,
-      height: 200,
+      height: 150,
       padding: const EdgeInsets.only(top: 20.0),
       child: Column(
         

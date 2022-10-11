@@ -50,7 +50,12 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
     for (var i = 0; i < categories.length; i++) {
       menuItems.add(DropdownMenuItem(
         value: "${categories[i]["id"]}",
-        child: Text("${categories[i]["name"]}", style: "${categories[i]["name"]}".length > 20 ? const TextStyle(fontSize: 15):null,),
+        child: Text(
+          "${categories[i]["name"]}",
+          style: "${categories[i]["name"]}".length > 20
+              ? const TextStyle(fontSize: 15)
+              : null,
+        ),
       ));
     }
     return menuItems;
@@ -90,7 +95,8 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
           iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
           title: const Text(
             'Catégories',
-            style: TextStyle(color: Colors.black, fontSize: 20),
+            style: TextStyle(
+                fontFamily: 'Satisfy', fontSize: 30, color: Colors.black),
           )),
       drawer: Drawer(
         child: SingleChildScrollView(
@@ -222,7 +228,10 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
                   flex: 3,
                   child: Text(
                     title,
-                    style: const TextStyle(color: Colors.black, fontSize: 16),
+                    style: const TextStyle(
+                      fontFamily: 'Oswald',
+                      fontSize: 18,
+                    ),
                   ))
             ],
           ),

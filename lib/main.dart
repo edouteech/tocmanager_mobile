@@ -55,6 +55,7 @@ class _MyAppState extends State<MyApp> {
             const ResponsiveBreakpoint.autoScale(2460, name: "4K"),
           ]),
       theme: ThemeData(
+        fontFamily: 'Oswald',
         primaryColor: Constants().primaryColor,
         scaffoldBackgroundColor: Colors.white,
         scrollbarTheme: ScrollbarThemeData(
@@ -65,7 +66,7 @@ class _MyAppState extends State<MyApp> {
         ),
       ),
       debugShowCheckedModeBanner: false,
-      home: _isSignedIn ? const HomePage() : const LoginPage(),
+      home: _isSignedIn ? const HomePage() : const LoginPage(), 
     );
   }
 }

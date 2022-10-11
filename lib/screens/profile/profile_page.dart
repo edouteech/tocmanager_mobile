@@ -1,10 +1,10 @@
 // ignore_for_file: use_build_context_synchronously, must_be_immutable, deprecated_member_use
 
 import 'package:flutter/material.dart';
-import 'package:tocmanager/screens/home_widgets/profile/update_page.dart';
-import 'package:tocmanager/screens/home_widgets/profile/update_password.dart';
-import '../../../services/auth_service.dart';
-import '../../../widgets/widgets.dart';
+import 'package:tocmanager/screens/profile/update_page.dart';
+import 'package:tocmanager/screens/profile/update_password.dart';
+import '../../services/auth_service.dart';
+import '../../widgets/widgets.dart';
 
 class ProfilePage extends StatefulWidget {
   String userName;
@@ -16,6 +16,7 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
+
 class _ProfilePageState extends State<ProfilePage> {
   AuthService authService = AuthService();
   @override
@@ -25,10 +26,9 @@ class _ProfilePageState extends State<ProfilePage> {
         centerTitle: true,
         backgroundColor: Colors.grey[100],
         iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
-        title: const Text(
-          'Profile',
-          style: TextStyle(color: Colors.black, fontFamily: 'RobotoMono'),
-        ),
+        title: const Text('Profil',
+            style: TextStyle(
+                fontFamily: 'Oswald', fontSize: 30, color: Colors.black)),
       ),
       body: SingleChildScrollView(
         child: Container(
@@ -44,46 +44,6 @@ class _ProfilePageState extends State<ProfilePage> {
               const Divider(
                 height: 10,
               ),
-              // const SizedBox(
-              //   height: 15,
-              // ),
-              // Row(
-              //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              //   children: [
-              //     const Text("Nom ", style: TextStyle(fontSize: 17)),
-              //     Text(widget.userName, style: const TextStyle(fontSize: 17)),
-              //   ],
-              // ),
-              // const Divider(
-              //   height: 20,
-              // ),
-              // Row(
-              //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              //   children: [
-              //     const Text("Email", style: TextStyle(fontSize: 17)),
-              //     Text(widget.email, style: const TextStyle(fontSize: 17)),
-              //   ],
-              // ),
-              // const Divider(
-              //   height: 20,
-              // ),
-              // Row(
-              //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              //   children: [
-              //     const Text("Téléphone", style: TextStyle(fontSize: 17)),
-              //     Text(widget.email, style: const TextStyle(fontSize: 17)),
-              //   ],
-              // ),
-              // const Divider(
-              //   height: 20,
-              // ),
-              // Row(
-              //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              //   children: [
-              //     const Text("Pays", style: TextStyle(fontSize: 17)),
-              //     Text(widget.email, style: const TextStyle(fontSize: 17)),
-              //   ],
-              // ),
 
               //Nom complet
               Padding(
@@ -93,13 +53,21 @@ class _ProfilePageState extends State<ProfilePage> {
                     onPressed: (() {}),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.person,
-                          color: Theme.of(context).primaryColor,
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Icon(
+                            Icons.person,
+                            color: Theme.of(context).primaryColor,
+                            size: 30,
+                          ),
                         ),
                         Expanded(
-                          child: Text(widget.email,
-                              style: const TextStyle(fontSize: 17)),
+                          child: Text(widget.userName,
+                              style: const TextStyle(
+                                fontSize: 17,
+                                color: Colors.black,
+                                fontFamily: 'Oswald',
+                              )),
                         ),
                       ],
                     )),
@@ -113,13 +81,21 @@ class _ProfilePageState extends State<ProfilePage> {
                     onPressed: (() {}),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.email,
-                          color: Theme.of(context).primaryColor,
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Icon(
+                            Icons.email,
+                            color: Theme.of(context).primaryColor,
+                            size: 30,
+                          ),
                         ),
                         Expanded(
                           child: Text(widget.email,
-                              style: const TextStyle(fontSize: 17)),
+                              style: const TextStyle(
+                                fontSize: 17,
+                                color: Colors.black,
+                                fontFamily: 'Oswald',
+                              )),
                         ),
                       ],
                     )),

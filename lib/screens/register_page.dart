@@ -35,20 +35,30 @@ class _RegisterPageState extends State<RegisterPage> {
               child: Form(
                   key: formKey,
                   child: Column(
-                    children: [
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: <Widget>[
                       Container(
-                        height: 250,
+                        height: 260,
                         decoration: const BoxDecoration(
                           borderRadius: BorderRadius.only(
                               bottomLeft: Radius.circular(90)),
                           color: Color.fromARGB(255, 45, 157, 220),
+                          gradient: LinearGradient(
+                            colors: [
+                              (Color.fromARGB(255, 45, 157, 220)),
+                              Color.fromARGB(255, 45, 157, 220)
+                            ],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                          ),
                         ),
                         child: Center(
                             child: Column(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Container(
+                             Container(
                               margin: const EdgeInsets.only(top: 50),
                               child: Image.asset(
                                 "assets/logo_blanc.png",
@@ -57,213 +67,259 @@ class _RegisterPageState extends State<RegisterPage> {
                               ),
                             ),
                             Container(
-                              margin: const EdgeInsets.only(right: 20, top: 20),
-                              alignment: Alignment.bottomRight,
-                              child: const Text(
-                                "Inscrivez-vous",
-                                style: TextStyle(
-                                    fontSize: 20, color: Colors.white),
-                              ),
-                            ),
+                                margin:
+                                    const EdgeInsets.only(right: 20, top: 20),
+                                alignment: Alignment.bottomRight,
+                                child: const Text(
+                                  "Inscrivez-vous",
+                                  style: TextStyle(
+                                    fontFamily: 'Satisfy',
+                                    fontSize: 30,
+                                    color: Colors.white,
+                                  ),
+                                ))
                           ],
                         )),
                       ),
+                      
+
+                      //Username fields
                       Container(
-                        alignment: Alignment.center,
-                        margin:
-                            const EdgeInsets.only(left: 20, right: 20, top: 65),
-                        padding: const EdgeInsets.only(left: 20, right: 20),
-                        height: 54,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(50),
-                          color: Colors.grey[200],
-                          boxShadow: const [
-                            BoxShadow(
-                                offset: Offset(0, 10),
-                                blurRadius: 50,
-                                color: Color(0xffEEEEEE)),
-                          ],
-                        ),
-                        child: TextFormField(
-                          cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                          decoration: const InputDecoration(
-                            icon: Icon(
-                              Icons.person,
-                              color: Color.fromARGB(255, 45, 157, 220),
+                          alignment: Alignment.center,
+                          margin: const EdgeInsets.only(
+                              left: 20, right: 20, top: 20),
+                          child: SizedBox(
+                            width: 350,
+                            child: TextFormField(
+                              cursorColor:
+                                  const Color.fromARGB(255, 45, 157, 220),
+                              decoration: const InputDecoration(
+                                enabledBorder: OutlineInputBorder(
+                                    borderSide: BorderSide(
+                                        color:
+                                            Color.fromARGB(255, 45, 157, 220)),
+                                    borderRadius:
+                                        BorderRadius.all(Radius.circular(10))),
+                                border: OutlineInputBorder(
+                                    borderRadius:
+                                        BorderRadius.all(Radius.circular(10))),
+                                label: Text("Nom d'utilisateur",
+                                    style: TextStyle(
+                                      fontFamily: 'Oswald',
+                                      fontSize: 20,
+                                    )),
+                                labelStyle: TextStyle(
+                                    fontSize: 13, color: Colors.black),
+                                prefixIcon: Icon(
+                                  Icons.person,
+                                  color: Color.fromARGB(255, 45, 157, 220),
+                                ),
+                              ),
+                              onChanged: (val) {
+                                setState(() {
+                                  fullName = val;
+                                });
+                              },
+                              validator: (val) {
+                                if (val!.isNotEmpty) {
+                                  return null;
+                                } else {
+                                  return "Le nom ne peut pas être vide";
+                                }
+                              },
                             ),
-                            hintText: "Entrez votre nom",
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                          ),
-                          onChanged: (val) {
-                            setState(() {
-                              fullName = val;
-                            });
-                          },
-                          validator: (val) {
-                            if (val!.isNotEmpty) {
-                              return null;
-                            } else {
-                              return "Le nom ne peut pas être vide";
-                            }
-                          },
-                        ),
-                      ),
+                          )),
+                     
+
+                      //Email field
                       Container(
                         alignment: Alignment.center,
                         margin:
-                            const EdgeInsets.only(left: 20, right: 20, top: 15),
-                        padding: const EdgeInsets.only(left: 20, right: 20),
-                        height: 54,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(50),
-                          color: Colors.grey[200],
-                          boxShadow: const [
-                            BoxShadow(
-                                offset: Offset(0, 10),
-                                blurRadius: 50,
-                                color: Color(0xffEEEEEE)),
-                          ],
-                        ),
-                        child: TextFormField(
-                          cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                          decoration: const InputDecoration(
-                            icon: Icon(
-                              Icons.email,
-                              color: Color.fromARGB(255, 45, 157, 220),
-                            ),
-                            hintText: "Entrez votre email",
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                          ),
-                          onChanged: (val) {
-                            setState(() {
-                              email = val;
-                            });
-                          },
-                          validator: (val) {
-                            return RegExp(
-                                        r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
-                                    .hasMatch(val!)
-                                ? null
-                                : "Veuillez entrer un email valide";
-                          },
-                        ),
-                      ),
-                      Container(
-                        alignment: Alignment.center,
-                        margin:
-                            const EdgeInsets.only(left: 20, right: 20, top: 15),
-                        padding: const EdgeInsets.only(left: 20, right: 20),
-                        height: 54,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(50),
-                          color: const Color(0xffEEEEEE),
-                          boxShadow: const [
-                            BoxShadow(
-                                offset: Offset(0, 20),
-                                blurRadius: 100,
-                                color: Color(0xffEEEEEE)),
-                          ],
-                        ),
-                        child: TextFormField(
+                            const EdgeInsets.only(left: 20, right: 20, top: 30),
+                        child: SizedBox(
+                          width: 350,
+                          child: TextFormField(
+                            obscureText: true,
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
                             cursorColor:
                                 const Color.fromARGB(255, 45, 157, 220),
                             decoration: const InputDecoration(
-                              focusColor: Color.fromARGB(255, 45, 157, 220),
-                              icon: Icon(
-                                Icons.phone,
+                              enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color.fromARGB(255, 45, 157, 220)),
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(10))),
+                              border: OutlineInputBorder(
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(10))),
+                              label: Text("Email",
+                                  style: TextStyle(
+                                    fontFamily: 'Oswald',
+                                    fontSize: 20,
+                                  )),
+                              labelStyle:
+                                  TextStyle(fontSize: 13, color: Colors.black),
+                              prefixIcon: Icon(
+                                Icons.email,
                                 color: Color.fromARGB(255, 45, 157, 220),
                               ),
-                              hintText: "Entrez votre numéro",
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
                             ),
                             onChanged: (val) {
                               setState(() {
-                                phone = val;
+                                email = val;
                               });
                             },
                             validator: (val) {
-                              if (val!.isNotEmpty) {
-                                return null;
-                              } else {
-                                return "Le numéro ne peut pas être vide";
-                              }
-                            }),
+                              return RegExp(
+                                          r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
+                                      .hasMatch(val!)
+                                  ? null
+                                  : "Veuillez entrer un email valide";
+                            },
+                          ),
+                        ),
                       ),
+                      
+
+                      //Number field
                       Container(
                         alignment: Alignment.center,
                         margin:
-                            const EdgeInsets.only(left: 20, right: 20, top: 15),
-                        padding: const EdgeInsets.only(left: 20, right: 20),
-                        height: 54,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(50),
-                          color: const Color(0xffEEEEEE),
-                          boxShadow: const [
-                            BoxShadow(
-                                offset: Offset(0, 20),
-                                blurRadius: 100,
-                                color: Color(0xffEEEEEE)),
-                          ],
+                            const EdgeInsets.only(left: 20, right: 20, top: 30),
+                        child: SizedBox(
+                          width: 350,
+                          child: TextFormField(
+                              obscureText: true,
+                              autovalidateMode:
+                                  AutovalidateMode.onUserInteraction,
+                              cursorColor:
+                                  const Color.fromARGB(255, 45, 157, 220),
+                              decoration: const InputDecoration(
+                                enabledBorder: OutlineInputBorder(
+                                    borderSide: BorderSide(
+                                        color:
+                                            Color.fromARGB(255, 45, 157, 220)),
+                                    borderRadius:
+                                        BorderRadius.all(Radius.circular(10))),
+                                border: OutlineInputBorder(
+                                    borderRadius:
+                                        BorderRadius.all(Radius.circular(10))),
+                                label: Text("Numéro de téléphone",
+                                    style: TextStyle(
+                                      fontFamily: 'Oswald',
+                                      fontSize: 20,
+                                    )),
+                                labelStyle: TextStyle(
+                                    fontSize: 13, color: Colors.black),
+                                prefixIcon: Icon(
+                                  Icons.phone,
+                                  color: Color.fromARGB(255, 45, 157, 220),
+                                ),
+                              ),
+                              onChanged: (val) {
+                                setState(() {
+                                  phone = val;
+                                });
+                              },
+                              validator: (val) {
+                                if (val!.isNotEmpty) {
+                                  return null;
+                                } else {
+                                  return "Le numéro ne peut pas être vide";
+                                }
+                              }),
                         ),
-                        child: TextFormField(
+                      ),
+
+
+                      //Country field
+                      Container(
+                        alignment: Alignment.center,
+                        margin:
+                            const EdgeInsets.only(left: 20, right: 20, top: 30),
+                        child: SizedBox(
+                          width: 350,
+                          child: TextFormField(
+                              obscureText: true,
+                              autovalidateMode:
+                                  AutovalidateMode.onUserInteraction,
+                              cursorColor:
+                                  const Color.fromARGB(255, 45, 157, 220),
+                              decoration: const InputDecoration(
+                                enabledBorder: OutlineInputBorder(
+                                    borderSide: BorderSide(
+                                        color:
+                                            Color.fromARGB(255, 45, 157, 220)),
+                                    borderRadius:
+                                        BorderRadius.all(Radius.circular(10))),
+                                border: OutlineInputBorder(
+                                    borderRadius:
+                                        BorderRadius.all(Radius.circular(10))),
+                                label: Text("Pays",
+                                    style: TextStyle(
+                                      fontFamily: 'Oswald',
+                                      fontSize: 20,
+                                    )),
+                                labelStyle: TextStyle(
+                                    fontSize: 13, color: Colors.black),
+                                prefixIcon: Icon(
+                                  Icons.place,
+                                  color: Color.fromARGB(255, 45, 157, 220),
+                                ),
+                              ),
+                              onChanged: (val) {
+                                setState(() {
+                                  country = val;
+                                });
+                              },
+                              validator: (val) {
+                                if (val!.isNotEmpty) {
+                                  return null;
+                                } else {
+                                  return "Le pays ne peut pas être vide";
+                                }
+                              }),
+                        ),
+                      ),
+
+                      
+
+                      //Password field
+                      Container(
+                        alignment: Alignment.center,
+                        margin:
+                            const EdgeInsets.only(left: 20, right: 20, top: 30),
+                        child: SizedBox(
+                          width: 350,
+                          child: TextFormField(
+                            obscureText: true,
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
                             cursorColor:
                                 const Color.fromARGB(255, 45, 157, 220),
                             decoration: const InputDecoration(
-                              focusColor: Color.fromARGB(255, 45, 157, 220),
-                              icon: Icon(
-                                Icons.room,
+                              enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color.fromARGB(255, 45, 157, 220)),
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(10))),
+                              border: OutlineInputBorder(
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(10))),
+                              label: Text("Mot de passe",
+                                  style: TextStyle(
+                                    fontFamily: 'Oswald',
+                                    fontSize: 20,
+                                  )),
+                              labelStyle:
+                                  TextStyle(fontSize: 13, color: Colors.black),
+                              prefixIcon: Icon(
+                                Icons.lock,
                                 color: Color.fromARGB(255, 45, 157, 220),
                               ),
-                              hintText: "Entrez le nom de votre pays",
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
                             ),
-                            onChanged: (val) {
-                              setState(() {
-                                country = val;
-                              });
-                            },
                             validator: (val) {
-                              if (val!.isNotEmpty) {
-                                return null;
-                              } else {
-                                return "Le pays ne peut pas être vide";
-                              }
-                            }),
-                      ),
-                      Container(
-                        alignment: Alignment.center,
-                        margin:
-                            const EdgeInsets.only(left: 20, right: 20, top: 15),
-                        padding: const EdgeInsets.only(left: 20, right: 20),
-                        height: 54,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(50),
-                          color: const Color(0xffEEEEEE),
-                          boxShadow: const [
-                            BoxShadow(
-                                offset: Offset(0, 20),
-                                blurRadius: 100,
-                                color: Color(0xffEEEEEE)),
-                          ],
-                        ),
-                        child: TextFormField(
-                          obscureText: true,
-                          cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                          decoration: const InputDecoration(
-                            focusColor: Color.fromARGB(255, 45, 157, 220),
-                            icon: Icon(
-                              Icons.lock,
-                              color: Color.fromARGB(255, 45, 157, 220),
-                            ),
-                            hintText: "Entrez votre mot de passe",
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                          ),
-                          validator: (val) {
                             if (val!.length < 6) {
                               return "Le mot de passe doit être au moins de 6 caractères";
                             } else {
@@ -275,18 +331,23 @@ class _RegisterPageState extends State<RegisterPage> {
                               password = val;
                             });
                           },
+                          ),
                         ),
+                      ),
+                      
+                      const SizedBox(
+                        height: 5,
                       ),
                       GestureDetector(
                         onTap: () {
-                          register();
+                          // login();
                         },
                         child: Container(
                           alignment: Alignment.center,
                           margin: const EdgeInsets.only(
-                              left: 20, right: 20, top: 15),
-                          padding: const EdgeInsets.only(left: 20, right: 20),
-                          height: 54,
+                              left: 80, right: 80, top: 10),
+                          padding: const EdgeInsets.only(left: 10, right: 10),
+                          height: 50,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(50),
                             color: const Color.fromARGB(255, 45, 157, 220),
@@ -298,27 +359,41 @@ class _RegisterPageState extends State<RegisterPage> {
                             ],
                           ),
                           child: const Text(
-                            "INSCRIPTION",
-                            style: TextStyle(color: Colors.white),
+                            "Inscription",
+                            style: TextStyle(
+                                fontFamily: 'Satisfy',
+                                fontSize: 25,
+                                color: Colors.white),
                           ),
                         ),
                       ),
+
+                      const SizedBox(
+                        height: 10,
+                      ),
+                      //Register link
                       Container(
-                        margin: const EdgeInsets.only(top: 10, bottom: 10),
+                        margin: const EdgeInsets.only(top: 10, bottom: 20),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text("Vous avez déjà un compte?  "),
+                            const Text("Vous avez déjà un compte?  ",
+                                style: TextStyle(
+                                    fontSize: 18, fontFamily: 'Oswald')),
                             GestureDetector(
                               child: const Text(
-                                "connectez-vous",
+                                " Connectez-vous",
                                 style: TextStyle(
+                                    fontFamily: 'Oswald',
+                                    fontSize: 18,
                                     color: Color.fromARGB(255, 45, 157, 220)),
                               ),
                               onTap: () {
                                 nextScreen(context, const LoginPage());
                               },
-                            )
+                            ),
+
+                        
                           ],
                         ),
                       )

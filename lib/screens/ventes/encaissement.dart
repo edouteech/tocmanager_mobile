@@ -62,7 +62,8 @@ class _EncaissementPageState extends State<EncaissementPage> {
           iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
           title: const Text(
             'Encaissement',
-            style: TextStyle(color: Colors.black, fontFamily: 'RobotoMono'),
+            style: TextStyle(
+                fontFamily: 'Satisfy', fontSize: 30, color: Colors.black),
           )),
       body: DataTable2(
           showBottomBorder: true,

@@ -1,4 +1,4 @@
-// ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, depend_on_referenced_packages, unnecessary_string_interpolations, avoid_print, body_might_complete_normally_nullable, unnecessary_this, import_of_legacy_library_into_null_safe, unused_field
+// ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, depend_on_referenced_packages, unnecessary_string_interpolations, avoid_print, body_might_complete_normally_nullable, unnecessary_this, import_of_legacy_library_into_null_safe, unused_field, unused_local_variable
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 import 'package:flutter/material.dart';
 import 'package:tocmanager/screens/ventes/line_vente.dart';
@@ -97,13 +97,13 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
           iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
           title: const Text(
             'Ajouter Ventes',
-            style: TextStyle(color: Colors.black, fontFamily: 'RobotoMono'),
+            style: TextStyle(fontSize: 30, color: Colors.black),
           )),
       body: SingleChildScrollView(
         child: Column(
           children: [
             SizedBox(
-              height: 600,
+              height: 550,
               child: ListView.builder(
                 primary: true,
                 itemCount: elements.length,
@@ -126,6 +126,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
             GestureDetector(
               onTap: () {
                 if (sum != 0.0) {
+                  sommeclientController.text = sum.toString();
                   _showFinishForm(context);
                 } else {
                   print("======No data====");
@@ -197,7 +198,9 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                       });
 
                       sum = (sum + (double.parse(total)));
+                      
                     });
+                    
                     Navigator.of(context).pop();
                   }
                 },
@@ -306,7 +309,9 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
         });
   }
 
-  _showFinishForm(BuildContext context) {
+  _showFinishForm(
+    BuildContext context,
+  ) {
     return showDialog(
         context: context,
         barrierDismissible: true,
@@ -318,7 +323,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                   'Annuler',
                   style: TextStyle(color: Colors.red),
                 ),
-                onPressed: () async {
+                onPressed: () {
                   Navigator.of(context).pop();
                 },
               ),
@@ -326,39 +331,59 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                 child: const Text('Valider',
                     style: TextStyle(color: Colors.green)),
                 onPressed: () async {
-                  var sommeclient = int.parse(sommeclientController.text);
-                  setState(() {
-                    reste = sum - sommeclient;
-                  });
+                  // var sommeclient = int.parse(sommeclientController.text);
+                  // setState(() {
+                  //   reste = sum - sommeclient;
+                  // });
                   if (_formKey.currentState!.validate()) {
                     // Sells
-                    int response = await sqlDb.inserData('''
-                    INSERT INTO Sells(date_sell, amount, client_name, reste) VALUES('${dateController.text}','$sum', '${nameClientController.text}', '$reste')
+                    int InsertSells = await sqlDb.inserData('''
+                    INSERT INTO Sells(date_sell, client_name) VALUES('${dateController.text}', '${nameClientController.text}')
                   ''');
+                    print(
+                        "=== $InsertSells ==== SELLS INSERTION DONE ==========");
 
-                    print("===$response==== SELLS INSERTION DONE ==========");
                     //read last sells
-                    var response2 = await sqlDb.readData('''
+                    var ReadLastInsertion = await sqlDb.readData('''
                     SELECT * FROM Sells ORDER BY id DESC LIMIT 1
                   ''');
+                    print("====== ReadLast ==========");
+
                     //Insert sell_line
                     for (var i = 0; i < ventes.length; i++) {
-                      int response3 = await sqlDb.inserData('''
-                    INSERT INTO Sell_lines(quantity, amount, sell_id, product_id) VALUES('${ventes[i]["quantity"]}', '${ventes[i]["total"]}','${response2[0]["id"]}', '${ventes[i]["id"]}')
+                      int InsertSell_line = await sqlDb.inserData('''
+                    INSERT INTO Sell_lines(quantity, amount, sell_id, product_id) VALUES('${ventes[i]["quantity"]}', '${ventes[i]["total"]}','${ReadLastInsertion[0]["id"]}', '${ventes[i]["id"]}')
                   ''');
-                      print("===$response3==== INSERTION DONE ==========");
+                      print(
+                          "===$InsertSell_line==== SELL_LINE INSERTION DONE ==========");
                     }
-                    //Encaissement
 
+                    //cheick amount
+                    var SellsAmount = await sqlDb.readData(''' 
+                      SELECT SUM (amount) as sellAmount FROM Sell_lines WHERE sell_id='${ReadLastInsertion[0]["id"]}'
+                     ''');
+                    print("=====Sells Amount Checked==========");
+
+                    var sell_reste = SellsAmount[0]['sellAmount'] -
+                        double.parse(sommeclientController.text);
+
+                    // //Update amount and reste
+                    var UpdateSells = await sqlDb.updateData('''
+                          UPDATE Sells SET amount ="${SellsAmount[0]['sellAmount']}", reste = "$sell_reste" WHERE id="${ReadLastInsertion[0]["id"]}"
+                      ''');
+                    print("===== SELL INSERTION DONE ==========");
+
+                    // //Encaissement
                     int response_encaissement = await sqlDb.inserData('''
-                    INSERT INTO Encaissements(amount, date_encaissement, client_name, sell_id) VALUES('$sommeclient', '${dateController.text}','${nameClientController.text}', '${response2[0]["id"]}')
-                  ''');
-                    print(response_encaissement);
-                    print("===$response==== SELLS INSERTION DONE ==========");
+                      INSERT INTO Encaissements(amount, date_encaissement, client_name, sell_id) VALUES('${sommeclientController.text}', '${dateController.text}','${nameClientController.text}', '${ReadLastInsertion[0]["id"]}')
+                    ''');
+
+                    print(
+                        "===$response_encaissement==== SELLS INSERTION DONE ==========");
 
                     setState(() {
                       elements.clear();
-                      sum = 0;
+                      sum = 0.0;
                     });
 
                     Navigator.of(context).pushReplacement(MaterialPageRoute(
@@ -435,10 +460,15 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                     child: TextFormField(
                       keyboardType: TextInputType.number,
                       controller: sommeclientController,
-                      validator: MultiValidator([
-                        RequiredValidator(
-                            errorText: "Veuillez entrer un montant")
-                      ]),
+                      validator: (value) {
+                        if (value!.isEmpty) {
+                          return "Veuillez entrer un montant";
+                        } else if (double.parse(value).toInt() > sum) {
+                          return """   Vous ne pouvez pas entrer 
+                          plus de $sum """;
+                        }
+                        return null;
+                      },
                       autovalidateMode: AutovalidateMode.onUserInteraction,
                       decoration: const InputDecoration(
                         enabledBorder: OutlineInputBorder(

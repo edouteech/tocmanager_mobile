@@ -2,8 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
-import 'package:tocmanager/screens/home_widgets/profile/profile_page.dart';
-import 'package:tocmanager/screens/ventes/ajouter_vente.dart';
+import 'package:tocmanager/screens/profile/profile_page.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 import '../database/sqfdb.dart';
 import '../helper/helper_function.dart';
@@ -67,11 +66,11 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          // var delete = await sqlDb.mydeleteDatabase();
-          // if (kDebugMode) {
-          //   print(delete);
-          // }
-          nextScreen(context, const AjouterVentePage());
+          var delete = await sqlDb.mydeleteDatabase();
+
+          print(delete);
+
+          // nextScreen(context, const AjouterVentePage());
         },
         backgroundColor: Colors.blue,
         child: const Icon(
@@ -86,8 +85,8 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Colors.grey[100],
         iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
         title: const Text(
-          'Dashboard',
-          style: TextStyle(color: Colors.black, fontFamily: 'RobotoMono'),
+          'Tableau de bord',
+          style: TextStyle(fontSize: 30, color: Colors.black),
         ),
         actions: [
           Padding(
@@ -97,8 +96,8 @@ class _HomePageState extends State<HomePage> {
                   nextScreen(
                       context,
                       ProfilePage(
-                        email: '',
-                        userName: '',
+                        email: email,
+                        userName: userName,
                       ));
                 },
                 icon: const Icon(
@@ -231,16 +230,14 @@ class _HomePageState extends State<HomePage> {
               currentPage == DrawerSections.achat ? true : false),
           MenuItem(6, "Fournisseurs", Icons.notifications_outlined,
               currentPage == DrawerSections.fournisseur ? true : false),
-          MenuItem(7, "Encaissement", Icons.notifications_outlined,
-              currentPage == DrawerSections.encaissement ? true : false),
-          MenuItem(8, "Factures", Icons.settings_outlined,
+          MenuItem(7, "Factures", Icons.settings_outlined,
               currentPage == DrawerSections.facture ? true : false),
           MenuItem(
-              9,
+              8,
               "Politique de confidentialité",
               Icons.privacy_tip_outlined,
               currentPage == DrawerSections.privacy_policy ? true : false),
-          MenuItem(10, "Deconnexion", Icons.logout_outlined,
+          MenuItem(9, "Deconnexion", Icons.logout_outlined,
               currentPage == DrawerSections.logout ? true : false),
         ],
       ),
@@ -272,13 +269,10 @@ class _HomePageState extends State<HomePage> {
               currentPage = DrawerSections.fournisseur;
               nextScreen(context, const AjouterFournisseurPage());
             } else if (id == 7) {
-              currentPage = DrawerSections.encaissement;
-              // nextScreen(context, const EncaissementPage());
-            } else if (id == 8) {
               currentPage = DrawerSections.facture;
-            } else if (id == 9) {
+            } else if (id == 8) {
               currentPage = DrawerSections.privacy_policy;
-            } else if (id == 10) {
+            } else if (id == 9) {
               showDialog(
                   barrierDismissible: false,
                   context: context,
@@ -327,10 +321,13 @@ class _HomePageState extends State<HomePage> {
                 color: const Color.fromARGB(255, 45, 157, 220),
               )),
               Expanded(
-                  flex: 3,
+                  flex: 4,
                   child: Text(
                     title,
-                    style: const TextStyle(color: Colors.black, fontSize: 16),
+                    style: const TextStyle(
+                      fontFamily: 'Oswald',
+                      fontSize: 18,
+                    ),
                   ))
             ],
           ),
@@ -347,7 +344,6 @@ enum DrawerSections {
   vente,
   achat,
   fournisseur,
-  encaissement,
   facture,
   privacy_policy,
   logout,

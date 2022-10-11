@@ -111,10 +111,10 @@ class SqlDb {
     await db.execute('''
         CREATE TABLE "Sells"(
           "id" INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
-          "date_sell" TEXT NOT NULL,
-          "amount" DOUBLE NOT NULL,
+          "date_sell" DATETIME NOT NULL,
+          "amount" DOUBLE DEFAULT 0.0,
           "client_name" TEXT NOT NULL,
-          "reste" DOUBLE NOT NULL,
+          "reste" DOUBLE DEFAULT 0.0,
           "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )

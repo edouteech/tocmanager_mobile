@@ -63,43 +63,74 @@ class _CategorieListState extends State<CategorieList> {
         showBottomBorder: true,
         border: TableBorder.all(color: Colors.black),
         headingTextStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 15,
-        ),
+            fontWeight: FontWeight.bold, fontSize: 20, fontFamily: 'Oswald'),
         dataRowColor: MaterialStateProperty.all(Colors.white),
         headingRowColor: MaterialStateProperty.all(Colors.blue[200]),
         columnSpacing: 12,
         horizontalMargin: 12,
-        minWidth: 600,
+        minWidth: 700,
         columns: const [
           DataColumn2(
-            label: Center(child: Text('Catégorie')),
+            label: Center(
+                child: Text(
+              'Catégorie',
+            )),
             size: ColumnSize.L,
           ),
-          DataColumn(
-            label: Center(child: Text('Catégorie Parente')),
+          DataColumn2(
+            label: Center(
+                child: Text(
+              'Catégorie Parente',
+            )),
+            size: ColumnSize.L,
           ),
-          DataColumn(
-            label: Center(child: Text('Editer')),
+          DataColumn2(
+            size: ColumnSize.L,
+            label: Center(
+                child: Text(
+              'Editer',
+            )),
           ),
-          DataColumn(
-            label: Center(child: Text('Supprimer')),
+          DataColumn2(
+            size: ColumnSize.L,
+            label: Center(
+                child: Text(
+              'Supprimer',
+            )),
           ),
         ],
         rows: List<DataRow>.generate(
             categories.length,
             (index) => DataRow(cells: [
                   DataCell(Center(
-                      child:
-                          Center(child: Text('${categories[index]["name"]}')))),
+                      child: Center(
+                          child: Text(
+                    '${categories[index]["name"]}',
+                    style: const TextStyle(
+                      fontFamily: 'Oswald',
+                      fontSize: 20,
+                    ),
+                  )))),
                   "${categories[index]["categoryParente_id"]}" != "null"
                       ? DataCell(Center(
                           child: Center(
-                          child: Text("${categories[index]["parent_name"]}"),
+                          child: Text(
+                            "${categories[index]["parent_name"]}",
+                            style: const TextStyle(
+                              fontFamily: 'Oswald',
+                              fontSize: 20,
+                            ),
+                          ),
                         )))
                       : const DataCell(Center(
                           child: Center(
-                          child: Text("-"),
+                          child: Text(
+                            "-",
+                            style: TextStyle(
+                              fontFamily: 'Oswald',
+                              fontSize: 20,
+                            ),
+                          ),
                         ))),
                   DataCell(Center(
                     child: IconButton(
@@ -184,7 +215,13 @@ class _CategorieListState extends State<CategorieList> {
               ),
             ],
             title: const Center(
-              child: Text("Modifier"),
+              child: Text(
+                "Modifier",
+                style: TextStyle(
+                  fontFamily: 'Oswald',
+                  fontSize: 20,
+                ),
+              ),
             ),
             content: SingleChildScrollView(
               //Name catgorie edit
@@ -209,7 +246,12 @@ class _CategorieListState extends State<CategorieList> {
                           border: OutlineInputBorder(
                               borderRadius:
                                   BorderRadius.all(Radius.circular(10))),
-                          label: Text("Nom de la catégorie"),
+                          label: Text(
+                            "Nom de la catégorie",
+                            style: TextStyle(
+                              fontSize: 15,
+                            ),
+                          ),
                           labelStyle:
                               TextStyle(fontSize: 13, color: Colors.black),
                         ),

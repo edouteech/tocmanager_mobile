@@ -57,9 +57,13 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
     List<DropdownMenuItem<String>> menuItems = [];
     for (var i = 0; i < categories.length; i++) {
       menuItems.add(DropdownMenuItem(
-        value: "${categories[i]["id"]}",
-        child: Text("${categories[i]["name"]}",style: "${categories[i]["name"]}".length > 20 ? const TextStyle(fontSize: 15):null, )
-      ));
+          value: "${categories[i]["id"]}",
+          child: Text(
+            "${categories[i]["name"]}",
+            style: "${categories[i]["name"]}".length > 20
+                ? const TextStyle(fontSize: 15)
+                : null,
+          )));
     }
     return menuItems;
   }
@@ -87,7 +91,8 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
           iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
           title: const Text(
             'Produits',
-            style: TextStyle(color: Colors.black, fontFamily: 'RobotoMono'),
+            style: TextStyle(
+                fontFamily: 'Satisfy', fontSize: 30, color: Colors.black),
           )),
       drawer: Drawer(
         child: SingleChildScrollView(
@@ -161,7 +166,7 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
               nextScreen(context, const AchatHomePage());
             } else if (id == 6) {
               currentPage = DrawerSections.fournisseur;
-               nextScreen(context, const AjouterFournisseurPage());
+              nextScreen(context, const AjouterFournisseurPage());
             } else if (id == 7) {
               currentPage = DrawerSections.facture;
             } else if (id == 8) {
@@ -424,8 +429,6 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
           );
         });
   }
-
-  
 }
 
 enum DrawerSections {

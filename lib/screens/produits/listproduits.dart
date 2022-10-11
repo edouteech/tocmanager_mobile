@@ -72,21 +72,15 @@ class _ProduitListPageState extends State<ProduitListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: DataTable2(
-        
           showBottomBorder: true,
           border: TableBorder.all(color: Colors.black),
           headingTextStyle: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-          ),
-          dataRowColor: MaterialStateProperty.all(Colors.red[200]),
-          headingRowColor: MaterialStateProperty.all(Colors.amber[200]),
-          decoration: BoxDecoration(
-            color: Colors.green[200],
-          ),
+              fontWeight: FontWeight.bold, fontSize: 20, fontFamily: 'Oswald'),
+          dataRowColor: MaterialStateProperty.all(Colors.white),
+          headingRowColor: MaterialStateProperty.all(Colors.blue[200]),
           columnSpacing: 12,
           horizontalMargin: 12,
-          minWidth: 600,
+          minWidth: 800,
           columns: const [
             DataColumn2(
               label: Center(child: Text('Nom Produit')),
@@ -106,7 +100,11 @@ class _ProduitListPageState extends State<ProduitListPage> {
               numeric: true,
             ),
             DataColumn(
-              label: Center(child: Text('Actions')),
+              label: Center(child: Text('Editer')),
+              numeric: true,
+            ),
+            DataColumn(
+              label: Center(child: Text('Supprimer')),
               numeric: true,
             ),
           ],
@@ -114,57 +112,51 @@ class _ProduitListPageState extends State<ProduitListPage> {
               produits.length,
               (index) => DataRow(cells: [
                     DataCell(Center(child: Text('${produits[index]["name"]}'))),
-                    DataCell(Center(child: Text('${produits[index]["category_name"]}'))),
-                    DataCell(Center(child: Text('${produits[index]["quantity"]}'))),
-                    DataCell(Center(child: Text('${produits[index]["price_sell"]}'))),
-                    DataCell(Center(child: Text('${produits[index]["price_buy"]}'))),
-                    DataCell(Container(
-                      width: 80,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: IconButton(
-                                icon:
-                                    const Icon(Icons.edit, color: Colors.blue),
-                                onPressed: () async {
-                                  setState(() {
-                                    selectedValue =
-                                         "${produits[index]["category_id"]}";
-                                    name.text =
-                                        '${produits[index]["name"]}';
+                    DataCell(Center(
+                        child: Text('${produits[index]["category_name"]}'))),
+                    DataCell(
+                        Center(child: Text('${produits[index]["quantity"]}'))),
+                    DataCell(Center(
+                        child: Text('${produits[index]["price_sell"]}'))),
+                    DataCell(
+                        Center(child: Text('${produits[index]["price_buy"]}'))),
+                    DataCell(Center(
+                      child: IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          onPressed: () async {
+                            setState(() {
+                              selectedValue =
+                                  "${produits[index]["category_id"]}";
+                              name.text = '${produits[index]["name"]}';
 
-                                    quantity.text =
-                                        '${produits[index]["quantity"]}';
-                                    price_sell.text =
-                                        '${produits[index]["price_sell"]}';
-                                    price_buy.text =
-                                        '${produits[index]["price_buy"]}';
-                                    id = '${produits[index]["id"]}';
-                                  });
-                                  _showFormDialog(context);
-                                }),
+                              quantity.text = '${produits[index]["quantity"]}';
+                              price_sell.text =
+                                  '${produits[index]["price_sell"]}';
+                              price_buy.text =
+                                  '${produits[index]["price_buy"]}';
+                              id = '${produits[index]["id"]}';
+                            });
+                            _showFormDialog(context);
+                          }),
+                    )),
+                    DataCell(Center(
+                      child: IconButton(
+                          icon: const Icon(
+                            Icons.delete,
+                            color: Colors.red,
                           ),
-                          Expanded(
-                            child: IconButton(
-                                icon: const Icon(
-                                  Icons.delete,
-                                  color: Colors.red,
-                                ),
-                                onPressed: () async {
-                                  int response = await sqlDb.deleteData(
-                                      "DELETE FROM Products WHERE id =${produits[index]['id']}");
-                                  if (response > 0) {
-                                    produits.removeWhere((element) =>
-                                        element['id'] == produits[index]['id']);
-                                    setState(() {});
-                                    print("$response ===Delete ==== DONE");
-                                  } else {
-                                    print("Delete ==== null");
-                                  }
-                                }),
-                          ),
-                        ],
-                      ),
+                          onPressed: () async {
+                            int response = await sqlDb.deleteData(
+                                "DELETE FROM Products WHERE id =${produits[index]['id']}");
+                            if (response > 0) {
+                              produits.removeWhere((element) =>
+                                  element['id'] == produits[index]['id']);
+                              setState(() {});
+                              print("$response ===Delete ==== DONE");
+                            } else {
+                              print("Delete ==== null");
+                            }
+                          }),
                     )),
                   ]))),
     );
@@ -192,15 +184,14 @@ class _ProduitListPageState extends State<ProduitListPage> {
                 child: const Text('Valider',
                     style: TextStyle(color: Colors.green)),
                 onPressed: () async {
-
                   if (_formKey.currentState!.validate()) {
                     int response = await sqlDb.updateData('''
                     UPDATE Products SET name ="${name.text}", quantity="${quantity.text}", price_sell="${price_sell.text}", price_buy="${price_buy.text}", category_id="$selectedValue" WHERE id="$id"
                   ''');
                     print("===$response==== UPDATE DONE ==========");
 
-                  Navigator.of(context).pushReplacement(MaterialPageRoute(
-                      builder: (context) => const AjouterProduitPage()));
+                    Navigator.of(context).pushReplacement(MaterialPageRoute(
+                        builder: (context) => const AjouterProduitPage()));
                   }
                 },
               ),
@@ -239,8 +230,9 @@ class _ProduitListPageState extends State<ProduitListPage> {
                               });
                             },
                             items: dropdownItems,
-                            
-                            validator:(value) => value == null ? 'Sélectionner une catégorie' : null)),
+                            validator: (value) => value == null
+                                ? 'Sélectionner une catégorie'
+                                : null)),
 
                     //Nom du produit
                     Container(

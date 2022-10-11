@@ -68,17 +68,17 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ),
                             Container(
-                              margin: const EdgeInsets.only(right: 20, top: 20),
-                              alignment: Alignment.bottomRight,
-                              child:  const Text(
-                                "Connectez-vous",
-                                style: TextStyle(
-                                  fontFamily: 'Satisfy',
-                                    fontSize: 30 ,
+                                margin:
+                                    const EdgeInsets.only(right: 20, top: 20),
+                                alignment: Alignment.bottomRight,
+                                child: const Text(
+                                  "Connectez-vous",
+                                  style: TextStyle(
+                                    fontFamily: 'Satisfy',
+                                    fontSize: 30,
                                     color: Colors.white,
-                                    ),
-                              ),
-                            )
+                                  ),
+                                ))
                           ],
                         )),
                       ),
@@ -90,13 +90,11 @@ class _LoginPageState extends State<LoginPage> {
                           child: SizedBox(
                             width: 350,
                             child: TextFormField(
-                              autovalidateMode:
-                                  AutovalidateMode.onUserInteraction,
-                              // controller: name,
+                              autovalidateMode: AutovalidateMode.onUserInteraction,
                               cursorColor:
                                   const Color.fromARGB(255, 45, 157, 220),
-                              decoration:  const InputDecoration(
-                                enabledBorder:  OutlineInputBorder(
+                              decoration: const InputDecoration(
+                                enabledBorder: OutlineInputBorder(
                                     borderSide: BorderSide(
                                         color:
                                             Color.fromARGB(255, 45, 157, 220)),
@@ -105,10 +103,11 @@ class _LoginPageState extends State<LoginPage> {
                                 border: OutlineInputBorder(
                                     borderRadius:
                                         BorderRadius.all(Radius.circular(10))),
-                                label: Text("Email", style:TextStyle(
-                                  fontFamily: 'Oswald',
-                                  fontSize: 20,
-                                )),
+                                label: Text("Email",
+                                    style: TextStyle(
+                                      fontFamily: 'Oswald',
+                                      fontSize: 20,
+                                    )),
                                 labelStyle: TextStyle(
                                     fontSize: 13, color: Colors.black),
                                 prefixIcon: Icon(
@@ -127,7 +126,7 @@ class _LoginPageState extends State<LoginPage> {
                                             r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
                                         .hasMatch(val!)
                                     ? null
-                                    :"Veuillez entrer un email valide";
+                                    : "Veuillez entrer un email valide";
                               },
                             ),
                           )),
@@ -145,19 +144,20 @@ class _LoginPageState extends State<LoginPage> {
                                 AutovalidateMode.onUserInteraction,
                             cursorColor:
                                 const Color.fromARGB(255, 45, 157, 220),
-                            decoration:  const InputDecoration(
+                            decoration: const InputDecoration(
                               enabledBorder: OutlineInputBorder(
                                   borderSide: BorderSide(
                                       color: Color.fromARGB(255, 45, 157, 220)),
                                   borderRadius:
                                       BorderRadius.all(Radius.circular(10))),
-                              border:OutlineInputBorder(
+                              border: OutlineInputBorder(
                                   borderRadius:
                                       BorderRadius.all(Radius.circular(10))),
-                              label: Text("Mot de passe",style: TextStyle(
-                                fontFamily: 'Oswald',
-                                  fontSize: 20,
-                                )),
+                              label: Text("Mot de passe",
+                                  style: TextStyle(
+                                    fontFamily: 'Oswald',
+                                    fontSize: 20,
+                                  )),
                               labelStyle:
                                   TextStyle(fontSize: 13, color: Colors.black),
                               prefixIcon: Icon(
@@ -189,16 +189,18 @@ class _LoginPageState extends State<LoginPage> {
                             horizontal: 30, vertical: 10),
                         alignment: Alignment.centerRight,
                         child: GestureDetector(
-                          onTap: () {
-                            // Write Click Listener Code Here
-                          },
-                          child:  const Text("Mot de passe oublié ?",style:TextStyle(
-                            fontFamily: 'Oswald',
+                            onTap: () {
+                              // Write Click Listener Code Here
+                            },
+                            child: const Text("Mot de passe oublié ?",
+                                style: TextStyle(
+                                  fontFamily: 'Oswald',
                                   fontSize: 15,
-                                ))
-                        ),
+                                ))),
                       ),
-                      const SizedBox(height: 5,),
+                      const SizedBox(
+                        height: 5,
+                      ),
                       GestureDetector(
                         onTap: () {
                           login();
@@ -219,31 +221,34 @@ class _LoginPageState extends State<LoginPage> {
                                   color: Color(0xffEEEEEE)),
                             ],
                           ),
-                          child:  const Text(
+                          child: const Text(
                             "Connexion",
                             style: TextStyle(
-                              fontFamily: 'Satisfy',
-                                  fontSize: 25,
-                                  color: Colors.white
-                                ),
+                                fontFamily: 'Satisfy',
+                                fontSize: 25,
+                                color: Colors.white),
                           ),
                         ),
                       ),
-                      
-                      const SizedBox(height: 10,),
+
+                      const SizedBox(
+                        height: 10,
+                      ),
                       //Register link
                       Container(
                         margin: const EdgeInsets.only(top: 10),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                             const Text("Vous n'avez pas un compte ?", style:TextStyle(fontSize: 18, fontFamily: 'Oswald')),
+                            const Text("Vous n'avez pas un compte ?",
+                                style: TextStyle(
+                                    fontSize: 18, fontFamily: 'Oswald')),
                             GestureDetector(
-                              child:  const Text(
+                              child: const Text(
                                 " Inscrivez-vous",
-                                style:TextStyle(
-                                  fontFamily: 'Oswald',
-                                  fontSize: 18,
+                                style: TextStyle(
+                                    fontFamily: 'Oswald',
+                                    fontSize: 18,
                                     color: Color.fromARGB(255, 45, 157, 220)),
                               ),
                               onTap: () {

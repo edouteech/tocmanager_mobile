@@ -67,6 +67,7 @@ class _CategorieListState extends State<CategorieList> {
                               _editCategorie(context);
                             }),
                       ),
+                      
                       Expanded(
                         child: IconButton(
                             icon: const Icon(

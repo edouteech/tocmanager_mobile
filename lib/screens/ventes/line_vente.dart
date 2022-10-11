@@ -1,5 +1,4 @@
 // ignore_for_file: avoid_print
-
 import 'package:flutter/material.dart';
 
 class VenteLine extends StatelessWidget {
@@ -19,7 +18,7 @@ class VenteLine extends StatelessWidget {
             print("test");
           },
           title: Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(4),
             child: Text.rich(
               TextSpan(
                   text: "Nom :",
@@ -74,6 +73,7 @@ class VenteLine extends StatelessWidget {
               icon: const Icon(
                 Icons.delete,
                 color: Colors.red,
+                size: 30,
               ),
               onPressed: delete)),
     );
