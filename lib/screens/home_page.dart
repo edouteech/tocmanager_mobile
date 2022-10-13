@@ -230,14 +230,12 @@ class _HomePageState extends State<HomePage> {
               currentPage == DrawerSections.achat ? true : false),
           MenuItem(6, "Fournisseurs", Icons.notifications_outlined,
               currentPage == DrawerSections.fournisseur ? true : false),
-          MenuItem(7, "Factures", Icons.settings_outlined,
-              currentPage == DrawerSections.facture ? true : false),
           MenuItem(
-              8,
+              7,
               "Politique de confidentialité",
               Icons.privacy_tip_outlined,
               currentPage == DrawerSections.privacy_policy ? true : false),
-          MenuItem(9, "Deconnexion", Icons.logout_outlined,
+          MenuItem(8, "Deconnexion", Icons.logout_outlined,
               currentPage == DrawerSections.logout ? true : false),
         ],
       ),
@@ -268,8 +266,6 @@ class _HomePageState extends State<HomePage> {
             } else if (id == 6) {
               currentPage = DrawerSections.fournisseur;
               nextScreen(context, const AjouterFournisseurPage());
-            } else if (id == 7) {
-              currentPage = DrawerSections.facture;
             } else if (id == 8) {
               currentPage = DrawerSections.privacy_policy;
             } else if (id == 9) {
@@ -344,7 +340,6 @@ enum DrawerSections {
   vente,
   achat,
   fournisseur,
-  facture,
   privacy_policy,
   logout,
 }

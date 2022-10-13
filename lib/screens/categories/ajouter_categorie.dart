@@ -96,7 +96,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
           title: const Text(
             'Catégories',
             style: TextStyle(
-                fontFamily: 'Satisfy', fontSize: 30, color: Colors.black),
+                fontFamily: 'Oswald', fontSize: 30, color: Colors.black),
           )),
       drawer: Drawer(
         child: SingleChildScrollView(

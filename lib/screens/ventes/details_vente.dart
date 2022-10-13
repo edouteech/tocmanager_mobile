@@ -1,24 +1,33 @@
-// ignore_for_file: non_constant_identifier_names, avoid_print, unused_local_variable, unnecessary_string_interpolations
+// ignore_for_file: non_constant_identifier_names, avoid_print, unused_local_variable, unnecessary_string_interpolations, use_build_context_synchronously
 
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
-import 'package:tocmanager/screens/print/print_page.dart';
+import 'package:tocmanager/screens/ventes/vente_home.dart';
+
+import 'package:floating_action_bubble/floating_action_bubble.dart';
 
 import '../../database/sqfdb.dart';
 import '../../widgets/widgets.dart';
+import '../print/print_page.dart';
 
 class DetailsVentes extends StatefulWidget {
   final String id;
   final String ClientName;
-  const DetailsVentes({Key? key, required this.id, required this.ClientName})
+  final String Montantpaye;
+  const DetailsVentes(
+      {Key? key,
+      required this.id,
+      required this.ClientName,
+      required this.Montantpaye})
       : super(key: key);
 
   @override
   State<DetailsVentes> createState() => _DetailsVentesState();
 }
 
-class _DetailsVentesState extends State<DetailsVentes> {
+class _DetailsVentesState extends State<DetailsVentes>
+    with SingleTickerProviderStateMixin {
   var currentDateTime = DateTime.now();
   /* Read data for database */
   /* Database */
@@ -62,6 +71,14 @@ class _DetailsVentesState extends State<DetailsVentes> {
   void initState() {
     readSellLineData();
     readData();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    );
+
+    final curvedAnimation =
+        CurvedAnimation(curve: Curves.easeInOut, parent: _animationController!);
+    _animation = Tween<double>(begin: 0, end: 1).animate(curvedAnimation);
     super.initState();
   }
 
@@ -76,22 +93,63 @@ class _DetailsVentesState extends State<DetailsVentes> {
   TextEditingController quantityController = TextEditingController();
   TextEditingController dateController = TextEditingController();
 
+  Animation<double>? _animation;
+  AnimationController? _animationController;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          nextScreen(context,   PrintPage(buy_id: '${widget.id}',));
-        },
-        backgroundColor: const Color.fromARGB(255, 45, 157, 220),
-        child: const Icon(
-          Icons.print,
-          size: 32,
-        ),
+      floatingActionButton: FloatingActionBubble(
+        items: <Bubble>[
+          Bubble(
+            title: "Ajouter",
+            iconColor: Colors.white,
+            bubbleColor: Colors.blue,
+            icon: Icons.add,
+            titleStyle: const TextStyle(fontSize: 16, color: Colors.white),
+            onPress: () {
+              _animationController!.reverse();
+              setState(() {
+                quantityController.text = "1";
+              });
+              _showNewDialog(context);
+            },
+          ),
+          Bubble(
+            title: "Imprimer",
+            iconColor: Colors.white,
+            bubbleColor: Colors.blue,
+            icon: Icons.print,
+            titleStyle: const TextStyle(fontSize: 16, color: Colors.white),
+            onPress: () {
+              _animationController!.reverse();
+              nextScreen(
+                  context,
+                  PrintPage(
+                    buy_id: '${widget.id}',
+                  ));
+            },
+          ),
+        ],
+        animation: _animation!,
+        onPress: () => _animationController!.isCompleted
+            ? _animationController!.reverse()
+            : _animationController!.forward(),
+        backGroundColor: Colors.blue,
+        iconColor: Colors.white,
+        iconData: Icons.menu,
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
+          automaticallyImplyLeading: false,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () => Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const VenteHome()),
+              (Route<dynamic> route) => false,
+            ),
+          ),
           centerTitle: true,
           backgroundColor: Colors.grey[100],
           iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
@@ -222,10 +280,12 @@ class _DetailsVentesState extends State<DetailsVentes> {
                       SELECT SUM (amount) as sellAmount FROM Sell_lines WHERE sell_id='${widget.id}'
                      ''');
                     print("=====SELL AMOUNT CHECKED ==========");
+                    var sell_reste = SellsAmount[0]['sellAmount'] -
+                        double.parse(widget.Montantpaye);
 
                     //Update amount and reste
                     var UpdateSellAmount = await sqlDb.updateData('''
-                          UPDATE Sells SET amount ="${SellsAmount[0]['sellAmount']}" WHERE id="${widget.id}"
+                          UPDATE Sells SET amount ="${SellsAmount[0]['sellAmount']}", reste = "$sell_reste" WHERE id="${widget.id}"
                       ''');
                     print("===== SELL AMOUNT UPDATE DONE ==========");
                     Navigator.pushAndRemoveUntil(
@@ -234,6 +294,7 @@ class _DetailsVentesState extends State<DetailsVentes> {
                           builder: (context) => DetailsVentes(
                                 ClientName: '${widget.ClientName}',
                                 id: '${widget.id}',
+                                Montantpaye: '',
                               )),
                       (Route<dynamic> route) => true,
                     );
@@ -342,5 +403,144 @@ class _DetailsVentesState extends State<DetailsVentes> {
             )),
           );
         });
+  }
+
+
+  _showNewDialog(BuildContext context){
+    return showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (param) {
+          return AlertDialog(
+            actions: [
+              TextButton(
+                child: const Text(
+                  'Annuler',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                },
+              ),
+              TextButton(
+                child: const Text('Valider',
+                    style: TextStyle(color: Colors.green)),
+                onPressed: () {
+                  if (_formKey.currentState!.validate()) {
+                    var prix = double.parse("${priceProductController.text}");
+                    var quantite = int.parse("${quantityController.text}");
+                    setState(() {
+                      total = (quantite * prix).toString();
+                    });
+                    
+               
+                    
+                    Navigator.of(context).pop();
+                  }
+                },
+              ),
+            ],
+            title: const Center(child: Text("Ligne de vente ")),
+            content: SingleChildScrollView(
+                child: Form(
+              key: _formKey,
+              child: Column(children: [
+                //Nom produit
+                Container(
+                    padding: const EdgeInsets.only(left: 20, right: 20),
+                    margin: const EdgeInsets.only(top: 10),
+                    child: DropdownButtonFormField(
+                        validator: (value) =>
+                            value == null ? 'Sélectionner un produit' : null,
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Nom du produit"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                        dropdownColor: Colors.white,
+                        value: selectedProductValue,
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            selectedProductValue = newValue!;
+                            if (selectedProductValue != null) {
+                              setState(() async {
+                                var prix = await sqlDb.readData(
+                                    "SELECT * FROM Products WHERE id =$selectedProductValue");
+
+                                setState(() {
+                                  priceProductController.text =
+                                      "${prix[0]["price_sell"]}";
+                                  nameProductsController.text =
+                                      "${prix[0]["name"]}";
+                                });
+                              });
+                            }
+                          });
+                        },
+                        items: dropdownProductsItems)),
+                //Prix unitaire
+                Container(
+                    alignment: Alignment.center,
+                    margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
+                    child: TextFormField(
+                        validator: MultiValidator([
+                          RequiredValidator(
+                              errorText: "Veuillez entrer un prix")
+                        ]),
+                        controller: priceProductController,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Prix unitaire"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ))),
+
+                //Quantité
+                Container(
+                    alignment: Alignment.center,
+                    margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
+                    child: TextFormField(
+                      keyboardType: TextInputType.number,
+                      controller: quantityController,
+                      validator: MultiValidator([
+                        RequiredValidator(
+                            errorText: "Veuillez entrer une quantité")
+                      ]),
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      decoration: const InputDecoration(
+                        enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                                color: Color.fromARGB(255, 45, 157, 220)),
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(10))),
+                        border: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(10))),
+                        label: Text("Quantité"),
+                        labelStyle:
+                            TextStyle(fontSize: 13, color: Colors.black),
+                      ),
+                    ))
+              ]),
+            )),
+          );
+        });
+
   }
 }

@@ -68,7 +68,7 @@ class _CategorieListState extends State<CategorieList> {
         headingRowColor: MaterialStateProperty.all(Colors.blue[200]),
         columnSpacing: 12,
         horizontalMargin: 12,
-        minWidth: 700,
+        minWidth: 900,
         columns: const [
           DataColumn2(
             label: Center(
@@ -107,7 +107,7 @@ class _CategorieListState extends State<CategorieList> {
                           child: Text(
                     '${categories[index]["name"]}',
                     style: const TextStyle(
-                      fontFamily: 'Oswald',
+                     
                       fontSize: 20,
                     ),
                   )))),
@@ -117,7 +117,7 @@ class _CategorieListState extends State<CategorieList> {
                           child: Text(
                             "${categories[index]["parent_name"]}",
                             style: const TextStyle(
-                              fontFamily: 'Oswald',
+                              
                               fontSize: 20,
                             ),
                           ),

@@ -1,13 +1,12 @@
 // ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, unnecessary_this, avoid_print, unused_local_variable
 
 import 'package:data_table_2/data_table_2.dart';
-import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 import 'package:flutter/material.dart';
-import 'package:form_field_validator/form_field_validator.dart';
 import 'package:intl/intl.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/ventes/ajouter_vente.dart';
 import 'package:tocmanager/screens/ventes/details_vente.dart';
+import 'package:tocmanager/screens/ventes/editVente.dart';
 import 'package:tocmanager/screens/ventes/encaissement.dart';
 
 import '../../database/sqfdb.dart';
@@ -99,7 +98,8 @@ class _VenteHomeState extends State<VenteHome> {
           border: TableBorder.all(color: Colors.black),
           headingTextStyle: const TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 15,
+            fontSize: 20,
+            fontFamily: 'Oswald',
           ),
           dataRowColor: MaterialStateProperty.all(Colors.white),
           headingRowColor: MaterialStateProperty.all(Colors.blue[200]),
@@ -107,11 +107,11 @@ class _VenteHomeState extends State<VenteHome> {
           //   color: Colors.green[200],
           // ),
           columnSpacing: 12,
-          horizontalMargin: 12,
-          minWidth: 700,
+          horizontalMargin: 15,
+          minWidth: 800,
           columns: const [
             DataColumn2(
-              label: Center(child: Text('Nom du client')),
+              label: Center(child: Text(' Client')),
               size: ColumnSize.L,
             ),
             DataColumn2(
@@ -122,24 +122,31 @@ class _VenteHomeState extends State<VenteHome> {
             DataColumn2(
                 label: Center(child: Text('Encaissement')), size: ColumnSize.L),
             DataColumn2(
-              label: Center(child: Text('Détails')),
-            ),
+                label: Center(child: Text('Détails')), size: ColumnSize.L),
             DataColumn2(
-              label: Center(child: Text('Editer')),
-            ),
+                label: Center(child: Text('Editer')), size: ColumnSize.L),
             DataColumn2(
-              label: Center(child: Text('Effacer')),
-            ),
+                label: Center(child: Text('Effacer')), size: ColumnSize.L),
           ],
           rows: List<DataRow>.generate(
               sells.length,
               (index) => DataRow(cells: [
-                    DataCell(
-                        Center(child: Text('${sells[index]["client_name"]}'))),
-                    DataCell(Center(child: Text('${sells[index]["amount"]}'))),
-                    DataCell(Center(child: Text('${sells[index]["reste"]}'))),
-                    DataCell(
-                        Center(child: Text('${sells[index]["date_sell"]}'))),
+                    DataCell(Center(
+                        child: Text(
+                      '${sells[index]["client_name"]}',
+                    ))),
+                    DataCell(Center(
+                        child: Text(
+                      '${sells[index]["amount"]}',
+                    ))),
+                    DataCell(Center(
+                        child: Text(
+                      '${sells[index]["reste"]}',
+                    ))),
+                    DataCell(Center(
+                        child: Text(
+                      '${sells[index]["date_sell"]}',
+                    ))),
                     DataCell(Center(
                       child: IconButton(
                           icon: const Icon(
@@ -162,12 +169,20 @@ class _VenteHomeState extends State<VenteHome> {
                             color: Colors.blue,
                           ),
                           onPressed: () {
-                            nextScreen(
-                                context,
-                                DetailsVentes(
-                                  id: '${sells[index]["id"]}',
-                                  ClientName: '${sells[index]["client_name"]}',
-                                ));
+                            var MontantPaye =
+                                double.parse("${sells[index]["amount"]}") -
+                                    double.parse("${sells[index]["reste"]}");
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => DetailsVentes(
+                                        id: '${sells[index]["id"]}',
+                                        ClientName:
+                                            '${sells[index]["client_name"]}',
+                                        Montantpaye: '$MontantPaye',
+                                      )),
+                              (Route<dynamic> route) => false,
+                            );
                           }),
                     )),
                     DataCell(Center(
@@ -177,14 +192,7 @@ class _VenteHomeState extends State<VenteHome> {
                             color: Colors.blue,
                           ),
                           onPressed: () {
-                            setState(() {
-                              dateController.text =
-                                  '${sells[index]["date_sell"]}';
-                              nameClientController.text =
-                                  '${sells[index]["client_name"]}';
-                            });
-
-                            _showFinishForm(context, '${sells[index]["id"]}');
+                            nextScreen(context, EditVentePage(sellId: '${sells[index]["id"]}', amount: '${sells[index]["amount"]}', clientName: '${sells[index]["client_name"]}', sellDate: '${sells[index]["date_sell"]}', sellReste: '${sells[index]["reste"]}',));
                           }),
                     )),
                     DataCell(Center(
@@ -326,114 +334,112 @@ class _VenteHomeState extends State<VenteHome> {
     );
   }
 
-  _showFinishForm(
-    BuildContext context,
-    String sell_id,
-  ) {
-    return showDialog(
-        context: context,
-        barrierDismissible: true,
-        builder: (param) {
-          return AlertDialog(
-            actions: [
-              TextButton(
-                child: const Text(
-                  'Annuler',
-                  style: TextStyle(color: Colors.red),
-                ),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-              TextButton(
-                child: const Text('Valider',
-                    style: TextStyle(color: Colors.green)),
-                onPressed: () async {
-                  if (_formKey.currentState!.validate()) {
-                    // //Update amount and reste
-                    var UpdateSells = await sqlDb.updateData('''
-                          UPDATE Sells SET client_name ="${nameClientController.text}", date_sell = "${dateController.text}" WHERE sell_id="$sell_id"
-                      ''');
-                    print("===== SELL UPDATE DONE ==========");
+  // _showFinishForm(
+  //   BuildContext context,
+  //   String sell_id,
+  // ) {
+  //   return showDialog(
+  //       context: context,
+  //       barrierDismissible: true,
+  //       builder: (param) {
+  //         return AlertDialog(
+  //           actions: [
+  //             TextButton(
+  //               child: const Text(
+  //                 'Annuler',
+  //                 style: TextStyle(color: Colors.red),
+  //               ),
+  //               onPressed: () {
+  //                 Navigator.of(context).pop();
+  //               },
+  //             ),
+  //             TextButton(
+  //               child: const Text('Valider',
+  //                   style: TextStyle(color: Colors.green)),
+  //               onPressed: () async {
+  //                 if (_formKey.currentState!.validate()) {
+  //                   // //Update amount and reste
+  //                   var UpdateSells = await sqlDb.updateData('''
+  //                         UPDATE Sells SET client_name ="${nameClientController.text}", date_sell = "${dateController.text}" WHERE sell_id="$sell_id"
+  //                     ''');
+  //                   print("===== SELL UPDATE DONE ==========");
 
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const VenteHome()),
-                      (Route<dynamic> route) =>  false,
-                    );
+  //                   Navigator.pushAndRemoveUntil(
+  //                     context,
+  //                     MaterialPageRoute(
+  //                         builder: (context) => const VenteHome()),
+  //                     (Route<dynamic> route) => false,
+  //                   );
+  //                 }
+  //               },
+  //             ),
+  //           ],
+  //           title: const Center(child: Text("Modifier")),
+  //           content: SingleChildScrollView(
+  //               child: Form(
+  //             key: _formKey,
+  //             child: Column(children: [
+  //               //Nom du client
+  //               Container(
+  //                   padding: const EdgeInsets.only(left: 20, right: 20),
+  //                   margin: const EdgeInsets.only(top: 10),
+  //                   child: TextFormField(
+  //                     controller: nameClientController,
+  //                     validator: MultiValidator([
+  //                       RequiredValidator(
+  //                           errorText: "Veuillez entrer le nom du client")
+  //                     ]),
+  //                     autovalidateMode: AutovalidateMode.onUserInteraction,
+  //                     decoration: const InputDecoration(
+  //                       enabledBorder: OutlineInputBorder(
+  //                           borderSide: BorderSide(
+  //                               color: Color.fromARGB(255, 45, 157, 220)),
+  //                           borderRadius:
+  //                               BorderRadius.all(Radius.circular(10))),
+  //                       border: OutlineInputBorder(
+  //                           borderRadius:
+  //                               BorderRadius.all(Radius.circular(10))),
+  //                       label: Text("Nom du client"),
+  //                       labelStyle:
+  //                           TextStyle(fontSize: 13, color: Colors.black),
+  //                     ),
+  //                   )),
 
-                    
-                  }
-                },
-              ),
-            ],
-            title: const Center(child: Text("Modifier")),
-            content: SingleChildScrollView(
-                child: Form(
-              key: _formKey,
-              child: Column(children: [
-                //Nom du client
-                Container(
-                    padding: const EdgeInsets.only(left: 20, right: 20),
-                    margin: const EdgeInsets.only(top: 10),
-                    child: TextFormField(
-                      controller: nameClientController,
-                      validator: MultiValidator([
-                        RequiredValidator(
-                            errorText: "Veuillez entrer le nom du client")
-                      ]),
-                      autovalidateMode: AutovalidateMode.onUserInteraction,
-                      decoration: const InputDecoration(
-                        enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
-                                color: Color.fromARGB(255, 45, 157, 220)),
-                            borderRadius:
-                                BorderRadius.all(Radius.circular(10))),
-                        border: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.all(Radius.circular(10))),
-                        label: Text("Nom du client"),
-                        labelStyle:
-                            TextStyle(fontSize: 13, color: Colors.black),
-                      ),
-                    )),
-
-                Container(
-                  padding: const EdgeInsets.only(left: 20, right: 20),
-                  margin: const EdgeInsets.only(top: 10),
-                  child: DateTimeField(
-                    controller: dateController,
-                    decoration: const InputDecoration(
-                      enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(
-                              color: Color.fromARGB(255, 45, 157, 220)),
-                          borderRadius: BorderRadius.all(Radius.circular(10))),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(10))),
-                      label: Text("Date"),
-                      labelStyle: TextStyle(fontSize: 13, color: Colors.black),
-                    ),
-                    format: format,
-                    onShowPicker: (context, currentValue) async {
-                      final date = await showDatePicker(
-                          context: context,
-                          firstDate: DateTime(1900),
-                          initialDate: currentValue ?? DateTime.now(),
-                          lastDate: DateTime(2100));
-                      if (date != null) {
-                        final time = TimeOfDay.fromDateTime(DateTime.now());
-                        return DateTimeField.combine(date, time);
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-              ]),
-            )),
-          );
-        });
-  }
+  //               Container(
+  //                 padding: const EdgeInsets.only(left: 20, right: 20),
+  //                 margin: const EdgeInsets.only(top: 10),
+  //                 child: DateTimeField(
+  //                   controller: dateController,
+  //                   decoration: const InputDecoration(
+  //                     enabledBorder: OutlineInputBorder(
+  //                         borderSide: BorderSide(
+  //                             color: Color.fromARGB(255, 45, 157, 220)),
+  //                         borderRadius: BorderRadius.all(Radius.circular(10))),
+  //                     border: OutlineInputBorder(
+  //                         borderRadius: BorderRadius.all(Radius.circular(10))),
+  //                     label: Text("Date"),
+  //                     labelStyle: TextStyle(fontSize: 13, color: Colors.black),
+  //                   ),
+  //                   format: format,
+  //                   onShowPicker: (context, currentValue) async {
+  //                     final date = await showDatePicker(
+  //                         context: context,
+  //                         firstDate: DateTime(1900),
+  //                         initialDate: currentValue ?? DateTime.now(),
+  //                         lastDate: DateTime(2100));
+  //                     if (date != null) {
+  //                       final time = TimeOfDay.fromDateTime(DateTime.now());
+  //                       return DateTimeField.combine(date, time);
+  //                     }
+  //                     return null;
+  //                   },
+  //                 ),
+  //               ),
+  //             ]),
+  //           )),
+  //         );
+  //       });
+  // }
 }
 
 enum DrawerSections {

@@ -27,7 +27,7 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
-  flutter_svg: ^1.1.5-nullsafety.3
+  
   blue_print_pos: ^0.0.13
   blue_thermal_printer: ^1.2.3
   cloud_firestore: ^3.4.9
@@ -38,7 +38,7 @@ dependencies:
   datetime_picker_formfield: ^2.0.1
   dropdown_textfield: ^1.0.5
   esc_pos_bluetooth: ^0.4.1
-  expandable: ^5.0.1
+  
   firebase_auth: ^3.10.0
   firebase_core: ^1.23.0
   flutter:
@@ -51,7 +51,9 @@ dependencies:
   smooth_page_indicator: ^1.0.0+2
   sqflite: ^2.1.0
   responsive_framework: ^0.2.0
-  google_fonts: ^3.0.1
+  floating_action_bubble: ^1.1.4
+ 
+  
 
 dev_dependencies:
   flutter_native_splash: ^2.2.10

@@ -10,72 +10,40 @@ class VenteLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.all(10),
+      margin: const EdgeInsets.all(8),
       decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20), color: Colors.white),
       child: ListTile(
           onTap: () {
             print("test");
           },
-          title: Padding(
-            padding: const EdgeInsets.all(4),
-            child: Text.rich(
-              TextSpan(
-                  text: "Nom :",
-                  style: const TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.bold),
-                  children: [
-                    TextSpan(
-                      text: elmt.name,
-                      style: const TextStyle(
-                          fontSize: 20, fontWeight: FontWeight.normal),
-                    )
-                  ]),
+          title: Center(
+            child: Text(
+              "${elmt.quantity}  x  ${elmt.name} = ${elmt.total}",
+              style: const TextStyle(fontSize: 20),
             ),
           ),
-          subtitle: Padding(
-            padding: const EdgeInsets.all(8.0),
+          trailing: SizedBox(
+            width: 100,
             child: Row(
               children: [
-                Text.rich(
-                  TextSpan(
-                      text: "Quantité :",
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.bold),
-                      children: [
-                        TextSpan(
-                          text: elmt.quantity,
-                          style: const TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.normal),
-                        )
-                      ]),
-                ),
-                const SizedBox(
-                  width: 20,
-                ),
-                Text.rich(
-                  TextSpan(
-                      text: "Montant :",
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.bold),
-                      children: [
-                        TextSpan(
-                          text: elmt.total,
-                          style: const TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.normal),
-                        )
-                      ]),
-                ),
+                IconButton(
+                    icon: const Icon(
+                      Icons.edit,
+                      color: Colors.blue,
+                      size: 30,
+                    ),
+                    onPressed: delete),
+                IconButton(
+                    icon: const Icon(
+                      Icons.delete,
+                      color: Colors.red,
+                      size: 30,
+                    ),
+                    onPressed: delete),
               ],
             ),
-          ),
-          trailing: IconButton(
-              icon: const Icon(
-                Icons.delete,
-                color: Colors.red,
-                size: 30,
-              ),
-              onPressed: delete)),
+          )),
     );
   }
 }

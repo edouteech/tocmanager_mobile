@@ -20,13 +20,16 @@ List elements = [];
 List ventes = [];
 var total = "";
 var sum = 0.0;
-var reste = 0.0;
+var sell_reste = 0.0;
 
 class _AjouterVentePageState extends State<AjouterVentePage> {
   AuthService authService = AuthService();
   final format = DateFormat("yyyy-MM-dd HH:mm:ss");
   /* Form key */
   final _formKey = GlobalKey<FormState>();
+  final _formuKey = GlobalKey<FormState>();
+  final _formaKey = GlobalKey<FormState>();
+
   /* Database */
   SqlDb sqlDb = SqlDb();
 
@@ -45,6 +48,8 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
 
   @override
   void initState() {
+    dateController.text =
+        DateFormat("yyyy-MM-dd hh:mm:ss").format(DateTime.now());
     readData();
     super.initState();
   }
@@ -76,17 +81,20 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          setState(() {
-            quantityController.text = "1";
-          });
-          _showFormDialog(context);
-        },
-        backgroundColor: Colors.blue,
-        child: const Icon(
-          Icons.add,
-          size: 32,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 100),
+        child: FloatingActionButton(
+          onPressed: () {
+            setState(() {
+              quantityController.text = "1";
+            });
+            _showFormDialog(context);
+          },
+          backgroundColor: Colors.blue,
+          child: const Icon(
+            Icons.add,
+            size: 32,
+          ),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
@@ -103,52 +111,241 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
         child: Column(
           children: [
             SizedBox(
-              height: 550,
-              child: ListView.builder(
-                primary: true,
-                itemCount: elements.length,
-                shrinkWrap: true,
-                itemBuilder: (BuildContext context, i) {
-                  final element = elements[i];
-                  return VenteLine(
-                      elmt: element,
-                      delete: () {
-                        setState(() {
-                          elements.removeAt(i);
-
-                          sum = (sum - (double.parse(ventes[i]["total"])));
-                          ventes.removeAt(i);
-                        });
-                      });
-                },
-              ),
-            ),
-            GestureDetector(
-              onTap: () {
-                if (sum != 0.0) {
-                  sommeclientController.text = sum.toString();
-                  _showFinishForm(context);
-                } else {
-                  print("======No data====");
-                }
-              },
-              child: Container(
-                alignment: Alignment.center,
-                margin: const EdgeInsets.only(left: 110, right: 110, top: 10),
-                height: 54,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  color: const Color.fromARGB(255, 45, 157, 220),
-                  boxShadow: const [
-                    BoxShadow(
-                        offset: Offset(0, 5),
-                        blurRadius: 10,
-                        color: Color(0xffEEEEEE)),
+              height: 90,
+              child: Form(
+                key: _formKey,
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: //Nom du client
+                          Container(
+                              padding:
+                                  const EdgeInsets.only(left: 20, right: 20),
+                              margin: const EdgeInsets.only(top: 10),
+                              child: TextFormField(
+                                controller: nameClientController,
+                                validator: MultiValidator([
+                                  RequiredValidator(
+                                      errorText:
+                                          "Veuillez entrer le nom du client")
+                                ]),
+                                autovalidateMode:
+                                    AutovalidateMode.onUserInteraction,
+                                decoration: const InputDecoration(
+                                  contentPadding: EdgeInsets.fromLTRB(
+                                      20.0, 10.0, 20.0, 10.0),
+                                  enabledBorder: OutlineInputBorder(
+                                      borderSide: BorderSide(
+                                          color: Color.fromARGB(
+                                              255, 45, 157, 220)),
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(10))),
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(10))),
+                                  label: Text("Nom du client"),
+                                  labelStyle: TextStyle(
+                                      fontSize: 13, color: Colors.black),
+                                ),
+                              )),
+                    ),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.only(left: 20, right: 20),
+                        margin: const EdgeInsets.only(top: 10),
+                        child: DateTimeField(
+                          controller: dateController,
+                          decoration: const InputDecoration(
+                            contentPadding:
+                                EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
+                            enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                    color: Color.fromARGB(255, 45, 157, 220)),
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(10))),
+                            border: OutlineInputBorder(
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(10))),
+                            label: Text("Date"),
+                            labelStyle:
+                                TextStyle(fontSize: 13, color: Colors.black),
+                          ),
+                          format: format,
+                          onShowPicker: (context, currentValue) async {
+                            final date = await showDatePicker(
+                                context: context,
+                                firstDate: DateTime(1900),
+                                initialDate: currentValue ?? DateTime.now(),
+                                lastDate: DateTime(2100));
+                          },
+                        ),
+                      ),
+                    )
                   ],
                 ),
-                child: Text(
-                  "$sum",
-                  style: const TextStyle(color: Colors.white),
+              ),
+            ),
+            SizedBox(
+              height: 470,
+              child: Scrollbar(
+                child: ListView.builder(
+                  primary: true,
+                  itemCount: elements.length,
+                  shrinkWrap: true,
+                  itemBuilder: (BuildContext context, i) {
+                    final element = elements[i];
+                    return VenteLine(
+                        elmt: element,
+                        delete: () {
+                          setState(() {
+                            elements.removeAt(i);
+
+                            sum = (sum - (double.parse(ventes[i]["total"])));
+                            ventes.removeAt(i);
+                          });
+                        });
+                  },
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 70,
+              child: Form(
+                key: _formaKey,
+                child: Row(
+                  children: [
+                    Flexible(
+                      child:
+                          //Somme perçue
+                          Container(
+                              padding:
+                                  const EdgeInsets.only(left: 20, right: 20),
+                              child: TextFormField(
+                                keyboardType: TextInputType.number,
+                                controller: sommeclientController,
+                                validator: (value) {
+                                  if (value!.isEmpty) {
+                                    return "Veuillez entrer un montant";
+                                  } else if (double.parse(value).toInt() >
+                                      sum) {
+                                    return """ Montant maximun : $sum """;
+                                  }
+                                  return null;
+                                },
+                                autovalidateMode:
+                                    AutovalidateMode.onUserInteraction,
+                                decoration: const InputDecoration(
+                                  contentPadding: EdgeInsets.fromLTRB(
+                                      20.0, 10.0, 20.0, 10.0),
+                                  enabledBorder: OutlineInputBorder(
+                                      borderSide: BorderSide(
+                                          color: Color.fromARGB(
+                                              255, 45, 157, 220)),
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(10))),
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(10))),
+                                  label: Text("Somme reçue"),
+                                  labelStyle: TextStyle(
+                                      fontSize: 13, color: Colors.black),
+                                ),
+                              )),
+                    ),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.only(left: 20, right: 20),
+                        margin: const EdgeInsets.only(top: 10),
+                        child: GestureDetector(
+                          onTap: () async {
+                            if (sum != 0.0) {
+                              if (_formaKey.currentState!.validate()) {
+                                print("== Amount equal to : $sum");
+                                if (_formKey.currentState!.validate()) {
+                                  print("== Date and user are mentionned");
+                                  print('${sommeclientController.text}');
+                                  print(ventes);
+                                  // Sells
+                                  int InsertSells = await sqlDb.inserData(
+                                      ''' INSERT INTO Sells(date_sell, client_name) VALUES ('${dateController.text}', '${nameClientController.text}') ''');
+                                  print(
+                                      "=== $InsertSells ==== SELLS INSERTION DONE ==========");
+
+                                  //read last sells
+                                  var ReadLastInsertion = await sqlDb.readData(
+                                      ''' SELECT * FROM Sells ORDER BY id DESC LIMIT 1 ''');
+                                  print("====== ReadLast ==========");
+
+                                  //Insert sell_line
+                                  for (var i = 0; i < ventes.length; i++) {
+                                    int InsertSell_line = await sqlDb.inserData(
+                                        ''' INSERT INTO Sell_lines(quantity, amount, sell_id, product_id) VALUES('${ventes[i]["quantity"]}','${ventes[i]["total"]}','${ReadLastInsertion[0]["id"]}', '${ventes[i]["id"]}') ''');
+                                    print(
+                                        "===$InsertSell_line==== SELL_LINE INSERTION DONE ==========");
+                                  }
+
+                                  //cheick amount
+                                  var SellsAmount = await sqlDb.readData(
+                                      ''' SELECT SUM (amount) as sellAmount FROM Sell_lines WHERE sell_id='${ReadLastInsertion[0]["id"]}' ''');
+                                  print(
+                                      "===== Sells Amount Checked ==> $SellsAmount ==========");
+
+                                  //Get Reste
+                                  sell_reste = SellsAmount[0]['sellAmount'] -
+                                      double.parse(sommeclientController.text);
+
+                                  //Update amount and reste
+                                  var UpdateSells = await sqlDb.updateData(
+                                      ''' UPDATE Sells SET amount ="${SellsAmount[0]['sellAmount']}", reste = "$sell_reste" WHERE id="${ReadLastInsertion[0]["id"]}" ''');
+                                  print("===== SELL INSERTION DONE ==========");
+
+                                  //Encaissement
+                                  int response_encaissement = await sqlDb.inserData(
+                                      ''' INSERT INTO Encaissements(amount, date_encaissement, client_name, sell_id) VALUES ('${sommeclientController.text}', '${dateController.text}','${nameClientController.text}', '${ReadLastInsertion[0]["id"]}') ''');
+                                  print(
+                                      "===$response_encaissement==== SELLS INSERTION DONE ==========");
+
+                                  setState(() {
+                                    elements.clear();
+                                    ventes.clear();
+                                    sum = 0.0;
+                                    _formaKey.currentState?.reset();
+                                    _formKey.currentState?.reset();
+                                    sell_reste = 0.0;
+                                  });
+
+                                  Navigator.of(context).pushReplacement(
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const VenteHome()));
+                                }
+                              }
+                            } else {
+                              print("==No Data==");
+                            }
+                          },
+                          child: Container(
+                            alignment: Alignment.center,
+                            height: 54,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              color: const Color.fromARGB(255, 45, 157, 220),
+                              boxShadow: const [
+                                BoxShadow(
+                                    offset: Offset(0, 5),
+                                    blurRadius: 10,
+                                    color: Color(0xffEEEEEE)),
+                              ],
+                            ),
+                            child: Text(
+                              "$sum",
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  ],
                 ),
               ),
             ),
@@ -178,7 +375,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                 child: const Text('Valider',
                     style: TextStyle(color: Colors.green)),
                 onPressed: () {
-                  if (_formKey.currentState!.validate()) {
+                  if (_formuKey.currentState!.validate()) {
                     var prix = double.parse("${priceProductController.text}");
                     var quantite = int.parse("${quantityController.text}");
                     setState(() {
@@ -198,10 +395,14 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                       });
 
                       sum = (sum + (double.parse(total)));
-                      
                     });
-                    
                     Navigator.of(context).pop();
+                    setState(() {
+                      selectedProductValue = null;
+                      _formuKey.currentState?.reset();
+                      sommeclientController.text = sum.toString();
+                    });
+                    print(ventes);
                   }
                 },
               ),
@@ -209,7 +410,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
             title: const Center(child: Text("Ligne de vente ")),
             content: SingleChildScrollView(
                 child: Form(
-              key: _formKey,
+              key: _formuKey,
               child: Column(children: [
                 //Nom produit
                 Container(
@@ -303,187 +504,6 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                             TextStyle(fontSize: 13, color: Colors.black),
                       ),
                     ))
-              ]),
-            )),
-          );
-        });
-  }
-
-  _showFinishForm(
-    BuildContext context,
-  ) {
-    return showDialog(
-        context: context,
-        barrierDismissible: true,
-        builder: (param) {
-          return AlertDialog(
-            actions: [
-              TextButton(
-                child: const Text(
-                  'Annuler',
-                  style: TextStyle(color: Colors.red),
-                ),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-              TextButton(
-                child: const Text('Valider',
-                    style: TextStyle(color: Colors.green)),
-                onPressed: () async {
-                  // var sommeclient = int.parse(sommeclientController.text);
-                  // setState(() {
-                  //   reste = sum - sommeclient;
-                  // });
-                  if (_formKey.currentState!.validate()) {
-                    // Sells
-                    int InsertSells = await sqlDb.inserData('''
-                    INSERT INTO Sells(date_sell, client_name) VALUES('${dateController.text}', '${nameClientController.text}')
-                  ''');
-                    print(
-                        "=== $InsertSells ==== SELLS INSERTION DONE ==========");
-
-                    //read last sells
-                    var ReadLastInsertion = await sqlDb.readData('''
-                    SELECT * FROM Sells ORDER BY id DESC LIMIT 1
-                  ''');
-                    print("====== ReadLast ==========");
-
-                    //Insert sell_line
-                    for (var i = 0; i < ventes.length; i++) {
-                      int InsertSell_line = await sqlDb.inserData('''
-                    INSERT INTO Sell_lines(quantity, amount, sell_id, product_id) VALUES('${ventes[i]["quantity"]}', '${ventes[i]["total"]}','${ReadLastInsertion[0]["id"]}', '${ventes[i]["id"]}')
-                  ''');
-                      print(
-                          "===$InsertSell_line==== SELL_LINE INSERTION DONE ==========");
-                    }
-
-                    //cheick amount
-                    var SellsAmount = await sqlDb.readData(''' 
-                      SELECT SUM (amount) as sellAmount FROM Sell_lines WHERE sell_id='${ReadLastInsertion[0]["id"]}'
-                     ''');
-                    print("=====Sells Amount Checked==========");
-
-                    var sell_reste = SellsAmount[0]['sellAmount'] -
-                        double.parse(sommeclientController.text);
-
-                    // //Update amount and reste
-                    var UpdateSells = await sqlDb.updateData('''
-                          UPDATE Sells SET amount ="${SellsAmount[0]['sellAmount']}", reste = "$sell_reste" WHERE id="${ReadLastInsertion[0]["id"]}"
-                      ''');
-                    print("===== SELL INSERTION DONE ==========");
-
-                    // //Encaissement
-                    int response_encaissement = await sqlDb.inserData('''
-                      INSERT INTO Encaissements(amount, date_encaissement, client_name, sell_id) VALUES('${sommeclientController.text}', '${dateController.text}','${nameClientController.text}', '${ReadLastInsertion[0]["id"]}')
-                    ''');
-
-                    print(
-                        "===$response_encaissement==== SELLS INSERTION DONE ==========");
-
-                    setState(() {
-                      elements.clear();
-                      sum = 0.0;
-                    });
-
-                    Navigator.of(context).pushReplacement(MaterialPageRoute(
-                        builder: (context) => const VenteHome()));
-                  }
-                },
-              ),
-            ],
-            title: const Center(child: Text("Validation")),
-            content: SingleChildScrollView(
-                child: Form(
-              key: _formKey,
-              child: Column(children: [
-                //Nom du client
-                Container(
-                    padding: const EdgeInsets.only(left: 20, right: 20),
-                    margin: const EdgeInsets.only(top: 10),
-                    child: TextFormField(
-                      controller: nameClientController,
-                      validator: MultiValidator([
-                        RequiredValidator(
-                            errorText: "Veuillez entrer le nom du client")
-                      ]),
-                      autovalidateMode: AutovalidateMode.onUserInteraction,
-                      decoration: const InputDecoration(
-                        enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
-                                color: Color.fromARGB(255, 45, 157, 220)),
-                            borderRadius:
-                                BorderRadius.all(Radius.circular(10))),
-                        border: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.all(Radius.circular(10))),
-                        label: Text("Nom du client"),
-                        labelStyle:
-                            TextStyle(fontSize: 13, color: Colors.black),
-                      ),
-                    )),
-
-                Container(
-                  padding: const EdgeInsets.only(left: 20, right: 20),
-                  margin: const EdgeInsets.only(top: 10),
-                  child: DateTimeField(
-                    controller: dateController,
-                    decoration: const InputDecoration(
-                      enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(
-                              color: Color.fromARGB(255, 45, 157, 220)),
-                          borderRadius: BorderRadius.all(Radius.circular(10))),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(10))),
-                      label: Text("Date"),
-                      labelStyle: TextStyle(fontSize: 13, color: Colors.black),
-                    ),
-                    format: format,
-                    onShowPicker: (context, currentValue) async {
-                      final date = await showDatePicker(
-                          context: context,
-                          firstDate: DateTime(1900),
-                          initialDate: currentValue ?? DateTime.now(),
-                          lastDate: DateTime(2100));
-                      if (date != null) {
-                        final time = TimeOfDay.fromDateTime(DateTime.now());
-                        return DateTimeField.combine(date, time);
-                      }
-                    },
-                  ),
-                ),
-
-                //Somme perçue
-                Container(
-                    padding: const EdgeInsets.only(left: 20, right: 20),
-                    margin: const EdgeInsets.only(top: 10),
-                    child: TextFormField(
-                      keyboardType: TextInputType.number,
-                      controller: sommeclientController,
-                      validator: (value) {
-                        if (value!.isEmpty) {
-                          return "Veuillez entrer un montant";
-                        } else if (double.parse(value).toInt() > sum) {
-                          return """   Vous ne pouvez pas entrer 
-                          plus de $sum """;
-                        }
-                        return null;
-                      },
-                      autovalidateMode: AutovalidateMode.onUserInteraction,
-                      decoration: const InputDecoration(
-                        enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
-                                color: Color.fromARGB(255, 45, 157, 220)),
-                            borderRadius:
-                                BorderRadius.all(Radius.circular(10))),
-                        border: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.all(Radius.circular(10))),
-                        label: Text("Somme reçue"),
-                        labelStyle:
-                            TextStyle(fontSize: 13, color: Colors.black),
-                      ),
-                    )),
               ]),
             )),
           );
