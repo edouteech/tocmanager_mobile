@@ -27,11 +27,14 @@ class EditVentePage extends StatefulWidget {
 class _EditVentePageState extends State<EditVentePage> {
   double sum = 0.0;
   double reste = 0.0;
+  var sell_reste = 0.0;
+  var total = "";
   final format = DateFormat("yyyy-MM-dd HH:mm:ss");
   /* Form key */
+  /* Form key */
   final _formKey = GlobalKey<FormState>();
+  final _formuKey = GlobalKey<FormState>();
   final _formaKey = GlobalKey<FormState>();
-  final _listKey = GlobalKey<FormState>();
 
   /* Fields Controller */
   TextEditingController productsController = TextEditingController();
@@ -46,6 +49,7 @@ class _EditVentePageState extends State<EditVentePage> {
   void initState() {
     reloadData();
     readSell_line();
+    readData();
     super.initState();
   }
 
@@ -55,6 +59,15 @@ class _EditVentePageState extends State<EditVentePage> {
     sum = double.parse(widget.amount);
     reste = double.parse(widget.amount) - double.parse(widget.sellReste);
     sommeclientController.text = reste.toString();
+  }
+
+  /* Read data for database */
+  Future readData() async {
+    List<Map> response = await sqlDb.readData("SELECT * FROM 'Products'");
+    products.addAll(response);
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   SqlDb sqlDb = SqlDb();
@@ -81,6 +94,20 @@ class _EditVentePageState extends State<EditVentePage> {
     }
   }
 
+  /* Dropdown products items */
+  List products = [];
+  String? selectedProductValue;
+  List<DropdownMenuItem<String>> get dropdownProductsItems {
+    List<DropdownMenuItem<String>> menuProductsItems = [];
+    for (var i = 0; i < products.length; i++) {
+      menuProductsItems.add(DropdownMenuItem(
+        value: "${products[i]["id"]}",
+        child: Text("${products[i]["name"]}"),
+      ));
+    }
+    return menuProductsItems;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -88,10 +115,10 @@ class _EditVentePageState extends State<EditVentePage> {
         padding: const EdgeInsets.only(bottom: 100),
         child: FloatingActionButton(
           onPressed: () {
-            // setState(() {
-            //   quantityController.text = "1";
-            // });
-            // _showFormDialog(context);
+            setState(() {
+              quantityController.text = "1";
+            });
+            _showFormDialog(context);
           },
           backgroundColor: Colors.blue,
           child: const Icon(
@@ -192,7 +219,6 @@ class _EditVentePageState extends State<EditVentePage> {
             height: 470,
             child: Scrollbar(
               child: ListView.builder(
-                key: _listKey,
                 primary: true,
                 itemCount: elements.length,
                 shrinkWrap: true,
@@ -383,7 +409,155 @@ class _EditVentePageState extends State<EditVentePage> {
     );
   }
 
-  void removeItem(int i) {
-    print("hh");
+  _showFormDialog(BuildContext context) {
+    return showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (param) {
+          return AlertDialog(
+            actions: [
+              TextButton(
+                child: const Text(
+                  'Annuler',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                },
+              ),
+              TextButton(
+                child: const Text('Valider',
+                    style: TextStyle(color: Colors.green)),
+                onPressed: () {
+                  if (_formuKey.currentState!.validate()) {
+                    var prix = double.parse(priceProductController.text);
+                    var quantite = int.parse(quantityController.text);
+                    setState(() {
+                      total = (quantite * prix).toString();
+                    });
+
+                    setState(() {
+                      elements.add({
+                        "id": widget.sellId,
+                        "product_name": nameProductsController.text,
+                        "product_id": "$selectedProductValue",
+                        "total": total,
+                        "prix_nitaire": priceProductController.text,
+                        "quantity": quantityController.text
+                      });
+
+                      sum = (sum + (double.parse(total)));
+                    });
+                    Navigator.of(context).pop();
+                    setState(() {
+                      selectedProductValue = null;
+                      _formuKey.currentState?.reset();
+                      sommeclientController.text = sum.toString();
+                    });
+                  }
+                },
+              ),
+            ],
+            title: const Center(child: Text("Ligne de vente ")),
+            content: SingleChildScrollView(
+                child: Form(
+              key: _formuKey,
+              child: Column(children: [
+                //Nom produit
+                Container(
+                    padding: const EdgeInsets.only(left: 20, right: 20),
+                    margin: const EdgeInsets.only(top: 10),
+                    child: DropdownButtonFormField(
+                        validator: (value) =>
+                            value == null ? 'Sélectionner un produit' : null,
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Nom du produit"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                        dropdownColor: Colors.white,
+                        value: selectedProductValue,
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            selectedProductValue = newValue!;
+                            if (selectedProductValue != null) {
+                              setState(() async {
+                                var prix = await sqlDb.readData(
+                                    "SELECT * FROM Products WHERE id =$selectedProductValue");
+
+                                setState(() {
+                                  priceProductController.text =
+                                      "${prix[0]["price_sell"]}";
+                                  nameProductsController.text =
+                                      "${prix[0]["name"]}";
+                                });
+                              });
+                            }
+                          });
+                        },
+                        items: dropdownProductsItems)),
+                //Prix unitaire
+                Container(
+                    alignment: Alignment.center,
+                    margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
+                    child: TextFormField(
+                        validator: MultiValidator([
+                          RequiredValidator(
+                              errorText: "Veuillez entrer un prix")
+                        ]),
+                        controller: priceProductController,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Prix unitaire"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ))),
+
+                //Quantité
+                Container(
+                    alignment: Alignment.center,
+                    margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
+                    child: TextFormField(
+                      keyboardType: TextInputType.number,
+                      controller: quantityController,
+                      validator: MultiValidator([
+                        RequiredValidator(
+                            errorText: "Veuillez entrer une quantité")
+                      ]),
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      decoration: const InputDecoration(
+                        enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                                color: Color.fromARGB(255, 45, 157, 220)),
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(10))),
+                        border: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(10))),
+                        label: Text("Quantité"),
+                        labelStyle:
+                            TextStyle(fontSize: 13, color: Colors.black),
+                      ),
+                    ))
+              ]),
+            )),
+          );
+        });
   }
 }
