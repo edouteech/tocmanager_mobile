@@ -35,6 +35,7 @@ class _VentePrintState extends State<VentePrint> {
       setState(() {});
     }
   }
+
   List sell_lines = [];
   void readSell_LineData() async {
     List<Map> response = await sqlDb.readData(
@@ -109,20 +110,20 @@ class _VentePrintState extends State<VentePrint> {
                         printer.printNewLine();
                         printer.print3Column(
                             "Nom du produit ", "Quantité", "Montant", 0,
-                            charset: "utf-8");
+                            format: "%-10s %10s %10s %n", charset: "windows-1250");
                         for (var i = 0; i < sell_lines.length; i++) {
                           printer.print3Column(
                               "${sell_lines[i]['product_name']}",
                               "${sell_lines[i]['quantity']}",
                               "${sell_lines[i]['amount']}",
-                              0);
+                              0,);
                           printer.printNewLine();
                         }
                         printer.printCustom("-------------", 2, 1);
 
                         printer.printLeftRight(
                             "Montant reçu:", "${sells[0]['amount']}", 0,
-                            charset: "UTF-8");
+                            charset: "windows-1250");
                         printer.printLeftRight(
                           "Total:",
                           "${sells[0]['amount']}",
@@ -134,7 +135,7 @@ class _VentePrintState extends State<VentePrint> {
                           1,
                         );
                         printer.printCustom("Merci d'être passé", 2, 1,
-                            charset: "UTF-8");
+                           charset: "windows-1250");
                         printer.printNewLine();
                         printer.printQRcode(widget.sell_id, 200, 200, 1);
                         printer.printNewLine();
