@@ -1,9 +1,10 @@
-// ignore_for_file: file_names, non_constant_identifier_names
+// ignore_for_file: file_names, non_constant_identifier_names, avoid_print, unused_local_variable, use_build_context_synchronously
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:intl/intl.dart';
 import 'package:tocmanager/database/sqfdb.dart';
+import 'package:tocmanager/screens/ventes/vente_home.dart';
 
 class EditVentePage extends StatefulWidget {
   final String clientName;
@@ -63,7 +64,18 @@ class _EditVentePageState extends State<EditVentePage> {
     List<Map> response = await sqlDb.readData(
         "SELECT Sell_lines.*,Products.name as product_name FROM 'Products','Sell_lines' WHERE Sell_lines.product_id = Products.id AND sell_id='${widget.sellId}'");
     sell_line.addAll(response);
-    elements.addAll(sell_line);
+    for (var i = 0; i < sell_line.length; i++) {
+      var prix_nitaire = double.parse('${sell_line[i]["amount"]}') /
+          double.parse('${sell_line[i]["quantity"]}');
+      elements.add({
+        "id": "${sell_line[i]['id']}",
+        "product_name": "${sell_line[i]['product_name']}",
+        "product_id": "${sell_line[i]['product_id']}",
+        "total": '${sell_line[i]['amount']}',
+        "prix_nitaire": '$prix_nitaire',
+        "quantity": '${sell_line[i]['quantity']}'
+      });
+    }
     if (mounted) {
       setState(() {});
     }
@@ -185,8 +197,6 @@ class _EditVentePageState extends State<EditVentePage> {
                 itemCount: elements.length,
                 shrinkWrap: true,
                 itemBuilder: (BuildContext context, i) {
-                  var prix_nitaire = double.parse('${elements[i]["amount"]}') /
-                      double.parse('${elements[i]["quantity"]}');
                   return Container(
                     margin: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -196,7 +206,7 @@ class _EditVentePageState extends State<EditVentePage> {
                         onTap: () {},
                         title: Center(
                           child: Text(
-                            "${elements[i]["quantity"]}  x  ${elements[i]["product_name"]} = $prix_nitaire",
+                            "${elements[i]["quantity"]}  x  ${elements[i]["product_name"]} = ${elements[i]["total"]}",
                             style: const TextStyle(fontSize: 20),
                           ),
                         ),
@@ -218,11 +228,12 @@ class _EditVentePageState extends State<EditVentePage> {
                                     size: 30,
                                   ),
                                   onPressed: () {
-                                    
                                     setState(() {
                                       sum = (sum -
                                           (double.parse(elements[i]["total"])));
-                                      sell_line.removeAt(i);
+                                      sommeclientController.text =
+                                          sum.toString();
+                                      elements.removeAt(i);
                                     });
                                   }),
                             ],
@@ -282,6 +293,62 @@ class _EditVentePageState extends State<EditVentePage> {
                       child: GestureDetector(
                         onTap: () async {
                           if (sum != 0.0) {
+                            if (_formaKey.currentState!.validate()) {
+                              print("== Amount equal to : $sum");
+                              if (_formKey.currentState!.validate()) {
+                                print("== Date and user are mentionned");
+                                print('$sommeclientController.text');
+
+                                // Update sell
+                                int UpdateSells = await sqlDb.updateData(
+                                    ''' UPDATE Sells SET date_sell ='${dateController.text}', client_name = '${nameClientController.text}' WHERE id="${widget.sellId}" ''');
+                                print("==== SELLS UPDATE DONE ====");
+
+                                //Delete sell line
+                                int DeleteSell_line = await sqlDb.deleteData(
+                                    ''' DELETE FROM Sell_lines WHERE sell_id ="${widget.sellId}" ''');
+                                print("==== ALL SELL LINE DELETE====");
+
+                                //Insert sell_line
+                                for (var i = 0; i < elements.length; i++) {
+                                  int InsertSell_line = await sqlDb.inserData(
+                                      ''' INSERT INTO Sell_lines(quantity, amount, sell_id, product_id) VALUES('${elements[i]["quantity"]}','${elements[i]["total"]}','${widget.sellId}', '${elements[i]["product_id"]}') ''');
+                                  print(
+                                      "===== SELL_LINE INSERTION DONE ======");
+                                }
+
+                                //cheick amount
+                                var SellsAmount = await sqlDb.readData(
+                                    ''' SELECT SUM (amount) as sellAmount FROM Sell_lines WHERE sell_id='${widget.sellId}' ''');
+                                print(
+                                    "===== Sells Amount Checked ==> $SellsAmount ==========");
+
+                                //Get Reste
+                                var sell_reste = SellsAmount[0]['sellAmount'] -
+                                    double.parse(sommeclientController.text);
+
+                                //Update amount and reste
+                                var NewUpdateSells = await sqlDb.updateData(
+                                    ''' UPDATE Sells SET amount ="${SellsAmount[0]['sellAmount']}", reste = "$sell_reste" WHERE id="${widget.sellId}" ''');
+                                print("===== SELL INSERTION DONE ==========");
+
+                                //Delete Encaissement
+
+                                int DeleteEncaissement = await sqlDb.deleteData(
+                                    ''' DELETE FROM Encaissements WHERE sell_id ="${widget.sellId}" ''');
+                                print("==== ALL SELL LINE DELETE====");
+
+                                //Encaissement
+                                int response_encaissement = await sqlDb.inserData(
+                                    ''' INSERT INTO Encaissements(amount, date_encaissement, client_name, sell_id) VALUES ('${sommeclientController.text}', '${dateController.text}','${nameClientController.text}', '${widget.sellId}') ''');
+                                print("===== SELLS INSERTION DONE =====");
+
+                                Navigator.of(context).pushReplacement(
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            const VenteHome()));
+                              }
+                            }
                           } else {
                             print("==No Data==");
                           }
@@ -317,8 +384,6 @@ class _EditVentePageState extends State<EditVentePage> {
   }
 
   void removeItem(int i) {
-     print("hh");
-    
-   
+    print("hh");
   }
 }

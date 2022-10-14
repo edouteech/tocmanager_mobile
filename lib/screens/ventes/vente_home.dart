@@ -53,7 +53,6 @@ class _VenteHomeState extends State<VenteHome> {
   TextEditingController dateController = TextEditingController();
   TextEditingController nameClientController = TextEditingController();
   /* Form key */
-  final _formKey = GlobalKey<FormState>();
   final format = DateFormat("yyyy-MM-dd HH:mm:ss");
 
   @override
