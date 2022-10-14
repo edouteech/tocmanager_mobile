@@ -2,14 +2,13 @@
 
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
-import 'package:form_field_validator/form_field_validator.dart';
+import 'package:tocmanager/screens/ventes/printpage.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 
 import 'package:floating_action_bubble/floating_action_bubble.dart';
 
 import '../../database/sqfdb.dart';
 import '../../widgets/widgets.dart';
-import '../print/print_page.dart';
 
 class DetailsVentes extends StatefulWidget {
   final String id;
@@ -110,8 +109,8 @@ class _DetailsVentesState extends State<DetailsVentes>
               _animationController!.reverse();
               nextScreen(
                   context,
-                  PrintPage(
-                    buy_id: '${widget.id}',
+                  VentePrint(
+                    sell_id: '${widget.id}',
                   ));
             },
           ),

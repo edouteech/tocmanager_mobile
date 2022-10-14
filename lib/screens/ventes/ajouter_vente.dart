@@ -458,6 +458,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                     alignment: Alignment.center,
                     margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
                     child: TextFormField(
+                      readOnly: true,
                         validator: MultiValidator([
                           RequiredValidator(
                               errorText: "Veuillez entrer un prix")
