@@ -82,10 +82,10 @@ class SqlDb {
     await db.execute('''
         CREATE TABLE "Buys"(
           "id" INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
-          "date_buy" TEXT NOT NULL,
-          "amount" DOUBLE NOT NULL,
+          "date_buy" DATETIME NOT NULL,
+          "amount" DOUBLE DEFAULT 0.0,
           "supplier_id" INT NOT NULL,
-          "reste" DOUBLE NOT NULL,
+          "reste" DOUBLE DEFAULT 0.0,
           "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (supplier_id) REFERENCES Suppliers (id)

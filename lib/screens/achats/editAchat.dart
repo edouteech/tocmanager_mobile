@@ -1,30 +1,42 @@
-// ignore_for_file: file_names, non_constant_identifier_names, avoid_print, unused_local_variable, use_build_context_synchronously
+// ignore_for_file: non_constant_identifier_names, unused_local_variable, avoid_print, body_might_complete_normally_nullable, use_build_context_synchronously, file_names
+
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:intl/intl.dart';
-import 'package:tocmanager/database/sqfdb.dart';
-import 'package:tocmanager/screens/ventes/vente_home.dart';
+import 'package:tocmanager/screens/achats/achat_home.dart';
 
-class EditVentePage extends StatefulWidget {
-  final String clientName;
+import '../../database/sqfdb.dart';
+
+class EditAchatPage extends StatefulWidget {
+  final String supplierId;
   final String amount;
-  final String sellId;
-  final String sellDate;
-  final String sellReste;
-  const EditVentePage(
+  final String buyId;
+  final String buyDate;
+  final String buyReste;
+  const EditAchatPage(
       {super.key,
-      required this.clientName,
+      required this.supplierId,
       required this.amount,
-      required this.sellId,
-      required this.sellReste,
-      required this.sellDate});
+      required this.buyId,
+      required this.buyDate,
+      required this.buyReste});
 
   @override
-  State<EditVentePage> createState() => _EditVentePageState();
+  State<EditAchatPage> createState() => _EditAchatPageState();
 }
 
-class _EditVentePageState extends State<EditVentePage> {
+class _EditAchatPageState extends State<EditAchatPage> {
+  /* Fields Controller */
+  TextEditingController productsController = TextEditingController();
+  TextEditingController nameProductsController = TextEditingController();
+  TextEditingController priceProductController = TextEditingController();
+  TextEditingController quantityController = TextEditingController();
+  TextEditingController dateController = TextEditingController();
+  TextEditingController sommeclientController = TextEditingController();
+
+  /* Database */
+  SqlDb sqlDb = SqlDb();
   double sum = 0.0;
   double reste = 0.0;
   var sell_reste = 0.0;
@@ -35,57 +47,39 @@ class _EditVentePageState extends State<EditVentePage> {
   final _formuKey = GlobalKey<FormState>();
   final _formaKey = GlobalKey<FormState>();
 
-  /* Fields Controller */
-  TextEditingController productsController = TextEditingController();
-  TextEditingController nameProductsController = TextEditingController();
-  TextEditingController priceProductController = TextEditingController();
-  TextEditingController quantityController = TextEditingController();
-  TextEditingController dateController = TextEditingController();
-  TextEditingController nameClientController = TextEditingController();
-  TextEditingController sommeclientController = TextEditingController();
-
   @override
   void initState() {
+    readSuppliersData();
+    readProductsData();
     reloadData();
-    readSell_line();
-    readData();
+    readBuy_line();
     super.initState();
   }
 
   reloadData() {
-    dateController.text = widget.sellDate;
-    nameClientController.text = widget.clientName;
+    dateController.text = widget.buyDate;
+    selectedSuppliersValue = widget.supplierId;
     sum = double.parse(widget.amount);
-    reste = double.parse(widget.amount) - double.parse(widget.sellReste);
+    reste = double.parse(widget.amount) - double.parse(widget.buyReste);
     sommeclientController.text = reste.toString();
   }
 
-  /* Read data for database */
-  Future readData() async {
-    List<Map> response = await sqlDb.readData("SELECT * FROM 'Products'");
-    products.addAll(response);
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  SqlDb sqlDb = SqlDb();
-  List sell_line = [];
+  List buy_line = [];
   List elements = [];
-  Future readSell_line() async {
+  Future readBuy_line() async {
     List<Map> response = await sqlDb.readData(
-        "SELECT Sell_lines.*,Products.name as product_name FROM 'Products','Sell_lines' WHERE Sell_lines.product_id = Products.id AND sell_id='${widget.sellId}'");
-    sell_line.addAll(response);
-    for (var i = 0; i < sell_line.length; i++) {
-      var prix_nitaire = double.parse('${sell_line[i]["amount"]}') /
-          double.parse('${sell_line[i]["quantity"]}');
+        "SELECT Buy_lines.*,Products.name as product_name FROM 'Products','Buy_lines' WHERE Buy_lines.product_id = Products.id AND buy_id='${widget.buyId}'");
+    buy_line.addAll(response);
+    for (var i = 0; i < buy_line.length; i++) {
+      var prix_nitaire = double.parse('${buy_line[i]["amount"]}') /
+          double.parse('${buy_line[i]["quantity"]}');
       elements.add({
-        "id": "${sell_line[i]['id']}",
-        "product_name": "${sell_line[i]['product_name']}",
-        "product_id": "${sell_line[i]['product_id']}",
-        "total": '${sell_line[i]['amount']}',
+        "id": "${buy_line[i]['id']}",
+        "product_name": "${buy_line[i]['product_name']}",
+        "product_id": "${buy_line[i]['product_id']}",
+        "total": '${buy_line[i]['amount']}',
         "prix_nitaire": '$prix_nitaire',
-        "quantity": '${sell_line[i]['quantity']}'
+        "quantity": '${buy_line[i]['quantity']}'
       });
     }
     if (mounted) {
@@ -93,8 +87,20 @@ class _EditVentePageState extends State<EditVentePage> {
     }
   }
 
-  /* Dropdown products items */
+  /* =============================Products=================== */
+  /* List products */
   List products = [];
+
+  /* Read data for database */
+  Future readProductsData() async {
+    List<Map> response = await sqlDb.readData("SELECT * FROM 'Products'");
+    products.addAll(response);
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  /* Dropdown products items */
   String? selectedProductValue;
   List<DropdownMenuItem<String>> get dropdownProductsItems {
     List<DropdownMenuItem<String>> menuProductsItems = [];
@@ -107,6 +113,35 @@ class _EditVentePageState extends State<EditVentePage> {
     return menuProductsItems;
   }
 
+  /* =============================End Products=================== */
+
+  /* =============================Suppliers=================== */
+  /* List suppmiers */
+  List suppliers = [];
+
+  /* Read data for database */
+  Future readSuppliersData() async {
+    List<Map> response = await sqlDb.readData("SELECT * FROM 'Suppliers'");
+    suppliers.addAll(response);
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  /* Dropdown suppliers items */
+  String? selectedSuppliersValue;
+  List<DropdownMenuItem<String>> get dropdownSuppliersItems {
+    List<DropdownMenuItem<String>> menuSuppliersItems = [];
+    for (var i = 0; i < suppliers.length; i++) {
+      menuSuppliersItems.add(DropdownMenuItem(
+        value: "${suppliers[i]["id"]}",
+        child: Text("${suppliers[i]["name"]}"),
+      ));
+    }
+    return menuSuppliersItems;
+  }
+
+  /* =============================End Suppliers=================== */
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -133,7 +168,7 @@ class _EditVentePageState extends State<EditVentePage> {
           backgroundColor: Colors.grey[100],
           iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
           title: const Text(
-            'Modifier',
+            'Modifier achat',
             style: TextStyle(fontSize: 30, color: Colors.black),
           )),
       body: SingleChildScrollView(
@@ -146,36 +181,50 @@ class _EditVentePageState extends State<EditVentePage> {
               child: Row(
                 children: [
                   Flexible(
-                    child: //Nom du client
-                        Container(
-                            padding: const EdgeInsets.only(left: 20, right: 20),
-                            margin: const EdgeInsets.only(top: 10),
-                            child: TextFormField(
-                              controller: nameClientController,
-                              validator: MultiValidator([
-                                RequiredValidator(
-                                    errorText:
-                                        "Veuillez entrer le nom du client")
-                              ]),
-                              autovalidateMode:
-                                  AutovalidateMode.onUserInteraction,
-                              decoration: const InputDecoration(
-                                contentPadding:
-                                    EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
-                                enabledBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                        color:
-                                            Color.fromARGB(255, 45, 157, 220)),
-                                    borderRadius:
-                                        BorderRadius.all(Radius.circular(10))),
-                                border: OutlineInputBorder(
-                                    borderRadius:
-                                        BorderRadius.all(Radius.circular(10))),
-                                label: Text("Nom du client"),
-                                labelStyle: TextStyle(
-                                    fontSize: 13, color: Colors.black),
-                              ),
-                            )),
+                    //Nom fournisseur
+                    child: Container(
+                        padding: const EdgeInsets.only(left: 20, right: 20),
+                        margin: const EdgeInsets.only(top: 10),
+                        child: DropdownButtonFormField(
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
+                            decoration: const InputDecoration(
+                              contentPadding:
+                                  EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
+                              enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color.fromARGB(255, 45, 157, 220)),
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(10))),
+                              border: OutlineInputBorder(
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(10))),
+                              label: Text("Nom fournisseur"),
+                              labelStyle:
+                                  TextStyle(fontSize: 13, color: Colors.black),
+                            ),
+                            dropdownColor: Colors.white,
+                            validator: (value) => value == null
+                                ? 'Sélectionner un fournisseur'
+                                : null,
+                            value: selectedSuppliersValue,
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                selectedSuppliersValue = newValue!;
+                                if (selectedSuppliersValue != null) {
+                                  setState(() async {
+                                    var supplier = await sqlDb.readData(
+                                        "SELECT * FROM Suppliers WHERE id =$selectedSuppliersValue");
+
+                                    setState(() {
+                                      nameProductsController.text =
+                                          "${supplier[0]["name"]}";
+                                    });
+                                  });
+                                }
+                              });
+                            },
+                            items: dropdownSuppliersItems)),
                   ),
                   Flexible(
                     child: Container(
@@ -205,7 +254,6 @@ class _EditVentePageState extends State<EditVentePage> {
                               firstDate: DateTime(1900),
                               initialDate: currentValue ?? DateTime.now(),
                               lastDate: DateTime(2100));
-                          return null;
                         },
                       ),
                     ),
@@ -324,54 +372,54 @@ class _EditVentePageState extends State<EditVentePage> {
                                 print("== Date and user are mentionned");
                                 print('$sommeclientController.text');
 
-                                // Update sell
-                                int UpdateSells = await sqlDb.updateData(
-                                    ''' UPDATE Sells SET date_sell ='${dateController.text}', client_name = '${nameClientController.text}' WHERE id="${widget.sellId}" ''');
-                                print("==== SELLS UPDATE DONE ====");
+                                // Update buys
+                                int UpdateBuys = await sqlDb.updateData(
+                                    ''' UPDATE Buys SET date_buy ='${dateController.text}', supplier_id = '$selectedSuppliersValue' WHERE id="${widget.buyId}" ''');
+                                print("==== Buys UPDATE DONE ====");
 
                                 //Delete sell line
-                                int DeleteSell_line = await sqlDb.deleteData(
-                                    ''' DELETE FROM Sell_lines WHERE sell_id ="${widget.sellId}" ''');
-                                print("==== ALL SELL LINE DELETE====");
+                                int DeleteBuy_line = await sqlDb.deleteData(
+                                    ''' DELETE FROM Buy_lines WHERE buy_id ="${widget.buyId}" ''');
+                                print("==== ALL BUY_LINES DELETE====");
 
                                 //Insert sell_line
                                 for (var i = 0; i < elements.length; i++) {
-                                  int InsertSell_line = await sqlDb.inserData(
-                                      ''' INSERT INTO Sell_lines(quantity, amount, sell_id, product_id) VALUES('${elements[i]["quantity"]}','${elements[i]["total"]}','${widget.sellId}', '${elements[i]["product_id"]}') ''');
+                                  int InsertBuy_line = await sqlDb.inserData(
+                                      ''' INSERT INTO Buy_lines(quantity, amount,buy_id, product_id) VALUES('${elements[i]["quantity"]}','${elements[i]["total"]}','${widget.buyId}', '${elements[i]["product_id"]}') ''');
                                   print(
-                                      "===== SELL_LINE INSERTION DONE ======");
+                                      "===== BUY_LINES INSERTION DONE ======");
                                 }
 
                                 //cheick amount
-                                var SellsAmount = await sqlDb.readData(
-                                    ''' SELECT SUM (amount) as sellAmount FROM Sell_lines WHERE sell_id='${widget.sellId}' ''');
+                                var BuysAmount = await sqlDb.readData(
+                                    ''' SELECT SUM (amount) as buyAmount FROM Buy_lines WHERE buy_id='${widget.buyId}' ''');
                                 print(
-                                    "===== Sells Amount Checked ==> $SellsAmount ==========");
+                                    "===== Buys Amount Checked ==> $BuysAmount ==========");
 
                                 //Get Reste
-                                var sell_reste = SellsAmount[0]['sellAmount'] -
+                                var buy_reste = BuysAmount[0]['buyAmount'] -
                                     double.parse(sommeclientController.text);
 
                                 //Update amount and reste
-                                var NewUpdateSells = await sqlDb.updateData(
-                                    ''' UPDATE Sells SET amount ="${SellsAmount[0]['sellAmount']}", reste = "$sell_reste" WHERE id="${widget.sellId}" ''');
-                                print("===== SELL INSERTION DONE ==========");
+                                var NewUpdateBuys = await sqlDb.updateData(
+                                    ''' UPDATE Buys SET amount ="${BuysAmount[0]['buyAmount']}", reste = "$buy_reste" WHERE id="${widget.buyId}" ''');
+                                print("===== Buys INSERTION DONE ==========");
 
-                                //Delete Encaissement
+                                //Delete Décaissement
 
                                 int DeleteEncaissement = await sqlDb.deleteData(
-                                    ''' DELETE FROM Encaissements WHERE sell_id ="${widget.sellId}" ''');
-                                print("==== ALL SELL LINE DELETE====");
+                                    ''' DELETE FROM Decaissements WHERE buy_id ="${widget.buyId}" ''');
+                                print("==== ALL Buy_LINES DELETE====");
 
-                                //Encaissement
+                                //Décaissement
                                 int response_encaissement = await sqlDb.inserData(
-                                    ''' INSERT INTO Encaissements(amount, date_encaissement, client_name, sell_id) VALUES ('${sommeclientController.text}', '${dateController.text}','${nameClientController.text}', '${widget.sellId}') ''');
+                                    ''' INSERT INTO Decaissements(amount, date_encaissement, supplier_id, buy_id) VALUES ('${sommeclientController.text}', '${dateController.text}','$selectedSuppliersValue', '${widget.buyId}') ''');
                                 print("===== SELLS INSERTION DONE =====");
 
                                 Navigator.of(context).pushReplacement(
                                     MaterialPageRoute(
                                         builder: (context) =>
-                                            const VenteHome()));
+                                            const AchatHomePage()));
                               }
                             }
                           } else {
@@ -434,10 +482,9 @@ class _EditVentePageState extends State<EditVentePage> {
                     setState(() {
                       total = (quantite * prix).toString();
                     });
-
                     setState(() {
                       elements.add({
-                        "id": widget.sellId,
+                        "id": widget.buyId,
                         "product_name": nameProductsController.text,
                         "product_id": "$selectedProductValue",
                         "total": total,
@@ -457,7 +504,7 @@ class _EditVentePageState extends State<EditVentePage> {
                 },
               ),
             ],
-            title: const Center(child: Text("Ligne de vente ")),
+            title: const Center(child: Text("Ligne d'achat ")),
             content: SingleChildScrollView(
                 child: Form(
               key: _formuKey,
@@ -494,7 +541,7 @@ class _EditVentePageState extends State<EditVentePage> {
 
                                 setState(() {
                                   priceProductController.text =
-                                      "${prix[0]["price_sell"]}";
+                                      "${prix[0]["price_buy"]}";
                                   nameProductsController.text =
                                       "${prix[0]["name"]}";
                                 });
@@ -508,6 +555,7 @@ class _EditVentePageState extends State<EditVentePage> {
                     alignment: Alignment.center,
                     margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
                     child: TextFormField(
+                        readOnly: true,
                         validator: MultiValidator([
                           RequiredValidator(
                               errorText: "Veuillez entrer un prix")

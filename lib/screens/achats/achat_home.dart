@@ -3,6 +3,8 @@ import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:tocmanager/screens/achats/achat_details.dart';
 import 'package:tocmanager/screens/achats/ajouter_achat.dart';
+import 'package:tocmanager/screens/achats/decaissement.dart';
+import 'package:tocmanager/screens/achats/editAchat.dart';
 import 'package:tocmanager/screens/fournisseurs/ajouter_fournisseur.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 import '../../database/sqfdb.dart';
@@ -68,7 +70,8 @@ class _AchatHomePageState extends State<AchatHomePage> {
           iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
           title: const Text(
             'Achats',
-            style: TextStyle(color: Colors.black, fontFamily: 'RobotoMono'),
+            style: TextStyle(
+                fontFamily: 'Oswald', fontSize: 30, color: Colors.black),
           )),
       drawer: Drawer(
         child: SingleChildScrollView(
@@ -89,37 +92,31 @@ class _AchatHomePageState extends State<AchatHomePage> {
           headingTextStyle: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 15,
+            fontFamily: 'Oswald',
           ),
-          dataRowColor: MaterialStateProperty.all(Colors.red[200]),
-          headingRowColor: MaterialStateProperty.all(Colors.amber[200]),
-          decoration: BoxDecoration(
-            color: Colors.green[200],
-          ),
+          dataRowColor: MaterialStateProperty.all(Colors.white),
+          headingRowColor: MaterialStateProperty.all(Colors.blue[200]),
           columnSpacing: 12,
           horizontalMargin: 12,
-          minWidth: 600,
+          minWidth: 800,
           columns: const [
             DataColumn2(
               label: Center(child: Text('Nom fournisseur')),
               size: ColumnSize.L,
             ),
-            DataColumn(
-              label: Center(child: Text('Montant')),
-            ),
             DataColumn2(
-              label: Center(child: Text('Reste')),
-            ),
-            DataColumn(
-              label: Center(child: Text('Date')),
-            ),
-            DataColumn(
-              label: Center(child: Text('Détails')),
-            ),
+                label: Center(child: Text('Montant')), size: ColumnSize.L),
+            DataColumn2(
+                label: Center(child: Text('Reste')), size: ColumnSize.L),
+            DataColumn2(label: Center(child: Text('Date')), size: ColumnSize.L),
             DataColumn2(
                 label: Center(child: Text('Décaissement')), size: ColumnSize.L),
-            DataColumn(
-              label: Center(child: Text('Effacer')),
-            ),
+            DataColumn2(
+                label: Center(child: Text('Détails')), size: ColumnSize.L),
+            DataColumn2(
+                label: Center(child: Text('Editer')), size: ColumnSize.L),
+            DataColumn2(
+                label: Center(child: Text('Effacer')), size: ColumnSize.L),
           ],
           rows: List<DataRow>.generate(
               buys.length,
@@ -129,6 +126,22 @@ class _AchatHomePageState extends State<AchatHomePage> {
                     DataCell(Center(child: Text('${buys[index]["amount"]}'))),
                     DataCell(Center(child: Text('${buys[index]["reste"]}'))),
                     DataCell(Center(child: Text('${buys[index]["date_buy"]}'))),
+                    DataCell(Center(
+                      child: IconButton(
+                          icon: const Icon(
+                            Icons.monetization_on_sharp,
+                            color: Colors.green,
+                          ),
+                          onPressed: () {
+                            nextScreen(
+                                context,
+                                DecaissementPage(
+                                    buyId: '${buys[index]["id"]}',
+                                    reste: '${buys[index]["reste"]}',
+                                    supplierId:
+                                        '${buys[index]["supplier_id"]}'));
+                          }),
+                    )),
                     DataCell(Center(
                       child: IconButton(
                           icon: const Icon(
@@ -143,12 +156,18 @@ class _AchatHomePageState extends State<AchatHomePage> {
                     DataCell(Center(
                       child: IconButton(
                           icon: const Icon(
-                            Icons.monetization_on_sharp,
-                            color: Colors.green,
+                            Icons.edit,
+                            color: Colors.blue,
                           ),
                           onPressed: () {
-                            // nextScreen(context,
-                            //     EncaissementPage(id: '${sells[index]["id"]}', reste: '${sells[index]["reste"]}',));
+                            nextScreen(
+                                context,
+                                EditAchatPage(
+                                    supplierId: '${buys[index]["supplier_id"]}',
+                                    amount: '${buys[index]["amount"]}',
+                                    buyId: '${buys[index]["id"]}',
+                                    buyDate: '${buys[index]["date_buy"]}',
+                                    buyReste: '${buys[index]["reste"]}'));
                           }),
                     )),
                     DataCell(Center(

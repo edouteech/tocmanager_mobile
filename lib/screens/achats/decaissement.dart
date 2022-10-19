@@ -4,9 +4,10 @@ import 'package:intl/intl.dart';
 import 'package:tocmanager/database/sqfdb.dart';
 
 class DecaissementPage extends StatefulWidget {
-    final String id;
+ final String buyId;
   final String reste;
-  const DecaissementPage({super.key, required this.id, required this.reste});
+  final String supplierId;
+  const DecaissementPage({super.key, required this.buyId, required this.reste, required this.supplierId,});
 
   @override
   State<DecaissementPage> createState() => _DecaissementPageState();
@@ -20,7 +21,7 @@ class _DecaissementPageState extends State<DecaissementPage> {
   List decaissement = [];
   Future readData() async {
     List<Map> response = await sqlDb
-        .readData("SELECT * FROM Decaissements  WHERE buy_id ='${widget.id}'");
+        .readData("SELECT * FROM Decaissements  WHERE buy_id ='${widget.buyId}'");
     decaissement.addAll(response);
     if (mounted) {
       setState(() {});
@@ -30,7 +31,6 @@ class _DecaissementPageState extends State<DecaissementPage> {
   @override
   void initState() {
     readData();
-
     super.initState();
   }
 

@@ -402,7 +402,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                       _formuKey.currentState?.reset();
                       sommeclientController.text = sum.toString();
                     });
-                    print(ventes);
+                    
                   }
                 },
               ),
