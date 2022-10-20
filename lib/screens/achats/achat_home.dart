@@ -71,7 +71,7 @@ class _AchatHomePageState extends State<AchatHomePage> {
           title: const Text(
             'Achats',
             style: TextStyle(
-                fontFamily: 'Oswald', fontSize: 30, color: Colors.black),
+                fontFamily: 'Oswald', color: Colors.black),
           )),
       drawer: Drawer(
         child: SingleChildScrollView(

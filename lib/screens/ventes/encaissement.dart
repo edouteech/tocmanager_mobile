@@ -207,10 +207,8 @@ class _EncaissementPageState extends State<EncaissementPage> {
                 child: const Text('Valider',
                     style: TextStyle(color: Colors.green)),
                 onPressed: () async {
-                  print("yes");
                   if (_formKey.currentState!.validate()) {
                     //Encaissement
-
                     int addEncaissement = await sqlDb.inserData('''
                       INSERT INTO Encaissements(amount, date_encaissement, client_name, sell_id) 
                       VALUES('${encaissementController.text}', '${dateController.text}','${widget.clientName}', '${widget.sellId}')

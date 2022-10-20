@@ -188,20 +188,26 @@ class _EditAchatPageState extends State<EditAchatPage> {
                         child: DropdownButtonFormField(
                             autovalidateMode:
                                 AutovalidateMode.onUserInteraction,
-                            decoration: const InputDecoration(
+                            decoration:  InputDecoration(
+                               icon: GestureDetector(
+                                  child: const Icon(Icons.add_box_rounded),
+                                  onTap: () {
+                                    print("object");
+                                  },
+                                ),
                               contentPadding:
-                                  EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
-                              enabledBorder: OutlineInputBorder(
+                                  const EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
+                              enabledBorder: const OutlineInputBorder(
                                   borderSide: BorderSide(
                                       color: Color.fromARGB(255, 45, 157, 220)),
                                   borderRadius:
                                       BorderRadius.all(Radius.circular(10))),
-                              border: OutlineInputBorder(
+                              border: const OutlineInputBorder(
                                   borderRadius:
                                       BorderRadius.all(Radius.circular(10))),
-                              label: Text("Nom fournisseur"),
+                              label: const Text("Nom fournisseur"),
                               labelStyle:
-                                  TextStyle(fontSize: 13, color: Colors.black),
+                                  const TextStyle(fontSize: 13, color: Colors.black),
                             ),
                             dropdownColor: Colors.white,
                             validator: (value) => value == null

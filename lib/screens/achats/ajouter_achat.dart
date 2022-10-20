@@ -104,6 +104,12 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
   TextEditingController dateController = TextEditingController();
   TextEditingController sommeclientController = TextEditingController();
 
+  /* Fields Supplier controller*/
+  TextEditingController name = TextEditingController();
+  TextEditingController email = TextEditingController();
+  TextEditingController phone = TextEditingController();
+  TextEditingController address = TextEditingController();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -126,12 +132,20 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
       appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.blue),
+            onPressed: () => Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const AchatHomePage()),
+              (Route<dynamic> route) => false,
+            ),
+          ),
           centerTitle: true,
           backgroundColor: Colors.grey[100],
           iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
           title: const Text(
             'Ajouter Achats',
-            style: TextStyle(color: Colors.black, fontFamily: 'RobotoMono'),
+            style: TextStyle(color: Colors.black, fontFamily: 'Oswald'),
           )),
       body: SingleChildScrollView(
         child: Column(
@@ -150,20 +164,30 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                           child: DropdownButtonFormField(
                               autovalidateMode:
                                   AutovalidateMode.onUserInteraction,
-                              decoration: const InputDecoration(
-                                contentPadding:
-                                    EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
-                                enabledBorder: OutlineInputBorder(
+                              decoration: InputDecoration(
+                                icon: GestureDetector(
+                                  child: const Icon(
+                                    Icons.add_box_rounded,
+                                    size: 30,
+                                    color: Colors.blue,
+                                  ),
+                                  onTap: () {
+                                    _AddSupplierDialog(context);
+                                  },
+                                ),
+                                contentPadding: const EdgeInsets.fromLTRB(
+                                    20.0, 10.0, 20.0, 10.0),
+                                enabledBorder: const OutlineInputBorder(
                                     borderSide: BorderSide(
                                         color:
                                             Color.fromARGB(255, 45, 157, 220)),
                                     borderRadius:
                                         BorderRadius.all(Radius.circular(10))),
-                                border: OutlineInputBorder(
+                                border: const OutlineInputBorder(
                                     borderRadius:
                                         BorderRadius.all(Radius.circular(10))),
-                                label: Text("Nom fournisseur"),
-                                labelStyle: TextStyle(
+                                label: const Text("Nom fournisseur"),
+                                labelStyle: const TextStyle(
                                     fontSize: 13, color: Colors.black),
                               ),
                               dropdownColor: Colors.white,
@@ -309,7 +333,8 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                                   int InsertBuys = await sqlDb.inserData('''
                                   INSERT INTO Buys(supplier_id, date_buy) VALUES('$selectedSuppliersValue', '${dateController.text}')
                                 ''');
-                                  print("===$InsertBuys==== BUYS INSERTION DONE ======");
+                                  print(
+                                      "===$InsertBuys==== BUYS INSERTION DONE ======");
 
                                   //Read last buys
                                   var ReadLastInsertion =
@@ -344,7 +369,7 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                                   //Décaissement
                                   int response_decaissement =
                                       await sqlDb.inserData('''
-                    INSERT INTO Decaissements(amount, date_encaissement, buy_id, supplier_id) VALUES('${sommeclientController.text}', '${dateController.text}','${ReadLastInsertion[0]["id"]}', '${ReadLastInsertion[0]["supplier_id"]}')
+                    INSERT INTO Decaissements(amount, date_decaissement, buy_id, supplier_id) VALUES('${sommeclientController.text}', '${dateController.text}','${ReadLastInsertion[0]["id"]}', '${ReadLastInsertion[0]["supplier_id"]}')
                   ''');
 
                                   print(
@@ -551,6 +576,181 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                     ))
               ]),
             )),
+          );
+        });
+  }
+
+  //Formulaire
+  _AddSupplierDialog(BuildContext context) {
+    return showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (param) {
+          return AlertDialog(
+            actions: [
+              TextButton(
+                child: const Text(
+                  'Annuler',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onPressed: () async {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const AjouterAchatPage()),
+                    (Route<dynamic> route) => false,
+                  ); 
+                },
+              ),
+              TextButton(
+                child: const Text('Valider',
+                    style: TextStyle(color: Colors.green)),
+                onPressed: () async {
+                  if (_formKey.currentState!.validate()) {
+                    int response = await sqlDb.inserData('''
+                    INSERT INTO Suppliers( name, email,phone ,address)
+                    VALUES("${name.text}","${email.text}","${phone.text}","${address.text}")
+                  ''');
+
+                    print("===$response==== INSERTION DONE ==========");
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const AjouterAchatPage()),
+                      (Route<dynamic> route) => false,
+                    );
+                  }
+                },
+              ),
+            ],
+            title: const Center(child: Text('Ajouter Fournisseur')),
+            content: SingleChildScrollView(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    //name of supplier
+                    Container(
+                      alignment: Alignment.center,
+                      margin:
+                          const EdgeInsets.only(left: 20, right: 20, top: 30),
+                      child: TextFormField(
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
+                          controller: name,
+                          cursorColor: const Color.fromARGB(255, 45, 157, 220),
+                          decoration: const InputDecoration(
+                            enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                    color: Color.fromARGB(255, 45, 157, 220)),
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(10))),
+                            border: OutlineInputBorder(
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(10))),
+                            label: Text("Nom"),
+                            labelStyle:
+                                TextStyle(fontSize: 13, color: Colors.black),
+                          ),
+                          validator: MultiValidator([
+                            RequiredValidator(
+                                errorText: "Veuillez entrer le nom")
+                          ])),
+                    ),
+
+                    //Email of suppliers
+                    Container(
+                      alignment: Alignment.center,
+                      margin:
+                          const EdgeInsets.only(left: 20, right: 20, top: 30),
+                      child: TextFormField(
+                        keyboardType: TextInputType.emailAddress,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        controller: email,
+                        cursorColor: const Color.fromARGB(255, 45, 157, 220),
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Email"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                        validator: (val) {
+                          return RegExp(
+                                      r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
+                                  .hasMatch(val!)
+                              ? null
+                              : "Veuillez entrer un email valide";
+                        },
+                      ),
+                    ),
+
+                    //Phone of suppliers
+                    Container(
+                      alignment: Alignment.center,
+                      margin:
+                          const EdgeInsets.only(left: 20, right: 20, top: 30),
+                      child: TextFormField(
+                        controller: phone,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        cursorColor: const Color.fromARGB(255, 45, 157, 220),
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Numéro"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                        validator: MultiValidator([
+                          RequiredValidator(
+                              errorText: "Veuillez entrer un numéro")
+                        ]),
+                      ),
+                    ),
+
+                    // Address of suppliers
+                    Container(
+                      alignment: Alignment.center,
+                      margin:
+                          const EdgeInsets.only(left: 20, right: 20, top: 30),
+                      child: TextFormField(
+                        controller: address,
+                        cursorColor: const Color.fromARGB(255, 45, 157, 220),
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Adresse"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                        validator: MultiValidator([
+                          RequiredValidator(
+                              errorText: "Veuillez entrer une adresse")
+                        ]),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           );
         });
   }

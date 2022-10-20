@@ -57,7 +57,7 @@ class _AchatDetailsState extends State<AchatDetails> {
           iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
           title: const Text(
             'Détails Achat',
-            style: TextStyle(color: Colors.black, fontFamily: 'RobotoMono'),
+            style: TextStyle(color: Colors.black, fontFamily: 'Oswald'),
           )),
       body: DataTable2(
           showBottomBorder: true,
@@ -66,11 +66,8 @@ class _AchatDetailsState extends State<AchatDetails> {
             fontWeight: FontWeight.bold,
             fontSize: 15,
           ),
-          dataRowColor: MaterialStateProperty.all(Colors.red[200]),
-          headingRowColor: MaterialStateProperty.all(Colors.amber[200]),
-          decoration: BoxDecoration(
-            color: Colors.green[200],
-          ),
+          dataRowColor: MaterialStateProperty.all(Colors.white),
+          headingRowColor: MaterialStateProperty.all(Colors.blue[200]),
           columnSpacing: 12,
           horizontalMargin: 12,
           minWidth: 600,

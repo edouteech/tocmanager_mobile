@@ -140,7 +140,7 @@ class SqlDb {
         CREATE TABLE "Encaissements"(
           "id" INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
           "amount" DOUBLE NOT NULL,
-          "date_encaissement" TEXT NOT NULL,
+          "date_encaissement" DATETIME NOT NULL,
           "client_name" TEXT NOT NULL,
           "sell_id" INT NOT NULL,
           "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -155,7 +155,7 @@ class SqlDb {
         CREATE TABLE "Decaissements"(
           "id" INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
           "amount" DOUBLE NOT NULL,
-          "date_encaissement" TEXT NOT NULL,
+          "date_decaissement" DATETIME NOT NULL,
           "supplier_id" INT NOT NULL,
           "buy_id" INT NOT NULL,
           "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

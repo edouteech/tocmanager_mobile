@@ -129,7 +129,7 @@ class _HomePageState extends State<HomePage> {
               height: 25,
             ),
             Container(
-              height: 150,
+              height: 166,
               child: PageView(
                 scrollDirection: Axis.horizontal,
                 controller: _controller,
@@ -190,23 +190,23 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(25.0),
-              child: Column(
-                children: const [
-                  //statistic
-                  MyListTitle(
-                    iconImagePath: 'assets/statistics.png',
-                    titleName: 'Encaissement',
-                  ),
+            // Padding(
+            //   padding: const EdgeInsets.all(25.0),
+            //   child: Column(
+            //     children: const [
+            //       //statistic
+            //       MyListTitle(
+            //         iconImagePath: 'assets/statistics.png',
+            //         titleName: 'Encaissement',
+            //       ),
 
-                  MyListTitle(
-                    iconImagePath: 'assets/statistics.png',
-                    titleName: 'Décaissement',
-                  ),
-                ],
-              ),
-            )
+            //       MyListTitle(
+            //         iconImagePath: 'assets/statistics.png',
+            //         titleName: 'Décaissement',
+            //       ),
+            //     ],
+            //   ),
+            // )
           ],
         )),
       ),
