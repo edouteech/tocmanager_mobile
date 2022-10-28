@@ -89,16 +89,16 @@ class _DetailsVentesState extends State<DetailsVentes>
     return Scaffold(
       floatingActionButton: FloatingActionBubble(
         items: <Bubble>[
-          Bubble(
-            title: "Ajouter",
-            iconColor: Colors.white,
-            bubbleColor: Colors.blue,
-            icon: Icons.add,
-            titleStyle: const TextStyle(fontSize: 16, color: Colors.white),
-            onPress: () {
-              _animationController!.reverse();
-            },
-          ),
+          // Bubble(
+          //   title: "Ajouter",
+          //   iconColor: Colors.white,
+          //   bubbleColor: Colors.blue,
+          //   icon: Icons.add,
+          //   titleStyle: const TextStyle(fontSize: 16, color: Colors.white),
+          //   onPress: () {
+          //     _animationController!.reverse();
+          //   },
+          // ),
           Bubble(
             title: "Imprimer",
             iconColor: Colors.white,
@@ -107,7 +107,7 @@ class _DetailsVentesState extends State<DetailsVentes>
             titleStyle: const TextStyle(fontSize: 16, color: Colors.white),
             onPress: () {
               _animationController!.reverse();
-              nextScreen(
+            nextScreen(
                   context,
                   VentePrint(
                     sell_id: '${widget.id}',

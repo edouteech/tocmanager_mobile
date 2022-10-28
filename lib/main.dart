@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:tocmanager/services/user_service.dart';
 import 'package:tocmanager/widgets/widgets.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 
@@ -10,7 +11,9 @@ import 'screens/login_page.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  runApp(const MyApp());
+  runApp(
+    const MyApp(),
+  );
 }
 
 class MyApp extends StatefulWidget {
@@ -27,6 +30,7 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     getUserLoggedInStatus();
+    // _loadUserInfo();
   }
 
   getUserLoggedInStatus() async {
@@ -38,6 +42,15 @@ class _MyAppState extends State<MyApp> {
       }
     });
   }
+
+  // _loadUserInfo() async {
+  //   String token = await getToken();
+  //   if (token == '') {
+  //     setState(() {
+  //       _isSignedIn = true;
+  //     });
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +79,7 @@ class _MyAppState extends State<MyApp> {
         ),
       ),
       debugShowCheckedModeBanner: false,
-      home: _isSignedIn ? const HomePage() : const LoginPage(), 
+      home: _isSignedIn ? const HomePage() : const LoginPage(),
     );
   }
 }

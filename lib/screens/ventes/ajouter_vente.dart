@@ -51,6 +51,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
     dateController.text =
         DateFormat("yyyy-MM-dd hh:mm:ss").format(DateTime.now());
     readData();
+    readclientsData();
     super.initState();
   }
 
@@ -61,13 +62,51 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
     for (var i = 0; i < products.length; i++) {
       menuProductsItems.add(DropdownMenuItem(
         value: "${products[i]["id"]}",
-        child: Text("${products[i]["name"]}"),
+        child: Text(
+          "${products[i]["name"]}",
+          style: "${products[i]["name"]}".length > 20
+              ? const TextStyle(fontSize: 15)
+              : null,
+        ),
       ));
     }
     return menuProductsItems;
   }
 
   /* =============================End Products=================== */
+
+  /* =============================Clients=================== */
+  /* List clients */
+  List clients = [];
+
+  /* Read data for database */
+  Future readclientsData() async {
+    List<Map> response = await sqlDb.readData("SELECT * FROM 'clients'");
+    clients.addAll(response);
+    if (this.mounted) {
+      setState(() {});
+    }
+  }
+
+  /* Dropdown products items */
+  String? selectedclientsValue;
+  List<DropdownMenuItem<String>> get dropdownclientsItems {
+    List<DropdownMenuItem<String>> menuclientsItems = [];
+    for (var i = 0; i < clients.length; i++) {
+      menuclientsItems.add(DropdownMenuItem(
+        value: "${clients[i]["id"]}",
+        child: Text(
+          "${clients[i]["name"]}",
+          style: "${clients[i]["name"]}".length > 20
+              ? const TextStyle(fontSize: 15)
+              : null,
+        ),
+      ));
+    }
+    return menuclientsItems;
+  }
+
+  /* =============================End Clients=================== */
 
   /* Fields Controller */
   TextEditingController productsController = TextEditingController();
@@ -122,32 +161,58 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                               padding:
                                   const EdgeInsets.only(left: 20, right: 20),
                               margin: const EdgeInsets.only(top: 10),
-                              child: TextFormField(
-                                controller: nameClientController,
-                                validator: MultiValidator([
-                                  RequiredValidator(
-                                      errorText:
-                                          "Veuillez entrer le nom du client")
-                                ]),
-                                autovalidateMode:
-                                    AutovalidateMode.onUserInteraction,
-                                decoration: const InputDecoration(
-                                  contentPadding: EdgeInsets.fromLTRB(
-                                      20.0, 10.0, 20.0, 10.0),
-                                  enabledBorder: OutlineInputBorder(
-                                      borderSide: BorderSide(
-                                          color: Color.fromARGB(
-                                              255, 45, 157, 220)),
-                                      borderRadius: BorderRadius.all(
-                                          Radius.circular(10))),
-                                  border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.all(
-                                          Radius.circular(10))),
-                                  label: Text("Nom du client"),
-                                  labelStyle: TextStyle(
-                                      fontSize: 13, color: Colors.black),
-                                ),
-                              )),
+                              child: DropdownButtonFormField(
+                                  isExpanded: true,
+                                  autovalidateMode:
+                                      AutovalidateMode.onUserInteraction,
+                                  decoration: const InputDecoration(
+                                    // icon: GestureDetector(
+                                    //   child: const Icon(
+                                    //     Icons.add_box_rounded,
+                                    //     size: 30,
+                                    //     color: Colors.blue,
+                                    //   ),
+                                    //   onTap: () {
+                                    //     _AddSupplierDialog(context);
+                                    //   },
+                                    // ),
+                                    contentPadding:
+                                        EdgeInsets.fromLTRB(5.0, 5.0, 5.0, 5.0),
+                                    enabledBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                            color: Color.fromARGB(
+                                                255, 45, 157, 220)),
+                                        borderRadius: BorderRadius.all(
+                                            Radius.circular(10))),
+                                    border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.all(
+                                            Radius.circular(10))),
+                                    label: Text("Nom client"),
+                                    labelStyle: TextStyle(
+                                        fontSize: 13, color: Colors.black),
+                                  ),
+                                  dropdownColor: Colors.white,
+                                  validator: (value) => value == null
+                                      ? 'Sélectionner un client'
+                                      : null,
+                                  value: selectedclientsValue,
+                                  onChanged: (String? newValue) {
+                                    setState(() {
+                                      selectedclientsValue = newValue!;
+                                      if (selectedclientsValue != null) {
+                                        setState(() async {
+                                          var supplier = await sqlDb.readData(
+                                              "SELECT * FROM Clients WHERE id =$selectedclientsValue");
+
+                                          setState(() {
+                                            nameProductsController.text =
+                                                "${clients[0]["name"]}";
+                                          });
+                                        });
+                                      }
+                                    });
+                                  },
+                                  items: dropdownclientsItems)),
                     ),
                     Flexible(
                       child: Container(
@@ -267,7 +332,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                                   print(ventes);
                                   // Sells
                                   int InsertSells = await sqlDb.inserData(
-                                      ''' INSERT INTO Sells(date_sell, client_name) VALUES ('${dateController.text}', '${nameClientController.text}') ''');
+                                      ''' INSERT INTO Sells(date_sell, client_id) VALUES ('${dateController.text}', '$selectedclientsValue') ''');
                                   print(
                                       "=== $InsertSells ==== SELLS INSERTION DONE ==========");
 
@@ -301,7 +366,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
 
                                   //Encaissement
                                   int response_encaissement = await sqlDb.inserData(
-                                      ''' INSERT INTO Encaissements(amount, date_encaissement, client_name, sell_id) VALUES ('${sommeclientController.text}', '${dateController.text}','${nameClientController.text}', '${ReadLastInsertion[0]["id"]}') ''');
+                                      ''' INSERT INTO Encaissements(amount, date_encaissement, client_id, sell_id) VALUES ('${sommeclientController.text}', '${dateController.text}','$selectedclientsValue', '${ReadLastInsertion[0]["id"]}') ''');
                                   print(
                                       "===$response_encaissement==== SELLS INSERTION DONE ==========");
 
@@ -402,7 +467,6 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                       _formuKey.currentState?.reset();
                       sommeclientController.text = sum.toString();
                     });
-                    
                   }
                 },
               ),
@@ -417,6 +481,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                     padding: const EdgeInsets.only(left: 20, right: 20),
                     margin: const EdgeInsets.only(top: 10),
                     child: DropdownButtonFormField(
+                        isExpanded: true,
                         validator: (value) =>
                             value == null ? 'Sélectionner un produit' : null,
                         decoration: const InputDecoration(
@@ -458,7 +523,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                     alignment: Alignment.center,
                     margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
                     child: TextFormField(
-                      readOnly: true,
+                        readOnly: true,
                         validator: MultiValidator([
                           RequiredValidator(
                               errorText: "Veuillez entrer un prix")

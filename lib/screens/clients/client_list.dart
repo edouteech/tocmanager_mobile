@@ -1,21 +1,22 @@
-// ignore_for_file: avoid_print, unnecessary_this, no_leading_underscores_for_local_identifiers, use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously, avoid_print
 
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:tocmanager/database/sqfdb.dart';
+import 'package:tocmanager/screens/clients/ajouter_client.dart';
 
-import 'ajouter_fournisseur.dart';
-
-class ListFournisseur extends StatefulWidget {
-  const ListFournisseur({Key? key}) : super(key: key);
+class ListClient extends StatefulWidget {
+  const ListClient({super.key});
 
   @override
-  State<ListFournisseur> createState() => _ListFournisseurState();
+  State<ListClient> createState() => _ListClientState();
 }
 
-class _ListFournisseurState extends State<ListFournisseur> {
+class _ListClientState extends State<ListClient> {
   SqlDb sqlDb = SqlDb();
-  List suppliers = [];
+  List clients = [];
+
+  List client = [];
   var id = "";
   //Formkey
   final _formKey = GlobalKey<FormState>();
@@ -23,13 +24,12 @@ class _ListFournisseurState extends State<ListFournisseur> {
   TextEditingController name = TextEditingController();
   TextEditingController email = TextEditingController();
   TextEditingController phone = TextEditingController();
-  TextEditingController address = TextEditingController();
 
-//Read data into database
+  //Read data into database
   Future readData() async {
-    List<Map> response = await sqlDb.readData("SELECT * FROM 'Suppliers'");
-    suppliers.addAll(response);
-    if (this.mounted) {
+    List<Map> response = await sqlDb.readData("SELECT * FROM 'Clients'");
+    clients.addAll(response);
+    if (mounted) {
       setState(() {});
     }
   }
@@ -45,7 +45,7 @@ class _ListFournisseurState extends State<ListFournisseur> {
     return ListView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        itemCount: suppliers.length,
+        itemCount: clients.length,
         itemBuilder: (context, i) {
           return Container(
             margin: const EdgeInsets.all(10),
@@ -53,21 +53,17 @@ class _ListFournisseurState extends State<ListFournisseur> {
                 borderRadius: BorderRadius.circular(20), color: Colors.white),
             child: ListTile(
                 onTap: () {
-                  showDialogFunc(
-                      context,
-                      suppliers[i]['name'],
-                      suppliers[i]['email'],
-                      suppliers[i]['phone'],
-                      suppliers[i]['address']);
+                  showDialogFunc(context, clients[i]['name'],
+                      clients[i]['email'], clients[i]['phone']);
                 },
                 leading: const Icon(
-                  Icons.inbox,
+                  Icons.person_outline_outlined,
                   size: 30,
                   color: Color.fromARGB(255, 45, 157, 220),
                 ),
                 title: Center(
                     child: Text(
-                  "${suppliers[i]['name']}",
+                  "${clients[i]['name']}",
                   style: const TextStyle(
                       fontSize: 20, fontWeight: FontWeight.bold),
                 )),
@@ -80,13 +76,12 @@ class _ListFournisseurState extends State<ListFournisseur> {
                             icon: const Icon(Icons.edit, color: Colors.blue),
                             onPressed: () {
                               setState(() {
-                                name.text = "${suppliers[i]['name']}";
-                                email.text = "${suppliers[i]['email']}";
-                                phone.text = "${suppliers[i]['phone']}";
-                                address.text = "${suppliers[i]['address']}";
-                                id = "${suppliers[i]['id']}";
+                                name.text = "${client[i]['name']}";
+                                email.text = "${client[i]['email']}";
+                                phone.text = "${client[i]['phone']}";
+                                id = "${client[i]['id']}";
                               });
-                              _editSuppliers(context);
+                              _editClients(context);
                             }),
                       ),
                       Expanded(
@@ -97,10 +92,10 @@ class _ListFournisseurState extends State<ListFournisseur> {
                             ),
                             onPressed: () async {
                               int response = await sqlDb.deleteData(
-                                  "DELETE FROM Suppliers WHERE id =${suppliers[i]['id']}");
+                                  "DELETE FROM clients WHERE id =${clients[i]['id']}");
                               if (response > 0) {
-                                suppliers.removeWhere((element) =>
-                                    element['id'] == suppliers[i]['id']);
+                                clients.removeWhere((element) =>
+                                    element['id'] == clients[i]['id']);
                                 setState(() {});
                                 print("Delete ==== $response");
                               } else {
@@ -116,7 +111,7 @@ class _ListFournisseurState extends State<ListFournisseur> {
   }
 
   //Formulaire
-  _editSuppliers(BuildContext context) {
+  _editClients(BuildContext context) {
     return showDialog(
         context: context,
         barrierDismissible: true,
@@ -138,12 +133,12 @@ class _ListFournisseurState extends State<ListFournisseur> {
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
                     int response = await sqlDb.updateData('''
-                    UPDATE Suppliers SET name ="${name.text}", email="${email.text}", phone="${phone.text}", address="${address.text}" WHERE id="$id"
+                    UPDATE Clients SET name ="${name.text}", email="${email.text}", phone="${phone.text}" WHERE id="$id"
                   ''');
                     print("===$response==== UPDATE DONE ==========");
 
                     Navigator.of(context).pushReplacement(MaterialPageRoute(
-                        builder: (context) => const AjouterFournisseurPage()));
+                        builder: (context) => const AjouterClientPage()));
                   }
                 },
               ),
@@ -182,7 +177,7 @@ class _ListFournisseurState extends State<ListFournisseur> {
                           ])),
                     ),
 
-                    //Email of suppliers
+                    //Email of client
                     Container(
                       alignment: Alignment.center,
                       margin:
@@ -215,7 +210,7 @@ class _ListFournisseurState extends State<ListFournisseur> {
                       ),
                     ),
 
-                    //Phone of suppliers
+                    //Phone of client
                     Container(
                       alignment: Alignment.center,
                       margin:
@@ -243,35 +238,6 @@ class _ListFournisseurState extends State<ListFournisseur> {
                         ]),
                       ),
                     ),
-
-                    // Address of suppliers
-                    Container(
-                      alignment: Alignment.center,
-                      margin:
-                          const EdgeInsets.only(left: 20, right: 20, top: 30),
-                      child: TextFormField(
-                        controller: address,
-                        cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                        autovalidateMode: AutovalidateMode.onUserInteraction,
-                        decoration: const InputDecoration(
-                          enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color.fromARGB(255, 45, 157, 220)),
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          border: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          label: Text("Adresse"),
-                          labelStyle:
-                              TextStyle(fontSize: 13, color: Colors.black),
-                        ),
-                        validator: MultiValidator([
-                          RequiredValidator(
-                              errorText: "Veuillez entrer une adresse")
-                        ]),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -281,9 +247,7 @@ class _ListFournisseurState extends State<ListFournisseur> {
   }
 }
 
-// This is a block of Model Dialog
-showDialogFunc(
-    context, suppliersName, suppliersEmail, suppliersPhone, suppliersAddress) {
+showDialogFunc(context, clientsName, clientsEmail, clientsPhone) {
   return showDialog(
       context: context,
       barrierDismissible: true,
@@ -306,19 +270,15 @@ showDialogFunc(
           content: SingleChildScrollView(
             child: Column(
               children: [
-                Text("Nom : $suppliersName"),
+                Text("Nom : $clientsName"),
                 const SizedBox(
                   height: 20,
                 ),
-                Text("Email: $suppliersEmail"),
+                Text("Email: $clientsEmail"),
                 const SizedBox(
                   height: 20,
                 ),
-                Text("Numéro: $suppliersPhone"),
-                const SizedBox(
-                  height: 20,
-                ),
-                Text("Adresse: $suppliersAddress")
+                Text("Numéro: $clientsPhone"),
               ],
             ),
           ),

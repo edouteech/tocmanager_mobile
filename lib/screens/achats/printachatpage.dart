@@ -1,6 +1,8 @@
-// ignore_for_file: non_constant_identifier_names, avoid_print, library_prefixes, depend_on_referenced_packages
+// ignore_for_file: non_constant_identifier_names
+
+import 'package:flutter/material.dart';
+import 'package:tocmanager/database/sqfdb.dart';
 import 'dart:io';
-import '../../database/sqfdb.dart';
 import 'package:blue_print_pos/blue_print_pos.dart';
 import 'package:blue_print_pos/models/blue_device.dart';
 import 'package:blue_print_pos/models/connection_status.dart';
@@ -8,24 +10,48 @@ import 'package:blue_print_pos/receipt/receipt_section_text.dart';
 import 'package:blue_print_pos/receipt/receipt_text_size_type.dart';
 import 'package:blue_print_pos/receipt/receipt_text_style_type.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:esc_pos_utils_plus/esc_pos_utils.dart';
 
-class VentePrint extends StatefulWidget {
-  final String sell_id;
-  const VentePrint({super.key, required this.sell_id});
+class PrintPageAchat extends StatefulWidget {
+  final String buy_id;
+  const PrintPageAchat({super.key, required this.buy_id});
 
   @override
-  State<VentePrint> createState() => _VentePrintState();
+  State<PrintPageAchat> createState() => _PrintPageAchatState();
 }
 
-class _VentePrintState extends State<VentePrint> {
-   @override
+class _PrintPageAchatState extends State<PrintPageAchat> {
+  @override
   void initState() {
-    readSellsData();
-    readSell_LineData();
     super.initState();
+    readBuyLineData();
+    readData();
+  }
+
+  List buyline = [];
+  /* Database */
+  SqlDb sqlDb = SqlDb();
+  /* Read data for database */
+
+  Future readBuyLineData() async {
+    List<Map> response = await sqlDb.readData(
+        "SELECT Buy_lines.*,Products.name as product_name FROM 'Products','Buy_lines' WHERE Buy_lines.product_id = Products.id AND buy_id='${widget.buy_id}'");
+    buyline.addAll(response);
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  List buys = [];
+  Future readData() async {
+    List<Map> response = await sqlDb.readData(''' 
+     SELECT Buys.*,Suppliers.name as supplier_name FROM 'Buys','Suppliers' WHERE Buys.supplier_id = Suppliers.id AND Buys.id='${widget.buy_id}' 
+     ''');
+    buys.addAll(response);
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   final BluePrintPos _bluePrintPos = BluePrintPos.instance;
@@ -97,6 +123,7 @@ class _VentePrintState extends State<VentePrint> {
 
     /// Example for Print Text
     final ReceiptSectionText receiptText = ReceiptSectionText();
+   
     receiptText.addText(
       'TOCMANGER',
       size: ReceiptTextSizeType.large,
@@ -104,45 +131,57 @@ class _VentePrintState extends State<VentePrint> {
     );
     receiptText.addSpacer();
     receiptText.addText(
-      'Reçu de vente n° ${widget.sell_id}',
+      "Reçu d'achat n° ${widget.buy_id}",
       size: ReceiptTextSizeType.medium,
       style: ReceiptTextStyleType.bold,
     );
     receiptText.addSpacer(useDashed: true);
     receiptText.addLeftRightText(
       'Date:',
-      "${sells[0]['date_sell']}",
+      "${buys[0]['date_buy']}",
       leftStyle: ReceiptTextStyleType.normal,
       rightStyle: ReceiptTextStyleType.bold,
     );
     receiptText.addLeftRightText(
-      'Client:',
-      "${sells[0]['client_name']}",
+      'fournisseur:',
+      "${buys[0]['supplier_name']}",
       leftStyle: ReceiptTextStyleType.normal,
       rightStyle: ReceiptTextStyleType.bold,
+      leftSize: ReceiptTextSizeType.medium,
+      rightSize: "${buys[0]['supplier_name']}".length > 20
+          ? ReceiptTextSizeType.small
+          : ReceiptTextSizeType.medium,
     );
     receiptText.addSpacer(useDashed: true);
 
-    for (var i = 0; i < sell_lines.length; i++) {
+    for (var i = 0; i < buyline.length; i++) {
+      var prix_nitaire = double.parse('${buyline[i]["amount"]}') /
+          double.parse('${buyline[i]["quantity"]}');
       receiptText.addLeftRightText(
-        "${sell_lines[i]['quantity']} x ${sell_lines[i]['product_name']}",
-        "${sell_lines[i]['amount']}",
+        "${buyline[i]['quantity']} x $prix_nitaire",
+        "${buyline[i]['amount']}",
         leftStyle: ReceiptTextStyleType.normal,
         rightStyle: ReceiptTextStyleType.bold,
       );
+      receiptText.addText(
+        '${buyline[i]['product_name']}',
+        size: ReceiptTextSizeType.medium,
+      );
+      receiptText.addSpacer(count: 2);
     }
 
     receiptText.addSpacer(useDashed: true);
+    receiptText.addSpacer(useDashed: true);
     receiptText.addLeftRightText(
       'Total',
-      "${sells[0]['amount']}",
+      "${buys[0]['amount']}",
       leftStyle: ReceiptTextStyleType.normal,
       rightStyle: ReceiptTextStyleType.bold,
     );
     receiptText.addSpacer(useDashed: true);
     receiptText.addLeftRightText(
       'Reste',
-      "${sells[0]['reste']}",
+      "${buys[0]['reste']}",
       leftStyle: ReceiptTextStyleType.normal,
       rightStyle: ReceiptTextStyleType.bold,
     );
@@ -150,46 +189,19 @@ class _VentePrintState extends State<VentePrint> {
     await _bluePrintPos.printReceiptText(receiptText,
         paperSize: PaperSize.mm80);
 
-    /// Example for print QR
-    
-    await _bluePrintPos.printQR(widget.sell_id, size: 200);
+    // / Example for print QR
+
+    await _bluePrintPos.printQR(widget.buy_id, size: 200);
 
     /// Text after QR
-    final ReceiptSectionText receiptSecondText = ReceiptSectionText();
-    receiptSecondText.addText('Powered by Tocmanager',
-        size: ReceiptTextSizeType.medium);
-    receiptSecondText.addSpacer();
-    await _bluePrintPos.printReceiptText(
-      receiptSecondText,
-      feedCount: 1,
-    );
-
-        
-  }
-
- 
-  /* Database */
-  SqlDb sqlDb = SqlDb();
-  List sells = [];
-  void readSellsData() async {
-    List<Map> response = await sqlDb
-        .readData("SELECT * FROM Sells WHERE id='${widget.sell_id}' ");
-    sells.addAll(response);
-    print(sell_lines);
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  List sell_lines = [];
-   readSell_LineData() async {
-    List<Map> response = await sqlDb.readData(
-        "SELECT Sell_lines.*,Products.name as product_name FROM 'Products','Sell_lines' WHERE Sell_lines.product_id = Products.id AND sell_id='${widget.sell_id}'");
-    sell_lines.addAll(response);
-    
-    if (mounted) {
-      setState(() {});
-    }
+    // final ReceiptSectionText receiptSecondText = ReceiptSectionText();
+    // receiptSecondText.addText('Powered by Tocmanager',
+    //     size: ReceiptTextSizeType.medium);
+    // receiptSecondText.addSpacer();
+    // await _bluePrintPos.printReceiptText(
+    //   receiptSecondText,
+    //   feedCount: 1,
+    // );
   }
 
   @override

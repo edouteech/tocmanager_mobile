@@ -4,6 +4,7 @@ import 'package:form_field_validator/form_field_validator.dart';
 import 'package:tocmanager/database/sqfdb.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/categories/categorielist.dart';
+import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/fournisseurs/ajouter_fournisseur.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/widgets.dart';
@@ -95,8 +96,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
           iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
           title: const Text(
             'Catégories',
-            style: TextStyle(
-                fontFamily: 'Oswald', fontSize: 30, color: Colors.black),
+            style: TextStyle(color: Colors.black),
           )),
       drawer: Drawer(
         child: SingleChildScrollView(
@@ -133,8 +133,8 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
               currentPage == DrawerSections.achat ? true : false),
           MenuItem(6, "Fournisseurs", Icons.notifications_outlined,
               currentPage == DrawerSections.achat ? true : false),
-          MenuItem(7, "Factures", Icons.settings_outlined,
-              currentPage == DrawerSections.facture ? true : false),
+          MenuItem(7, "Clients", Icons.person,
+              currentPage == DrawerSections.client ? true : false),
           MenuItem(
               8,
               "Politique de confidentialité",
@@ -173,7 +173,8 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
               currentPage = DrawerSections.fournisseur;
               nextScreen(context, const AjouterFournisseurPage());
             } else if (id == 7) {
-              currentPage = DrawerSections.facture;
+              currentPage = DrawerSections.client;
+              nextScreen(context, const AjouterClientPage());
             } else if (id == 8) {
               currentPage = DrawerSections.privacy_policy;
             } else if (id == 9) {
@@ -310,6 +311,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
                         padding: const EdgeInsets.only(left: 20, right: 20),
                         margin: const EdgeInsets.only(top: 10),
                         child: DropdownButtonFormField(
+                          isExpanded: true,
                           decoration: const InputDecoration(
                             enabledBorder: OutlineInputBorder(
                                 borderSide: BorderSide(
@@ -348,7 +350,7 @@ enum DrawerSections {
   vente,
   achat,
   fournisseur,
-  facture,
+  client,
   privacy_policy,
   logout,
 }

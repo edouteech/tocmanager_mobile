@@ -18,7 +18,7 @@ class SqlDb {
     String path = join(databasepath, 'tocmanager.db');
     Database mydb = await openDatabase(path,
         onCreate: _onCreate,
-        version: 1,
+        version: 3,
         onUpgrade: _onUpgrade,
         onConfigure: _onConfigure);
     return mydb;
@@ -113,10 +113,11 @@ class SqlDb {
           "id" INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
           "date_sell" DATETIME NOT NULL,
           "amount" DOUBLE DEFAULT 0.0,
-          "client_name" TEXT NOT NULL,
+          "client_id" INT NOT NULL,
           "reste" DOUBLE DEFAULT 0.0,
           "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (client_id) REFERENCES Clients (id)
         )
     ''');
 
@@ -141,11 +142,12 @@ class SqlDb {
           "id" INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
           "amount" DOUBLE NOT NULL,
           "date_encaissement" DATETIME NOT NULL,
-          "client_name" TEXT NOT NULL,
+          "client_id" INT NOT NULL,
           "sell_id" INT NOT NULL,
           "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (sell_id) REFERENCES Sells (id) ON DELETE CASCADE
+          FOREIGN KEY (sell_id) REFERENCES Sells (id) ON DELETE CASCADE,
+          FOREIGN KEY (client_id) REFERENCES Clients (id) 
     
         )
     ''');
@@ -163,6 +165,18 @@ class SqlDb {
           FOREIGN KEY (buy_id) REFERENCES Buys (id)  ON DELETE CASCADE,
           FOREIGN KEY (supplier_id) REFERENCES Suppliers (id)
     
+        )
+    ''');
+
+    //Clients
+    await db.execute('''
+        CREATE TABLE "Clients"(
+          "id" INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
+          "name" TEXT NOT NULL,
+          "email" TEXT NOT NULL,
+          "phone" TEXT NOT NULL,
+          "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''');
     print("onCreate =======================");

@@ -7,14 +7,14 @@ import 'package:tocmanager/database/sqfdb.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 
 class EditVentePage extends StatefulWidget {
-  final String clientName;
+  final String clientId;
   final String amount;
   final String sellId;
   final String sellDate;
   final String sellReste;
   const EditVentePage(
       {super.key,
-      required this.clientName,
+      required this.clientId,
       required this.amount,
       required this.sellId,
       required this.sellReste,
@@ -41,20 +41,53 @@ class _EditVentePageState extends State<EditVentePage> {
   TextEditingController priceProductController = TextEditingController();
   TextEditingController quantityController = TextEditingController();
   TextEditingController dateController = TextEditingController();
-  TextEditingController nameClientController = TextEditingController();
   TextEditingController sommeclientController = TextEditingController();
 
   @override
   void initState() {
     reloadData();
     readSell_line();
+    readclientsData();
     readData();
     super.initState();
   }
 
+  /* =============================Clients=================== */
+  /* List clients */
+  List clients = [];
+
+  /* Read data for database */
+  Future readclientsData() async {
+    List<Map> response = await sqlDb.readData("SELECT * FROM 'clients'");
+    clients.addAll(response);
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  /* Dropdown products items */
+  String? selectedclientsValue;
+  List<DropdownMenuItem<String>> get dropdownclientsItems {
+    List<DropdownMenuItem<String>> menuclientsItems = [];
+    for (var i = 0; i < clients.length; i++) {
+      menuclientsItems.add(DropdownMenuItem(
+        value: "${clients[i]["id"]}",
+        child: Text(
+          "${clients[i]["name"]}",
+          style: "${clients[i]["name"]}".length > 20
+              ? const TextStyle(fontSize: 15)
+              : null,
+        ),
+      ));
+    }
+    return menuclientsItems;
+  }
+
+  /* =============================End Clients=================== */
+
   reloadData() {
     dateController.text = widget.sellDate;
-    nameClientController.text = widget.clientName;
+    selectedclientsValue = widget.clientId;
     sum = double.parse(widget.amount);
     reste = double.parse(widget.amount) - double.parse(widget.sellReste);
     sommeclientController.text = reste.toString();
@@ -150,32 +183,58 @@ class _EditVentePageState extends State<EditVentePage> {
                         Container(
                             padding: const EdgeInsets.only(left: 20, right: 20),
                             margin: const EdgeInsets.only(top: 10),
-                            child: TextFormField(
-                              controller: nameClientController,
-                              validator: MultiValidator([
-                                RequiredValidator(
-                                    errorText:
-                                        "Veuillez entrer le nom du client")
-                              ]),
-                              autovalidateMode:
-                                  AutovalidateMode.onUserInteraction,
-                              decoration: const InputDecoration(
-                                contentPadding:
-                                    EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
-                                enabledBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                        color:
-                                            Color.fromARGB(255, 45, 157, 220)),
-                                    borderRadius:
-                                        BorderRadius.all(Radius.circular(10))),
-                                border: OutlineInputBorder(
-                                    borderRadius:
-                                        BorderRadius.all(Radius.circular(10))),
-                                label: Text("Nom du client"),
-                                labelStyle: TextStyle(
-                                    fontSize: 13, color: Colors.black),
-                              ),
-                            )),
+                            child: DropdownButtonFormField(
+                                isExpanded: true,
+                                autovalidateMode:
+                                    AutovalidateMode.onUserInteraction,
+                                decoration: const InputDecoration(
+                                  // icon: GestureDetector(
+                                  //   child: const Icon(
+                                  //     Icons.add_box_rounded,
+                                  //     size: 30,
+                                  //     color: Colors.blue,
+                                  //   ),
+                                  //   onTap: () {
+                                  //     _AddSupplierDialog(context);
+                                  //   },
+                                  // ),
+                                  contentPadding:
+                                      EdgeInsets.fromLTRB(5.0, 5.0, 5.0, 5.0),
+                                  enabledBorder: OutlineInputBorder(
+                                      borderSide: BorderSide(
+                                          color: Color.fromARGB(
+                                              255, 45, 157, 220)),
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(10))),
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(10))),
+                                  label: Text("Nom client"),
+                                  labelStyle: TextStyle(
+                                      fontSize: 13, color: Colors.black),
+                                ),
+                                dropdownColor: Colors.white,
+                                validator: (value) => value == null
+                                    ? 'Sélectionner un client'
+                                    : null,
+                                value: selectedclientsValue,
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    selectedclientsValue = newValue!;
+                                    if (selectedclientsValue != null) {
+                                      setState(() async {
+                                        var supplier = await sqlDb.readData(
+                                            "SELECT * FROM Clients WHERE id =$selectedclientsValue");
+
+                                        setState(() {
+                                          nameProductsController.text =
+                                              "${clients[0]["name"]}";
+                                        });
+                                      });
+                                    }
+                                  });
+                                },
+                                items: dropdownclientsItems)),
                   ),
                   Flexible(
                     child: Container(
@@ -326,7 +385,7 @@ class _EditVentePageState extends State<EditVentePage> {
 
                                 // Update sell
                                 int UpdateSells = await sqlDb.updateData(
-                                    ''' UPDATE Sells SET date_sell ='${dateController.text}', client_name = '${nameClientController.text}' WHERE id="${widget.sellId}" ''');
+                                    ''' UPDATE Sells SET date_sell ='${dateController.text}', client_id = '$selectedclientsValue' WHERE id="${widget.sellId}" ''');
                                 print("==== SELLS UPDATE DONE ====");
 
                                 //Delete sell line
@@ -365,7 +424,7 @@ class _EditVentePageState extends State<EditVentePage> {
 
                                 //Encaissement
                                 int response_encaissement = await sqlDb.inserData(
-                                    ''' INSERT INTO Encaissements(amount, date_encaissement, client_name, sell_id) VALUES ('${sommeclientController.text}', '${dateController.text}','${nameClientController.text}', '${widget.sellId}') ''');
+                                    ''' INSERT INTO Encaissements(amount, date_encaissement, client_id, sell_id) VALUES ('${sommeclientController.text}', '${dateController.text}','$selectedclientsValue', '${widget.sellId}') ''');
                                 print("===== SELLS INSERTION DONE =====");
 
                                 Navigator.of(context).pushReplacement(

@@ -4,6 +4,8 @@ import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
+import 'package:tocmanager/screens/clients/ajouter_client.dart';
+import 'package:tocmanager/screens/fournisseurs/ajouter_fournisseur.dart';
 import 'package:tocmanager/screens/ventes/ajouter_vente.dart';
 import 'package:tocmanager/screens/ventes/details_vente.dart';
 import 'package:tocmanager/screens/ventes/editVente.dart';
@@ -37,7 +39,9 @@ class _VenteHomeState extends State<VenteHome> {
 
   /* Read data for database */
   void readProductsData() async {
-    List<Map> response = await sqlDb.readData("SELECT * FROM Sells");
+    List<Map> response = await sqlDb.readData(''' 
+     SELECT Sells.*,Clients.name as client_name FROM 'Sells','Clients' WHERE Sells.client_id = Clients.id
+    ''');
     sells.addAll(response);
     if (this.mounted) {
       setState(() {});
@@ -49,6 +53,7 @@ class _VenteHomeState extends State<VenteHome> {
     readProductsData();
     super.initState();
   }
+
   final format = DateFormat("yyyy-MM-dd HH:mm:ss");
 
   @override
@@ -72,8 +77,7 @@ class _VenteHomeState extends State<VenteHome> {
           iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
           title: const Text(
             'Ventes',
-            style: TextStyle(
-                fontFamily: 'Oswald', fontSize: 30, color: Colors.black),
+            style: TextStyle(color: Colors.black),
           )),
       drawer: Drawer(
         child: SingleChildScrollView(
@@ -151,8 +155,10 @@ class _VenteHomeState extends State<VenteHome> {
                           onPressed: () {
                             nextScreen(
                                 context,
-                                EncaissementPage(clientName: '${sells[index]["client_name"]}', reste: '${sells[index]["reste"]}', sellId: '${sells[index]["id"]}',
-                                  
+                                EncaissementPage(
+                                  clientId: '${sells[index]["client_id"]}',
+                                  reste: '${sells[index]["reste"]}',
+                                  sellId: '${sells[index]["id"]}',
                                 ));
                           }),
                     )),
@@ -186,7 +192,15 @@ class _VenteHomeState extends State<VenteHome> {
                             color: Colors.blue,
                           ),
                           onPressed: () {
-                            nextScreen(context, EditVentePage(sellId: '${sells[index]["id"]}', amount: '${sells[index]["amount"]}', clientName: '${sells[index]["client_name"]}', sellDate: '${sells[index]["date_sell"]}', sellReste: '${sells[index]["reste"]}',));
+                            nextScreen(
+                                context,
+                                EditVentePage(
+                                  sellId: '${sells[index]["id"]}',
+                                  amount: '${sells[index]["amount"]}',
+                                  clientId: '${sells[index]["client_id"]}',
+                                  sellDate: '${sells[index]["date_sell"]}',
+                                  sellReste: '${sells[index]["reste"]}',
+                                ));
                           }),
                     )),
                     DataCell(Center(
@@ -227,14 +241,16 @@ class _VenteHomeState extends State<VenteHome> {
               currentPage == DrawerSections.vente ? true : false),
           MenuItem(5, "Achats", Icons.notifications_outlined,
               currentPage == DrawerSections.achat ? true : false),
-          MenuItem(6, "Factures", Icons.settings_outlined,
-              currentPage == DrawerSections.facture ? true : false),
+          MenuItem(6, "Fournisseurs", Icons.notifications_outlined,
+              currentPage == DrawerSections.fournisseur ? true : false),
+          MenuItem(7, "Clients", Icons.person,
+              currentPage == DrawerSections.client ? true : false),
           MenuItem(
-              7,
+              8,
               "Politique de confidentialité",
               Icons.privacy_tip_outlined,
               currentPage == DrawerSections.privacy_policy ? true : false),
-          MenuItem(8, "Deconnexion", Icons.logout_outlined,
+          MenuItem(9, "Deconnexion", Icons.logout_outlined,
               currentPage == DrawerSections.logout ? true : false),
         ],
       ),
@@ -264,10 +280,14 @@ class _VenteHomeState extends State<VenteHome> {
               currentPage = DrawerSections.achat;
               nextScreen(context, const AchatHomePage());
             } else if (id == 6) {
-              currentPage = DrawerSections.facture;
+              currentPage = DrawerSections.fournisseur;
+              nextScreen(context, const AjouterFournisseurPage());
             } else if (id == 7) {
-              currentPage = DrawerSections.privacy_policy;
+              currentPage = DrawerSections.client;
+              nextScreen(context, const AjouterClientPage());
             } else if (id == 8) {
+              currentPage = DrawerSections.privacy_policy;
+            } else if (id == 9) {
               showDialog(
                   barrierDismissible: false,
                   context: context,
@@ -316,10 +336,10 @@ class _VenteHomeState extends State<VenteHome> {
                 color: const Color.fromARGB(255, 45, 157, 220),
               )),
               Expanded(
-                  flex: 3,
+                  flex: 4,
                   child: Text(
                     title,
-                    style: const TextStyle(color: Colors.black, fontSize: 16),
+                    style: const TextStyle(color: Colors.black, fontSize: 18),
                   ))
             ],
           ),
@@ -327,8 +347,6 @@ class _VenteHomeState extends State<VenteHome> {
       ),
     );
   }
-
-  
 }
 
 enum DrawerSections {
@@ -337,7 +355,8 @@ enum DrawerSections {
   produit,
   vente,
   achat,
-  facture,
+  client,
+  fournisseur,
   privacy_policy,
   logout,
 }

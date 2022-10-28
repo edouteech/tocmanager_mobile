@@ -51,7 +51,12 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
     for (var i = 0; i < products.length; i++) {
       menuProductsItems.add(DropdownMenuItem(
         value: "${products[i]["id"]}",
-        child: Text("${products[i]["name"]}"),
+        child: Text(
+          "${products[i]["name"]}",
+          style: "${products[i]["name"]}".length > 20
+              ? const TextStyle(fontSize: 15)
+              : null,
+        ),
       ));
     }
     return menuProductsItems;
@@ -60,7 +65,7 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
   /* =============================End Products=================== */
 
   /* =============================Suppliers=================== */
-  /* List products */
+  /* List suppliers */
   List suppliers = [];
 
   /* Read data for database */
@@ -79,7 +84,12 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
     for (var i = 0; i < suppliers.length; i++) {
       menuSuppliersItems.add(DropdownMenuItem(
         value: "${suppliers[i]["id"]}",
-        child: Text("${suppliers[i]["name"]}"),
+        child: Text(
+          "${suppliers[i]["name"]}",
+          style: "${suppliers[i]["name"]}".length > 20
+              ? const TextStyle(fontSize: 15)
+              : null,
+        ),
       ));
     }
     return menuSuppliersItems;
@@ -162,32 +172,33 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                           padding: const EdgeInsets.only(left: 20, right: 20),
                           margin: const EdgeInsets.only(top: 10),
                           child: DropdownButtonFormField(
+                            isExpanded: true,
                               autovalidateMode:
                                   AutovalidateMode.onUserInteraction,
-                              decoration: InputDecoration(
-                                icon: GestureDetector(
-                                  child: const Icon(
-                                    Icons.add_box_rounded,
-                                    size: 30,
-                                    color: Colors.blue,
-                                  ),
-                                  onTap: () {
-                                    _AddSupplierDialog(context);
-                                  },
-                                ),
-                                contentPadding: const EdgeInsets.fromLTRB(
-                                    20.0, 10.0, 20.0, 10.0),
-                                enabledBorder: const OutlineInputBorder(
+                              decoration: const InputDecoration(
+                                // icon: GestureDetector(
+                                //   child: const Icon(
+                                //     Icons.add_box_rounded,
+                                //     size: 30,
+                                //     color: Colors.blue,
+                                //   ),
+                                //   onTap: () {
+                                //     _AddSupplierDialog(context);
+                                //   },
+                                // ),
+                                contentPadding: EdgeInsets.fromLTRB(
+                                    5.0, 5.0, 5.0, 5.0),
+                                enabledBorder: OutlineInputBorder(
                                     borderSide: BorderSide(
                                         color:
                                             Color.fromARGB(255, 45, 157, 220)),
                                     borderRadius:
                                         BorderRadius.all(Radius.circular(10))),
-                                border: const OutlineInputBorder(
+                                border: OutlineInputBorder(
                                     borderRadius:
                                         BorderRadius.all(Radius.circular(10))),
-                                label: const Text("Nom fournisseur"),
-                                labelStyle: const TextStyle(
+                                label: Text("Nom fournisseur"),
+                                labelStyle: TextStyle(
                                     fontSize: 13, color: Colors.black),
                               ),
                               dropdownColor: Colors.white,
@@ -486,6 +497,7 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                     padding: const EdgeInsets.only(left: 20, right: 20),
                     margin: const EdgeInsets.only(top: 10),
                     child: DropdownButtonFormField(
+                        isExpanded: true,
                         validator: (value) =>
                             value == null ? 'Sélectionner un produit' : null,
                         decoration: const InputDecoration(
@@ -599,7 +611,7 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                     MaterialPageRoute(
                         builder: (context) => const AjouterAchatPage()),
                     (Route<dynamic> route) => false,
-                  ); 
+                  );
                 },
               ),
               TextButton(

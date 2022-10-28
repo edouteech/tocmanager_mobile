@@ -2,7 +2,7 @@
 
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
-import 'package:tocmanager/screens/print/print_page.dart';
+import 'package:tocmanager/screens/achats/printachatpage.dart';
 import '../../database/sqfdb.dart';
 import '../../widgets/widgets.dart';
 
@@ -42,7 +42,7 @@ class _AchatDetailsState extends State<AchatDetails> {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          nextScreen(context,  PrintPage( buy_id: widget.id,));
+          nextScreen(context,  PrintPageAchat( buy_id: widget.id,));
         },
         backgroundColor: const Color.fromARGB(255, 45, 157, 220),
         child: const Icon(

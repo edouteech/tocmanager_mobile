@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
+import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/profile/profile_page.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 import '../database/sqfdb.dart';
@@ -13,7 +14,6 @@ import 'fournisseurs/ajouter_fournisseur.dart';
 import 'home_widgets/card.dart';
 import 'home_widgets/drawer_header.dart';
 import 'home_widgets/my_button.dart';
-import 'home_widgets/my_list_title.dart';
 import 'login_page.dart';
 import 'produits/ajouter_produits.dart';
 
@@ -86,7 +86,7 @@ class _HomePageState extends State<HomePage> {
         iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
         title: const Text(
           'Tableau de bord',
-          style: TextStyle(fontSize: 30, color: Colors.black),
+          style: TextStyle(color: Colors.black),
         ),
         actions: [
           Padding(
@@ -230,12 +230,14 @@ class _HomePageState extends State<HomePage> {
               currentPage == DrawerSections.achat ? true : false),
           MenuItem(6, "Fournisseurs", Icons.notifications_outlined,
               currentPage == DrawerSections.fournisseur ? true : false),
+          MenuItem(7, "Client", Icons.person_sharp,
+              currentPage == DrawerSections.client ? true : false),
           MenuItem(
-              7,
+              8,
               "Politique de confidentialité",
               Icons.privacy_tip_outlined,
               currentPage == DrawerSections.privacy_policy ? true : false),
-          MenuItem(8, "Deconnexion", Icons.logout_outlined,
+          MenuItem(9, "Deconnexion", Icons.logout_outlined,
               currentPage == DrawerSections.logout ? true : false),
         ],
       ),
@@ -266,6 +268,9 @@ class _HomePageState extends State<HomePage> {
             } else if (id == 6) {
               currentPage = DrawerSections.fournisseur;
               nextScreen(context, const AjouterFournisseurPage());
+            } else if (id == 7) {
+              currentPage = DrawerSections.client;
+              nextScreen(context, const AjouterClientPage());
             } else if (id == 8) {
               currentPage = DrawerSections.privacy_policy;
             } else if (id == 9) {
@@ -294,6 +299,8 @@ class _HomePageState extends State<HomePage> {
                                 MaterialPageRoute(
                                     builder: (context) => const LoginPage()),
                                 (route) => false);
+
+                              
                           },
                           icon: const Icon(
                             Icons.done,
@@ -321,7 +328,7 @@ class _HomePageState extends State<HomePage> {
                   child: Text(
                     title,
                     style: const TextStyle(
-                      fontFamily: 'Oswald',
+                      
                       fontSize: 18,
                     ),
                   ))
@@ -340,6 +347,7 @@ enum DrawerSections {
   vente,
   achat,
   fournisseur,
+  client,
   privacy_policy,
   logout,
 }

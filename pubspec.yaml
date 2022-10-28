@@ -28,16 +28,12 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
   
-  blue_print_pos: ^0.0.13
-  blue_thermal_printer: ^1.2.3
   cloud_firestore: ^3.4.9
-  cool_dropdown: ^1.4.2
   cupertino_icons: ^1.0.5
   data_table_2: ^2.3.7
   date_field: ^3.0.1
   datetime_picker_formfield: ^2.0.1
   dropdown_textfield: ^1.0.5
-  esc_pos_bluetooth: ^0.4.1
   
   firebase_auth: ^3.10.0
   firebase_core: ^1.23.0
@@ -52,7 +48,12 @@ dependencies:
   sqflite: ^2.1.0
   responsive_framework: ^0.2.0
   floating_action_bubble: ^1.1.4
- 
+  blue_print_pos: ^0.0.14
+  permission_handler: ^10.2.0
+  flutter_reactive_ble: ^5.0.2
+  provider: ^6.0.4
+  http: ^0.13.5
+  dio: ^4.0.6
   
 
 dev_dependencies:

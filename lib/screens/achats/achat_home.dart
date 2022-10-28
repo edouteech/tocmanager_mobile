@@ -5,6 +5,7 @@ import 'package:tocmanager/screens/achats/achat_details.dart';
 import 'package:tocmanager/screens/achats/ajouter_achat.dart';
 import 'package:tocmanager/screens/achats/decaissement.dart';
 import 'package:tocmanager/screens/achats/editAchat.dart';
+import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/fournisseurs/ajouter_fournisseur.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 import '../../database/sqfdb.dart';
@@ -70,8 +71,7 @@ class _AchatHomePageState extends State<AchatHomePage> {
           iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
           title: const Text(
             'Achats',
-            style: TextStyle(
-                fontFamily: 'Oswald', color: Colors.black),
+            style: TextStyle(fontFamily: 'Oswald', color: Colors.black),
           )),
       drawer: Drawer(
         child: SingleChildScrollView(
@@ -210,14 +210,14 @@ class _AchatHomePageState extends State<AchatHomePage> {
               currentPage == DrawerSections.achat ? true : false),
           MenuItem(6, "Fournisseurs", Icons.notifications_outlined,
               currentPage == DrawerSections.fournisseur ? true : false),
-          MenuItem(7, "Factures", Icons.settings_outlined,
-              currentPage == DrawerSections.facture ? true : false),
+          MenuItem(7, "Clients", Icons.person,
+              currentPage == DrawerSections.client ? true : false),
           MenuItem(
               8,
               "Politique de confidentialité",
               Icons.privacy_tip_outlined,
               currentPage == DrawerSections.privacy_policy ? true : false),
-          MenuItem(8, "Deconnexion", Icons.logout_outlined,
+          MenuItem(9, "Deconnexion", Icons.logout_outlined,
               currentPage == DrawerSections.logout ? true : false),
         ],
       ),
@@ -250,7 +250,8 @@ class _AchatHomePageState extends State<AchatHomePage> {
               currentPage = DrawerSections.fournisseur;
               nextScreen(context, const AjouterFournisseurPage());
             } else if (id == 7) {
-              currentPage = DrawerSections.facture;
+              currentPage = DrawerSections.client;
+              nextScreen(context, const AjouterClientPage());
             } else if (id == 8) {
               currentPage = DrawerSections.privacy_policy;
             } else if (id == 9) {
@@ -302,10 +303,10 @@ class _AchatHomePageState extends State<AchatHomePage> {
                 color: const Color.fromARGB(255, 45, 157, 220),
               )),
               Expanded(
-                  flex: 3,
+                  flex: 4,
                   child: Text(
                     title,
-                    style: const TextStyle(color: Colors.black, fontSize: 16),
+                    style: const TextStyle(color: Colors.black, fontSize: 18),
                   ))
             ],
           ),
@@ -322,7 +323,7 @@ enum DrawerSections {
   vente,
   achat,
   fournisseur,
-  facture,
+  client,
   privacy_policy,
   logout,
 }

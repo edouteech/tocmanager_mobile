@@ -24,7 +24,8 @@ class DecaissementPage extends StatefulWidget {
 
 class _DecaissementPageState extends State<DecaissementPage> {
   var newreste = 0.0;
-  final format = DateFormat("yyyy-MM-dd HH:mm:ss");
+  final format = DateFormat('yyyy-MM-dd HH:mm:ss');
+
   /* Read data for database */
   /* Database */
   SqlDb sqlDb = SqlDb();
@@ -56,7 +57,12 @@ class _DecaissementPageState extends State<DecaissementPage> {
           ? FloatingActionButton.extended(
               label: Text("Reste : $reste"),
               onPressed: () {
-                // _showFormDialog(context, reste, widget.id);
+                setState(() {
+                  decaissementController.text = widget.reste;
+                  dateController.text =
+                      DateFormat("yyyy-MM-dd hh:mm:ss").format(DateTime.now());
+                });
+                _showFormDialog(context, reste, widget.buyId);
               },
             )
           : null,
@@ -175,142 +181,142 @@ class _DecaissementPageState extends State<DecaissementPage> {
     );
   }
 
-  //  _showFormDialog(
-  //   BuildContext context,
-  //   double reste,
-  //   String id,
-  // ) {
-  //   return showDialog(
-  //       context: context,
-  //       barrierDismissible: true,
-  //       builder: (param) {
-  //         return AlertDialog(
-  //           actions: [
-  //             TextButton(
-  //               child: const Text(
-  //                 'Annuler',
-  //                 style: TextStyle(color: Colors.red),
-  //               ),
-  //               onPressed: () async {
-  //                 Navigator.of(context).pop();
-  //               },
-  //             ),
-  //             TextButton(
-  //               child: const Text('Valider',
-  //                   style: TextStyle(color: Colors.green)),
-  //               onPressed: () async {
-  //                 if (_formKey.currentState!.validate()) {
-  //                   //read last sells
-  //                   var response2 = await sqlDb.readData('''
-  //                   SELECT * FROM Sells WHERE id = '$id'
-  //                 ''');
+  _showFormDialog(
+    BuildContext context,
+    double reste,
+    String id,
+  ) {
+    return showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (param) {
+          return AlertDialog(
+            actions: [
+              TextButton(
+                child: const Text(
+                  'Annuler',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                },
+              ),
+              TextButton(
+                child: const Text('Valider',
+                    style: TextStyle(color: Colors.green)),
+                onPressed: () async {
+                  if (_formKey.currentState!.validate()) {
+                    //   //read last sells
+                    //   var response2 = await sqlDb.readData('''
+                    //   SELECT * FROM Sells WHERE id = '$id'
+                    // ''');
 
-  //                   //Encaissement
-  //                   int response_encaissement = await sqlDb.inserData('''
-  //                   INSERT INTO Encaissements(amount, date_encaissement, client_name, sell_id) VALUES('${encaissementController.text}', '${dateController.text}','${response2[0]['client_name']}', '$id')
+                    //   //Encaissement
+                    //   int response_encaissement = await sqlDb.inserData('''
+                    //   INSERT INTO Encaissements(amount, date_encaissement, client_name, sell_id) VALUES('${encaissementController.text}', '${dateController.text}','${response2[0]['client_name']}', '$id')
 
-  //                 ''');
-  //                   print("===$response_encaissement==== ENCAISSEMENT INSERTION DONE ==========");
+                    // ''');
+                    //   print("===$response_encaissement==== ENCAISSEMENT INSERTION DONE ==========");
 
-  //                   var newreste = (response2[0]['reste']) - double.parse(encaissementController.text);
-  //                   int response = await sqlDb.updateData('''
-  //                   UPDATE Sells SET reste ="$newreste" WHERE id="$id"
-  //                 ''');
-  //                   print("===$response==== UPDATE DONE ==========");
+                    //   var newreste = (response2[0]['reste']) - double.parse(encaissementController.text);
+                    //   int response = await sqlDb.updateData('''
+                    //   UPDATE Sells SET reste ="$newreste" WHERE id="$id"
+                    // ''');
+                    //   print("===$response==== UPDATE DONE ==========");
 
-  //                   var response4 = await sqlDb.readData('''
-  //                   SELECT * FROM Sells WHERE id = '$id'
-  //                 ''');
+                    //   var response4 = await sqlDb.readData('''
+                    //   SELECT * FROM Sells WHERE id = '$id'
+                    // ''');
 
-  //                   nextScreen(context,  EncaissementPage( id: '$id',
-  //                             reste: '${response4[0]['reste']}',));
+                    //   nextScreen(context,  EncaissementPage( id: '$id',
+                    //             reste: '${response4[0]['reste']}',));
 
-  //                 }
-  //               },
-  //             ),
-  //           ],
-  //           title: const Center(child: Text('Encaissement')),
-  //           content: SingleChildScrollView(
-  //             child: Form(
-  //               key: _formKey,
-  //               child: Column(
-  //                 children: [
-  //                   //Encaissement
-  //                   Container(
-  //                     alignment: Alignment.center,
-  //                     margin:
-  //                         const EdgeInsets.only(left: 20, right: 20, top: 30),
-  //                     child: TextFormField(
-  //                       keyboardType: TextInputType.number,
-  //                       autovalidateMode: AutovalidateMode.onUserInteraction,
-  //                       controller: encaissementController,
-  //                       cursorColor: const Color.fromARGB(255, 45, 157, 220),
-  //                       decoration: const InputDecoration(
-  //                         enabledBorder: OutlineInputBorder(
-  //                             borderSide: BorderSide(
-  //                                 color: Color.fromARGB(255, 45, 157, 220)),
-  //                             borderRadius:
-  //                                 BorderRadius.all(Radius.circular(10))),
-  //                         border: OutlineInputBorder(
-  //                             borderRadius:
-  //                                 BorderRadius.all(Radius.circular(10))),
-  //                         label: Text("Encaissement"),
-  //                         labelStyle:
-  //                             TextStyle(fontSize: 13, color: Colors.black),
-  //                       ),
-  //                       validator: (value) {
-  //                         if (value!.isEmpty) {
-  //                           return 'Veuillez entrez une valeur';
-  //                         }
-  //                         if (int.parse(value) < 1) {
-  //                           return 'Impossible de payer ce montant';
-  //                         } else if (int.parse(value) > reste) {
-  //                           return 'Impossible de dépasser $reste';
-  //                         }
-  //                         return null;
-  //                       },
-  //                     ),
-  //                   ),
+                  }
+                },
+              ),
+            ],
+            title: const Center(child: Text('Décaissement')),
+            content: SingleChildScrollView(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    //Dencaissement
+                    Container(
+                      alignment: Alignment.center,
+                      margin:
+                          const EdgeInsets.only(left: 20, right: 20, top: 30),
+                      child: TextFormField(
+                        keyboardType: TextInputType.number,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        controller: decaissementController,
+                        cursorColor: const Color.fromARGB(255, 45, 157, 220),
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Encaissement"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                        validator: (value) {
+                          if (value!.isEmpty) {
+                            return 'Veuillez entrez une valeur';
+                          }
+                          if (int.parse(value) < 1) {
+                            return 'Impossible de payer ce montant';
+                          } else if (int.parse(value) > reste) {
+                            return 'Impossible de dépasser $reste';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
 
-  //                   Container(
-  //                     padding: const EdgeInsets.only(left: 20, right: 20),
-  //                     margin: const EdgeInsets.only(top: 10),
-  //                     child: DateTimeField(
-  //                       controller: dateController,
-  //                       decoration: const InputDecoration(
-  //                         enabledBorder: OutlineInputBorder(
-  //                             borderSide: BorderSide(
-  //                                 color: Color.fromARGB(255, 45, 157, 220)),
-  //                             borderRadius:
-  //                                 BorderRadius.all(Radius.circular(10))),
-  //                         border: OutlineInputBorder(
-  //                             borderRadius:
-  //                                 BorderRadius.all(Radius.circular(10))),
-  //                         label: Text("Date"),
-  //                         labelStyle:
-  //                             TextStyle(fontSize: 13, color: Colors.black),
-  //                       ),
-  //                       format: format,
-  //                       onShowPicker: (context, currentValue) async {
-  //                         final date = await showDatePicker(
-  //                             context: context,
-  //                             firstDate: DateTime(1900),
-  //                             initialDate: currentValue ?? DateTime.now(),
-  //                             lastDate: DateTime(2100));
-  //                         if (date != null) {
-  //                           final time = TimeOfDay.fromDateTime(DateTime.now());
-  //                           return DateTimeField.combine(date, time);
-  //                         }
-  //                       },
-  //                     ),
-  //                   ),
-  //                 ],
-  //               ),
-  //             ),
-  //           ),
-  //         );
-  //       });
-  // }
+                    Container(
+                      padding: const EdgeInsets.only(left: 20, right: 20),
+                      margin: const EdgeInsets.only(top: 10),
+                      child: DateTimeField(
+                        controller: dateController,
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Date"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                        format: format,
+                        onShowPicker: (context, currentValue) async {
+                          final date = await showDatePicker(
+                              context: context,
+                              firstDate: DateTime(1900),
+                              initialDate: currentValue ?? DateTime.now().toUtc(),
+                              lastDate: DateTime(2100));
+                          if (date != null) {
+                            final time = TimeOfDay.fromDateTime(DateTime.now().toUtc());
+                            return DateTimeField.combine(date, time);
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        });
+  }
 
   _showEditDialog(
     BuildContext context,

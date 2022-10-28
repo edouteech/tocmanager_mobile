@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
+import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 import 'package:tocmanager/services/auth_service.dart';
 import '../../database/sqfdb.dart';
@@ -25,7 +26,7 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
   //Formkey
   final _formKey = GlobalKey<FormState>();
 
-    /* Database*/
+  /* Database*/
   SqlDb sqlDb = SqlDb();
   /* Auth service*/
   AuthService authService = AuthService();
@@ -38,7 +39,6 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
   TextEditingController email = TextEditingController();
   TextEditingController phone = TextEditingController();
   TextEditingController address = TextEditingController();
-
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +61,7 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
           iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
           title: const Text(
             'Fournisseurs',
-            style: TextStyle(color: Colors.black, fontFamily: 'RobotoMono'),
+            style: TextStyle(color: Colors.black),
           )),
       drawer: Drawer(
         child: SingleChildScrollView(
@@ -98,14 +98,14 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
               currentPage == DrawerSections.achat ? true : false),
           MenuItem(6, "Fournisseurs", Icons.notifications_outlined,
               currentPage == DrawerSections.fournisseur ? true : false),
-          MenuItem(6, "Factures", Icons.settings_outlined,
-              currentPage == DrawerSections.facture ? true : false),
+          MenuItem(7, "Clients", Icons.person,
+              currentPage == DrawerSections.client ? true : false),
           MenuItem(
-              7,
+              8,
               "Politique de confidentialité",
               Icons.privacy_tip_outlined,
               currentPage == DrawerSections.privacy_policy ? true : false),
-          MenuItem(8, "Deconnexion", Icons.logout_outlined,
+          MenuItem(9, "Deconnexion", Icons.logout_outlined,
               currentPage == DrawerSections.logout ? true : false),
         ],
       ),
@@ -138,7 +138,8 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
               currentPage = DrawerSections.fournisseur;
               nextScreen(context, const AjouterFournisseurPage());
             } else if (id == 7) {
-              currentPage = DrawerSections.facture;
+              currentPage = DrawerSections.client;
+              nextScreen(context, const AjouterClientPage());
             } else if (id == 8) {
               currentPage = DrawerSections.privacy_policy;
             } else if (id == 9) {
@@ -193,7 +194,7 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
                   flex: 3,
                   child: Text(
                     title,
-                    style: const TextStyle(color: Colors.black, fontSize: 16),
+                    style: const TextStyle(color: Colors.black, fontSize: 18),
                   ))
             ],
           ),
@@ -229,7 +230,7 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
                     VALUES("${name.text}","${email.text}","${phone.text}","${address.text}")
                   ''');
 
-                     print("===$response==== INSERTION DONE ==========");
+                    print("===$response==== INSERTION DONE ==========");
 
                     Navigator.of(context).pushReplacement(MaterialPageRoute(
                         builder: (context) => const AjouterFournisseurPage()));
@@ -279,7 +280,7 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
                       child: TextFormField(
                         keyboardType: TextInputType.emailAddress,
                         autovalidateMode: AutovalidateMode.onUserInteraction,
-                         controller: email,
+                        controller: email,
                         cursorColor: const Color.fromARGB(255, 45, 157, 220),
                         decoration: const InputDecoration(
                           enabledBorder: OutlineInputBorder(
@@ -310,7 +311,7 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
                       margin:
                           const EdgeInsets.only(left: 20, right: 20, top: 30),
                       child: TextFormField(
-                         controller: phone,
+                        controller: phone,
                         autovalidateMode: AutovalidateMode.onUserInteraction,
                         cursorColor: const Color.fromARGB(255, 45, 157, 220),
                         decoration: const InputDecoration(
@@ -339,7 +340,7 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
                       margin:
                           const EdgeInsets.only(left: 20, right: 20, top: 30),
                       child: TextFormField(
-                         controller: address,
+                        controller: address,
                         cursorColor: const Color.fromARGB(255, 45, 157, 220),
                         autovalidateMode: AutovalidateMode.onUserInteraction,
                         decoration: const InputDecoration(
@@ -377,7 +378,7 @@ enum DrawerSections {
   vente,
   achat,
   fournisseur,
-  facture,
+  client,
   privacy_policy,
   logout,
 }

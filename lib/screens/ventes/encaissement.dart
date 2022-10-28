@@ -10,13 +10,13 @@ import '../../database/sqfdb.dart';
 class EncaissementPage extends StatefulWidget {
   final String sellId;
   final String reste;
-  final String clientName;
+  final String clientId;
 
   const EncaissementPage(
       {super.key,
       required this.reste,
       required this.sellId,
-      required this.clientName});
+      required this.clientId,});
 
   @override
   State<EncaissementPage> createState() => _EncaissementPageState();
@@ -166,7 +166,7 @@ class _EncaissementPageState extends State<EncaissementPage> {
                                 context,
                                 MaterialPageRoute(
                                     builder: (context) => EncaissementPage(
-                                          clientName: '${widget.clientName}',
+                                          clientId: '${widget.clientId}',
                                           reste: '$newreste',
                                           sellId: '${widget.sellId}',
                                         )),
@@ -210,8 +210,8 @@ class _EncaissementPageState extends State<EncaissementPage> {
                   if (_formKey.currentState!.validate()) {
                     //Encaissement
                     int addEncaissement = await sqlDb.inserData('''
-                      INSERT INTO Encaissements(amount, date_encaissement, client_name, sell_id) 
-                      VALUES('${encaissementController.text}', '${dateController.text}','${widget.clientName}', '${widget.sellId}')
+                      INSERT INTO Encaissements(amount, date_encaissement, client_id, sell_id) 
+                      VALUES('${encaissementController.text}', '${dateController.text}','${widget.clientId}', '${widget.sellId}')
                      ''');
                     print("==== ENCAISSEMENT INSERTION DONE ======");
 
@@ -226,7 +226,7 @@ class _EncaissementPageState extends State<EncaissementPage> {
                       context,
                       MaterialPageRoute(
                           builder: (context) => EncaissementPage(
-                                clientName: '${widget.clientName}',
+                                clientId: '${widget.clientId}',
                                 reste: '$newreste',
                                 sellId: '${widget.sellId}',
                               )),
@@ -365,7 +365,7 @@ class _EncaissementPageState extends State<EncaissementPage> {
                       context,
                       MaterialPageRoute(
                           builder: (context) => EncaissementPage(
-                                clientName: '${widget.clientName}',
+                                clientId: '${widget.clientId}',
                                 reste: '$newreste',
                                 sellId: '${widget.sellId}',
                               )),
