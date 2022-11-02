@@ -1,10 +1,15 @@
 // ignore_for_file: use_build_context_synchronously, avoid_unnecessary_containers, non_constant_identifier_names, constant_identifier_names, sized_box_for_whitespace, no_leading_underscores_for_local_identifiers, avoid_print
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:tocmanager/models/user.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/profile/profile_page.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
+import 'package:tocmanager/services/user_service.dart';
 import '../database/sqfdb.dart';
 import '../helper/helper_function.dart';
 import '../services/auth_service.dart';
@@ -34,7 +39,9 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     gettingUserData();
+   
   }
+
 
   // string manipulation
   String getId(String res) {
@@ -299,8 +306,6 @@ class _HomePageState extends State<HomePage> {
                                 MaterialPageRoute(
                                     builder: (context) => const LoginPage()),
                                 (route) => false);
-
-                              
                           },
                           icon: const Icon(
                             Icons.done,
@@ -328,7 +333,6 @@ class _HomePageState extends State<HomePage> {
                   child: Text(
                     title,
                     style: const TextStyle(
-                      
                       fontSize: 18,
                     ),
                   ))

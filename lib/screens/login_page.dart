@@ -1,18 +1,21 @@
 // ignore_for_file: use_build_context_synchronously, avoid_printimport 'dart:convert';, unused_local_variable
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:tocmanager/models/api_response.dart';
 import 'package:tocmanager/models/user.dart';
 import 'package:tocmanager/widgets/widgets.dart';
 
 import '../helper/helper_function.dart';
+import '../models/api_response.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
 import '../services/user_service.dart';
 import 'home_page.dart';
 import 'register_page.dart';
+import 'package:http/http.dart' as http;
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -207,10 +210,10 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       GestureDetector(
                         onTap: () {
-                          login();
-                          // if (formKey.currentState!.validate()) {
-                          //   _loginUser();
-                          // }
+                          // login();
+                          if (formKey.currentState!.validate()) {
+                            _loginUser();
+                          }
                         },
                         child: Container(
                           alignment: Alignment.center,
@@ -271,25 +274,39 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // void _loginUser() async {
-  //   ApiResponse response = await Login(email, password);
+  // void _login() async {
+  //   ApiResponse response = await test();
   //   if (response.error == null) {
-  //     _saveAndRedirectHome(response.data as Users);
-  //     setState(() {
-  //       _isLoading = true;
-  //     });
+  //      var data = response.data;
+  //      print(data);
   //   } else {
   //     ScaffoldMessenger.of(context)
   //         .showSnackBar(SnackBar(content: Text('$response.error')));
   //   }
+
   // }
 
-  // _saveAndRedirectHome(Users user) async {
-  //   SharedPreferences pref = await SharedPreferences.getInstance();
-  //   await pref.setString('token', user.token ?? '');
-  //   await pref.setInt('userId', user.id ?? 0);
-  //   nextScreenReplace(context, const HomePage());
-  // }
+  void _loginUser() async {
+    ApiResponse response = await Login(email, password);
+
+    if (response.error == null) {
+      setState(() {
+        _isLoading = true;
+      });
+      _saveAndRedirectHome(response.data as Users);
+    } else {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('$response.error')));
+    }
+  }
+
+  _saveAndRedirectHome(Users user) async {
+    SharedPreferences pref = await SharedPreferences.getInstance();
+      await pref.setString('token', user.token ?? '');
+      await pref.setInt('userId', user.id ?? 0);
+       await pref.setInt('compagnie_id', user.compagnieId ?? 0);
+    nextScreenReplace(context, const HomePage());
+  }
 
   login() async {
     if (formKey.currentState!.validate()) {

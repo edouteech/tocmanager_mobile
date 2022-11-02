@@ -1,12 +1,18 @@
 // ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, depend_on_referenced_packages, unnecessary_string_interpolations, avoid_print, body_might_complete_normally_nullable, unnecessary_this, import_of_legacy_library_into_null_safe, unused_field, unused_local_variable
+import 'dart:convert';
+
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:tocmanager/screens/ventes/line_vente.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
+import 'package:tocmanager/services/user_service.dart';
+import '../../models/api_response.dart';
 import '../../services/auth_service.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import '../../database/sqfdb.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
 
 class AjouterVentePage extends StatefulWidget {
   const AjouterVentePage({Key? key}) : super(key: key);
@@ -17,7 +23,7 @@ class AjouterVentePage extends StatefulWidget {
 
 /* Achat line */
 List elements = [];
-List ventes = [];
+List<Map> ventes = [];
 var total = "";
 var sum = 0.0;
 var sell_reste = 0.0;
@@ -48,8 +54,8 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
 
   @override
   void initState() {
-    dateController.text =
-        DateFormat("yyyy-MM-dd hh:mm:ss").format(DateTime.now());
+    // dateController.text =
+    //     DateFormat("yyyy-MM-dd hh:mm:ss").format(DateTime.now());
     readData();
     readclientsData();
     super.initState();
@@ -242,6 +248,13 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                                 firstDate: DateTime(1900),
                                 initialDate: currentValue ?? DateTime.now(),
                                 lastDate: DateTime(2100));
+                            if (date != null) {
+                              final time = TimeOfDay.fromDateTime(
+                                  currentValue ?? DateTime.now());
+                              return DateTimeField.combine(date, time);
+                            } else {
+                              return currentValue;
+                            }
                           },
                         ),
                       ),
@@ -323,6 +336,9 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                         margin: const EdgeInsets.only(top: 10),
                         child: GestureDetector(
                           onTap: () async {
+                            //create_categorie();
+
+                             create_sells();
                             if (sum != 0.0) {
                               if (_formaKey.currentState!.validate()) {
                                 print("== Amount equal to : $sum");
@@ -369,6 +385,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                                       ''' INSERT INTO Encaissements(amount, date_encaissement, client_id, sell_id) VALUES ('${sommeclientController.text}', '${dateController.text}','$selectedclientsValue', '${ReadLastInsertion[0]["id"]}') ''');
                                   print(
                                       "===$response_encaissement==== SELLS INSERTION DONE ==========");
+                                  double amount = SellsAmount[0]['sellAmount'];
 
                                   setState(() {
                                     elements.clear();
@@ -418,6 +435,123 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
         ),
       ),
     );
+  }
+
+  // void create_sells(double amount) async {
+  //   int compagnieid = await getCompagnie_id();
+  //   int userid = await getUsersId();
+
+  //   // 1- date_sell
+  //   var date_sell = DateTime.parse('2020-01-02 03:04:05');
+  //   print(date_sell);
+  //   int tax = 0;
+  //   int discount = 0;
+  //   double sell_amount = amount;
+  //   double amount_received = double.parse(sommeclientController.text);
+  //   int user_id = userid;
+  //   int client_id = int.parse(selectedclientsValue!);
+  //   int compagnie_id = compagnieid;
+  //   // Object sell_lines = ventes;
+
+  //   ApiResponse response =
+  //       await Create_sells("2020-01-02 03:04:05", 0, 0, 10000, 10000, 2, 1, 1, [
+  //     {
+  //       "product_id": 1,
+  //       "quantity": 50,
+  //       "price": 200,
+  //       "amount": 10000,
+  //       "compagnie_id": 1,
+  //       "taxGroup": "B"
+  //     }
+  //   ]);
+  //   if (response.error == null) {
+  //     print(response.data);
+  //   } else {
+  //     print(response.error);
+  //     ScaffoldMessenger.of(context)
+  //         .showSnackBar(SnackBar(content: Text('$response.error')));
+  //   }
+  // }
+
+  Dio dio = Dio();
+  void create_categorie() async {
+    String pathUrl = 'https://teste.tocmanager.com/api/categories';
+    int compagnie_id = await getCompagnie_id();
+    String token = await getToken();
+    dynamic data = {"name": "yo", "compagnie_id": compagnie_id};
+
+    var response = await dio.post(pathUrl,
+        data: data,
+        options: Options(
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $token'
+          },
+        ));
+    if (response.statusCode == 200) {
+      print(response.statusCode);
+      print(response.data);
+    } else {
+      print(response.statusCode);
+    }
+  }
+
+  void create_sells() async {
+    String token = await getToken();
+    int user_id = await getUsersId();
+    int compagnie_id = await getCompagnie_id();
+    dynamic sell_lines = [
+      {
+        "product_id": 1,
+        "quantity": 50,
+        "price": 200,
+        "amount": 10,
+        "compagnie_id": 1,
+        "taxGroup": "B"
+      }
+    ];
+    dynamic test = {
+      "date_sell": "2020-01-02 03:04:05",
+      "tax": 0,
+      "discount": 0,
+      "amount": 100,
+      "amount_received": 100,
+      "user_id": user_id,
+      "client_id": 1,
+      "compagnie_id": compagnie_id,
+      "sell_lines": sell_lines
+    };
+    String pathUrl = 'https://teste.tocmanager.com/api/sells';
+
+    var response = await dio.post(pathUrl,
+        data: test,
+        options: Options(
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $token'
+          },
+        ));
+    if (response.statusCode == 200) {
+      print(response.statusCode);
+      print(response.data);
+    } else {
+      print(response.statusCode);
+    }
+
+    
+  }
+
+  void read_sells() async {
+    int compagnieid = await getCompagnie_id();
+
+    ApiResponse response = await readSells(compagnieid);
+    if (response.error == null) {
+      print(response.data);
+    } else {
+      print(response.error);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('$response.error')));
+    }
   }
 
   _showFormDialog(BuildContext context) {
