@@ -1,6 +1,9 @@
-// ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, unnecessary_this, avoid_print, unused_local_variable
+// ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, unnecessary_this, avoid_print, unused_local_variable, no_leading_underscores_for_local_identifiers
+
+import 'dart:convert';
 
 import 'package:data_table_2/data_table_2.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
@@ -12,7 +15,9 @@ import 'package:tocmanager/screens/ventes/editVente.dart';
 import 'package:tocmanager/screens/ventes/encaissement.dart';
 
 import '../../database/sqfdb.dart';
+import '../../models/sells.dart';
 import '../../services/auth_service.dart';
+import '../../services/user_service.dart';
 import '../../widgets/widgets.dart';
 import '../categories/ajouter_categorie.dart';
 import '../home_page.dart';
@@ -52,6 +57,43 @@ class _VenteHomeState extends State<VenteHome> {
   void initState() {
     readProductsData();
     super.initState();
+    readSells_Api();
+  }
+
+  Dio dio = Dio();
+List<Sells> sellsi = [];
+
+  readSells_Api() async {
+    int compagnie_id = await getCompagnie_id();
+    String token = await getToken();
+    String pathUrl =
+        'https://teste.tocmanager.com/api/sells?compagnie_id=$compagnie_id';
+    var response = await dio.get(pathUrl,
+        options: Options(
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $token'
+          },
+        ));
+    if (response.statusCode == 200) {
+      Map<String, dynamic> sm = response.data;
+      List<dynamic> _sells = sm["data"]["data"];
+      
+      for (var i = 0; i < _sells.length; i++) {
+        Sells sell = Sells(
+          _sells[i]["id"],
+          _sells[i]["date_sell"],
+          _sells[i]["amount"],
+          _sells[i]["rest"],
+          _sells[i]["client"]["name"],
+        );
+        sellsi.add(sell);
+      }
+    } else {
+      print(response.statusCode);
+      print('Error, Could not load Data.');
+      throw Exception('Failed to load Data');
+    }
   }
 
   final format = DateFormat("yyyy-MM-dd HH:mm:ss");
@@ -92,6 +134,139 @@ class _VenteHomeState extends State<VenteHome> {
           ),
         ),
       ),
+
+      // body: DataTable2(
+      //     showBottomBorder: true,
+      //     border: TableBorder.all(color: Colors.black),
+      //     headingTextStyle: const TextStyle(
+      //       fontWeight: FontWeight.bold,
+      //       fontSize: 20,
+      //       fontFamily: 'Oswald',
+      //     ),
+      //     dataRowColor: MaterialStateProperty.all(Colors.white),
+      //     headingRowColor: MaterialStateProperty.all(Colors.blue[200]),
+      //     // decoration: BoxDecoration(
+      //     //   color: Colors.green[200],
+      //     // ),
+      //     columnSpacing: 12,
+      //     horizontalMargin: 15,
+      //     minWidth: 800,
+      //     columns: const [
+      //       DataColumn2(
+      //         label: Center(child: Text(' Client')),
+      //         size: ColumnSize.L,
+      //       ),
+      //       DataColumn2(
+      //           label: Center(child: Text('Montant')), size: ColumnSize.L),
+      //       DataColumn2(
+      //           label: Center(child: Text('Reste')), size: ColumnSize.L),
+      //       DataColumn2(label: Center(child: Text('Date')), size: ColumnSize.L),
+      //       DataColumn2(
+      //           label: Center(child: Text('Encaissement')), size: ColumnSize.L),
+      //       DataColumn2(
+      //           label: Center(child: Text('Détails')), size: ColumnSize.L),
+      //       DataColumn2(
+      //           label: Center(child: Text('Editer')), size: ColumnSize.L),
+      //       DataColumn2(
+      //           label: Center(child: Text('Effacer')), size: ColumnSize.L),
+      //     ],
+      //     rows: List<DataRow>.generate(
+      //         sells.length,
+      //         (index) => DataRow(cells: [
+      //               DataCell(Center(
+      //                   child: Text(
+      //                 '${sells[index]["client_name"]}',
+      //               ))),
+      //               DataCell(Center(
+      //                   child: Text(
+      //                 '${sells[index]["amount"]}',
+      //               ))),
+      //               DataCell(Center(
+      //                   child: Text(
+      //                 '${sells[index]["reste"]}',
+      //               ))),
+      //               DataCell(Center(
+      //                   child: Text(
+      //                 '${sells[index]["date_sell"]}',
+      //               ))),
+      //               DataCell(Center(
+      //                 child: IconButton(
+      //                     icon: const Icon(
+      //                       Icons.money,
+      //                       color: Colors.green,
+      //                     ),
+      //                     onPressed: () {
+      //                       nextScreen(
+      //                           context,
+      //                           EncaissementPage(
+      //                             clientId: '${sells[index]["client_id"]}',
+      //                             reste: '${sells[index]["reste"]}',
+      //                             sellId: '${sells[index]["id"]}',
+      //                           ));
+      //                     }),
+      //               )),
+      //               DataCell(Center(
+      //                 child: IconButton(
+      //                     icon: const Icon(
+      //                       Icons.info,
+      //                       color: Colors.blue,
+      //                     ),
+      //                     onPressed: () {
+      //                       var MontantPaye =
+      //                           double.parse("${sells[index]["amount"]}") -
+      //                               double.parse("${sells[index]["reste"]}");
+      //                       Navigator.pushAndRemoveUntil(
+      //                         context,
+      //                         MaterialPageRoute(
+      //                             builder: (context) => DetailsVentes(
+      //                                   id: '${sells[index]["id"]}',
+      //                                   ClientName:
+      //                                       '${sells[index]["client_name"]}',
+      //                                   Montantpaye: '$MontantPaye',
+      //                                 )),
+      //                         (Route<dynamic> route) => false,
+      //                       );
+      //                     }),
+      //               )),
+      //               DataCell(Center(
+      //                 child: IconButton(
+      //                     icon: const Icon(
+      //                       Icons.edit,
+      //                       color: Colors.blue,
+      //                     ),
+      //                     onPressed: () {
+      //                       nextScreen(
+      //                           context,
+      //                           EditVentePage(
+      //                             sellId: '${sells[index]["id"]}',
+      //                             amount: '${sells[index]["amount"]}',
+      //                             clientId: '${sells[index]["client_id"]}',
+      //                             sellDate: '${sells[index]["date_sell"]}',
+      //                             sellReste: '${sells[index]["reste"]}',
+      //                           ));
+      //                     }),
+      //               )),
+      //               DataCell(Center(
+      //                 child: IconButton(
+      //                     icon: const Icon(
+      //                       Icons.delete,
+      //                       color: Colors.red,
+      //                     ),
+      //                     onPressed: () async {
+      //                       int response = await sqlDb.deleteData(
+      //                           "DELETE FROM sells WHERE id =${sells[index]['id']}");
+      //                       if (response > 0) {
+      //                         sells.removeWhere((element) =>
+      //                             element['id'] == sells[index]['id']);
+      //                         setState(() {});
+      //                         print("$response ===Delete ==== DONE");
+      //                       } else {
+      //                         print("Delete ==== null");
+      //                       }
+      //                     }),
+      //               )),
+      //             ]))),
+
       body: DataTable2(
           showBottomBorder: true,
           border: TableBorder.all(color: Colors.black),
@@ -128,23 +303,23 @@ class _VenteHomeState extends State<VenteHome> {
                 label: Center(child: Text('Effacer')), size: ColumnSize.L),
           ],
           rows: List<DataRow>.generate(
-              sells.length,
+              sellsi.length,
               (index) => DataRow(cells: [
                     DataCell(Center(
                         child: Text(
-                      '${sells[index]["client_name"]}',
+                      '${sellsi[index]}',
                     ))),
                     DataCell(Center(
                         child: Text(
-                      '${sells[index]["amount"]}',
+                      '${sellsi[index]}',
                     ))),
                     DataCell(Center(
                         child: Text(
-                      '${sells[index]["reste"]}',
+                      '${sellsi[index]}',
                     ))),
                     DataCell(Center(
                         child: Text(
-                      '${sells[index]["date_sell"]}',
+                      '${sellsi[index]}',
                     ))),
                     DataCell(Center(
                       child: IconButton(

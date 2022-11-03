@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:tocmanager/models/sells.dart';
 import 'package:tocmanager/screens/ventes/line_vente.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 import 'package:tocmanager/services/user_service.dart';
@@ -12,7 +13,6 @@ import '../../services/auth_service.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import '../../database/sqfdb.dart';
 import 'package:intl/intl.dart';
-import 'package:http/http.dart' as http;
 
 class AjouterVentePage extends StatefulWidget {
   const AjouterVentePage({Key? key}) : super(key: key);
@@ -338,7 +338,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                           onTap: () async {
                             //create_categorie();
 
-                             create_sells();
+                            create_sells();
                             if (sum != 0.0) {
                               if (_formaKey.currentState!.validate()) {
                                 print("== Amount equal to : $sum");
@@ -474,7 +474,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
   // }
 
   Dio dio = Dio();
-  void create_categorie() async {
+   create_categorie() async {
     String pathUrl = 'https://teste.tocmanager.com/api/categories';
     int compagnie_id = await getCompagnie_id();
     String token = await getToken();
@@ -489,8 +489,12 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
           },
         ));
     if (response.statusCode == 200) {
-      print(response.statusCode);
       print(response.data);
+      // response.data = Sells.fromJson(jsonDecode(response.data));
+      // List test = response.data;
+      // print(test);
+      // print(response.statusCode);
+      // print(response.data);
     } else {
       print(response.statusCode);
     }
@@ -537,8 +541,6 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
     } else {
       print(response.statusCode);
     }
-
-    
   }
 
   void read_sells() async {
