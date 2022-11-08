@@ -34,12 +34,30 @@ class SqlDb {
   }
 
   _onCreate(Database db, int version) async {
-    // await db.execute('''
-    //   CREATE TABLE "Categories" (
-    //     "id" INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL, "categorieParente" TEXT)
-    // ''');
-    //  print("onCreate =======================");
+    // 1-create users table
+    await db.execute('''
+        CREATE TABLE "users"(
+        "id" INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "name" VARCHAR(255) NOT NULL ,
+        "email" VARCHAR(255) UNIQUE,
+        "phone" VARCHAR(255) NOT NULL,
+        "address" VARCHAR(255) NOT NULL,
+        "city" VARCHAR(255) NOT NULL,
+        "country" VARCHAR(255) NOT NULL,
+        "state" BOOLEAN DEFAULT 1 NOT NULL,
+        "email_verified_at" TIMESTAMP,
+        "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+    ''');
 
+    //2-create role
+
+    //3-
+
+    
+    
+
+ 
     //Create categories table
     await db.execute('''
         CREATE TABLE "Categories"(

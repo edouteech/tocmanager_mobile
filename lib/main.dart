@@ -30,7 +30,7 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     getUserLoggedInStatus();
-    _loadUserInfo();
+    // _loadUserInfo();
   }
 
   getUserLoggedInStatus() async {
@@ -43,14 +43,14 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
-  _loadUserInfo() async {
-    String token = await getToken();
-    if (token == '') {
-      setState(() {
-        _isSignedIn = true;
-      });
-    }
-  }
+  // _loadUserInfo() async {
+  //   String token = await getToken();
+  //   if (token == '') {
+  //     setState(() {
+  //       _isSignedIn = true;
+  //     });
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {

@@ -210,10 +210,10 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       GestureDetector(
                         onTap: () {
-                          // login();
-                          if (formKey.currentState!.validate()) {
-                            _loginUser();
-                          }
+                         login();
+                          // if (formKey.currentState!.validate()) {
+                          //   _loginUser();
+                          // }
                         },
                         child: Container(
                           alignment: Alignment.center,
