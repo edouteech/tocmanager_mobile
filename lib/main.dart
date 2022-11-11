@@ -1,12 +1,11 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:tocmanager/services/user_service.dart';
 import 'package:tocmanager/widgets/widgets.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 
 import 'helper/helper_function.dart';
+import 'screens/home/Onboarding_screen.dart';
 import 'screens/home_page.dart';
-import 'screens/login_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -77,9 +76,11 @@ class _MyAppState extends State<MyApp> {
           thumbColor: MaterialStateProperty.all(Colors.blue[500]),
           thickness: MaterialStateProperty.all(5.0),
         ),
+        visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       debugShowCheckedModeBanner: false,
-      home: _isSignedIn ? const HomePage() : const LoginPage(),
+      
+      home: _isSignedIn ? const HomePage() : const OnboardingScreen(),
     );
   }
 }

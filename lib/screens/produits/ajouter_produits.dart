@@ -11,7 +11,7 @@ import '../categories/ajouter_categorie.dart';
 import '../fournisseurs/ajouter_fournisseur.dart';
 import '../home_page.dart';
 import '../home_widgets/drawer_header.dart';
-import '../login_page.dart';
+import '../auth/login_page.dart';
 import 'listproduits.dart';
 
 class AjouterProduitPage extends StatefulWidget {

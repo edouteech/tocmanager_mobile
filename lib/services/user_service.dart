@@ -223,20 +223,20 @@ Future<ApiResponse> readSells(int compagnie_id) async {
 
 //get token
 Future<String> getToken() async {
-  SharedPreferences pref = await SharedPreferences.getInstance();
-  return pref.getString('token') ?? '';
+  SharedPreferences localStorage  = await SharedPreferences.getInstance();
+  return localStorage .getString('token') ?? '';
 }
 
 //get compagnie_id
 Future<int> getCompagnie_id() async {
-  SharedPreferences pref = await SharedPreferences.getInstance();
-  return pref.getInt('compagnie_id') ?? 0;
+  SharedPreferences localStorage  = await SharedPreferences.getInstance();
+  return localStorage .getInt('compagnie_id') ?? 0;
 }
 
 //get Users id
 Future<int> getUsersId() async {
-  SharedPreferences pref = await SharedPreferences.getInstance();
-  return pref.getInt('userId') ?? 0;
+  SharedPreferences localStorage  = await SharedPreferences.getInstance();
+  return localStorage .getInt('userId') ?? 0;
 }
 
 //logout

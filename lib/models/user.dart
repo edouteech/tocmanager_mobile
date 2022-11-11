@@ -16,3 +16,5 @@ class Users {
         compagnieId: json['data']['original']['user']['compagnies'][0]['id']);
   }
 }
+
+

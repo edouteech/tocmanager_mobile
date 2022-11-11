@@ -45,19 +45,22 @@ class SqlDb {
         "city" VARCHAR(255) NOT NULL,
         "country" VARCHAR(255) NOT NULL,
         "state" BOOLEAN DEFAULT 1 NOT NULL,
+        "compagnie_id" INT NOT NULL,
+        "role_name" VARCHAR(255) NOT NULL,
+        "droits_ventes" BOOLEAN DEFAULT 0 NOT NULL,
+        "droits_utilisateurs" BOOLEAN DEFAULT 0 NOT NULL,
+        "droits_tresorerie" BOOLEAN DEFAULT 0 NOT NULL,
+        "droits_stock" BOOLEAN DEFAULT 0 NOT NULL,
+        "droits_add" BOOLEAN DEFAULT 0 NOT NULL,
+        "droits_edition" BOOLEAN DEFAULT 0 NOT NULL,
+        "droits_delete" BOOLEAN DEFAULT 0 NOT NULL,
+        "droits_admin" BOOLEAN DEFAULT 0 NOT NULL,
+        "droits_super_admin" BOOLEAN DEFAULT 0 NOT NULL,
         "email_verified_at" TIMESTAMP,
         "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
     ''');
 
-    //2-create role
-
-    //3-
-
-    
-    
-
- 
     //Create categories table
     await db.execute('''
         CREATE TABLE "Categories"(
@@ -170,7 +173,7 @@ class SqlDb {
         )
     ''');
 
-        //décaissement
+    //décaissement
     await db.execute('''
         CREATE TABLE "Decaissements"(
           "id" INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,

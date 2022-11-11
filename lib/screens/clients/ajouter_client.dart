@@ -7,7 +7,7 @@ import 'package:tocmanager/screens/categories/ajouter_categorie.dart';
 import 'package:tocmanager/screens/clients/client_list.dart';
 import 'package:tocmanager/screens/fournisseurs/ajouter_fournisseur.dart';
 import 'package:tocmanager/screens/home_page.dart';
-import 'package:tocmanager/screens/login_page.dart';
+import 'package:tocmanager/screens/auth/login_page.dart';
 import 'package:tocmanager/screens/produits/ajouter_produits.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 import 'package:tocmanager/services/auth_service.dart';

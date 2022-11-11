@@ -19,7 +19,7 @@ import 'fournisseurs/ajouter_fournisseur.dart';
 import 'home_widgets/card.dart';
 import 'home_widgets/drawer_header.dart';
 import 'home_widgets/my_button.dart';
-import 'login_page.dart';
+import 'auth/login_page.dart';
 import 'produits/ajouter_produits.dart';
 
 class HomePage extends StatefulWidget {
