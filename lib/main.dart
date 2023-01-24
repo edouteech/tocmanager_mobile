@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:tocmanager/services/user_service.dart';
 import 'package:tocmanager/widgets/widgets.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 
@@ -28,28 +29,29 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    getUserLoggedInStatus();
-    // _loadUserInfo();
+    // getUserLoggedInStatus();
+    _loadUserInfo();
   }
 
-  getUserLoggedInStatus() async {
-    await HelperFunctions.getUserLoggedInStatus().then((value) {
-      if (value != null) {
-        setState(() {
-          _isSignedIn = value;
-        });
-      }
-    });
-  }
-
-  // _loadUserInfo() async {
-  //   String token = await getToken();
-  //   if (token == '') {
-  //     setState(() {
-  //       _isSignedIn = true;
-  //     });
-  //   }
+  // getUserLoggedInStatus() async {
+  //   await HelperFunctions.getUserLoggedInStatus().then((value) {
+  //     if (value != null) {
+  //       setState(() {
+  //         _isSignedIn = value;
+  //       });
+  //     }
+  //   });
   // }
+
+  _loadUserInfo() async {
+    String token = await getToken();
+    if (token == '') {
+      setState(() {
+        _isSignedIn = true;
+      });
+      
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +81,6 @@ class _MyAppState extends State<MyApp> {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       debugShowCheckedModeBanner: false,
-      
       home: _isSignedIn ? const HomePage() : const OnboardingScreen(),
     );
   }

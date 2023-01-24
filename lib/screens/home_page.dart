@@ -1,10 +1,7 @@
 // ignore_for_file: use_build_context_synchronously, avoid_unnecessary_containers, non_constant_identifier_names, constant_identifier_names, sized_box_for_whitespace, no_leading_underscores_for_local_identifiers, avoid_print
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
-import 'package:tocmanager/models/user.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/profile/profile_page.dart';
@@ -33,37 +30,41 @@ class _HomePageState extends State<HomePage> {
   SqlDb sqlDb = SqlDb();
   String userName = "";
   String email = "";
+  String token = "";
   AuthService authService = AuthService();
 
   @override
   void initState() {
     super.initState();
-    gettingUserData();
-   
+    // gettingUserData();
+    loadToken();
   }
 
+  loadToken() async {
+     token = await getToken();
+  }
 
   // string manipulation
-  String getId(String res) {
-    return res.substring(0, res.indexOf("_"));
-  }
+  // String getId(String res) {
+  //   return res.substring(0, res.indexOf("_"));
+  // }
 
-  String getName(String res) {
-    return res.substring(res.indexOf("_") + 1);
-  }
+  // String getName(String res) {
+  //   return res.substring(res.indexOf("_") + 1);
+  // }
 
-  gettingUserData() async {
-    await HelperFunctions.getUserEmailFromSF().then((value) {
-      setState(() {
-        email = value!;
-      });
-    });
-    await HelperFunctions.getUserNameFromSF().then((val) {
-      setState(() {
-        userName = val!;
-      });
-    });
-  }
+  // gettingUserData() async {
+  //   await HelperFunctions.getUserEmailFromSF().then((value) {
+  //     setState(() {
+  //       email = value!;
+  //     });
+  //   });
+  //   await HelperFunctions.getUserNameFromSF().then((val) {
+  //     setState(() {
+  //       userName = val!;
+  //     });
+  //   });
+  // }
 
   var currentPage = DrawerSections.dashboard;
   @override
@@ -103,8 +104,7 @@ class _HomePageState extends State<HomePage> {
                   nextScreen(
                       context,
                       ProfilePage(
-                        email: email,
-                        userName: userName,
+                        token: token,
                       ));
                 },
                 icon: const Icon(

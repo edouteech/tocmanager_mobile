@@ -1,18 +1,13 @@
 // ignore_for_file: use_build_context_synchronously, avoid_printimport 'dart:convert';, unused_local_variable
-import 'dart:convert';
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:tocmanager/models/user.dart';
 import 'package:tocmanager/screens/home/size_config.dart';
+import 'package:tocmanager/services/constant.dart';
 import 'package:tocmanager/widgets/widgets.dart';
 
-import '../../helper/helper_function.dart';
+import '../../models/Users.dart';
 import '../../models/api_response.dart';
 import '../../services/auth_service.dart';
-import '../../services/database_service.dart';
 import '../../services/user_service.dart';
 import '../home_page.dart';
 import 'register_page.dart';
@@ -203,10 +198,10 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                                 GestureDetector(
                                   onTap: () {
-                                    login();
-                                    // if (formKey.currentState!.validate()) {
-                                    //   _loginUser();
-                                    // }
+                                    // login();
+                                    if (formKey.currentState!.validate()) {
+                                      _loginUser();
+                                    }
                                   },
                                   child: Container(
                                     alignment: Alignment.center,
@@ -277,18 +272,6 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // void _login() async {
-  //   ApiResponse response = await test();
-  //   if (response.error == null) {
-  //      var data = response.data;
-  //      print(data);
-  //   } else {
-  //     ScaffoldMessenger.of(context)
-  //         .showSnackBar(SnackBar(content: Text('$response.error')));
-  //   }
-
-  // }
-
   void _loginUser() async {
     ApiResponse response = await Login(email, password);
 
@@ -298,8 +281,33 @@ class _LoginPageState extends State<LoginPage> {
       });
       _saveAndRedirectHome(response.data as Users);
     } else {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('$response.error')));
+      String message = "La connexion a échouée !";
+      if (response.error == somethingWentWrong ||
+          response.error == serverError) {
+        message = "La connexion a échouée !";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.transparent,
+          content: Container(
+            width: double.infinity,
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.red,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(
+              child: Text(
+                message,
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+          duration: const Duration(milliseconds: 2000),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -311,30 +319,30 @@ class _LoginPageState extends State<LoginPage> {
     nextScreenReplace(context, const HomePage());
   }
 
-  login() async {
-    if (formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
-      await authService
-          .loginWithUserNameandPassword(email, password)
-          .then((value) async {
-        if (value == true) {
-          QuerySnapshot snapshot =
-              await DatabaseService(uid: FirebaseAuth.instance.currentUser!.uid)
-                  .gettingUserData(email);
-          // saving the values to our shared preferences
-          await HelperFunctions.saveUserLoggedInStatus(true);
-          await HelperFunctions.saveUserEmailSF(email);
-          await HelperFunctions.saveUserNameSF(snapshot.docs[0]['fullName']);
-          nextScreenReplace(context, const HomePage());
-        } else {
-          showSnackbar(context, const Color.fromARGB(255, 45, 157, 220), value);
-          setState(() {
-            _isLoading = false;
-          });
-        }
-      });
-    }
-  }
+  // login() async {
+  //   if (formKey.currentState!.validate()) {
+  //     setState(() {
+  //       _isLoading = true;
+  //     });
+  //     await authService
+  //         .loginWithUserNameandPassword(email, password)
+  //         .then((value) async {
+  //       if (value == true) {
+  //         QuerySnapshot snapshot =
+  //             await DatabaseService(uid: FirebaseAuth.instance.currentUser!.uid)
+  //                 .gettingUserData(email);
+  //         // saving the values to our shared preferences
+  //         await HelperFunctions.saveUserLoggedInStatus(true);
+  //         await HelperFunctions.saveUserEmailSF(email);
+  //         await HelperFunctions.saveUserNameSF(snapshot.docs[0]['fullName']);
+  //         nextScreenReplace(context, const HomePage());
+  //       } else {
+  //         showSnackbar(context, const Color.fromARGB(255, 45, 157, 220), value);
+  //         setState(() {
+  //           _isLoading = false;
+  //         });
+  //       }
+  //     });
+  //   }
+  // }
 }

@@ -5,7 +5,6 @@ import 'package:tocmanager/screens/home/constant.dart';
 import 'package:tocmanager/screens/home/size_config.dart';
 import 'package:tocmanager/screens/auth/register_page.dart';
 import 'package:tocmanager/screens/auth/login_page.dart';
-import 'package:tocmanager/widgets/widgets.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});

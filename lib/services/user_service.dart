@@ -6,7 +6,7 @@ import 'package:tocmanager/models/api_response.dart';
 import 'package:http/http.dart' as http;
 import 'package:tocmanager/services/constant.dart';
 
-import '../models/user.dart';
+import '../models/Users.dart';
 
 //login
 Future<ApiResponse> Login(String email, String password) async {
@@ -42,7 +42,6 @@ Future<ApiResponse> test() async {
   ApiResponse apiResponse = ApiResponse();
   try {
     final response = await http.get(Uri.parse(testURL));
-
     switch (response.statusCode) {
       case 200:
         apiResponse.data = jsonDecode(response.body);
@@ -70,10 +69,11 @@ Future<ApiResponse> getUsersDetail() async {
   ApiResponse apiResponse = ApiResponse();
   try {
     String token = await getToken();
-    final response = await http.post(
+    final response = await http.get(
       Uri.parse(userURL),
       headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
     );
+  
     switch (response.statusCode) {
       case 200:
         apiResponse.data = Users.fromJson(jsonDecode(response.body));
@@ -107,7 +107,7 @@ Future<ApiResponse> Create_sells(
     int compagnie_id,
     Object sell_lines) async {
   ApiResponse apiResponse = ApiResponse();
- 
+
   try {
     String token = await getToken();
     final response = await http.post(Uri.parse(sellsURL), headers: {
@@ -124,8 +124,7 @@ Future<ApiResponse> Create_sells(
       'compagnie_id': compagnie_id,
       'sell_lines': sell_lines
     });
-      print(response.statusCode);
-   
+
     switch (response.statusCode) {
       case 200:
         apiResponse.data = response.body;
@@ -147,9 +146,6 @@ Future<ApiResponse> Create_sells(
 
   return apiResponse;
 }
-
-
-
 
 Future<ApiResponse> Create_categorie(int compagnie_id) async {
   ApiResponse apiResponse = ApiResponse();
@@ -223,20 +219,20 @@ Future<ApiResponse> readSells(int compagnie_id) async {
 
 //get token
 Future<String> getToken() async {
-  SharedPreferences localStorage  = await SharedPreferences.getInstance();
-  return localStorage .getString('token') ?? '';
+  SharedPreferences localStorage = await SharedPreferences.getInstance();
+  return localStorage.getString('token') ?? '';
 }
 
 //get compagnie_id
 Future<int> getCompagnie_id() async {
-  SharedPreferences localStorage  = await SharedPreferences.getInstance();
-  return localStorage .getInt('compagnie_id') ?? 0;
+  SharedPreferences localStorage = await SharedPreferences.getInstance();
+  return localStorage.getInt('compagnie_id') ?? 0;
 }
 
 //get Users id
 Future<int> getUsersId() async {
-  SharedPreferences localStorage  = await SharedPreferences.getInstance();
-  return localStorage .getInt('userId') ?? 0;
+  SharedPreferences localStorage = await SharedPreferences.getInstance();
+  return localStorage.getInt('userId') ?? 0;
 }
 
 //logout

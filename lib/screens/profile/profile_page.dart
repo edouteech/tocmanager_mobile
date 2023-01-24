@@ -1,23 +1,42 @@
 // ignore_for_file: use_build_context_synchronously, must_be_immutable, deprecated_member_use
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:tocmanager/models/api_response.dart';
 import 'package:tocmanager/screens/profile/update_page.dart';
 import 'package:tocmanager/screens/profile/update_password.dart';
+import 'package:tocmanager/services/user_service.dart';
+import '../../models/Users.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/widgets.dart';
 
 class ProfilePage extends StatefulWidget {
-  String userName;
-  String email;
-  ProfilePage({Key? key, required this.email, required this.userName})
-      : super(key: key);
+  String token;
+
+  ProfilePage({Key? key, required this.token}) : super(key: key);
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
-
 class _ProfilePageState extends State<ProfilePage> {
+  @override
+  void initState() {
+    super.initState();
+    getUser();
+  }
+
+  getUser() async {
+    String token = widget.token;
+
+    ApiResponse response = await getUsersDetail();
+    if (response.error == null) {
+      print(response.error);
+    } else {
+      print(response.data);
+    }
+  }
+
   AuthService authService = AuthService();
   @override
   Widget build(BuildContext context) {
@@ -62,7 +81,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                         Expanded(
-                          child: Text(widget.userName,
+                          child: Text('widget.userName',
                               style: const TextStyle(
                                 fontSize: 17,
                                 color: Colors.black,
@@ -90,7 +109,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                         Expanded(
-                          child: Text(widget.email,
+                          child: Text('widget.email',
                               style: const TextStyle(
                                 fontSize: 17,
                                 color: Colors.black,
@@ -114,7 +133,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           color: Theme.of(context).primaryColor,
                         ),
                         Expanded(
-                          child: Text(widget.email,
+                          child: Text('widget.email',
                               style: const TextStyle(fontSize: 17)),
                         ),
                       ],
@@ -134,7 +153,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           color: Theme.of(context).primaryColor,
                         ),
                         Expanded(
-                          child: Text(widget.email,
+                          child: Text('widget.email',
                               style: const TextStyle(fontSize: 17)),
                         ),
                       ],

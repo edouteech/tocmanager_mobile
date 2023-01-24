@@ -1,3 +1,4 @@
+// ignore: file_names
 class Users {
   int? id;
   String? email;
@@ -16,5 +17,3 @@ class Users {
         compagnieId: json['data']['original']['user']['compagnies'][0]['id']);
   }
 }
-
-
