@@ -4,7 +4,6 @@ import 'package:tocmanager/services/user_service.dart';
 import 'package:tocmanager/widgets/widgets.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 
-import 'helper/helper_function.dart';
 import 'screens/home/Onboarding_screen.dart';
 import 'screens/home_page.dart';
 
@@ -24,7 +23,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  bool _isSignedIn = false;
+  String ? _isSignedIn ;
 
   @override
   void initState() {
@@ -45,11 +44,10 @@ class _MyAppState extends State<MyApp> {
 
   _loadUserInfo() async {
     String token = await getToken();
-    if (token == '') {
+    if (token != '') {
       setState(() {
-        _isSignedIn = true;
+        _isSignedIn = token;
       });
-      
     }
   }
 
@@ -81,7 +79,7 @@ class _MyAppState extends State<MyApp> {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       debugShowCheckedModeBanner: false,
-      home: _isSignedIn ? const HomePage() : const OnboardingScreen(),
+      home: _isSignedIn != null ? const HomePage() : const OnboardingScreen(),
     );
   }
 }

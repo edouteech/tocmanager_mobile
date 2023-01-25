@@ -1,39 +1,49 @@
-// ignore_for_file: use_build_context_synchronously, must_be_immutable, deprecated_member_use
-
-import 'package:firebase_auth/firebase_auth.dart';
+// ignore_for_file: use_build_context_synchronously, must_be_immutable, deprecated_member_use, non_constant_identifier_names, avoid_print, prefer_typing_uninitialized_variables
 import 'package:flutter/material.dart';
 import 'package:tocmanager/models/api_response.dart';
 import 'package:tocmanager/screens/profile/update_page.dart';
 import 'package:tocmanager/screens/profile/update_password.dart';
 import 'package:tocmanager/services/user_service.dart';
-import '../../models/Users.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/widgets.dart';
 
 class ProfilePage extends StatefulWidget {
-  String token;
-
-  ProfilePage({Key? key, required this.token}) : super(key: key);
-
+  const ProfilePage({Key? key}) : super(key: key);
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+ 
+  String Name = '';
+  String  Email = '';
+  String Phone = '';
+  String  Country = ''; 
   @override
   void initState() {
     super.initState();
     getUser();
+
   }
 
-  getUser() async {
-    String token = widget.token;
-
+  Future getUser() async {
+    
     ApiResponse response = await getUsersDetail();
     if (response.error == null) {
-      print(response.error);
+      dynamic data = response.data;
+
+      if (data is Map<String, dynamic>) {
+       setState(() {
+        Name = data['name'];
+        Email = data['email'];
+        Phone = data['phone'];
+        Country = data['country'];
+       });
+      } else {
+        print("response data is not in the expected format");
+      }
     } else {
-      print(response.data);
+      print(response.error);
     }
   }
 
@@ -81,7 +91,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                         Expanded(
-                          child: Text('widget.userName',
+                          child: Text(Name! ,
                               style: const TextStyle(
                                 fontSize: 17,
                                 color: Colors.black,
@@ -109,7 +119,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                         Expanded(
-                          child: Text('widget.email',
+                          child: Text(Email!,
                               style: const TextStyle(
                                 fontSize: 17,
                                 color: Colors.black,
@@ -133,8 +143,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           color: Theme.of(context).primaryColor,
                         ),
                         Expanded(
-                          child: Text('widget.email',
-                              style: const TextStyle(fontSize: 17)),
+                          child:
+                              Text(Phone! ,style: const TextStyle(fontSize: 17)),
                         ),
                       ],
                     )),
@@ -153,7 +163,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           color: Theme.of(context).primaryColor,
                         ),
                         Expanded(
-                          child: Text('widget.email',
+                          child: Text(Country!,
                               style: const TextStyle(fontSize: 17)),
                         ),
                       ],
@@ -227,4 +237,17 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
+}
+
+class UserDetails {
+  final String name;
+  final String email;
+  final String phone;
+  final String country;
+
+  UserDetails(
+      {required this.name,
+      required this.email,
+      required this.phone,
+      required this.country});
 }

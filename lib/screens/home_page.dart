@@ -9,6 +9,7 @@ import 'package:tocmanager/screens/ventes/vente_home.dart';
 import 'package:tocmanager/services/user_service.dart';
 import '../database/sqfdb.dart';
 import '../helper/helper_function.dart';
+import '../models/Users.dart';
 import '../services/auth_service.dart';
 import '../widgets/widgets.dart';
 import 'categories/ajouter_categorie.dart';
@@ -28,20 +29,13 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   SqlDb sqlDb = SqlDb();
-  String userName = "";
-  String email = "";
-  String token = "";
+
   AuthService authService = AuthService();
 
   @override
   void initState() {
     super.initState();
     // gettingUserData();
-    loadToken();
-  }
-
-  loadToken() async {
-     token = await getToken();
   }
 
   // string manipulation
@@ -71,151 +65,152 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     //page controller
     final _controller = PageController();
-    return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          var delete = await sqlDb.mydeleteDatabase();
+    return WillPopScope(
+      onWillPop: () async {
+        return false;
+      },
+      child: Scaffold(
+        floatingActionButton: FloatingActionButton(
+          onPressed: () async {
+            var delete = await sqlDb.mydeleteDatabase();
 
-          print(delete);
+            print(delete);
 
-          // nextScreen(context, const AjouterVentePage());
-        },
-        backgroundColor: Colors.blue,
-        child: const Icon(
-          Icons.add,
-          size: 32,
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      backgroundColor: Colors.grey[300],
-      appBar: AppBar(
-        centerTitle: true,
-        backgroundColor: Colors.grey[100],
-        iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
-        title: const Text(
-          'Tableau de bord',
-          style: TextStyle(color: Colors.black),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 20),
-            child: IconButton(
-                onPressed: () {
-                  nextScreen(
-                      context,
-                      ProfilePage(
-                        token: token,
-                      ));
-                },
-                icon: const Icon(
-                  Icons.account_circle,
-                  size: 30,
-                )),
+            // nextScreen(context, const AjouterVentePage());
+          },
+          backgroundColor: Colors.blue,
+          child: const Icon(
+            Icons.add,
+            size: 32,
           ),
-        ],
-      ),
-      drawer: Drawer(
-        child: SingleChildScrollView(
-          child: Container(
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+        backgroundColor: Colors.grey[300],
+        appBar: AppBar(
+          centerTitle: true,
+          backgroundColor: Colors.grey[100],
+          iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
+          title: const Text(
+            'Tableau de bord',
+            style: TextStyle(color: Colors.black),
+          ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 20),
+              child: IconButton(
+                  onPressed: () {
+                    nextScreen(context, const ProfilePage());
+                  },
+                  icon: const Icon(
+                    Icons.account_circle,
+                    size: 30,
+                  )),
+            ),
+          ],
+        ),
+        drawer: Drawer(
+          child: SingleChildScrollView(
+            child: Container(
+                child: Column(
+              children: [
+                const MyHeaderDrawer(),
+                MyDrawerList(),
+                const SizedBox(
+                  height: 20,
+                ),
+              ],
+            )),
+          ),
+        ),
+        body: SingleChildScrollView(
+          child: SafeArea(
               child: Column(
             children: [
-              const MyHeaderDrawer(),
-              MyDrawerList(),
               const SizedBox(
-                height: 20,
+                height: 25,
               ),
-            ],
-          )),
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: SafeArea(
-            child: Column(
-          children: [
-            const SizedBox(
-              height: 25,
-            ),
-            Container(
-              height: 166,
-              child: PageView(
-                scrollDirection: Axis.horizontal,
-                controller: _controller,
-                children: const [
-                  MyCard(
-                    title: 'Chiffre d\'affaire',
-                    balance: 259000,
-                    dateBalance: '17/20/2020',
-                    color: Color.fromARGB(255, 45, 157, 220),
-                  ),
-                  MyCard(
-                    title: 'Encaissement',
-                    balance: 259000,
-                    dateBalance: '17/20/2020',
-                    color: Colors.deepPurple,
-                  ),
-                  MyCard(
-                    title: 'Décaissement',
-                    balance: 259000,
-                    dateBalance: '17/20/2020',
-                    color: Colors.green,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(
-              height: 15,
-            ),
-            SmoothPageIndicator(
-              controller: _controller,
-              count: 3,
-              effect: const WormEffect(
-                  dotColor: Colors.grey,
-                  activeDotColor: Color.fromARGB(255, 45, 157, 220),
-                  dotWidth: 10.0,
-                  dotHeight: 8.0),
-            ),
-            const SizedBox(
-              height: 15,
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20.0),
-              child: Container(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              Container(
+                height: 166,
+                child: PageView(
+                  scrollDirection: Axis.horizontal,
+                  controller: _controller,
                   children: const [
-                    MyButton(
-                      iconImagePath: 'assets/benefice.png',
-                      buttonText: 'Bénéfice',
+                    MyCard(
+                      title: 'Chiffre d\'affaire',
+                      balance: 259000,
+                      dateBalance: '17/20/2020',
+                      color: Color.fromARGB(255, 45, 157, 220),
                     ),
-                    MyButton(
-                        iconImagePath: 'assets/benefice.png',
-                        buttonText: 'Volume de vente'),
-                    MyButton(
-                        iconImagePath: 'assets/benefice.png',
-                        buttonText: 'Bénéfice')
+                    MyCard(
+                      title: 'Encaissement',
+                      balance: 259000,
+                      dateBalance: '17/20/2020',
+                      color: Colors.deepPurple,
+                    ),
+                    MyCard(
+                      title: 'Décaissement',
+                      balance: 259000,
+                      dateBalance: '17/20/2020',
+                      color: Colors.green,
+                    ),
                   ],
                 ),
               ),
-            ),
-            // Padding(
-            //   padding: const EdgeInsets.all(25.0),
-            //   child: Column(
-            //     children: const [
-            //       //statistic
-            //       MyListTitle(
-            //         iconImagePath: 'assets/statistics.png',
-            //         titleName: 'Encaissement',
-            //       ),
+              const SizedBox(
+                height: 15,
+              ),
+              SmoothPageIndicator(
+                controller: _controller,
+                count: 3,
+                effect: const WormEffect(
+                    dotColor: Colors.grey,
+                    activeDotColor: Color.fromARGB(255, 45, 157, 220),
+                    dotWidth: 10.0,
+                    dotHeight: 8.0),
+              ),
+              const SizedBox(
+                height: 15,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20.0),
+                child: Container(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: const [
+                      MyButton(
+                        iconImagePath: 'assets/benefice.png',
+                        buttonText: 'Bénéfice',
+                      ),
+                      MyButton(
+                          iconImagePath: 'assets/benefice.png',
+                          buttonText: 'Volume de vente'),
+                      MyButton(
+                          iconImagePath: 'assets/benefice.png',
+                          buttonText: 'Bénéfice')
+                    ],
+                  ),
+                ),
+              ),
+              // Padding(
+              //   padding: const EdgeInsets.all(25.0),
+              //   child: Column(
+              //     children: const [
+              //       //statistic
+              //       MyListTitle(
+              //         iconImagePath: 'assets/statistics.png',
+              //         titleName: 'Encaissement',
+              //       ),
 
-            //       MyListTitle(
-            //         iconImagePath: 'assets/statistics.png',
-            //         titleName: 'Décaissement',
-            //       ),
-            //     ],
-            //   ),
-            // )
-          ],
-        )),
+              //       MyListTitle(
+              //         iconImagePath: 'assets/statistics.png',
+              //         titleName: 'Décaissement',
+              //       ),
+              //     ],
+              //   ),
+              // )
+            ],
+          )),
+        ),
       ),
     );
   }

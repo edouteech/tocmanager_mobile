@@ -73,10 +73,10 @@ Future<ApiResponse> getUsersDetail() async {
       Uri.parse(userURL),
       headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
     );
-  
+    
     switch (response.statusCode) {
       case 200:
-        apiResponse.data = Users.fromJson(jsonDecode(response.body));
+        apiResponse.data = jsonDecode(response.body);
         break;
       case 422:
         final errors = jsonDecode(response.body)['errors'];
@@ -235,8 +235,21 @@ Future<int> getUsersId() async {
   return localStorage.getInt('userId') ?? 0;
 }
 
+//get Users state
+Future<int> getUserState() async {
+  SharedPreferences localStorage = await SharedPreferences.getInstance();
+  return localStorage.getInt('userState') ?? 0;
+}
+
 //logout
 Future<bool> logout() async {
   SharedPreferences pref = await SharedPreferences.getInstance();
   return await pref.remove('token');
+}
+
+getUsers() async {
+  SharedPreferences pref = await SharedPreferences.getInstance();
+  String? json = pref.getString('user');
+  Users user = Users.fromJson(jsonDecode(json!));
+  return user;
 }

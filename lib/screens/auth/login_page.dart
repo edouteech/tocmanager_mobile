@@ -1,4 +1,6 @@
 // ignore_for_file: use_build_context_synchronously, avoid_printimport 'dart:convert';, unused_local_variable
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tocmanager/screens/home/size_config.dart';
@@ -27,6 +29,7 @@ class _LoginPageState extends State<LoginPage> {
   AuthService authService = AuthService();
   @override
   Widget build(BuildContext context) {
+    SizeConfig().init(context);
     return WillPopScope(
       onWillPop: () async {
         return false;
@@ -279,6 +282,7 @@ class _LoginPageState extends State<LoginPage> {
       setState(() {
         _isLoading = true;
       });
+
       _saveAndRedirectHome(response.data as Users);
     } else {
       String message = "La connexion a échouée !";
@@ -315,8 +319,15 @@ class _LoginPageState extends State<LoginPage> {
     SharedPreferences pref = await SharedPreferences.getInstance();
     await pref.setString('token', user.token ?? '');
     await pref.setInt('userId', user.id ?? 0);
+    await pref.setInt('userState', user.state ?? 0);
     await pref.setInt('compagnie_id', user.compagnieId ?? 0);
-    nextScreenReplace(context, const HomePage());
+
+    int UserState = await getUserState();
+    if (UserState == 1) {
+      nextScreenReplace(context, const HomePage());
+    } else {
+      print('test');
+    }
   }
 
   // login() async {
