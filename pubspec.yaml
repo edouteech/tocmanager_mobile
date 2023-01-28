@@ -56,6 +56,7 @@ dependencies:
   dio: ^4.0.6
   connectivity_plus: ^3.0.2
   internet_connection_checker: ^1.0.0+1
+  url_launcher: ^6.1.8
   
 
   

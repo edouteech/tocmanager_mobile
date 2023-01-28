@@ -6,7 +6,11 @@ import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/categories/categorielist.dart';
 import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/fournisseurs/ajouter_fournisseur.dart';
+import 'package:tocmanager/screens/suscribe_screen/suscribe_screen.dart';
+import 'package:tocmanager/services/user_service.dart';
+import '../../models/api_response.dart';
 import '../../services/auth_service.dart';
+import '../../services/categorie_service.dart';
 import '../../widgets/widgets.dart';
 import '../home_page.dart';
 import '../home_widgets/drawer_header.dart';
@@ -25,6 +29,7 @@ class AjouterCategoriePage extends StatefulWidget {
 class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
   // database
   SqlDb sqlDb = SqlDb();
+  bool isNotSuscribe  = false ;
 
   /* Read data for database */
 
@@ -41,7 +46,22 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
   @override
   void initState() {
     readData();
+    readCategories();
     super.initState();
+  }
+
+  Future readCategories() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await ReadCategories(compagnie_id);
+    if (response.error == null) {
+      dynamic data = response.data;
+    } else {
+      if (response.statutCode == 403) {
+        setState(() {
+          isNotSuscribe = true;
+        });
+      }
+    }
   }
 
   /* Dropdown items */
@@ -79,16 +99,18 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[300],
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _showFormDialog(context);
-        },
-        backgroundColor: Colors.blue,
-        child: const Icon(
-          Icons.add,
-          size: 32,
-        ),
-      ),
+      floatingActionButton: isNotSuscribe == true
+          ? null
+          : FloatingActionButton(
+              onPressed: () {
+                _showFormDialog(context);
+              },
+              backgroundColor: Colors.blue,
+              child: const Icon(
+                Icons.add,
+                size: 32,
+              ),
+            ),
       floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
       appBar: AppBar(
           centerTitle: true,
@@ -112,7 +134,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
           )),
         ),
       ),
-      body: const CategorieList(),
+      body: isNotSuscribe == true ? const SuscribePage() : const CategorieList(),
     );
   }
 

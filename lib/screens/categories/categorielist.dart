@@ -1,8 +1,11 @@
-// ignore_for_file: sized_box_for_whitespace, avoid_print, use_build_context_synchronously, deprecated_member_use, unnecessary_this, prefer_typing_uninitialized_variables
+// ignore_for_file: sized_box_for_whitespace, avoid_print, use_build_context_synchronously, deprecated_member_use, unnecessary_this, prefer_typing_uninitialized_variables, non_constant_identifier_names
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:tocmanager/database/sqfdb.dart';
+import 'package:tocmanager/services/categorie_service.dart';
+import 'package:tocmanager/services/user_service.dart';
+import '../../models/api_response.dart';
 import 'ajouter_categorie.dart';
 
 class CategorieList extends StatefulWidget {
@@ -16,6 +19,7 @@ class _CategorieListState extends State<CategorieList> {
   SqlDb sqlDb = SqlDb();
   List categories = [];
   var id = "";
+
 
   //Form key
   final _formKey = GlobalKey<FormState>();
@@ -37,7 +41,24 @@ class _CategorieListState extends State<CategorieList> {
   void initState() {
     readData();
     super.initState();
+    // readCategories();
   }
+
+  // Future readCategories() async {
+  //   int compagnie_id = await getCompagnie_id();
+  //   ApiResponse response = await ReadCategories(compagnie_id);
+  //   if (response.error == null) {
+  //     dynamic data = response.data;
+  //     if (data ==
+  //         "Vous n'avez aucun abonnement en cours pour pouvoir accéder à cette page") {
+  //           setState(() {
+  //             isSuscribe = false;
+  //           });
+  //         }
+  //   } else {
+  //     print('response.error');
+  //   }
+  // }
 
   /* Dropdown items */
   String? selectedValue;
@@ -107,7 +128,6 @@ class _CategorieListState extends State<CategorieList> {
                           child: Text(
                     '${categories[index]["name"]}',
                     style: const TextStyle(
-                     
                       fontSize: 20,
                     ),
                   )))),
@@ -117,7 +137,6 @@ class _CategorieListState extends State<CategorieList> {
                           child: Text(
                             "${categories[index]["parent_name"]}",
                             style: const TextStyle(
-                              
                               fontSize: 20,
                             ),
                           ),
