@@ -46,11 +46,11 @@ class _HomePageState extends State<HomePage> {
   Future readHomePage() async {
     int compagnie_id = await getCompagnie_id();
     ApiResponse response = await ReadCategories(compagnie_id);
-    
+   
     if (response.error == null) {
       dynamic data = response.data;
     } else {
-      if (response.statutCode == 403) {
+      if (response.statusCode == 403) {
         setState(() {
           isNotSuscribe = true;
         });

@@ -1,26 +1,32 @@
 // ignore_for_file: sized_box_for_whitespace, avoid_print, use_build_context_synchronously, deprecated_member_use, unnecessary_this, prefer_typing_uninitialized_variables, non_constant_identifier_names
-import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:tocmanager/database/sqfdb.dart';
-import 'package:tocmanager/services/categorie_service.dart';
-import 'package:tocmanager/services/user_service.dart';
-import '../../models/api_response.dart';
 import 'ajouter_categorie.dart';
 
 class CategorieList extends StatefulWidget {
-  const CategorieList({Key? key}) : super(key: key);
+  final List<Map<String, dynamic>> categories;
+  const CategorieList({Key? key, required this.categories}) : super(key: key);
 
   @override
   State<CategorieList> createState() => _CategorieListState();
 }
 
+List<Map<String, dynamic>> categories = [];
+
 class _CategorieListState extends State<CategorieList> {
+  @override
+  void initState() {
+    // readData();
+    super.initState();
+     print(widget.categories);
+    categories = widget.categories;
+   
+  }
+
   SqlDb sqlDb = SqlDb();
-  List categories = [];
+
   var id = "";
-
-
   //Form key
   final _formKey = GlobalKey<FormState>();
 
@@ -28,35 +34,13 @@ class _CategorieListState extends State<CategorieList> {
   TextEditingController name = TextEditingController();
 
 //Read data into database
-  Future readData() async {
-    List<Map> response = await sqlDb.readData(
-        "SELECT Categories.*, parent.name as parent_name from Categories left join Categories as parent on Categories.categoryParente_id = parent.id");
-    categories.addAll(response);
-    if (this.mounted) {
-      setState(() {});
-    }
-  }
-
-  @override
-  void initState() {
-    readData();
-    super.initState();
-    // readCategories();
-  }
-
-  // Future readCategories() async {
-  //   int compagnie_id = await getCompagnie_id();
-  //   ApiResponse response = await ReadCategories(compagnie_id);
-  //   if (response.error == null) {
-  //     dynamic data = response.data;
-  //     if (data ==
-  //         "Vous n'avez aucun abonnement en cours pour pouvoir accéder à cette page") {
-  //           setState(() {
-  //             isSuscribe = false;
-  //           });
-  //         }
-  //   } else {
-  //     print('response.error');
+  // Future readData() async {
+  //   categories = widget.categories;
+  //   List<Map> response = await sqlDb.readData(
+  //       "SELECT Categories.*, parent.name as parent_name from Categories left join Categories as parent on Categories.categoryParente_id = parent.id");
+  //   categories.addAll(response);
+  //   if (this.mounted) {
+  //     setState(() {});
   //   }
   // }
 
@@ -78,126 +62,155 @@ class _CategorieListState extends State<CategorieList> {
     return menuItems;
   }
 
+  var tableRow = TableRow(data: categories);
+
   @override
   Widget build(BuildContext context) {
-    return DataTable2(
-        showBottomBorder: true,
-        border: TableBorder.all(color: Colors.black),
-        headingTextStyle: const TextStyle(
-            fontWeight: FontWeight.bold, fontSize: 20, fontFamily: 'Oswald'),
-        dataRowColor: MaterialStateProperty.all(Colors.white),
-        headingRowColor: MaterialStateProperty.all(Colors.blue[200]),
-        columnSpacing: 12,
-        horizontalMargin: 12,
-        minWidth: 900,
-        columns: const [
-          DataColumn2(
-            label: Center(
-                child: Text(
-              'Catégorie',
-            )),
-            size: ColumnSize.L,
-          ),
-          DataColumn2(
-            label: Center(
-                child: Text(
-              'Catégorie Parente',
-            )),
-            size: ColumnSize.L,
-          ),
-          DataColumn2(
-            size: ColumnSize.L,
-            label: Center(
-                child: Text(
-              'Editer',
-            )),
-          ),
-          DataColumn2(
-            size: ColumnSize.L,
-            label: Center(
-                child: Text(
-              'Supprimer',
-            )),
-          ),
-        ],
-        rows: List<DataRow>.generate(
-            categories.length,
-            (index) => DataRow(cells: [
-                  DataCell(Center(
-                      child: Center(
-                          child: Text(
-                    '${categories[index]["name"]}',
-                    style: const TextStyle(
-                      fontSize: 20,
-                    ),
-                  )))),
-                  "${categories[index]["categoryParente_id"]}" != "null"
-                      ? DataCell(Center(
-                          child: Center(
-                          child: Text(
-                            "${categories[index]["parent_name"]}",
-                            style: const TextStyle(
-                              fontSize: 20,
-                            ),
-                          ),
-                        )))
-                      : const DataCell(Center(
-                          child: Center(
-                          child: Text(
-                            "-",
-                            style: TextStyle(
-                              fontFamily: 'Oswald',
-                              fontSize: 20,
-                            ),
-                          ),
-                        ))),
-                  DataCell(Center(
-                    child: IconButton(
-                        icon: const Icon(
-                          Icons.edit,
-                          color: Colors.blue,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            name.text = "${categories[index]['name']}";
-                            id = "${categories[index]['id']}";
-                            if ("${categories[index]['categoryParente_id']}" !=
-                                'null') {
-                              setState(() {
-                                selectedValue =
-                                    "${categories[index]['categoryParente_id']}";
-                              });
-                            }
-                          });
-                          _editCategorie(context);
-                        }),
-                  )),
-                  DataCell(Center(
-                    child: IconButton(
-                        icon: const Icon(
-                          Icons.delete,
-                          color: Colors.red,
-                        ),
-                        onPressed: () async {
-                          int response = await sqlDb.deleteData(
-                              "DELETE FROM Categories WHERE id =${categories[index]['id']}");
-                          if (response > 0) {
-                            categories.removeWhere((element) =>
-                                element['id'] == categories[index]['id']);
-                            setState(() {});
-                            Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                        const AjouterCategoriePage()));
+    return SizedBox(
+      width: double.infinity,
+      child: SingleChildScrollView(
+        child: PaginatedDataTable(
+          onRowsPerPageChanged: (perPage) {},
+          rowsPerPage: 10,
+          columns: <DataColumn>[
+            DataColumn(
+              label: const Text('Client'),
+              onSort: (columnIndex, ascending) {
+                print("$columnIndex $ascending");
+              },
+            ),
+            const DataColumn(
+              label: Text('Montant'),
+            ),
+            const DataColumn(
+              label: Text('Reste'),
+            ),
+            const DataColumn(
+              label: Text('Date'),
+            ),
+          ],
+          source: tableRow,
+        ),
+      ),
+    );
+    // return DataTable2(
+    //     showBottomBorder: true,
+    //     border: TableBorder.all(color: Colors.black),
+    //     headingTextStyle: const TextStyle(
+    //         fontWeight: FontWeight.bold, fontSize: 20, fontFamily: 'Oswald'),
+    //     dataRowColor: MaterialStateProperty.all(Colors.white),
+    //     headingRowColor: MaterialStateProperty.all(Colors.blue[200]),
+    //     columnSpacing: 12,
+    //     horizontalMargin: 12,
+    //     minWidth: 900,
+    //     columns: const [
+    //       DataColumn2(
+    //         label: Center(
+    //             child: Text(
+    //           'Catégorie',
+    //         )),
+    //         size: ColumnSize.L,
+    //       ),
+    //       DataColumn2(
+    //         label: Center(
+    //             child: Text(
+    //           'Catégorie Parente',
+    //         )),
+    //         size: ColumnSize.L,
+    //       ),
+    //       DataColumn2(
+    //         size: ColumnSize.L,
+    //         label: Center(
+    //             child: Text(
+    //           'Editer',
+    //         )),
+    //       ),
+    //       DataColumn2(
+    //         size: ColumnSize.L,
+    //         label: Center(
+    //             child: Text(
+    //           'Supprimer',
+    //         )),
+    //       ),
+    //     ],
+    //     rows: List<DataRow>.generate(
+    //         categories.length,
+    //         (index) => DataRow(cells: [
+    //               DataCell(Center(
+    //                   child: Center(
+    //                       child: Text(
+    //                 '${categories[index]["name"]}',
+    //                 style: const TextStyle(
+    //                   fontSize: 20,
+    //                 ),
+    //               )))),
+    //               "${categories[index]["categoryParente_id"]}" != "null"
+    //                   ? DataCell(Center(
+    //                       child: Center(
+    //                       child: Text(
+    //                         "${categories[index]["parent_name"]}",
+    //                         style: const TextStyle(
+    //                           fontSize: 20,
+    //                         ),
+    //                       ),
+    //                     )))
+    //                   : const DataCell(Center(
+    //                       child: Center(
+    //                       child: Text(
+    //                         "-",
+    //                         style: TextStyle(
+    //                           fontFamily: 'Oswald',
+    //                           fontSize: 20,
+    //                         ),
+    //                       ),
+    //                     ))),
+    //               DataCell(Center(
+    //                 child: IconButton(
+    //                     icon: const Icon(
+    //                       Icons.edit,
+    //                       color: Colors.blue,
+    //                     ),
+    //                     onPressed: () {
+    //                       setState(() {
+    //                         name.text = "${categories[index]['name']}";
+    //                         id = "${categories[index]['id']}";
+    //                         if ("${categories[index]['categoryParente_id']}" !=
+    //                             'null') {
+    //                           setState(() {
+    //                             selectedValue =
+    //                                 "${categories[index]['categoryParente_id']}";
+    //                           });
+    //                         }
+    //                       });
+    //                       _editCategorie(context);
+    //                     }),
+    //               )),
+    //               DataCell(Center(
+    //                 child: IconButton(
+    //                     icon: const Icon(
+    //                       Icons.delete,
+    //                       color: Colors.red,
+    //                     ),
+    //                     onPressed: () async {
+    //                       int response = await sqlDb.deleteData(
+    //                           "DELETE FROM Categories WHERE id =${categories[index]['id']}");
+    //                       if (response > 0) {
+    //                         categories.removeWhere((element) =>
+    //                             element['id'] == categories[index]['id']);
+    //                         setState(() {});
+    //                         Navigator.pushReplacement(
+    //                             context,
+    //                             MaterialPageRoute(
+    //                                 builder: (context) =>
+    //                                     const AjouterCategoriePage()));
 
-                            print("$response ===Delete ==== DONE");
-                          } else {
-                            print("Delete ==== null");
-                          }
-                        }),
-                  )),
-                ])));
+    //                         print("$response ===Delete ==== DONE");
+    //                       } else {
+    //                         print("Delete ==== null");
+    //                       }
+    //                     }),
+    //               )),
+    //             ])));
   }
 
   //Edit Form
@@ -314,5 +327,25 @@ class _CategorieListState extends State<CategorieList> {
             ),
           );
         });
+  }
+}
+
+class TableRow extends DataTableSource {
+  final List<Map<String, dynamic>> data;
+  TableRow({required this.data});
+  @override
+  bool get isRowCountApproximate => false;
+  @override
+  int get rowCount => data.length;
+  @override
+  int get selectedRowCount => 0;
+  @override
+  DataRow getRow(int index) {
+    return DataRow(cells: [
+      DataCell(Text(data[index]['client_name'].toString())),
+      DataCell(Text(data[index]["amount"].toString())),
+      DataCell(Text(data[index]["rest"].toString())),
+      DataCell(Text(data[index]["date_sell"].toString())),
+    ]);
   }
 }

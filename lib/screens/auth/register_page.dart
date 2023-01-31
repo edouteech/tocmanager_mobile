@@ -9,8 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:tocmanager/screens/auth/login_page.dart';
 import 'package:tocmanager/screens/home/size_config.dart';
-import 'package:internet_connection_checker/internet_connection_checker.dart';
-
 import '../../services/auth_service.dart';
 import '../../widgets/widgets.dart';
 

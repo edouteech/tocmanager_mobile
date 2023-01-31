@@ -26,37 +26,60 @@ class AjouterCategoriePage extends StatefulWidget {
   State<AjouterCategoriePage> createState() => _AjouterCategoriePageState();
 }
 
+ List<Map<String, dynamic>> categories = [];
 class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
   // database
   SqlDb sqlDb = SqlDb();
-  bool isNotSuscribe  = false ;
+  bool isNotSuscribe = false;
 
   /* Read data for database */
 
   /*List of categories */
-  List categories = [];
-  Future readData() async {
-    List<Map> response = await sqlDb.readData("SELECT * FROM 'Categories'");
-    categories.addAll(response);
-    if (this.mounted) {
-      setState(() {});
-    }
-  }
+ 
+  // Future readData() async {
+  //   List<Map> response = await sqlDb.readData("SELECT * FROM 'Categories'");
+  //   categories.addAll(response);
+  //   if (this.mounted) {
+  //     setState(() {});
+  //   }
+  // }
 
   @override
   void initState() {
-    readData();
+    // readData();
     readCategories();
     super.initState();
   }
+   var tableRow = TableRow(data: categories);
 
   Future readCategories() async {
     int compagnie_id = await getCompagnie_id();
     ApiResponse response = await ReadCategories(compagnie_id);
     if (response.error == null) {
-      dynamic data = response.data;
+      if (response.statusCode == 200) {
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> categoriesJson =
+              response.data as Map<String, dynamic>;
+          Map<String, dynamic> sm = categoriesJson;
+          List categories_0 = categoriesJson['data']['data'];
+
+          for (var i = 0; i < categories_0.length; i++) {
+            // var created_at = DateTime.parse(categories[i]['created_at']);
+            // var updated_at = DateTime.parse(categories[i]['updated_at']);
+            categories.add({
+              "id": categories_0[i]['id'],
+              "name": categories_0[i]['name'],
+              "compagnieId": categories_0[i]['compagnie_id'],
+              "parentId": categories_0[i]['parent_id'],
+              "updated_at": categories_0[i]['updated_at'],
+              "created_at": categories_0[i]['created_at'],
+              "sum_products": categories_0[i]['sum_products'],
+            });
+          }
+        }
+      }
     } else {
-      if (response.statutCode == 403) {
+      if (response.statusCode == 403) {
         setState(() {
           isNotSuscribe = true;
         });
@@ -134,7 +157,33 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
           )),
         ),
       ),
-      body: isNotSuscribe == true ? const SuscribePage() : const CategorieList(),
+      body: isNotSuscribe == true
+          ? const SuscribePage()
+          : SizedBox(
+      width: double.infinity,
+      child: SingleChildScrollView(
+        child: PaginatedDataTable(
+          onRowsPerPageChanged: (perPage) {},
+          rowsPerPage: 10,
+          columns: const <DataColumn>[
+            DataColumn(
+              label:  Text('N°'),
+              
+            ),
+             DataColumn(
+              label: Text('Nom'),
+            ),
+             DataColumn(
+              label: Text('Categorie parente'),
+            ),
+             DataColumn(
+              label: Text('Date'),
+            ),
+          ],
+          source: tableRow,
+        ),
+      ),
+    )
     );
   }
 
@@ -375,4 +424,27 @@ enum DrawerSections {
   client,
   privacy_policy,
   logout,
+}
+
+class TableRow extends DataTableSource {
+  final List<Map<String, dynamic>> data;
+  test() {
+    print(data);
+  }
+  TableRow({required this.data});
+  @override
+  bool get isRowCountApproximate => false;
+  @override
+  int get rowCount => data.length;
+  @override
+  int get selectedRowCount => 0;
+  @override
+  DataRow getRow(int index) {
+    return DataRow(cells: [
+      DataCell(Text(data[index]['id'].toString())),
+      DataCell(Text(data[index]["name"].toString())),
+      DataCell(Text(data[index]["parent_id"].toString())),
+      DataCell(Text(data[index]["created_at"].toString())),
+    ]);
+  }
 }

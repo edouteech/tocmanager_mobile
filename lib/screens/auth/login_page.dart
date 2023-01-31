@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously, avoid_printimport 'dart:convert';, unused_local_variable
+// ignore_for_file: use_build_context_synchronously, avoid_printimport 'dart:convert';, unused_local_variable, non_constant_identifier_names
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -304,7 +304,7 @@ class _LoginPageState extends State<LoginPage> {
             child: Center(
               child: Text(
                 message,
-                style: TextStyle(color: Colors.white),
+                style: const TextStyle(color: Colors.white),
               ),
             ),
           ),
@@ -325,8 +325,6 @@ class _LoginPageState extends State<LoginPage> {
     int UserState = await getUserState();
     if (UserState == 1) {
       nextScreenReplace(context, const HomePage());
-    } else {
-      print('test');
     }
   }
 

@@ -76,9 +76,7 @@ class _VenteHomeState extends State<VenteHome> {
       List<dynamic> _sells = sm["data"]["data"];
 
       for (var i = 0; i < _sells.length; i++) {
-          var date = DateTime.parse(_sells[i]['date_sell']);
-            
-        print(date);
+        var date = DateTime.parse(_sells[i]['date_sell']);
         sellsi.add({
           "id": _sells[i]['id'],
           "date_sell": date,
@@ -87,8 +85,7 @@ class _VenteHomeState extends State<VenteHome> {
           "client_name": _sells[i]['client']['name']
         });
       }
-      print(sellsi.length);
-      print(sellsi);
+      
     } else {
       print(response.statusCode);
       print('Error, Could not load Data.');
