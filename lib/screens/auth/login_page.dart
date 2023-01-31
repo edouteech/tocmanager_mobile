@@ -285,7 +285,7 @@ class _LoginPageState extends State<LoginPage> {
 
       _saveAndRedirectHome(response.data as Users);
     } else {
-      String message = "La connexion a échouée !";
+      String message = "";
       if (response.error == somethingWentWrong ||
           response.error == serverError) {
         message = "La connexion a échouée !";

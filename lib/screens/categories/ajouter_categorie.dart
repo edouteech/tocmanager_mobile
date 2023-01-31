@@ -1,6 +1,9 @@
-// ignore_for_file: avoid_unnecessary_containers, non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, sized_box_for_whitespace, deprecated_member_use, unused_field, prefer_final_fields, avoid_print, unused_local_variable, prefer_collection_literals, unnecessary_this
+// ignore_for_file: avoid_unnecessary_containers, non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, sized_box_for_whitespace, deprecated_member_use, unused_field, prefer_final_fields, avoid_print, unused_local_variable, prefer_collection_literals, unnecessary_this, unused_import
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
+import 'package:intl/intl.dart';
 import 'package:tocmanager/database/sqfdb.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/categories/categorielist.dart';
@@ -8,6 +11,7 @@ import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/fournisseurs/ajouter_fournisseur.dart';
 import 'package:tocmanager/screens/suscribe_screen/suscribe_screen.dart';
 import 'package:tocmanager/services/user_service.dart';
+import '../../models/Category.dart';
 import '../../models/api_response.dart';
 import '../../services/auth_service.dart';
 import '../../services/categorie_service.dart';
@@ -26,80 +30,30 @@ class AjouterCategoriePage extends StatefulWidget {
   State<AjouterCategoriePage> createState() => _AjouterCategoriePageState();
 }
 
- List<Map<String, dynamic>> categories = [];
+List<dynamic> categories = [];
+
 class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
   // database
   SqlDb sqlDb = SqlDb();
   bool isNotSuscribe = false;
+  String? message;
 
   /* Read data for database */
 
-  /*List of categories */
- 
-  // Future readData() async {
-  //   List<Map> response = await sqlDb.readData("SELECT * FROM 'Categories'");
-  //   categories.addAll(response);
-  //   if (this.mounted) {
-  //     setState(() {});
-  //   }
-  // }
-
   @override
   void initState() {
-    // readData();
-    readCategories();
     super.initState();
-  }
-   var tableRow = TableRow(data: categories);
-
-  Future readCategories() async {
-    int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await ReadCategories(compagnie_id);
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> categoriesJson =
-              response.data as Map<String, dynamic>;
-          Map<String, dynamic> sm = categoriesJson;
-          List categories_0 = categoriesJson['data']['data'];
-
-          for (var i = 0; i < categories_0.length; i++) {
-            // var created_at = DateTime.parse(categories[i]['created_at']);
-            // var updated_at = DateTime.parse(categories[i]['updated_at']);
-            categories.add({
-              "id": categories_0[i]['id'],
-              "name": categories_0[i]['name'],
-              "compagnieId": categories_0[i]['compagnie_id'],
-              "parentId": categories_0[i]['parent_id'],
-              "updated_at": categories_0[i]['updated_at'],
-              "created_at": categories_0[i]['created_at'],
-              "sum_products": categories_0[i]['sum_products'],
-            });
-          }
-        }
-      }
-    } else {
-      if (response.statusCode == 403) {
-        setState(() {
-          isNotSuscribe = true;
-        });
-      }
-    }
+    readCategories();
   }
 
   /* Dropdown items */
-  String? selectedValue;
+  String? parent_id;
   List<DropdownMenuItem<String>> get dropdownItems {
     List<DropdownMenuItem<String>> menuItems = [];
     for (var i = 0; i < categories.length; i++) {
       menuItems.add(DropdownMenuItem(
-        value: "${categories[i]["id"]}",
-        child: Text(
-          "${categories[i]["name"]}",
-          style: "${categories[i]["name"]}".length > 20
-              ? const TextStyle(fontSize: 15)
-              : null,
-        ),
+        value: categories[i].id.toString(),
+        child: Text(categories[i].name, style: const TextStyle(fontSize: 15)),
       ));
     }
     return menuItems;
@@ -107,84 +61,74 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
 
   //Fields Controller
   TextEditingController name = TextEditingController();
-
   //Auth service
   AuthService authService = AuthService();
-
   //Current page
   var currentPage = DrawerSections.categorie;
   String? verif;
-
   //Form key
   final _formKey = GlobalKey<FormState>();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[300],
-      floatingActionButton: isNotSuscribe == true
-          ? null
-          : FloatingActionButton(
-              onPressed: () {
-                _showFormDialog(context);
-              },
-              backgroundColor: Colors.blue,
-              child: const Icon(
-                Icons.add,
-                size: 32,
+        backgroundColor: Colors.grey[300],
+        floatingActionButton: isNotSuscribe == true
+            ? null
+            : FloatingActionButton(
+                onPressed: () {
+                  _showFormDialog(context);
+                },
+                backgroundColor: Colors.blue,
+                child: const Icon(
+                  Icons.add,
+                  size: 32,
+                ),
               ),
-            ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      appBar: AppBar(
-          centerTitle: true,
-          backgroundColor: Colors.grey[100],
-          iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
-          title: const Text(
-            'Catégories',
-            style: TextStyle(color: Colors.black),
-          )),
-      drawer: Drawer(
-        child: SingleChildScrollView(
-          child: Container(
-              child: Column(
-            children: [
-              const MyHeaderDrawer(),
-              MyDrawerList(),
-              const SizedBox(
-                height: 20,
-              ),
-            ],
-          )),
+        floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+        appBar: AppBar(
+            centerTitle: true,
+            backgroundColor: Colors.grey[100],
+            iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
+            title: const Text(
+              'Catégories',
+              style: TextStyle(color: Colors.black),
+            )),
+        drawer: Drawer(
+          child: SingleChildScrollView(
+            child: Container(
+                child: Column(
+              children: [
+                const MyHeaderDrawer(),
+                MyDrawerList(),
+                const SizedBox(
+                  height: 20,
+                ),
+              ],
+            )),
+          ),
         ),
-      ),
-      body: isNotSuscribe == true
-          ? const SuscribePage()
-          : SizedBox(
-      width: double.infinity,
-      child: SingleChildScrollView(
-        child: PaginatedDataTable(
-          onRowsPerPageChanged: (perPage) {},
-          rowsPerPage: 10,
-          columns: const <DataColumn>[
-            DataColumn(
-              label:  Text('N°'),
-              
-            ),
-             DataColumn(
-              label: Text('Nom'),
-            ),
-             DataColumn(
-              label: Text('Categorie parente'),
-            ),
-             DataColumn(
-              label: Text('Date'),
-            ),
-          ],
-          source: tableRow,
-        ),
-      ),
-    )
-    );
+        body: isNotSuscribe == true
+            ? const SuscribePage()
+            : SizedBox(
+                width: double.infinity,
+                child: SingleChildScrollView(
+                  child: PaginatedDataTable(
+                    onRowsPerPageChanged: (perPage) {},
+                    rowsPerPage: 10,
+                    columns: const [
+                      DataColumn(label: Center(child: Text("N°"))),
+                      DataColumn(label: Center(child: Text("Date"))),
+                      DataColumn(label: Center(child: Text("Name"))),
+                      DataColumn(
+                          label: Center(child: Text("Categorie parente"))),
+                      DataColumn(label: Center(child: Text("Editer"))),
+                      DataColumn(label: Center(child: Text("Effacer"))),
+                    ],
+                    source: DataTableRow(data: categories),
+                  ),
+                ),
+              ));
   }
 
   Widget MyDrawerList() {
@@ -333,84 +277,152 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
                       style: TextStyle(color: Colors.green)),
                   onPressed: () async {
                     if (_formKey.currentState!.validate()) {
-                      int response = await sqlDb.inserData('''
-                    INSERT INTO Categories(name, categoryParente_id) VALUES('${name.text}', '$selectedValue')
-                  ''');
-                      print("===$response==== INSERTION DONE ==========");
-                      Navigator.of(context).pushReplacement(MaterialPageRoute(
-                          builder: (context) => const AjouterCategoriePage()));
+                      _createCategories();
+                      //     int response = await sqlDb.inserData('''
+                      //   INSERT INTO Categories(name, categoryParente_id) VALUES('${name.text}', '$selectedValue')
+                      // ''');
+                      //     print("===$response==== INSERTION DONE ==========");
+                      //     Navigator.of(context).pushReplacement(MaterialPageRoute(
+                      //         builder: (context) => const AjouterCategoriePage()));
                     }
                   }),
             ],
             title: const Center(child: Text('Ajouter Catégorie')),
             content: SingleChildScrollView(
-              child: Form(
-                key: _formKey,
-                //name categorie create
-                child: Column(
-                  children: [
-                    Container(
-                      alignment: Alignment.center,
-                      margin:
-                          const EdgeInsets.only(left: 20, right: 20, top: 30),
-                      child: TextFormField(
-                        autovalidateMode: AutovalidateMode.onUserInteraction,
-                        controller: name,
-                        cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                        decoration: const InputDecoration(
-                          enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color.fromARGB(255, 45, 157, 220)),
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          border: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          label: Text("Nom de la catégorie"),
-                          labelStyle:
-                              TextStyle(fontSize: 13, color: Colors.black),
-                        ),
-                        validator: MultiValidator([
-                          RequiredValidator(
-                              errorText: "Veuillez entrer une catégorie")
-                        ]),
-                      ),
-                    ),
-
-                    //Catégorie parente
-                    Container(
-                        padding: const EdgeInsets.only(left: 20, right: 20),
-                        margin: const EdgeInsets.only(top: 10),
-                        child: DropdownButtonFormField(
-                          isExpanded: true,
-                          decoration: const InputDecoration(
-                            enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(
-                                    color: Color.fromARGB(255, 45, 157, 220)),
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(10))),
-                            border: OutlineInputBorder(
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(10))),
-                            label: Text("Catégorie Parente"),
-                            labelStyle:
-                                TextStyle(fontSize: 13, color: Colors.black),
+              child: Column(
+                children: [
+                  Form(
+                    key: _formKey,
+                    //name categorie create
+                    child: Column(
+                      children: [
+                        Container(
+                          alignment: Alignment.center,
+                          margin: const EdgeInsets.only(
+                              left: 20, right: 20, top: 30),
+                          child: TextFormField(
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
+                            controller: name,
+                            cursorColor:
+                                const Color.fromARGB(255, 45, 157, 220),
+                            decoration: const InputDecoration(
+                              enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color.fromARGB(255, 45, 157, 220)),
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(10))),
+                              border: OutlineInputBorder(
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(10))),
+                              label: Text("Nom de la catégorie"),
+                              labelStyle:
+                                  TextStyle(fontSize: 13, color: Colors.black),
+                            ),
+                            validator: MultiValidator([
+                              RequiredValidator(
+                                  errorText: "Veuillez entrer une catégorie")
+                            ]),
                           ),
-                          dropdownColor: Colors.white,
-                          value: selectedValue,
-                          onChanged: (String? newValue) {
-                            setState(() {
-                              selectedValue = newValue!;
-                            });
-                          },
-                          items: dropdownItems,
-                        )),
-                  ],
-                ),
+                        ),
+
+                        //Catégorie parente
+                        Container(
+                            padding: const EdgeInsets.only(left: 20, right: 20),
+                            margin: const EdgeInsets.only(top: 10),
+                            child: DropdownButtonFormField(
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                enabledBorder: OutlineInputBorder(
+                                    borderSide: BorderSide(
+                                        color:
+                                            Color.fromARGB(255, 45, 157, 220)),
+                                    borderRadius:
+                                        BorderRadius.all(Radius.circular(10))),
+                                border: OutlineInputBorder(
+                                    borderRadius:
+                                        BorderRadius.all(Radius.circular(10))),
+                                label: Text("Catégorie Parente"),
+                                labelStyle: TextStyle(
+                                    fontSize: 13, color: Colors.black),
+                              ),
+                              dropdownColor: Colors.white,
+                              value: parent_id,
+                              onChanged: (String? newValue) {
+                                setState(() {
+                                  parent_id = newValue!;
+                                });
+                              },
+                              items: dropdownItems,
+                            )),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           );
         });
+  }
+
+  //create catégories
+  void _createCategories() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response =
+        await CreateCategories(compagnie_id.toString(), name.text, parent_id);
+
+    if (response.error == null) {
+      if (response.statusCode == 200) {
+        if (response.status == "error") {
+          String? message = response.message;
+        } else {
+          Navigator.of(context).pushReplacement(MaterialPageRoute(
+              builder: (context) => const AjouterCategoriePage()));
+        }
+      }
+    } else {
+      if (response.statusCode == 403) {
+        setState(() {
+          isNotSuscribe = true;
+        });
+      } else {
+        print(response.error);
+      }
+    }
+  }
+
+  //readCategories
+  Future readCategories() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await ReadCategories(compagnie_id);
+    if (response.error == null) {
+      if (response.statusCode == 200) {
+        List<dynamic> data = response.data as List<dynamic>;
+        categories = data.map((p) => Category.fromJson(p)).toList();
+        // for (var category in categories) {
+        //   print('id: ${category.id}');
+        //   print('name: ${category.name}');
+        //   print('parentId: ${category.parentId}');
+        //   print('compagnieId: ${category.compagnieId}');
+        //   print('created_at: ${category.created_at}');
+        //   print('updated_at: ${category.updated_at}');
+        //   print('sum_products: ${category.sum_products}');
+        //   print('sum_products: ${category.compagnie_parent}');
+        // }
+      }
+    } else {
+      if (response.statusCode == 403) {
+        setState(() {
+          isNotSuscribe = true;
+        });
+      }
+    }
+  }
+
+  //delete categories
+  void _deleteCategory(int category_id) async {
+    int compagnie_id = await getCompagnie_id();
+    
   }
 }
 
@@ -426,25 +438,50 @@ enum DrawerSections {
   logout,
 }
 
-class TableRow extends DataTableSource {
-  final List<Map<String, dynamic>> data;
-  test() {
-    print(data);
-  }
-  TableRow({required this.data});
-  @override
-  bool get isRowCountApproximate => false;
-  @override
-  int get rowCount => data.length;
-  @override
-  int get selectedRowCount => 0;
+class DataTableRow extends DataTableSource {
+  final List<dynamic> data;
+  DataTableRow({required this.data});
+
   @override
   DataRow getRow(int index) {
-    return DataRow(cells: [
-      DataCell(Text(data[index]['id'].toString())),
-      DataCell(Text(data[index]["name"].toString())),
-      DataCell(Text(data[index]["parent_id"].toString())),
-      DataCell(Text(data[index]["created_at"].toString())),
-    ]);
+    final Category category = categories[index];
+    return DataRow.byIndex(
+      index: index,
+      cells: <DataCell>[
+        DataCell(Center(child: Text(category.id.toString()))),
+        DataCell(Text(DateFormat("dd-MM-yyyy H:mm:s")
+            .format(DateTime.parse(category.created_at.toString())))),
+        DataCell(Center(child: Text(category.name.toString()))),
+        DataCell(
+            Center(child: Text(category.compagnie_parent?.toString() ?? '-'))),
+        DataCell(Center(
+          child: IconButton(
+              icon: const Icon(
+                Icons.edit,
+                color: Colors.blue,
+              ),
+              onPressed: () async {}),
+        )),
+        DataCell(Center(
+          child: IconButton(
+              icon: const Icon(
+                Icons.delete,
+                color: Colors.red,
+              ),
+              onPressed: () async {
+                // _deleteCategory(category.id);
+              }),
+        ))
+      ],
+    );
   }
+
+  @override
+  int get rowCount => categories.length;
+
+  @override
+  bool get isRowCountApproximate => false;
+
+  @override
+  int get selectedRowCount => 0;
 }
