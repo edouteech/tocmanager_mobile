@@ -6,6 +6,7 @@ const userURL = '$baseURL/user';
 const testURL = '$baseURL/test-api';
 const sellsURL = '$baseURL/sells';
 const categoriesURL = '$baseURL/categories';
+const productsURL = '$baseURL/products';
 // ----error-----------
 const serverError = 'Server error';
 const unauthorized = 'unauthorized';

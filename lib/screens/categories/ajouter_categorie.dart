@@ -33,8 +33,7 @@ class AjouterCategoriePage extends StatefulWidget {
 List<dynamic> categories = [];
 
 class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
-  // database
-  SqlDb sqlDb = SqlDb();
+  
   bool isNotSuscribe = false;
   String? message;
   bool? isLoading;
