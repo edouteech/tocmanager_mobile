@@ -149,7 +149,6 @@ Future<ApiResponse> DeleteCategories(int compagnie_id, int? category_id) async {
 Future<ApiResponse> EditCategories(String compagnie_id, String name,
     String? parent_id, int? category_id) async {
   ApiResponse apiResponse = ApiResponse();
-
   try {
     String token = await getToken();
 
@@ -165,7 +164,7 @@ Future<ApiResponse> EditCategories(String compagnie_id, String name,
                 'name': name,
                 'parent_id': parent_id
               }
-            : {'compagnie_id': compagnie_id, 'name': name, 'parent_id':null});
+            : {'compagnie_id': compagnie_id, 'name': name, 'parent_id': ''.toString()});
     switch (response.statusCode) {
       case 200:
         if (jsonDecode(response.body)['status'] == 'error') {
