@@ -37,6 +37,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
   SqlDb sqlDb = SqlDb();
   bool isNotSuscribe = false;
   String? message;
+  bool? isLoading;
 
   /* Read data for database */
 
@@ -108,27 +109,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
             )),
           ),
         ),
-        body: isNotSuscribe == true
-            ? const SuscribePage()
-            : SizedBox(
-                width: double.infinity,
-                child: SingleChildScrollView(
-                  child: PaginatedDataTable(
-                    onRowsPerPageChanged: (perPage) {},
-                    rowsPerPage: 10,
-                    columns: const [
-                      DataColumn(label: Center(child: Text("N°"))),
-                      DataColumn(label: Center(child: Text("Date"))),
-                      DataColumn(label: Center(child: Text("Name"))),
-                      DataColumn(
-                          label: Center(child: Text("Categorie parente"))),
-                      DataColumn(label: Center(child: Text("Editer"))),
-                      DataColumn(label: Center(child: Text("Effacer"))),
-                    ],
-                    source: DataTableRow(data: categories),
-                  ),
-                ),
-              ));
+        body:const CategoriesList());
   }
 
   Widget MyDrawerList() {
@@ -278,12 +259,6 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
                   onPressed: () async {
                     if (_formKey.currentState!.validate()) {
                       _createCategories();
-                      //     int response = await sqlDb.inserData('''
-                      //   INSERT INTO Categories(name, categoryParente_id) VALUES('${name.text}', '$selectedValue')
-                      // ''');
-                      //     print("===$response==== INSERTION DONE ==========");
-                      //     Navigator.of(context).pushReplacement(MaterialPageRoute(
-                      //         builder: (context) => const AjouterCategoriePage()));
                     }
                   }),
             ],
@@ -365,6 +340,8 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
         });
   }
 
+  
+
   //create catégories
   void _createCategories() async {
     int compagnie_id = await getCompagnie_id();
@@ -392,23 +369,16 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
   }
 
   //readCategories
-  Future readCategories() async {
+  Future<void> readCategories() async {
     int compagnie_id = await getCompagnie_id();
     ApiResponse response = await ReadCategories(compagnie_id);
     if (response.error == null) {
       if (response.statusCode == 200) {
         List<dynamic> data = response.data as List<dynamic>;
         categories = data.map((p) => Category.fromJson(p)).toList();
-        // for (var category in categories) {
-        //   print('id: ${category.id}');
-        //   print('name: ${category.name}');
-        //   print('parentId: ${category.parentId}');
-        //   print('compagnieId: ${category.compagnieId}');
-        //   print('created_at: ${category.created_at}');
-        //   print('updated_at: ${category.updated_at}');
-        //   print('sum_products: ${category.sum_products}');
-        //   print('sum_products: ${category.compagnie_parent}');
-        // }
+        setState(() {
+          isLoading = true;
+        });
       }
     } else {
       if (response.statusCode == 403) {
@@ -419,11 +389,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
     }
   }
 
-  //delete categories
-  void _deleteCategory(int category_id) async {
-    int compagnie_id = await getCompagnie_id();
-    
-  }
+ 
 }
 
 enum DrawerSections {
@@ -438,50 +404,4 @@ enum DrawerSections {
   logout,
 }
 
-class DataTableRow extends DataTableSource {
-  final List<dynamic> data;
-  DataTableRow({required this.data});
 
-  @override
-  DataRow getRow(int index) {
-    final Category category = categories[index];
-    return DataRow.byIndex(
-      index: index,
-      cells: <DataCell>[
-        DataCell(Center(child: Text(category.id.toString()))),
-        DataCell(Text(DateFormat("dd-MM-yyyy H:mm:s")
-            .format(DateTime.parse(category.created_at.toString())))),
-        DataCell(Center(child: Text(category.name.toString()))),
-        DataCell(
-            Center(child: Text(category.compagnie_parent?.toString() ?? '-'))),
-        DataCell(Center(
-          child: IconButton(
-              icon: const Icon(
-                Icons.edit,
-                color: Colors.blue,
-              ),
-              onPressed: () async {}),
-        )),
-        DataCell(Center(
-          child: IconButton(
-              icon: const Icon(
-                Icons.delete,
-                color: Colors.red,
-              ),
-              onPressed: () async {
-                // _deleteCategory(category.id);
-              }),
-        ))
-      ],
-    );
-  }
-
-  @override
-  int get rowCount => categories.length;
-
-  @override
-  bool get isRowCountApproximate => false;
-
-  @override
-  int get selectedRowCount => 0;
-}

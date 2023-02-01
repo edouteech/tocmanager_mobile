@@ -28,7 +28,7 @@ class Category {
       created_at: json['created_at'],
       updated_at: json['updated_at'],
       sum_products: json['sum_products'],
-      compagnie_parent: json['parent_id'] !=null ? json['parent']['name'] : null
+      compagnie_parent: json['parent'] !=null ? json['parent']['name'] : null
     );
   }
 }
