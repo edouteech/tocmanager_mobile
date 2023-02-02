@@ -6,7 +6,7 @@ class Category {
   int? compagnieId;
   String? created_at;
   String? updated_at;
-  int? sum_products;
+  dynamic sum_products;
   String? compagnie_parent;
   Category(
       {this.id,
@@ -27,7 +27,7 @@ class Category {
       compagnieId: json['compagnie_id'],
       created_at: json['created_at'],
       updated_at: json['updated_at'],
-      sum_products: json['sum_products'],
+      sum_products: (json['sum_products']).toString(),
       compagnie_parent: json['parent'] !=null ? json['parent']['name'] : null
     );
   }

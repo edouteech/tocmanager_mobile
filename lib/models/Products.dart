@@ -37,23 +37,29 @@ class Product {
       this.created_at,
       this.updated_at});
 
-        factory Product.fromJson(Map<String, dynamic> json) {
+  factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
       id: json['id'],
       name: json['name'],
       quantity: json['quantity'],
       price_sell: json['price_sell'].toDouble(),
-      price_buy:  json['price_buy'].toDouble(),
+      price_buy: json['price_buy'].toDouble(),
       stock_min: json['stock_min'],
       stock_max: json['stock_max'],
-      price_moyen_sell:  json['price_moyen_sell'].toDouble(),
-      price_moyen_buy: json['price_moyen_sell'].toDouble(),
+      price_moyen_sell: json['price_moyen_sell'] == null ||
+              json['price_moyen_sell'].toString().isEmpty
+          ? null
+          : json['price_moyen_sell'].toDouble(),
+      price_moyen_buy: json['price_moyen_buy'] == null ||
+              json['price_moyen_buy'].toString().isEmpty
+          ? null
+          : json['price_moyen_buy'].toDouble(),
       tax_group: json['tax_group'],
       compagnie_id: json['compagnie_id'],
       reference: json['reference'],
       code: json['code'],
       stock_initial: json['stock_initial'],
-      category_name: json['category'] !=null ? json['category']['name'] : null,
+      category_name: json['category'] != null ? json['category']['name'] : null,
       created_at: json['created_at'],
       updated_at: json['updated_at'],
     );

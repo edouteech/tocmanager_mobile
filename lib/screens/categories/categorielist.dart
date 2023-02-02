@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:intl/intl.dart';
 import 'package:tocmanager/screens/categories/ajouter_categorie.dart';
+import 'package:tocmanager/screens/produits/ajouter_produits.dart';
 import 'package:tocmanager/services/categorie_service.dart';
 
 import '../../models/Category.dart';
@@ -136,7 +137,7 @@ class _CategoriesListState extends State<CategoriesList> {
           
         } else {
           Navigator.of(context).pushReplacement(MaterialPageRoute(
-              builder: (context) => const AjouterCategoriePage()));
+              builder: (context) => const AjouterProduitPage()));
         }
       }
     } else {

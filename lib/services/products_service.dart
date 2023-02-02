@@ -1,5 +1,5 @@
 //get categories
-// ignore_for_file: non_constant_identifier_names
+// ignore_for_file: non_constant_identifier_names, avoid_print, unnecessary_null_comparison
 
 import 'dart:convert';
 
@@ -50,30 +50,79 @@ Future<ApiResponse> ReadProducts(
 //create products
 Future<ApiResponse> CreateProducts(
     int compagnie_id,
-    int? category_id,
-    String? name,
-    int? quantity,
+    String? category_id,
+    String name,
+    String quantity,
     dynamic price_sell,
     dynamic price_buy,
-    int stock_min,
-    int stock_max,
-    String? tax_group,
-    String? code) async {
+    String stock_min,
+    String stock_max,
+    String code) async {
   ApiResponse apiResponse = ApiResponse();
 
   try {
     String token = await getToken();
 
-    final response = await http.post(
-        Uri.parse(categoriesURL),
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token'
-        },
-        body: {
-          
+    final response = await http
+        .post(Uri.parse('$productsURL?compagnie_id=$compagnie_id'), headers: {
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $token'
+    }, body: {
+      'category_id': category_id.toString() == null ? null : category_id,
+      'name': name,
+      'quantity': quantity,
+      'price_sell': price_sell,
+      'price_buy': price_buy,
+      'stock_min': stock_min,
+      'stock_max': stock_max,
+      'code': code.toString() == null ? null : code
+    });
+    print(category_id);
 
-        });
+    switch (response.statusCode) {
+      case 200:
+        if (jsonDecode(response.body)['status'] == 'error') {
+          apiResponse.message = jsonDecode(response.body)['message'];
+          print(apiResponse.message);
+          apiResponse.status = jsonDecode(response.body)['status'];
+        } else {
+          apiResponse.statusCode = response.statusCode;
+          apiResponse.data = jsonDecode(response.body);
+          apiResponse.status = jsonDecode(response.body)['status'];
+        }
+
+        break;
+      case 422:
+        final errors = jsonDecode(response.body)['errors'];
+        apiResponse.error = errors[errors.keys.elementAt(0)][0];
+        apiResponse.statusCode = response.statusCode;
+        break;
+      case 403:
+        apiResponse.error = jsonDecode(response.body)['message'];
+        apiResponse.statusCode = response.statusCode;
+        break;
+      default:
+        apiResponse.error = somethingWentWrong;
+        break;
+    }
+  } catch (e) {
+    print(e);
+    // apiResponse.error = serverError;
+  }
+
+  return apiResponse;
+}
+
+//delete category
+Future<ApiResponse> DeleteProducts(int compagnie_id, int? product_id) async {
+  ApiResponse apiResponse = ApiResponse();
+
+  try {
+    String token = await getToken();
+    final response = await http.delete(
+      Uri.parse("$productsURL/$product_id?compagnie_id=$compagnie_id"),
+      headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
+    );
 
     switch (response.statusCode) {
       case 200:
