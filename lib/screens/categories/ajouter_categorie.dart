@@ -33,7 +33,6 @@ class AjouterCategoriePage extends StatefulWidget {
 List<dynamic> categories = [];
 
 class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
-  
   bool isNotSuscribe = false;
   String? message;
   bool? isLoading;
@@ -108,7 +107,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
             )),
           ),
         ),
-        body:const CategoriesList());
+        body: const CategoriesList());
   }
 
   Widget MyDrawerList() {
@@ -339,8 +338,6 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
         });
   }
 
-  
-
   //create catégories
   void _createCategories() async {
     int compagnie_id = await getCompagnie_id();
@@ -373,8 +370,10 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
     ApiResponse response = await ReadCategories(compagnie_id);
     if (response.error == null) {
       if (response.statusCode == 200) {
+       
         List<dynamic> data = response.data as List<dynamic>;
         categories = data.map((p) => Category.fromJson(p)).toList();
+
         setState(() {
           isLoading = true;
         });
@@ -387,8 +386,6 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
       }
     }
   }
-
- 
 }
 
 enum DrawerSections {
@@ -402,5 +399,3 @@ enum DrawerSections {
   privacy_policy,
   logout,
 }
-
-

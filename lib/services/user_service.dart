@@ -182,40 +182,6 @@ Future<ApiResponse> Create_categorie(int compagnie_id) async {
   return apiResponse;
 }
 
-Future<ApiResponse> readSells(int compagnie_id) async {
-  ApiResponse apiResponse = ApiResponse();
-  try {
-    String token = await getToken();
-    final response = await http.get(
-      Uri.parse(
-          'https://teste.tocmanager.com/api/sells?compagnie_id=$compagnie_id'),
-      headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
-    );
-
-    switch (response.statusCode) {
-      case 200:
-        apiResponse.data = response.body;
-        break;
-      case 422:
-        final errors = jsonDecode(response.body)['errors'];
-        apiResponse.error = errors[errors.keys.elementAt(0)][0];
-        break;
-      case 403:
-        apiResponse.error = jsonDecode(response.body)['message'];
-        break;
-      case 500:
-        apiResponse.error = "erreur 500";
-        break;
-      default:
-        apiResponse.error = somethingWentWrong;
-        break;
-    }
-  } catch (e) {
-    apiResponse.error = serverError;
-  }
-
-  return apiResponse;
-}
 
 //get token
 Future<String> getToken() async {

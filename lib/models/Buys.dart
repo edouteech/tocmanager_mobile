@@ -1,9 +1,9 @@
 // ignore_for_file: non_constant_identifier_names
 
-class Sells {
+class Buys {
   int id;
   int user_id;
-   String date_sell;
+  String date_buy;
   int compagnie_id;
   int client_id;
   dynamic amount;
@@ -13,10 +13,10 @@ class Sells {
   String created_at;
   String updated_at;
 
-  Sells(
+  Buys(
       {required this.id,
       required this.user_id,
-      required this.date_sell,
+      required this.date_buy,
       required this.compagnie_id,
       required this.client_id,
       required this.amount,
@@ -26,11 +26,11 @@ class Sells {
       required this.updated_at});
 
   //function to convert json data to sells model
-  factory Sells.fromJson(Map<String, dynamic> json) {
-    return Sells(
+  factory Buys.fromJson(Map<String, dynamic> json) {
+    return Buys(
         id: json["id"],
         user_id: json['user_id'],
-        date_sell: json['date_sell'],
+        date_buy: json['date_sell'],
         compagnie_id: json['compagnie_id'],
         client_id: json['client_id'],
         amount: json["amount"].toDouble(),

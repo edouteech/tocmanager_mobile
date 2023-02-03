@@ -16,6 +16,7 @@ import '../home_page.dart';
 import '../home_widgets/drawer_header.dart';
 import '../auth/login_page.dart';
 import '../produits/ajouter_produits.dart';
+import '../suscribe_screen/suscribe_screen.dart';
 
 class AchatHomePage extends StatefulWidget {
   const AchatHomePage({Key? key}) : super(key: key);
@@ -24,26 +25,19 @@ class AchatHomePage extends StatefulWidget {
   State<AchatHomePage> createState() => _AchatHomePageState();
 }
 
+ List<dynamic> buys = [];
+
 class _AchatHomePageState extends State<AchatHomePage> {
-  /* Database */
-  SqlDb sqlDb = SqlDb();
+  bool isNotSuscribe = false;
+  bool isLoading = true;
   /* =============================Buys=================== */
   /* List products */
-  List buys = [];
+ 
 
-  /* Read data for database */
-  Future readSuppliersData() async {
-    List<Map> response = await sqlDb.readData(
-        "SELECT Buys.*,Suppliers.name as supplier_name FROM 'Buys','Suppliers' WHERE Buys.supplier_id = Suppliers.id");
-    buys.addAll(response);
-    if (this.mounted) {
-      setState(() {});
-    }
-  }
+
 
   @override
   void initState() {
-    readSuppliersData();
     super.initState();
   }
 
@@ -86,110 +80,48 @@ class _AchatHomePageState extends State<AchatHomePage> {
           ),
         ),
       ),
-      body: DataTable2(
-          showBottomBorder: true,
-          border: TableBorder.all(color: Colors.black),
-          headingTextStyle: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-            fontFamily: 'Oswald',
-          ),
-          dataRowColor: MaterialStateProperty.all(Colors.white),
-          headingRowColor: MaterialStateProperty.all(Colors.blue[200]),
-          columnSpacing: 12,
-          horizontalMargin: 12,
-          minWidth: 800,
-          columns: const [
-            DataColumn2(
-              label: Center(child: Text('Nom fournisseur')),
-              size: ColumnSize.L,
-            ),
-            DataColumn2(
-                label: Center(child: Text('Montant')), size: ColumnSize.L),
-            DataColumn2(
-                label: Center(child: Text('Reste')), size: ColumnSize.L),
-            DataColumn2(label: Center(child: Text('Date')), size: ColumnSize.L),
-            DataColumn2(
-                label: Center(child: Text('Décaissement')), size: ColumnSize.L),
-            DataColumn2(
-                label: Center(child: Text('Détails')), size: ColumnSize.L),
-            DataColumn2(
-                label: Center(child: Text('Editer')), size: ColumnSize.L),
-            DataColumn2(
-                label: Center(child: Text('Effacer')), size: ColumnSize.L),
-          ],
-          rows: List<DataRow>.generate(
-              buys.length,
-              (index) => DataRow(cells: [
-                    DataCell(
-                        Center(child: Text('${buys[index]["supplier_name"]}'))),
-                    DataCell(Center(child: Text('${buys[index]["amount"]}'))),
-                    DataCell(Center(child: Text('${buys[index]["reste"]}'))),
-                    DataCell(Center(child: Text('${buys[index]["date_buy"]}'))),
-                    DataCell(Center(
-                      child: IconButton(
-                          icon: const Icon(
-                            Icons.monetization_on_sharp,
-                            color: Colors.green,
+      body: isNotSuscribe == true
+            ? const SuscribePage()
+            : Container(
+                child: isLoading == true
+                    ? const Center(
+                        child: CircularProgressIndicator(),
+                      )
+                    : SizedBox(
+                        width: double.infinity,
+                        child: SingleChildScrollView(
+                          child: PaginatedDataTable(
+                            rowsPerPage: 10,
+                            columns: <DataColumn>[
+                              DataColumn(
+                                label: const Text('Client'),
+                                onSort: (columnIndex, ascending) {
+                                  print("$columnIndex $ascending");
+                                },
+                              ),
+                              const DataColumn(
+                                label: Text('Montant'),
+                              ),
+                              const DataColumn(
+                                label: Text('Reste'),
+                              ),
+                              const DataColumn(
+                                label: Text('Date'),
+                              ),
+                              const DataColumn(
+                                label: Text('Editer'),
+                              ),
+                              const DataColumn(
+                                label: Text('Effacer'),
+                              ),
+                            ],
+                            source: DataTableRow(
+                              data: buys,
+                            ),
                           ),
-                          onPressed: () {
-                            nextScreen(
-                                context,
-                                DecaissementPage(
-                                    buyId: '${buys[index]["id"]}',
-                                    reste: '${buys[index]["reste"]}',
-                                    supplierId:
-                                        '${buys[index]["supplier_id"]}'));
-                          }),
-                    )),
-                    DataCell(Center(
-                      child: IconButton(
-                          icon: const Icon(
-                            Icons.info,
-                            color: Colors.blue,
-                          ),
-                          onPressed: () {
-                            nextScreen(context,
-                                AchatDetails(id: '${buys[index]["id"]}'));
-                          }),
-                    )),
-                    DataCell(Center(
-                      child: IconButton(
-                          icon: const Icon(
-                            Icons.edit,
-                            color: Colors.blue,
-                          ),
-                          onPressed: () {
-                            nextScreen(
-                                context,
-                                EditAchatPage(
-                                    supplierId: '${buys[index]["supplier_id"]}',
-                                    amount: '${buys[index]["amount"]}',
-                                    buyId: '${buys[index]["id"]}',
-                                    buyDate: '${buys[index]["date_buy"]}',
-                                    buyReste: '${buys[index]["reste"]}'));
-                          }),
-                    )),
-                    DataCell(Center(
-                      child: IconButton(
-                          icon: const Icon(
-                            Icons.delete,
-                            color: Colors.red,
-                          ),
-                          onPressed: () async {
-                            int response = await sqlDb.deleteData(
-                                "DELETE FROM Buys WHERE id =${buys[index]['id']}");
-                            if (response > 0) {
-                              buys.removeWhere((element) =>
-                                  element['id'] == buys[index]['id']);
-                              setState(() {});
-                              print("$response ===Delete ==== DONE");
-                            } else {
-                              print("Delete ==== null");
-                            }
-                          }),
-                    )),
-                  ]))),
+                        ),
+                      ),
+              )
     );
   }
 

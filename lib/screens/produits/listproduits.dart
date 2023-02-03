@@ -69,7 +69,6 @@ class _ProduitListPageState extends State<ProduitListPage> {
       if (response.statusCode == 200) {
         List<dynamic> data = response.data as List<dynamic>;
         categories = data.map((p) => Category.fromJson(p)).toList();
-        print(categories);
         setState(() {
           isLoading = true;
         });
@@ -82,6 +81,7 @@ class _ProduitListPageState extends State<ProduitListPage> {
       }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -96,8 +96,7 @@ class _ProduitListPageState extends State<ProduitListPage> {
                     width: double.infinity,
                     child: SingleChildScrollView(
                       child: PaginatedDataTable(
-                        onRowsPerPageChanged: (perPage) {},
-                        rowsPerPage: 10,
+                        
                         columns: const [
                           DataColumn(label: Center(child: Text("Name"))),
                           DataColumn(label: Center(child: Text("Categorie"))),
@@ -115,6 +114,7 @@ class _ProduitListPageState extends State<ProduitListPage> {
                             data: products,
                             onDelete: _deleteProducts,
                             onEdit: _showFormDialog),
+                        
                       ),
                     ),
                   ),

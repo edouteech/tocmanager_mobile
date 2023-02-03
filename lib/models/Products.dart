@@ -61,7 +61,7 @@ class Product {
       stock_initial: json['stock_initial'],
       category_name: json['category'] != null ? json['category']['name'] : null,
       created_at: json['created_at'],
-      updated_at: json['updated_at'],
+      updated_at: json['updated_at']
     );
   }
 }

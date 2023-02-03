@@ -6,11 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:tocmanager/screens/ventes/line_vente.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 import 'package:tocmanager/services/user_service.dart';
+import '../../models/Products.dart';
 import '../../models/api_response.dart';
 import '../../services/auth_service.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import '../../database/sqfdb.dart';
 import 'package:intl/intl.dart';
+
+import '../../services/products_service.dart';
 
 class AjouterVentePage extends StatefulWidget {
   const AjouterVentePage({Key? key}) : super(key: key);
@@ -25,56 +28,30 @@ List<Map> ventes = [];
 var total = "";
 var sum = 0.0;
 var sell_reste = 0.0;
+List<dynamic> categories = [];
+List<dynamic> products = [];
 
 class _AjouterVentePageState extends State<AjouterVentePage> {
+  bool isLoading = true;
   AuthService authService = AuthService();
   final format = DateFormat("yyyy-MM-dd HH:mm:ss");
+
   /* Form key */
   final _formKey = GlobalKey<FormState>();
   final _formuKey = GlobalKey<FormState>();
-  final _formaKey = GlobalKey<FormState>();
+  final _sell_lineFormkey = GlobalKey<FormState>();
 
   /* Database */
   SqlDb sqlDb = SqlDb();
 
   /* =============================Products=================== */
   /* List products */
-  List products = [];
-
-  /* Read data for database */
-  Future readData() async {
-    List<Map> response = await sqlDb.readData("SELECT * FROM 'Products'");
-    products.addAll(response);
-    if (this.mounted) {
-      setState(() {});
-    }
-  }
 
   @override
   void initState() {
-    // dateController.text =
-    //     DateFormat("yyyy-MM-dd hh:mm:ss").format(DateTime.now());
-    readData();
     readclientsData();
+    readProducts();
     super.initState();
-  }
-
-  /* Dropdown products items */
-  String? selectedProductValue;
-  List<DropdownMenuItem<String>> get dropdownProductsItems {
-    List<DropdownMenuItem<String>> menuProductsItems = [];
-    for (var i = 0; i < products.length; i++) {
-      menuProductsItems.add(DropdownMenuItem(
-        value: "${products[i]["id"]}",
-        child: Text(
-          "${products[i]["name"]}",
-          style: "${products[i]["name"]}".length > 20
-              ? const TextStyle(fontSize: 15)
-              : null,
-        ),
-      ));
-    }
-    return menuProductsItems;
   }
 
   /* =============================End Products=================== */
@@ -117,6 +94,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
   TextEditingController nameProductsController = TextEditingController();
   TextEditingController priceProductController = TextEditingController();
   TextEditingController quantityController = TextEditingController();
+  TextEditingController discountController = TextEditingController();
   TextEditingController dateController = TextEditingController();
   TextEditingController nameClientController = TextEditingController();
   TextEditingController sommeclientController = TextEditingController();
@@ -148,7 +126,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
           iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
           title: const Text(
             'Ajouter Ventes',
-            style: TextStyle(fontSize: 30, color: Colors.black),
+            style: TextStyle(color: Colors.black),
           )),
       body: SingleChildScrollView(
         child: Column(
@@ -287,7 +265,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
             SizedBox(
               height: 70,
               child: Form(
-                key: _formaKey,
+                key: _sell_lineFormkey,
                 child: Row(
                   children: [
                     Flexible(
@@ -336,9 +314,9 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                           onTap: () async {
                             //create_categorie();
 
-                            create_sells();
+                            // create_sells();
                             if (sum != 0.0) {
-                              if (_formaKey.currentState!.validate()) {
+                              if (_sell_lineFormkey.currentState!.validate()) {
                                 print("== Amount equal to : $sum");
                                 if (_formKey.currentState!.validate()) {
                                   print("== Date and user are mentionned");
@@ -389,7 +367,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                                     elements.clear();
                                     ventes.clear();
                                     sum = 0.0;
-                                    _formaKey.currentState?.reset();
+                                    _sell_lineFormkey.currentState?.reset();
                                     _formKey.currentState?.reset();
                                     sell_reste = 0.0;
                                   });
@@ -435,6 +413,47 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
     );
   }
 
+  //read products
+  Future<void> readProducts() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await ReadProducts(compagnie_id);
+    if (response.error == null) {
+      if (response.statusCode == 200) {
+        List<dynamic> data = response.data as List<dynamic>;
+        products = data.map((p) => Product.fromJson(p)).toList();
+      }
+    }
+  }
+
+  /* Dropdown products items */
+  String? product_id;
+  List<DropdownMenuItem<String>> get dropdownProductsItems {
+    List<DropdownMenuItem<String>> menuProductsItems = [];
+    for (var i = 0; i < products.length; i++) {
+      menuProductsItems.add(DropdownMenuItem(
+        value: products[i].id.toString(),
+        child: Text(products[i].name, style: const TextStyle(fontSize: 15)),
+      ));
+    }
+    return menuProductsItems;
+  }
+
+  //read product price
+  void productPrice(int? product_id) async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await ReadProductbyId(compagnie_id, product_id);
+    if (response.error == null) {
+      if (response.statusCode == 200) {
+        List<dynamic> data = response.data as List<dynamic>;
+        for (var product in data) {
+          setState(() {
+            priceProductController.text = product['price_sell'].toString();
+          });
+        }
+      }
+    }
+  }
+
   // void create_sells(double amount) async {
   //   int compagnieid = await getCompagnie_id();
   //   int userid = await getUsersId();
@@ -471,87 +490,60 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
   //   }
   // }
 
-  Dio dio = Dio();
-   create_categorie() async {
-    String pathUrl = 'https://teste.tocmanager.com/api/categories';
-    int compagnie_id = await getCompagnie_id();
-    String token = await getToken();
-    dynamic data = {"name": "yo", "compagnie_id": compagnie_id};
+  // void create_sells() async {
+  //   String token = await getToken();
+  //   int user_id = await getUsersId();
+  //   int compagnie_id = await getCompagnie_id();
+  //   dynamic sell_lines = [
+  //     {
+  //       "product_id": 1,
+  //       "quantity": 50,
+  //       "price": 200,
+  //       "amount": 10,
+  //       "compagnie_id": 1,
+  //       "taxGroup": "B"
+  //     }
+  //   ];
+  //   dynamic test = {
+  //     "date_sell": "2020-01-02 03:04:05",
+  //     "tax": 0,
+  //     "discount": 0,
+  //     "amount": 100,
+  //     "amount_received": 100,
+  //     "user_id": user_id,
+  //     "client_id": 1,
+  //     "compagnie_id": compagnie_id,
+  //     "sell_lines": sell_lines
+  //   };
+  //   String pathUrl = 'https://teste.tocmanager.com/api/sells';
 
-    var response = await dio.post(pathUrl,
-        data: data,
-        options: Options(
-          headers: {
-            'Accept': 'application/json',
-            'Authorization': 'Bearer $token'
-          },
-        ));
-    if (response.statusCode == 200) {
-      print(response.data);
-      // response.data = Sells.fromJson(jsonDecode(response.data));
-      // List test = response.data;
-      // print(test);
-      // print(response.statusCode);
-      // print(response.data);
-    } else {
-      print(response.statusCode);
-    }
-  }
-
-  void create_sells() async {
-    String token = await getToken();
-    int user_id = await getUsersId();
-    int compagnie_id = await getCompagnie_id();
-    dynamic sell_lines = [
-      {
-        "product_id": 1,
-        "quantity": 50,
-        "price": 200,
-        "amount": 10,
-        "compagnie_id": 1,
-        "taxGroup": "B"
-      }
-    ];
-    dynamic test = {
-      "date_sell": "2020-01-02 03:04:05",
-      "tax": 0,
-      "discount": 0,
-      "amount": 100,
-      "amount_received": 100,
-      "user_id": user_id,
-      "client_id": 1,
-      "compagnie_id": compagnie_id,
-      "sell_lines": sell_lines
-    };
-    String pathUrl = 'https://teste.tocmanager.com/api/sells';
-
-    var response = await dio.post(pathUrl,
-        data: test,
-        options: Options(
-          headers: {
-            'Accept': 'application/json',
-            'Authorization': 'Bearer $token'
-          },
-        ));
-    if (response.statusCode == 200) {
-      print(response.statusCode);
-      print(response.data);
-    } else {
-      print(response.statusCode);
-    }
-  }
+  //   var response = await dio.post(pathUrl,
+  //       data: test,
+  //       options: Options(
+  //         headers: {
+  //           'Accept': 'application/json',
+  //           'Authorization': 'Bearer $token'
+  //         },
+  //       ));
+  //   if (response.statusCode == 200) {
+  //     print(response.statusCode);
+  //     print(response.data);
+  //   } else {
+  //     print(response.statusCode);
+  //   }
+  // }
 
   void read_sells() async {
-    int compagnieid = await getCompagnie_id();
+    // int compagnieid = await getCompagnie_id();
 
-    ApiResponse response = await readSells(compagnieid);
-    if (response.error == null) {
-      print(response.data);
-    } else {
-      print(response.error);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('$response.error')));
-    }
+    // ApiResponse response = await readSells(compagnieid);
+    // if (response.error == null) {
+    //   print(response.data);
+    // } else {
+    //   print(response.error);
+    //   ScaffoldMessenger.of(context)
+    //       .showSnackBar(SnackBar(content: Text('$response.error')));
+    // }
   }
 
   _showFormDialog(BuildContext context) {
@@ -587,7 +579,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                     setState(() {
                       elements.add(elmt);
                       ventes.add({
-                        "id": "$selectedProductValue",
+                        "id": "$product_id",
                         "name": "${nameProductsController.text}",
                         "total": '$total',
                         "quantity": '${quantityController.text}'
@@ -597,7 +589,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                     });
                     Navigator.of(context).pop();
                     setState(() {
-                      selectedProductValue = null;
+                      product_id = null;
                       _formuKey.currentState?.reset();
                       sommeclientController.text = sum.toString();
                     });
@@ -632,24 +624,14 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                               TextStyle(fontSize: 13, color: Colors.black),
                         ),
                         dropdownColor: Colors.white,
-                        value: selectedProductValue,
+                        value: product_id,
                         onChanged: (String? newValue) {
                           setState(() {
-                            selectedProductValue = newValue!;
-                            if (selectedProductValue != null) {
-                              setState(() async {
-                                var prix = await sqlDb.readData(
-                                    "SELECT * FROM Products WHERE id =$selectedProductValue");
-
-                                setState(() {
-                                  priceProductController.text =
-                                      "${prix[0]["price_sell"]}";
-                                  nameProductsController.text =
-                                      "${prix[0]["name"]}";
-                                });
-                              });
-                            }
+                            product_id = newValue!;
                           });
+                          if (product_id != null) {
+                            productPrice(int.parse(product_id!));
+                          }
                         },
                         items: dropdownProductsItems)),
                 //Prix unitaire
@@ -700,6 +682,29 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                             borderRadius:
                                 BorderRadius.all(Radius.circular(10))),
                         label: Text("Quantité"),
+                        labelStyle:
+                            TextStyle(fontSize: 13, color: Colors.black),
+                      ),
+                    )),
+
+                //Reduction
+                Container(
+                    alignment: Alignment.center,
+                    margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
+                    child: TextFormField(
+                      keyboardType: TextInputType.number,
+                      controller: discountController,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      decoration: const InputDecoration(
+                        enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                                color: Color.fromARGB(255, 45, 157, 220)),
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(10))),
+                        border: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(10))),
+                        label: Text("Reduction(%)"),
                         labelStyle:
                             TextStyle(fontSize: 13, color: Colors.black),
                       ),

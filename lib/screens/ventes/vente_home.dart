@@ -8,9 +8,12 @@ import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/fournisseurs/ajouter_fournisseur.dart';
 import 'package:tocmanager/screens/ventes/ajouter_vente.dart';
+import 'package:tocmanager/services/sells_services.dart';
 
 import '../../database/sqfdb.dart';
 
+import '../../models/Sells.dart';
+import '../../models/api_response.dart';
 import '../../services/auth_service.dart';
 import '../../services/user_service.dart';
 import '../../widgets/widgets.dart';
@@ -19,6 +22,7 @@ import '../home_page.dart';
 import '../home_widgets/drawer_header.dart';
 import '../auth/login_page.dart';
 import '../produits/ajouter_produits.dart';
+import '../suscribe_screen/suscribe_screen.dart';
 
 class VenteHome extends StatefulWidget {
   const VenteHome({Key? key}) : super(key: key);
@@ -27,269 +31,103 @@ class VenteHome extends StatefulWidget {
   State<VenteHome> createState() => _VenteHomeState();
 }
 
-List<Map<String, dynamic>> sellsi = [];
+List<dynamic> sells = [];
 
 class _VenteHomeState extends State<VenteHome> {
+  bool isNotSuscribe = false;
+  bool isLoading = true;
+
   var currentPage = DrawerSections.vente;
   AuthService authService = AuthService();
 
-  /* Database */
-  SqlDb sqlDb = SqlDb();
-  /* =============================sells=================== */
-  /* List products */
-  List<Map> sells = [];
-
-  /* Read data for database */
-  void readProductsData() async {
-    List<Map> response = await sqlDb.readData(''' 
-     SELECT Sells.*,Clients.name as client_name FROM 'Sells','Clients' WHERE Sells.client_id = Clients.id
-    ''');
-    sells.addAll(response);
-    if (this.mounted) {
-      setState(() {});
-    }
-  }
 
   @override
   void initState() {
-    readProductsData();
+    readSells();
     super.initState();
-    readSells_Api();
-  }
-
-  Dio dio = Dio();
-
-  readSells_Api() async {
-    int compagnie_id = await getCompagnie_id();
-    String token = await getToken();
-    String pathUrl =
-        'https://teste.tocmanager.com/api/sells?compagnie_id=$compagnie_id';
-    var response = await dio.get(pathUrl,
-        options: Options(
-          headers: {
-            'Accept': 'application/json',
-            'Authorization': 'Bearer $token'
-          },
-        ));
-    if (response.statusCode == 200) {
-      Map<String, dynamic> sm = response.data;
-      List<dynamic> _sells = sm["data"]["data"];
-
-      for (var i = 0; i < _sells.length; i++) {
-        var date = DateTime.parse(_sells[i]['date_sell']);
-        sellsi.add({
-          "id": _sells[i]['id'],
-          "date_sell": date,
-          "amount": _sells[i]['amount'],
-          "rest": _sells[i]['rest'],
-          "client_name": _sells[i]['client']['name']
-        });
-      }
-      
-    } else {
-      print(response.statusCode);
-      print('Error, Could not load Data.');
-      throw Exception('Failed to load Data');
-    }
   }
 
   final format = DateFormat("yyyy-MM-dd HH:mm:ss");
-  var tableRow = TableRow(data: sellsi);
 
   @override
   Widget build(BuildContext context) {
     // DataTableSource dataSource(List<Map> sellsi) => MyData(data: sellsi);
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          nextScreen(context, const AjouterVentePage());
-        },
-        backgroundColor: Colors.blue,
-        child: const Icon(
-          Icons.add,
-          size: 32,
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      backgroundColor: Colors.grey[300],
-      appBar: AppBar(
-          centerTitle: true,
-          backgroundColor: Colors.grey[100],
-          iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
-          title: const Text(
-            'Ventes',
-            style: TextStyle(color: Colors.black),
-          )),
-      drawer: Drawer(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              const MyHeaderDrawer(),
-              MyDrawerList(),
-              const SizedBox(
-                height: 20,
-              ),
-            ],
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            nextScreen(context, const AjouterVentePage());
+          },
+          backgroundColor: Colors.blue,
+          child: const Icon(
+            Icons.add,
+            size: 32,
           ),
         ),
-      ),
-      body: SizedBox(
-        width: double.infinity,
-        child: SingleChildScrollView(
-          child: PaginatedDataTable(
-            onRowsPerPageChanged: (perPage) {},
-            rowsPerPage: 10,
-            columns: <DataColumn>[
-              DataColumn(
-                label: const Text('Client'),
-                onSort: (columnIndex, ascending) {
-                  print("$columnIndex $ascending");
-                },
-              ),
-              const DataColumn(
-                label: Text('Montant'),
-              ),
-              const DataColumn(
-                label: Text('Reste'),
-              ),
-              const DataColumn(
-                label: Text('Date'),
-              ),
-            ],
-            source: tableRow,
+        floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+        backgroundColor: Colors.grey[300],
+        appBar: AppBar(
+            centerTitle: true,
+            backgroundColor: Colors.grey[100],
+            iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
+            title: const Text(
+              'Ventes',
+              style: TextStyle(color: Colors.black),
+            )),
+        drawer: Drawer(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                const MyHeaderDrawer(),
+                MyDrawerList(),
+                const SizedBox(
+                  height: 20,
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-
-      // body: DataTable2(
-      //     showBottomBorder: true,
-      //     border: TableBorder.all(color: Colors.black),
-      //     headingTextStyle: const TextStyle(
-      //       fontWeight: FontWeight.bold,
-      //       fontSize: 20,
-      //       fontFamily: 'Oswald',
-      //     ),
-      //     dataRowColor: MaterialStateProperty.all(Colors.white),
-      //     headingRowColor: MaterialStateProperty.all(Colors.blue[200]),
-      //     columnSpacing: 12,
-      //     horizontalMargin: 15,
-      //     minWidth: 800,
-      //     columns: const [
-      //       DataColumn2(
-      //         label: Center(child: Text(' Client')),
-      //         size: ColumnSize.L,
-      //       ),
-      //       DataColumn2(
-      //           label: Center(child: Text('Montant')), size: ColumnSize.L),
-      //       DataColumn2(
-      //           label: Center(child: Text('Reste')), size: ColumnSize.L),
-      //       DataColumn2(label: Center(child: Text('Date')), size: ColumnSize.L),
-      //       DataColumn2(
-      //           label: Center(child: Text('Encaissement')), size: ColumnSize.L),
-      //       DataColumn2(
-      //           label: Center(child: Text('Détails')), size: ColumnSize.L),
-      //       DataColumn2(
-      //           label: Center(child: Text('Editer')), size: ColumnSize.L),
-      //       DataColumn2(
-      //           label: Center(child: Text('Effacer')), size: ColumnSize.L),
-      //     ],
-      //     rows: List<DataRow>.generate(
-      //         sellsi.length,
-      //         (index) => DataRow(cells: [
-      //               DataCell(Center(
-      //                   child: Text(
-      //                 '${sellsi[index]['client_name']}',
-      //               ))),
-      //               DataCell(Center(
-      //                   child: Text(
-      //                 '${sellsi[index]['amount']}',
-      //               ))),
-      //               DataCell(Center(
-      //                   child: Text(
-      //                 '${sellsi[index]['reste']}',
-      //               ))),
-      //               DataCell(Center(
-      //                   child: Text(
-      //                 '${sellsi[index]['date_sell']}',
-      //               ))),
-      //               DataCell(Center(
-      //                 child: IconButton(
-      //                     icon: const Icon(
-      //                       Icons.money,
-      //                       color: Colors.green,
-      //                     ),
-      //                     onPressed: () {
-      //                       nextScreen(
-      //                           context,
-      //                           EncaissementPage(
-      //                             clientId: '${sells[index]["client_id"]}',
-      //                             reste: '${sells[index]["reste"]}',
-      //                             sellId: '${sells[index]["id"]}',
-      //                           ));
-      //                     }),
-      //               )),
-      //               DataCell(Center(
-      //                 child: IconButton(
-      //                     icon: const Icon(
-      //                       Icons.info,
-      //                       color: Colors.blue,
-      //                     ),
-      //                     onPressed: () {
-      //                       var MontantPaye =
-      //                           double.parse("${sells[index]["amount"]}") -
-      //                               double.parse("${sells[index]["reste"]}");
-      //                       Navigator.pushAndRemoveUntil(
-      //                         context,
-      //                         MaterialPageRoute(
-      //                             builder: (context) => DetailsVentes(
-      //                                   id: '${sells[index]["id"]}',
-      //                                   ClientName:
-      //                                       '${sells[index]["client_name"]}',
-      //                                   Montantpaye: '$MontantPaye',
-      //                                 )),
-      //                         (Route<dynamic> route) => false,
-      //                       );
-      //                     }),
-      //               )),
-      //               DataCell(Center(
-      //                 child: IconButton(
-      //                     icon: const Icon(
-      //                       Icons.edit,
-      //                       color: Colors.blue,
-      //                     ),
-      //                     onPressed: () {
-      //                       nextScreen(
-      //                           context,
-      //                           EditVentePage(
-      //                             sellId: '${sells[index]["id"]}',
-      //                             amount: '${sells[index]["amount"]}',
-      //                             clientId: '${sells[index]["client_id"]}',
-      //                             sellDate: '${sells[index]["date_sell"]}',
-      //                             sellReste: '${sells[index]["reste"]}',
-      //                           ));
-      //                     }),
-      //               )),
-      //               DataCell(Center(
-      //                 child: IconButton(
-      //                     icon: const Icon(
-      //                       Icons.delete,
-      //                       color: Colors.red,
-      //                     ),
-      //                     onPressed: () async {
-      //                       int response = await sqlDb.deleteData(
-      //                           "DELETE FROM sells WHERE id =${sells[index]['id']}");
-      //                       if (response > 0) {
-      //                         sells.removeWhere((element) =>
-      //                             element['id'] == sells[index]['id']);
-      //                         setState(() {});
-      //                         print("$response ===Delete ==== DONE");
-      //                       } else {
-      //                         print("Delete ==== null");
-      //                       }
-      //                     }),
-      //               )),
-      //             ]))),
-    );
+        body: isNotSuscribe == true
+            ? const SuscribePage()
+            : Container(
+                child: isLoading == true
+                    ? const Center(
+                        child: CircularProgressIndicator(),
+                      )
+                    : SizedBox(
+                        width: double.infinity,
+                        child: SingleChildScrollView(
+                          child: PaginatedDataTable(
+                            rowsPerPage: 10,
+                            columns: <DataColumn>[
+                              DataColumn(
+                                label: const Text('Client'),
+                                onSort: (columnIndex, ascending) {
+                                  print("$columnIndex $ascending");
+                                },
+                              ),
+                              const DataColumn(
+                                label: Text('Montant'),
+                              ),
+                              const DataColumn(
+                                label: Text('Reste'),
+                              ),
+                              const DataColumn(
+                                label: Text('Date'),
+                              ),
+                              const DataColumn(
+                                label: Text('Editer'),
+                              ),
+                              const DataColumn(
+                                label: Text('Effacer'),
+                              ),
+                            ],
+                            source: DataTableRow(
+                              data: sells,
+                            ),
+                          ),
+                        ),
+                      ),
+              ));
   }
 
   Widget MyDrawerList() {
@@ -413,30 +251,80 @@ class _VenteHomeState extends State<VenteHome> {
       ),
     );
   }
+
+  //read sells
+  Future<void> readSells() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await ReadSells(compagnie_id);
+    if (response.error == null) {
+      if (response.statusCode == 200) {
+        List<dynamic> data = response.data as List<dynamic>;
+        sells = data.map((p) => Sells.fromJson(p)).toList();
+        setState(() {
+          isLoading = false;
+        });
+      }
+    } else {
+      if (response.statusCode == 403) {
+        setState(() {
+          isNotSuscribe = true;
+        });
+      }
+    }
+  }
 }
 
-class TableRow extends DataTableSource {
-  final List<Map<String, dynamic>> data;
-  TableRow({required this.data});
-  test() {
-    print(data);
+class DataTableRow extends DataTableSource {
+  final List<dynamic> data;
+  // final Function(int?) onDelete;
+  // final Function(int?) onEdit;
+  DataTableRow({required this.data});
+
+  @override
+  DataRow getRow(int index) {
+    final Sells sell = sells[index];
+    
+    return DataRow.byIndex(
+      index: index,
+      cells: <DataCell>[
+        DataCell(Center(child: Text(sell.client_name.toString()))),
+        DataCell(Center(child: Text(sell.amount.toString()))),
+        DataCell(Center(child: Text(sell.reste.toString()))),
+        DataCell(Center(child: Text(sell.date_sell.toString()))),
+        DataCell(Center(
+          child: IconButton(
+              icon: const Icon(
+                Icons.edit,
+                color: Colors.blue,
+              ),
+              onPressed: () async {
+                // onEdit(
+                //   sell.id,
+                // );
+              }),
+        )),
+        DataCell(Center(
+          child: IconButton(
+              icon: const Icon(
+                Icons.delete,
+                color: Colors.red,
+              ),
+              onPressed: () async {
+                // onDelete(sell.id);
+              }),
+        ))
+      ],
+    );
   }
+
+  @override
+  int get rowCount => sells.length;
 
   @override
   bool get isRowCountApproximate => false;
-  @override
-  int get rowCount => data.length;
+
   @override
   int get selectedRowCount => 0;
-  @override
-  DataRow getRow(int index) {
-    return DataRow(cells: [
-      DataCell(Text(data[index]['client_name'].toString())),
-      DataCell(Text(data[index]["amount"].toString())),
-      DataCell(Text(data[index]["rest"].toString())),
-      DataCell(Text(data[index]["date_sell"].toString())),
-    ]);
-  }
 }
 
 enum DrawerSections {
