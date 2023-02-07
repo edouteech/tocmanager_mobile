@@ -7,6 +7,7 @@ const testURL = '$baseURL/test-api';
 const categoriesURL = '$baseURL/categories';
 const productsURL = '$baseURL/products';
 const sellsURL = '$baseURL/sells';
+const clientsURL = '$baseURL/clients';
 
 // ----error-----------
 const serverError = 'Server error';

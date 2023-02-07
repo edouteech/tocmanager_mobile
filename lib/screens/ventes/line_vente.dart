@@ -1,4 +1,4 @@
-// ignore_for_file: avoid_print
+// ignore_for_file: avoid_print, non_constant_identifier_names
 import 'package:flutter/material.dart';
 
 class VenteLine extends StatelessWidget {
@@ -19,7 +19,7 @@ class VenteLine extends StatelessWidget {
           },
           title: Center(
             child: Text(
-              "${elmt.quantity}  x  ${elmt.name} = ${elmt.total}",
+              "${elmt.quantity}  x  ${elmt.price} = ${elmt.amount_after_discount}",
               style: const TextStyle(fontSize: 20),
             ),
           ),
@@ -49,8 +49,21 @@ class VenteLine extends StatelessWidget {
 }
 
 class Elements {
-  final String name;
-  final String total;
+  final String product_id;
   final String quantity;
-  Elements({required this.name, required this.total, required this.quantity});
+  final String price;
+  final String amount;
+  final String amount_after_discount;
+  final String date;
+  final String compagnie_id;
+
+  Elements({
+    required this.product_id,
+    required this.quantity,
+    required this.price,
+    required this.amount,
+    required this.amount_after_discount,
+    required this.date,
+    required this.compagnie_id
+  });
 }

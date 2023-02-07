@@ -1,11 +1,10 @@
 // ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, depend_on_referenced_packages, unnecessary_string_interpolations, avoid_print, body_might_complete_normally_nullable, unnecessary_this, import_of_legacy_library_into_null_safe, unused_field, unused_local_variable
 
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:tocmanager/screens/ventes/line_vente.dart';
-import 'package:tocmanager/screens/ventes/vente_home.dart';
 import 'package:tocmanager/services/user_service.dart';
+import '../../models/Clients.dart';
 import '../../models/Products.dart';
 import '../../models/api_response.dart';
 import '../../services/auth_service.dart';
@@ -13,6 +12,7 @@ import 'package:form_field_validator/form_field_validator.dart';
 import '../../database/sqfdb.dart';
 import 'package:intl/intl.dart';
 
+import '../../services/clients_services.dart';
 import '../../services/products_service.dart';
 
 class AjouterVentePage extends StatefulWidget {
@@ -25,11 +25,15 @@ class AjouterVentePage extends StatefulWidget {
 /* Achat line */
 List elements = [];
 List<Map> ventes = [];
-var total = "";
+List<dynamic> clients = [];
+var amount = "";
+var discount = "";
 var sum = 0.0;
 var sell_reste = 0.0;
-List<dynamic> categories = [];
 List<dynamic> products = [];
+
+List<Map> sell_lines = [];
+double? discount_amount;
 
 class _AjouterVentePageState extends State<AjouterVentePage> {
   bool isLoading = true;
@@ -37,7 +41,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
   final format = DateFormat("yyyy-MM-dd HH:mm:ss");
 
   /* Form key */
-  final _formKey = GlobalKey<FormState>();
+  final _sellsformKey = GlobalKey<FormState>();
   final _formuKey = GlobalKey<FormState>();
   final _sell_lineFormkey = GlobalKey<FormState>();
 
@@ -49,7 +53,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
 
   @override
   void initState() {
-    readclientsData();
+    readclient();
     readProducts();
     super.initState();
   }
@@ -57,47 +61,20 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
   /* =============================End Products=================== */
 
   /* =============================Clients=================== */
-  /* List clients */
-  List clients = [];
-
-  /* Read data for database */
-  Future readclientsData() async {
-    List<Map> response = await sqlDb.readData("SELECT * FROM 'clients'");
-    clients.addAll(response);
-    if (this.mounted) {
-      setState(() {});
-    }
-  }
-
-  /* Dropdown products items */
-  String? selectedclientsValue;
-  List<DropdownMenuItem<String>> get dropdownclientsItems {
-    List<DropdownMenuItem<String>> menuclientsItems = [];
-    for (var i = 0; i < clients.length; i++) {
-      menuclientsItems.add(DropdownMenuItem(
-        value: "${clients[i]["id"]}",
-        child: Text(
-          "${clients[i]["name"]}",
-          style: "${clients[i]["name"]}".length > 20
-              ? const TextStyle(fontSize: 15)
-              : null,
-        ),
-      ));
-    }
-    return menuclientsItems;
-  }
 
   /* =============================End Clients=================== */
 
   /* Fields Controller */
-  TextEditingController productsController = TextEditingController();
   TextEditingController nameProductsController = TextEditingController();
-  TextEditingController priceProductController = TextEditingController();
+  TextEditingController priceController = TextEditingController();
   TextEditingController quantityController = TextEditingController();
   TextEditingController discountController = TextEditingController();
   TextEditingController dateController = TextEditingController();
   TextEditingController nameClientController = TextEditingController();
-  TextEditingController sommeclientController = TextEditingController();
+  TextEditingController amountController = TextEditingController();
+
+
+  
 
   @override
   Widget build(BuildContext context) {
@@ -134,7 +111,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
             SizedBox(
               height: 90,
               child: Form(
-                key: _formKey,
+                key: _sellsformKey,
                 child: Row(
                   children: [
                     Flexible(
@@ -177,24 +154,15 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                                   validator: (value) => value == null
                                       ? 'Sélectionner un client'
                                       : null,
-                                  value: selectedclientsValue,
+                                  value: client_id,
                                   onChanged: (String? newValue) {
                                     setState(() {
-                                      selectedclientsValue = newValue!;
-                                      if (selectedclientsValue != null) {
-                                        setState(() async {
-                                          var supplier = await sqlDb.readData(
-                                              "SELECT * FROM Clients WHERE id =$selectedclientsValue");
-
-                                          setState(() {
-                                            nameProductsController.text =
-                                                "${clients[0]["name"]}";
-                                          });
-                                        });
-                                      }
+                                      setState(() {
+                                        client_id = newValue!;
+                                      });
                                     });
                                   },
-                                  items: dropdownclientsItems)),
+                                  items: dropdownClientsItems)),
                     ),
                     Flexible(
                       child: Container(
@@ -240,7 +208,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
               ),
             ),
             SizedBox(
-              height: 470,
+              height: MediaQuery.of(context).size.height * 0.65,
               child: Scrollbar(
                 child: ListView.builder(
                   primary: true,
@@ -253,9 +221,9 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                         delete: () {
                           setState(() {
                             elements.removeAt(i);
-
-                            sum = (sum - (double.parse(ventes[i]["total"])));
-                            ventes.removeAt(i);
+                            sum =
+                                (sum - (double.parse(sell_lines[i]["amount"])));
+                            sell_lines.removeAt(i);
                           });
                         });
                   },
@@ -268,136 +236,111 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                 key: _sell_lineFormkey,
                 child: Row(
                   children: [
+                    // Flexible(
+                    //   child:
+                    //       //Somme perçue
+                    //       Container(
+                    //           padding:
+                    //               const EdgeInsets.only(left: 20, right: 20),
+                    //           child: TextFormField(
+                    //             keyboardType: TextInputType.number,
+                    //             controller: amountController,
+                    //             validator: (value) {
+                    //               if (value!.isEmpty) {
+                    //                 return "Veuillez entrer un montant";
+                    //               } else if (double.parse(value).toInt() >
+                    //                   sum) {
+                    //                 return """ Montant maximun : $sum """;
+                    //               }
+                    //               return null;
+                    //             },
+                    //             autovalidateMode:
+                    //                 AutovalidateMode.onUserInteraction,
+                    //             decoration: const InputDecoration(
+                    //               contentPadding: EdgeInsets.fromLTRB(
+                    //                   20.0, 10.0, 20.0, 10.0),
+                    //               enabledBorder: OutlineInputBorder(
+                    //                   borderSide: BorderSide(
+                    //                       color: Color.fromARGB(
+                    //                           255, 45, 157, 220)),
+                    //                   borderRadius: BorderRadius.all(
+                    //                       Radius.circular(10))),
+                    //               border: OutlineInputBorder(
+                    //                   borderRadius: BorderRadius.all(
+                    //                       Radius.circular(10))),
+                    //               label: Text("Somme reçue"),
+                    //               labelStyle: TextStyle(
+                    //                   fontSize: 13, color: Colors.black),
+                    //             ),
+                    //           )),
+                    // ),
                     Flexible(
-                      child:
-                          //Somme perçue
-                          Container(
-                              padding:
-                                  const EdgeInsets.only(left: 20, right: 20),
-                              child: TextFormField(
-                                keyboardType: TextInputType.number,
-                                controller: sommeclientController,
-                                validator: (value) {
-                                  if (value!.isEmpty) {
-                                    return "Veuillez entrer un montant";
-                                  } else if (double.parse(value).toInt() >
-                                      sum) {
-                                    return """ Montant maximun : $sum """;
+                      child: Center(
+                        child: Container(
+                          width: MediaQuery.of(context).size.width * 0.60,
+                          padding: const EdgeInsets.only(left: 20, right: 20),
+                          margin: const EdgeInsets.only(top: 10),
+                          child: GestureDetector(
+                            onTap: () async {
+                              // create_sells();
+                              if (sum != 0.0) {
+                                if (_sell_lineFormkey.currentState!
+                                    .validate()) {
+                                  if (_sellsformKey.currentState!.validate()) {
+                                    print(sum);
+                                    // setState(() {
+                                    //   elements.clear();
+                                    //   ventes.clear();
+                                    //   sum = 0.0;
+                                    //   _sell_lineFormkey.currentState?.reset();
+                                    //   _sellsformKey.currentState?.reset();
+                                    //   sell_reste = 0.0;
+                                    // });
+
+                                    // Navigator.of(context).pushReplacement(
+                                    //     MaterialPageRoute(
+                                    //         builder: (context) =>
+                                    //             const VenteHome()));
                                   }
-                                  return null;
-                                },
-                                autovalidateMode:
-                                    AutovalidateMode.onUserInteraction,
-                                decoration: const InputDecoration(
-                                  contentPadding: EdgeInsets.fromLTRB(
-                                      20.0, 10.0, 20.0, 10.0),
-                                  enabledBorder: OutlineInputBorder(
-                                      borderSide: BorderSide(
-                                          color: Color.fromARGB(
-                                              255, 45, 157, 220)),
-                                      borderRadius: BorderRadius.all(
-                                          Radius.circular(10))),
-                                  border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.all(
-                                          Radius.circular(10))),
-                                  label: Text("Somme reçue"),
-                                  labelStyle: TextStyle(
-                                      fontSize: 13, color: Colors.black),
-                                ),
-                              )),
-                    ),
-                    Flexible(
-                      child: Container(
-                        padding: const EdgeInsets.only(left: 20, right: 20),
-                        margin: const EdgeInsets.only(top: 10),
-                        child: GestureDetector(
-                          onTap: () async {
-                            //create_categorie();
-
-                            // create_sells();
-                            if (sum != 0.0) {
-                              if (_sell_lineFormkey.currentState!.validate()) {
-                                print("== Amount equal to : $sum");
-                                if (_formKey.currentState!.validate()) {
-                                  print("== Date and user are mentionned");
-                                  print('${sommeclientController.text}');
-                                  print(ventes);
-                                  // Sells
-                                  int InsertSells = await sqlDb.inserData(
-                                      ''' INSERT INTO Sells(date_sell, client_id) VALUES ('${dateController.text}', '$selectedclientsValue') ''');
-                                  print(
-                                      "=== $InsertSells ==== SELLS INSERTION DONE ==========");
-
-                                  //read last sells
-                                  var ReadLastInsertion = await sqlDb.readData(
-                                      ''' SELECT * FROM Sells ORDER BY id DESC LIMIT 1 ''');
-                                  print("====== ReadLast ==========");
-
-                                  //Insert sell_line
-                                  for (var i = 0; i < ventes.length; i++) {
-                                    int InsertSell_line = await sqlDb.inserData(
-                                        ''' INSERT INTO Sell_lines(quantity, amount, sell_id, product_id) VALUES('${ventes[i]["quantity"]}','${ventes[i]["total"]}','${ReadLastInsertion[0]["id"]}', '${ventes[i]["id"]}') ''');
-                                    print(
-                                        "===$InsertSell_line==== SELL_LINE INSERTION DONE ==========");
-                                  }
-
-                                  //cheick amount
-                                  var SellsAmount = await sqlDb.readData(
-                                      ''' SELECT SUM (amount) as sellAmount FROM Sell_lines WHERE sell_id='${ReadLastInsertion[0]["id"]}' ''');
-                                  print(
-                                      "===== Sells Amount Checked ==> $SellsAmount ==========");
-
-                                  //Get Reste
-                                  sell_reste = SellsAmount[0]['sellAmount'] -
-                                      double.parse(sommeclientController.text);
-
-                                  //Update amount and reste
-                                  var UpdateSells = await sqlDb.updateData(
-                                      ''' UPDATE Sells SET amount ="${SellsAmount[0]['sellAmount']}", reste = "$sell_reste" WHERE id="${ReadLastInsertion[0]["id"]}" ''');
-                                  print("===== SELL INSERTION DONE ==========");
-
-                                  //Encaissement
-                                  int response_encaissement = await sqlDb.inserData(
-                                      ''' INSERT INTO Encaissements(amount, date_encaissement, client_id, sell_id) VALUES ('${sommeclientController.text}', '${dateController.text}','$selectedclientsValue', '${ReadLastInsertion[0]["id"]}') ''');
-                                  print(
-                                      "===$response_encaissement==== SELLS INSERTION DONE ==========");
-                                  double amount = SellsAmount[0]['sellAmount'];
-
-                                  setState(() {
-                                    elements.clear();
-                                    ventes.clear();
-                                    sum = 0.0;
-                                    _sell_lineFormkey.currentState?.reset();
-                                    _formKey.currentState?.reset();
-                                    sell_reste = 0.0;
-                                  });
-
-                                  Navigator.of(context).pushReplacement(
-                                      MaterialPageRoute(
-                                          builder: (context) =>
-                                              const VenteHome()));
                                 }
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: Colors.red[900],
+                                    content: const SizedBox(
+                                      width: double.infinity,
+                                      height: 20,
+                                      child: Center(
+                                        child: Text(
+                                          "Le panier de vente est vide",
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                      ),
+                                    ),
+                                    duration:
+                                        const Duration(milliseconds: 2000),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
                               }
-                            } else {
-                              print("==No Data==");
-                            }
-                          },
-                          child: Container(
-                            alignment: Alignment.center,
-                            height: 54,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(20),
-                              color: const Color.fromARGB(255, 45, 157, 220),
-                              boxShadow: const [
-                                BoxShadow(
-                                    offset: Offset(0, 5),
-                                    blurRadius: 10,
-                                    color: Color(0xffEEEEEE)),
-                              ],
-                            ),
-                            child: Text(
-                              "$sum",
-                              style: const TextStyle(color: Colors.white),
+                            },
+                            child: Container(
+                              alignment: Alignment.center,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                color: const Color.fromARGB(255, 45, 157, 220),
+                                boxShadow: const [
+                                  BoxShadow(
+                                      offset: Offset(0, 5),
+                                      blurRadius: 10,
+                                      color: Color(0xffEEEEEE)),
+                                ],
+                              ),
+                              child: Text(
+                                "$sum",
+                                style: const TextStyle(color: Colors.white),
+                              ),
                             ),
                           ),
                         ),
@@ -447,12 +390,44 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
         List<dynamic> data = response.data as List<dynamic>;
         for (var product in data) {
           setState(() {
-            priceProductController.text = product['price_sell'].toString();
+            priceController.text = product['price_sell'].toString();
           });
         }
       }
     }
   }
+
+
+
+  //read clients
+  Future<void> readclient() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await ReadClients(compagnie_id);
+    if (response.error == null) {
+      if (response.statusCode == 200) {
+        List<dynamic> data = response.data as List<dynamic>;
+        clients = data.map((p) => Clients.fromJson(p)).toList();
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
+
+  /* Dropdown clients items */
+  String? client_id;
+  List<DropdownMenuItem<String>> get dropdownClientsItems {
+    List<DropdownMenuItem<String>> menuClientsItems = [];
+    for (var i = 0; i < clients.length; i++) {
+      menuClientsItems.add(DropdownMenuItem(
+        value: clients[i].id.toString(),
+        child: Text(clients[i].name, style: const TextStyle(fontSize: 15)),
+      ));
+    }
+    return menuClientsItems;
+  }
+
+
 
   // void create_sells(double amount) async {
   //   int compagnieid = await getCompagnie_id();
@@ -464,7 +439,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
   //   int tax = 0;
   //   int discount = 0;
   //   double sell_amount = amount;
-  //   double amount_received = double.parse(sommeclientController.text);
+  //   double amount_received = double.parse(amountController.text);
   //   int user_id = userid;
   //   int client_id = int.parse(selectedclientsValue!);
   //   int compagnie_id = compagnieid;
@@ -565,33 +540,69 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
               TextButton(
                 child: const Text('Valider',
                     style: TextStyle(color: Colors.green)),
-                onPressed: () {
+                onPressed: () async {
                   if (_formuKey.currentState!.validate()) {
-                    var prix = double.parse("${priceProductController.text}");
+                    var prix = double.parse("${priceController.text}");
                     var quantite = int.parse("${quantityController.text}");
                     setState(() {
-                      total = (quantite * prix).toString();
+                      amount = (quantite * prix).toString();
                     });
-                    Elements elmt = Elements(
-                        name: '${nameProductsController.text}',
-                        total: '$total',
-                        quantity: '${quantityController.text}');
-                    setState(() {
-                      elements.add(elmt);
-                      ventes.add({
-                        "id": "$product_id",
-                        "name": "${nameProductsController.text}",
-                        "total": '$total',
-                        "quantity": '${quantityController.text}'
+                    int compagnie_id = await getCompagnie_id();
+                    if (discountController.text.isNotEmpty) {
+                      discount_amount =
+                          (double.parse("${discountController.text}") *
+                                  double.parse(amount)) /
+                              100;
+                      Elements elmt = Elements(
+                          product_id: product_id.toString(),
+                          quantity: quantityController.text,
+                          price: priceController.text,
+                          amount: amount,
+                          amount_after_discount: discount_amount.toString(),
+                          date: dateController.text,
+                          compagnie_id: compagnie_id.toString());
+                      setState(() {
+                        elements.add(elmt);
+                        sell_lines.add({
+                          "product_id": "$product_id",
+                          "quantity": '${quantityController.text}',
+                          "price": "${priceController.text}",
+                          "amount": amount,
+                          "amount_after_discount": discount_amount,
+                          "date": dateController.text,
+                          "compagnie_id": compagnie_id
+                        });
+                      });
+                        sum = (sum + (double.parse(discount_amount.toString())));
+                    } else {
+                      Elements elmt = Elements(
+                          product_id: product_id.toString(),
+                          quantity: quantityController.text,
+                          price: priceController.text,
+                          amount: amount,
+                          amount_after_discount: amount,
+                          date: dateController.text,
+                          compagnie_id: compagnie_id.toString());
+                      setState(() {
+                        elements.add(elmt);
+                        sell_lines.add({
+                          "product_id": "$product_id",
+                          "quantity": '${quantityController.text}',
+                          "price": "${priceController.text}",
+                          "amount": amount,
+                          "amount_after_discount": amount,
+                          "date": dateController.text,
+                          "compagnie_id": compagnie_id
+                        });
                       });
 
-                      sum = (sum + (double.parse(total)));
-                    });
+                        sum = (sum + (double.parse(amount)));
+                    }
                     Navigator.of(context).pop();
                     setState(() {
                       product_id = null;
                       _formuKey.currentState?.reset();
-                      sommeclientController.text = sum.toString();
+                      amountController.text = sum.toString();
                     });
                   }
                 },
@@ -644,7 +655,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                           RequiredValidator(
                               errorText: "Veuillez entrer un prix")
                         ]),
-                        controller: priceProductController,
+                        controller: priceController,
                         autovalidateMode: AutovalidateMode.onUserInteraction,
                         decoration: const InputDecoration(
                           enabledBorder: OutlineInputBorder(

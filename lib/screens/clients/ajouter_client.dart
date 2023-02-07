@@ -74,8 +74,7 @@ class _AjouterClientPageState extends State<AjouterClientPage> {
           ),
         ),
       ),
-      body:
-          Container(margin: const EdgeInsets.all(8), child: const ListClient()),
+      body: const ListClient(),
     );
   }
 
@@ -340,8 +339,6 @@ class _AjouterClientPageState extends State<AjouterClientPage> {
           );
         });
   }
-
-  
 }
 
 enum DrawerSections {
