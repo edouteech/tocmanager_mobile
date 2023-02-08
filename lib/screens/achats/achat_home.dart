@@ -25,16 +25,13 @@ class AchatHomePage extends StatefulWidget {
   State<AchatHomePage> createState() => _AchatHomePageState();
 }
 
- List<dynamic> buys = [];
+List<dynamic> buys = [];
 
 class _AchatHomePageState extends State<AchatHomePage> {
   bool isNotSuscribe = false;
   bool isLoading = true;
   /* =============================Buys=================== */
   /* List products */
- 
-
-
 
   @override
   void initState() {
@@ -48,39 +45,39 @@ class _AchatHomePageState extends State<AchatHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          nextScreen(context, const AjouterAchatPage());
-        },
-        backgroundColor: const Color.fromARGB(255, 45, 157, 220),
-        child: const Icon(
-          Icons.add,
-          size: 32,
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      appBar: AppBar(
-          centerTitle: true,
-          backgroundColor: Colors.grey[100],
-          iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
-          title: const Text(
-            'Achats',
-            style: TextStyle(fontFamily: 'Oswald', color: Colors.black),
-          )),
-      drawer: Drawer(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              const MyHeaderDrawer(),
-              MyDrawerList(),
-              const SizedBox(
-                height: 20,
-              ),
-            ],
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            nextScreen(context, const AjouterAchatPage());
+          },
+          backgroundColor: const Color.fromARGB(255, 45, 157, 220),
+          child: const Icon(
+            Icons.add,
+            size: 32,
           ),
         ),
-      ),
-      body: isNotSuscribe == true
+        floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+        appBar: AppBar(
+            centerTitle: true,
+            backgroundColor: Colors.grey[100],
+            iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
+            title: const Text(
+              'Achats',
+              style: TextStyle(fontFamily: 'Oswald', color: Colors.black),
+            )),
+        drawer: Drawer(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                const MyHeaderDrawer(),
+                MyDrawerList(),
+                const SizedBox(
+                  height: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+        body: isNotSuscribe == true
             ? const SuscribePage()
             : Container(
                 child: isLoading == true
@@ -116,13 +113,15 @@ class _AchatHomePageState extends State<AchatHomePage> {
                               ),
                             ],
                             source: DataTableRow(
-                              data: buys,
-                            ),
+                                data: buys,
+                                onDelete: ((p0) {}),
+                                onEdit: (int) {},
+                                oncollection: (int) {},
+                                onDetails: (int) {}),
                           ),
                         ),
                       ),
-              )
-    );
+              ));
   }
 
   Widget MyDrawerList() {

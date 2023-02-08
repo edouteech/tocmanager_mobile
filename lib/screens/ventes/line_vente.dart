@@ -49,13 +49,13 @@ class VenteLine extends StatelessWidget {
 }
 
 class Elements {
-  final String product_id;
-  final String quantity;
-  final String price;
-  final String amount;
-  final String amount_after_discount;
+  final int product_id;
+  final int quantity;
+  final double price;
+  final double amount;
+  final double amount_after_discount;
   final String date;
-  final String compagnie_id;
+  final int compagnie_id;
 
   Elements({
     required this.product_id,

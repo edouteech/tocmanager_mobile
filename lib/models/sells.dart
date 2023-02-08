@@ -1,5 +1,4 @@
 // ignore_for_file: non_constant_identifier_names
-
 class Sells {
   int id;
   int user_id;
@@ -9,9 +8,9 @@ class Sells {
   dynamic amount;
   dynamic reste;
   String client_name;
- 
   String created_at;
   String updated_at;
+  List<dynamic> sellLines;
 
   Sells(
       {required this.id,
@@ -23,7 +22,9 @@ class Sells {
       required this.reste,
       required this.client_name,
       required this.created_at,
-      required this.updated_at});
+      required this.updated_at,
+      required this.sellLines
+      });
 
   //function to convert json data to sells model
   factory Sells.fromJson(Map<String, dynamic> json) {
@@ -37,6 +38,9 @@ class Sells {
         reste: json["rest"].toDouble(),
         client_name: json["client"]['name'],
         created_at: json['created_at'],
-        updated_at: json['updated_at']);
+        updated_at: json['updated_at'],
+        sellLines: json['sell_lines']
+        );
+        
   }
 }

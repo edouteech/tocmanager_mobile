@@ -1,6 +1,5 @@
 // ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, unnecessary_this, avoid_print, unused_local_variable, no_leading_underscores_for_local_identifiers
 
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -8,10 +7,8 @@ import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/fournisseurs/ajouter_fournisseur.dart';
 import 'package:tocmanager/screens/ventes/ajouter_vente.dart';
+import 'package:tocmanager/screens/ventes/details_vente.dart';
 import 'package:tocmanager/services/sells_services.dart';
-
-import '../../database/sqfdb.dart';
-
 import '../../models/Sells.dart';
 import '../../models/api_response.dart';
 import '../../services/auth_service.dart';
@@ -39,7 +36,6 @@ class _VenteHomeState extends State<VenteHome> {
 
   var currentPage = DrawerSections.vente;
   AuthService authService = AuthService();
-
 
   @override
   void initState() {
@@ -120,9 +116,19 @@ class _VenteHomeState extends State<VenteHome> {
                               const DataColumn(
                                 label: Text('Effacer'),
                               ),
+                              const DataColumn(
+                                label: Text('Détails'),
+                              ),
+                              const DataColumn(
+                                label: Text('Encaissements'),
+                              ),
                             ],
                             source: DataTableRow(
                               data: sells,
+                              onDelete: deleteSells,
+                              onDetails: details,
+                              onEdit: (int) {},
+                              oncollection: (int) {},
                             ),
                           ),
                         ),
@@ -272,18 +278,92 @@ class _VenteHomeState extends State<VenteHome> {
       }
     }
   }
+
+  //delete sells
+  void deleteSells(int sell_id) async {
+    bool sendMessage = false;
+    int compagnie_id = await getCompagnie_id();
+    String? message;
+    String color = "red";
+    ApiResponse response = await DeleteSells(compagnie_id, sell_id);
+    if (response.statusCode == 200) {
+      if (response.status == "success") {
+        Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const VenteHome()));
+
+        message = "La vente a été supprimée avec succès";
+        setState(() {
+          sendMessage = true;
+          color = "green";
+        });
+      } else {
+        message = "La suppression a échouée";
+        setState(() {
+          sendMessage = true;
+        });
+      }
+    } else if (response.statusCode == 403) {
+      message = "Vous n'êtes pas autorisé à effectuer cette action";
+      setState(() {
+        sendMessage = true;
+      });
+    } else if (response.statusCode == 500) {
+      print(response.statusCode);
+      message = "La suppression a échouée !";
+      setState(() {
+        sendMessage = true;
+      });
+    } else {
+      message = "La vente a échouée. Veuillez reprendre";
+      setState(() {
+        sendMessage = true;
+      });
+    }
+    if (sendMessage == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor:
+              color == "green" ? Colors.green[900] : Colors.red[900],
+          content: SizedBox(
+            width: double.infinity,
+            height: 20,
+            child: Center(
+              child: Text(
+                message,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+          duration: const Duration(milliseconds: 2000),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+//send to details page
+  void details(int sell_id){
+    nextScreen(context,  DetailsVentes(sell_id: sell_id,));
+  }
 }
 
 class DataTableRow extends DataTableSource {
   final List<dynamic> data;
-  // final Function(int?) onDelete;
-  // final Function(int?) onEdit;
-  DataTableRow({required this.data});
+  final Function(int) onDelete;
+  final Function(int) onEdit;
+  final Function(int) onDetails;
+  final Function(int) oncollection;
+  DataTableRow(
+      {required this.data,
+      required this.onDelete,
+      required this.onEdit,
+      required this.onDetails,
+      required this.oncollection});
 
   @override
   DataRow getRow(int index) {
     final Sells sell = sells[index];
-    
+
     return DataRow.byIndex(
       index: index,
       cells: <DataCell>[
@@ -298,9 +378,9 @@ class DataTableRow extends DataTableSource {
                 color: Colors.blue,
               ),
               onPressed: () async {
-                // onEdit(
-                //   sell.id,
-                // );
+                onEdit(
+                  sell.id,
+                );
               }),
         )),
         DataCell(Center(
@@ -310,7 +390,27 @@ class DataTableRow extends DataTableSource {
                 color: Colors.red,
               ),
               onPressed: () async {
-                // onDelete(sell.id);
+                onDelete(sell.id);
+              }),
+        )),
+        DataCell(Center(
+          child: IconButton(
+              icon: const Icon(
+                Icons.info,
+                color: Colors.blue,
+              ),
+              onPressed: () {
+                onDetails(sell.id);
+              }),
+        )),
+        DataCell(Center(
+          child: IconButton(
+              icon: Icon(
+                Icons.attach_money_outlined,
+                color: Colors.green[700],
+              ),
+              onPressed: () async {
+                oncollection(sell.id);
               }),
         ))
       ],
