@@ -1,5 +1,8 @@
 // ignore_for_file: non_constant_identifier_names, avoid_print, library_prefixes, depend_on_referenced_packages
 import 'dart:io';
+import 'package:tocmanager/screens/ventes/details_vente.dart';
+import 'package:tocmanager/services/sells_services.dart';
+
 import '../../database/sqfdb.dart';
 import 'package:blue_print_pos/blue_print_pos.dart';
 import 'package:blue_print_pos/models/blue_device.dart';
@@ -12,8 +15,13 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:esc_pos_utils_plus/esc_pos_utils.dart';
 
+import '../../models/Sells.dart';
+import '../../models/api_response.dart';
+import '../../services/user_service.dart';
+import '../../widgets/widgets.dart';
+
 class VentePrint extends StatefulWidget {
-  final String sell_id;
+  final int sell_id;
   const VentePrint({super.key, required this.sell_id});
 
   @override
@@ -21,10 +29,9 @@ class VentePrint extends StatefulWidget {
 }
 
 class _VentePrintState extends State<VentePrint> {
-   @override
+  @override
   void initState() {
     readSellsData();
-    readSell_LineData();
     super.initState();
   }
 
@@ -33,6 +40,8 @@ class _VentePrintState extends State<VentePrint> {
   BlueDevice? _selectedDevice;
   bool _isLoading = false;
   int _loadingAtIndex = -1;
+  List<dynamic> sells = [];
+  List<dynamic> sell_lines = [];
 
   Future<void> _onScanPressed() async {
     if (Platform.isAndroid) {
@@ -103,56 +112,60 @@ class _VentePrintState extends State<VentePrint> {
       style: ReceiptTextStyleType.bold,
     );
     receiptText.addSpacer();
-    receiptText.addText(
-      'Reçu de vente n° ${widget.sell_id}',
-      size: ReceiptTextSizeType.medium,
-      style: ReceiptTextStyleType.bold,
-    );
-    receiptText.addSpacer(useDashed: true);
-    receiptText.addLeftRightText(
-      'Date:',
-      "${sells[0]['date_sell']}",
-      leftStyle: ReceiptTextStyleType.normal,
-      rightStyle: ReceiptTextStyleType.bold,
-    );
-    receiptText.addLeftRightText(
-      'Client:',
-      "${sells[0]['client_name']}",
-      leftStyle: ReceiptTextStyleType.normal,
-      rightStyle: ReceiptTextStyleType.bold,
-    );
-    receiptText.addSpacer(useDashed: true);
 
-    for (var i = 0; i < sell_lines.length; i++) {
+    for (var i = 0; i < sells.length; i++) {
+      receiptText.addText(
+        'Reçu de vente n° ${sells[i]['id']}',
+        size: ReceiptTextSizeType.medium,
+        style: ReceiptTextStyleType.bold,
+      );
+
+      receiptText.addSpacer(useDashed: true);
       receiptText.addLeftRightText(
-        "${sell_lines[i]['quantity']} x ${sell_lines[i]['product_name']}",
-        "${sell_lines[i]['amount']}",
+        'Date:',
+        "${sells[i]['date_sell']}",
+        leftStyle: ReceiptTextStyleType.normal,
+        rightStyle: ReceiptTextStyleType.bold,
+      );
+      receiptText.addLeftRightText(
+        'Client:',
+        "${sells[i]['client']['name']}",
+        leftStyle: ReceiptTextStyleType.normal,
+        rightStyle: ReceiptTextStyleType.bold,
+      );
+      receiptText.addSpacer(useDashed: true);
+
+      for (var i = 0; i < sell_lines.length; i++) {
+        receiptText.addLeftRightText(
+          "${sell_lines[i]['quantity']} x ${sell_lines[i]['product']['name']}",
+          "${sell_lines[i]['amount']}",
+          leftStyle: ReceiptTextStyleType.normal,
+          rightStyle: ReceiptTextStyleType.bold,
+        );
+      }
+
+      receiptText.addSpacer(useDashed: true);
+      receiptText.addLeftRightText(
+        'Total',
+        "${sells[i]['amount']}",
+        leftStyle: ReceiptTextStyleType.normal,
+        rightStyle: ReceiptTextStyleType.bold,
+      );
+      receiptText.addSpacer(useDashed: true);
+      receiptText.addLeftRightText(
+        'Reste',
+        "${sells[i]['rest']}",
         leftStyle: ReceiptTextStyleType.normal,
         rightStyle: ReceiptTextStyleType.bold,
       );
     }
 
-    receiptText.addSpacer(useDashed: true);
-    receiptText.addLeftRightText(
-      'Total',
-      "${sells[0]['amount']}",
-      leftStyle: ReceiptTextStyleType.normal,
-      rightStyle: ReceiptTextStyleType.bold,
-    );
-    receiptText.addSpacer(useDashed: true);
-    receiptText.addLeftRightText(
-      'Reste',
-      "${sells[0]['reste']}",
-      leftStyle: ReceiptTextStyleType.normal,
-      rightStyle: ReceiptTextStyleType.bold,
-    );
-
     await _bluePrintPos.printReceiptText(receiptText,
         paperSize: PaperSize.mm80);
 
     /// Example for print QR
-    
-    await _bluePrintPos.printQR(widget.sell_id, size: 200);
+
+    await _bluePrintPos.printQR(widget.sell_id.toString(), size: 200);
 
     /// Text after QR
     final ReceiptSectionText receiptSecondText = ReceiptSectionText();
@@ -163,32 +176,32 @@ class _VentePrintState extends State<VentePrint> {
       receiptSecondText,
       feedCount: 1,
     );
-
-        
+    _goBack();
   }
 
- 
+  void _goBack() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+          builder: (context) => DetailsVentes(
+                sell_id: widget.sell_id,
+              )),
+      (Route<dynamic> route) => false,
+    ); 
+  }
+
   /* Database */
   SqlDb sqlDb = SqlDb();
-  List sells = [];
   void readSellsData() async {
-    List<Map> response = await sqlDb
-        .readData("SELECT * FROM Sells WHERE id='${widget.sell_id}' ");
-    sells.addAll(response);
-    print(sell_lines);
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  List sell_lines = [];
-   readSell_LineData() async {
-    List<Map> response = await sqlDb.readData(
-        "SELECT Sell_lines.*,Products.name as product_name FROM 'Products','Sell_lines' WHERE Sell_lines.product_id = Products.id AND sell_id='${widget.sell_id}'");
-    sell_lines.addAll(response);
-    
-    if (mounted) {
-      setState(() {});
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await DetailsSells(compagnie_id, widget.sell_id);
+    if (response.error == null) {
+      if (response.statusCode == 200) {
+        sells = response.data as List<dynamic>;
+        for (var i = 0; i < sells.length; i++) {
+          sell_lines = sells[i]["sell_lines"] as List<dynamic>;
+        }
+      }
     }
   }
 

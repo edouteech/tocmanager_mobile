@@ -43,42 +43,40 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[300],
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _showFormDialog(context);
-        },
-        backgroundColor: Colors.blue,
-        child: const Icon(
-          Icons.add,
-          size: 32,
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      appBar: AppBar(
-          centerTitle: true,
-          backgroundColor: Colors.grey[100],
-          iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
-          title: const Text(
-            'Fournisseurs',
-            style: TextStyle(color: Colors.black),
-          )),
-      drawer: Drawer(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              const MyHeaderDrawer(),
-              MyDrawerList(),
-              const SizedBox(
-                height: 20,
-              ),
-            ],
+        backgroundColor: Colors.grey[300],
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            _showFormDialog(context);
+          },
+          backgroundColor: Colors.blue,
+          child: const Icon(
+            Icons.add,
+            size: 32,
           ),
         ),
-      ),
-      body: Container(
-          margin: const EdgeInsets.all(8), child: const ListFournisseur()),
-    );
+        floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+        appBar: AppBar(
+            centerTitle: true,
+            backgroundColor: Colors.grey[100],
+            iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
+            title: const Text(
+              'Fournisseurs',
+              style: TextStyle(color: Colors.black),
+            )),
+        drawer: Drawer(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                const MyHeaderDrawer(),
+                MyDrawerList(),
+                const SizedBox(
+                  height: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+        body: const ListFournisseur());
   }
 
   Widget MyDrawerList() {
@@ -224,17 +222,7 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
                 child: const Text('Valider',
                     style: TextStyle(color: Colors.green)),
                 onPressed: () async {
-                  if (_formKey.currentState!.validate()) {
-                    int response = await sqlDb.inserData('''
-                    INSERT INTO Suppliers( name, email,phone ,address)
-                    VALUES("${name.text}","${email.text}","${phone.text}","${address.text}")
-                  ''');
-
-                    print("===$response==== INSERTION DONE ==========");
-
-                    Navigator.of(context).pushReplacement(MaterialPageRoute(
-                        builder: (context) => const AjouterFournisseurPage()));
-                  }
+                 
                 },
               ),
             ],

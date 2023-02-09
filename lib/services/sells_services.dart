@@ -67,7 +67,7 @@ Future<ApiResponse> CreateSells(
         'Authorization': 'Bearer $token'
       }),
       data: body);
-  print(body);
+
   switch (response.statusCode) {
     case 200:
       print(jsonEncode(response.data['status']));
@@ -111,7 +111,6 @@ Future<ApiResponse> DeleteSells(int compagnie_id, int sell_id) async {
       'Authorization': 'Bearer $token'
     }),
   );
-  print(response.data);
   switch (response.statusCode) {
     case 200:
       print(jsonEncode(response.data['status']));
@@ -156,6 +155,8 @@ Future<ApiResponse> DetailsSells(int compagnie_id, int sell_id) async {
       case 200:
         apiResponse.statusCode = response.statusCode;
         apiResponse.data = jsonDecode(response.body)['data'] as List;
+       
+
         break;
       case 422:
         final errors = jsonDecode(response.body)['errors'];

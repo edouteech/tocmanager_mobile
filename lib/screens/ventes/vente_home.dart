@@ -8,6 +8,7 @@ import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/fournisseurs/ajouter_fournisseur.dart';
 import 'package:tocmanager/screens/ventes/ajouter_vente.dart';
 import 'package:tocmanager/screens/ventes/details_vente.dart';
+import 'package:tocmanager/screens/ventes/encaissement.dart';
 import 'package:tocmanager/services/sells_services.dart';
 import '../../models/Sells.dart';
 import '../../models/api_response.dart';
@@ -128,7 +129,7 @@ class _VenteHomeState extends State<VenteHome> {
                               onDelete: deleteSells,
                               onDetails: details,
                               onEdit: (int) {},
-                              oncollection: (int) {},
+                              oncollection: collection,
                             ),
                           ),
                         ),
@@ -345,6 +346,11 @@ class _VenteHomeState extends State<VenteHome> {
   void details(int sell_id){
     nextScreen(context,  DetailsVentes(sell_id: sell_id,));
   }
+
+  //send to collection page
+  void collection(int sell_id, double reste){
+    nextScreen(context,  EncaissementPage(sell_id: sell_id, reste: reste,));
+  }
 }
 
 class DataTableRow extends DataTableSource {
@@ -352,7 +358,7 @@ class DataTableRow extends DataTableSource {
   final Function(int) onDelete;
   final Function(int) onEdit;
   final Function(int) onDetails;
-  final Function(int) oncollection;
+  final Function(int, double) oncollection;
   DataTableRow(
       {required this.data,
       required this.onDelete,
@@ -410,7 +416,7 @@ class DataTableRow extends DataTableSource {
                 color: Colors.green[700],
               ),
               onPressed: () async {
-                oncollection(sell.id);
+                oncollection(sell.id, sell.reste);
               }),
         ))
       ],
