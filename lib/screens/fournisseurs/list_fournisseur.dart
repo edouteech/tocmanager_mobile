@@ -20,7 +20,7 @@ List<dynamic> suppliers = [];
 
 class _ListFournisseurState extends State<ListFournisseur> {
   bool isNotSuscribe = false;
-  bool isLoading = false;
+  bool isLoading = true;
   //Formkey
   final _formKey = GlobalKey<FormState>();
   /* Fields controller*/
@@ -80,12 +80,10 @@ class _ListFournisseurState extends State<ListFournisseur> {
     int compagnie_id = await getCompagnie_id();
     ApiResponse response = await ReadSuppliers(compagnie_id);
     if (response.error == null) {
-      setState(() {
-        isLoading = true;
-      });
       if (response.statusCode == 200) {
         List<dynamic> data = response.data as List<dynamic>;
         suppliers = data.map((p) => Suppliers.fromJson(p)).toList();
+
         setState(() {
           isLoading = false;
         });

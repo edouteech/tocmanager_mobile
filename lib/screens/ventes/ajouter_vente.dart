@@ -71,7 +71,6 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
   /* =============================End Clients=================== */
 
   /* Fields Controller */
-  TextEditingController nameProductsController = TextEditingController();
   TextEditingController priceController = TextEditingController();
   TextEditingController quantityController = TextEditingController();
   TextEditingController discountController = TextEditingController();
@@ -162,9 +161,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                                   value: client_id,
                                   onChanged: (String? newValue) {
                                     setState(() {
-                                      setState(() {
-                                        client_id = newValue!;
-                                      });
+                                      client_id = newValue!;
                                     });
                                   },
                                   items: dropdownClientsItems)),
@@ -250,7 +247,6 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                           margin: const EdgeInsets.only(top: 10),
                           child: GestureDetector(
                             onTap: () async {
-                              // create_sells();
                               if (sum != 0.0) {
                                 if (_sell_lineFormkey.currentState!
                                     .validate()) {
@@ -364,9 +360,6 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
       if (response.statusCode == 200) {
         List<dynamic> data = response.data as List<dynamic>;
         clients = data.map((p) => Clients.fromJson(p)).toList();
-        setState(() {
-          isLoading = false;
-        });
       }
     }
   }
@@ -409,7 +402,6 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
     String? message;
     ApiResponse response = await CreateSells(ventes, compagnie_id);
     if (response.statusCode == 200) {
-      print(response.message);
       if (response.status == "success") {
         setState(() {
           elements.clear();

@@ -315,7 +315,7 @@ class _VenteHomeState extends State<VenteHome> {
         sendMessage = true;
       });
     } else {
-      message = "La vente a échouée. Veuillez reprendre";
+      message = "La suppression a échouée";
       setState(() {
         sendMessage = true;
       });
@@ -343,13 +343,22 @@ class _VenteHomeState extends State<VenteHome> {
   }
 
 //send to details page
-  void details(int sell_id){
-    nextScreen(context,  DetailsVentes(sell_id: sell_id,));
+  void details(int sell_id) {
+    nextScreen(
+        context,
+        DetailsVentes(
+          sell_id: sell_id,
+        ));
   }
 
   //send to collection page
-  void collection(int sell_id, double reste){
-    nextScreen(context,  EncaissementPage(sell_id: sell_id, reste: reste,));
+  void collection(int sell_id, double reste) {
+    nextScreen(
+        context,
+        EncaissementPage(
+          sell_id: sell_id,
+          reste: reste,
+        ));
   }
 }
 

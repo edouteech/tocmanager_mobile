@@ -7,6 +7,9 @@ import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 import 'package:tocmanager/services/auth_service.dart';
 import '../../database/sqfdb.dart';
+import '../../models/api_response.dart';
+import '../../services/suppliers_services.dart';
+import '../../services/user_service.dart';
 import '../../widgets/widgets.dart';
 import '../categories/ajouter_categorie.dart';
 import '../home_page.dart';
@@ -25,20 +28,22 @@ class AjouterFournisseurPage extends StatefulWidget {
 class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
   //Formkey
   final _formKey = GlobalKey<FormState>();
-
-  /* Database*/
-  SqlDb sqlDb = SqlDb();
   /* Auth service*/
   AuthService authService = AuthService();
+
+  String? client_nature;
+  List<dynamic> ClientNatureList = [
+    {"id": 1, "name": "Particulier", "value": "0"},
+    {"id": 2, "name": "Entreprise", "value": "1"},
+  ];
 
   /* Current page*/
   var currentPage = DrawerSections.fournisseur;
 
   /* Fields controller*/
-  TextEditingController name = TextEditingController();
-  TextEditingController email = TextEditingController();
-  TextEditingController phone = TextEditingController();
-  TextEditingController address = TextEditingController();
+  TextEditingController nameController = TextEditingController();
+  TextEditingController emailController = TextEditingController();
+  TextEditingController phoneController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -222,7 +227,9 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
                 child: const Text('Valider',
                     style: TextStyle(color: Colors.green)),
                 onPressed: () async {
-                 
+                  if (_formKey.currentState!.validate()) {
+                    _createSuppliers();
+                  }
                 },
               ),
             ],
@@ -239,7 +246,7 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
                           const EdgeInsets.only(left: 20, right: 20, top: 30),
                       child: TextFormField(
                           autovalidateMode: AutovalidateMode.onUserInteraction,
-                          controller: name,
+                          controller: nameController,
                           cursorColor: const Color.fromARGB(255, 45, 157, 220),
                           decoration: const InputDecoration(
                             enabledBorder: OutlineInputBorder(
@@ -268,7 +275,7 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
                       child: TextFormField(
                         keyboardType: TextInputType.emailAddress,
                         autovalidateMode: AutovalidateMode.onUserInteraction,
-                        controller: email,
+                        controller: emailController,
                         cursorColor: const Color.fromARGB(255, 45, 157, 220),
                         decoration: const InputDecoration(
                           enabledBorder: OutlineInputBorder(
@@ -299,7 +306,7 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
                       margin:
                           const EdgeInsets.only(left: 20, right: 20, top: 30),
                       child: TextFormField(
-                        controller: phone,
+                        controller: phoneController,
                         autovalidateMode: AutovalidateMode.onUserInteraction,
                         cursorColor: const Color.fromARGB(255, 45, 157, 220),
                         decoration: const InputDecoration(
@@ -324,38 +331,73 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
 
                     // Address of suppliers
                     Container(
-                      alignment: Alignment.center,
-                      margin:
-                          const EdgeInsets.only(left: 20, right: 20, top: 30),
-                      child: TextFormField(
-                        controller: address,
-                        cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                        autovalidateMode: AutovalidateMode.onUserInteraction,
-                        decoration: const InputDecoration(
-                          enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color.fromARGB(255, 45, 157, 220)),
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          border: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          label: Text("Adresse"),
-                          labelStyle:
-                              TextStyle(fontSize: 13, color: Colors.black),
-                        ),
-                        validator: MultiValidator([
-                          RequiredValidator(
-                              errorText: "Veuillez entrer une adresse")
-                        ]),
-                      ),
-                    ),
+                        padding: const EdgeInsets.only(left: 20, right: 20),
+                        margin: const EdgeInsets.only(top: 10),
+                        child: DropdownButtonFormField(
+                          isExpanded: true,
+                          validator: (value) => value == null
+                              ? 'Sélectionner la nature du fournisseur'
+                              : null,
+                          decoration: const InputDecoration(
+                            enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                    color: Color.fromARGB(255, 45, 157, 220)),
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(10))),
+                            border: OutlineInputBorder(
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(10))),
+                            label: Text("Nature"),
+                            labelStyle:
+                                TextStyle(fontSize: 13, color: Colors.black),
+                          ),
+                          dropdownColor: Colors.white,
+                          value: client_nature,
+                          onChanged: (value) {
+                            setState(() {
+                              client_nature = value as String?;
+                            });
+                          },
+                          items: ClientNatureList.map((nature) {
+                            return DropdownMenuItem<String>(
+                              value: nature["value"],
+                              child: Text(nature["name"]),
+                            );
+                          }).toList(),
+                        )),
                   ],
                 ),
               ),
             ),
           );
         });
+  }
+
+  void _createSuppliers() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await CreateSuppliers(
+        compagnie_id.toString(),
+        nameController.text,
+        emailController.text,
+        phoneController.text,
+        int.parse(client_nature.toString()));
+
+    if (response.error == null) {
+      if (response.statusCode == 200) {
+        if (response.status == "error") {
+          String? message = response.message;
+        } else {
+          Navigator.of(context).pushReplacement(MaterialPageRoute(
+              builder: (context) => const AjouterFournisseurPage()));
+        }
+      }
+    } else {
+      if (response.statusCode == 403) {
+        print(response.error);
+      } else {
+        print(response.error);
+      }
+    }
   }
 }
 

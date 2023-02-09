@@ -19,7 +19,7 @@ class AjouterLine extends StatelessWidget {
           },
           title: Center(
             child: Text(
-              "${elmt.quantity}  x  ${elmt.name} = ${elmt.total}",
+              "${elmt.quantity}  x  ${elmt.price} = ${elmt.amount}",
               style: const TextStyle(fontSize: 20),
             ),
           ),
@@ -49,8 +49,19 @@ class AjouterLine extends StatelessWidget {
 }
 
 class Elements {
-  final String name;
-  final String total;
-  final String quantity;
-  Elements({required this.name, required this.total, required this.quantity});
+  final int product_id;
+  final int quantity;
+  final double price;
+  final double amount;
+  final String date;
+  final int compagnie_id;
+
+  Elements({
+    required this.product_id,
+    required this.quantity,
+    required this.price,
+    required this.amount,
+    required this.date,
+    required this.compagnie_id
+  });
 }

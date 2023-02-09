@@ -70,8 +70,6 @@ Future<ApiResponse> CreateSells(
 
   switch (response.statusCode) {
     case 200:
-      print(jsonEncode(response.data['status']));
-
       if (response.data['status'] == "success") {
         apiResponse.statusCode = response.statusCode;
         apiResponse.status = response.data['status'];
@@ -113,7 +111,6 @@ Future<ApiResponse> DeleteSells(int compagnie_id, int sell_id) async {
   );
   switch (response.statusCode) {
     case 200:
-      print(jsonEncode(response.data['status']));
       if (response.data['status'] == "success") {
         apiResponse.statusCode = response.statusCode;
         apiResponse.status = response.data['status'];

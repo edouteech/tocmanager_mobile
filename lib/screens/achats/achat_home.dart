@@ -1,15 +1,15 @@
-// ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, unnecessary_this, avoid_print
-import 'package:data_table_2/data_table_2.dart';
+// ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, unnecessary_this, avoid_print, unused_local_variable
 import 'package:flutter/material.dart';
-import 'package:tocmanager/screens/achats/achat_details.dart';
+import 'package:intl/intl.dart';
 import 'package:tocmanager/screens/achats/ajouter_achat.dart';
-import 'package:tocmanager/screens/achats/decaissement.dart';
-import 'package:tocmanager/screens/achats/editAchat.dart';
 import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/fournisseurs/ajouter_fournisseur.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
-import '../../database/sqfdb.dart';
+import 'package:tocmanager/services/buys_service.dart';
+import '../../models/Buys.dart';
+import '../../models/api_response.dart';
 import '../../services/auth_service.dart';
+import '../../services/user_service.dart';
 import '../../widgets/widgets.dart';
 import '../categories/ajouter_categorie.dart';
 import '../home_page.dart';
@@ -35,6 +35,7 @@ class _AchatHomePageState extends State<AchatHomePage> {
 
   @override
   void initState() {
+    readBuys();
     super.initState();
   }
 
@@ -91,7 +92,7 @@ class _AchatHomePageState extends State<AchatHomePage> {
                             rowsPerPage: 10,
                             columns: <DataColumn>[
                               DataColumn(
-                                label: const Text('Client'),
+                                label: const Text('Fournisseur'),
                                 onSort: (columnIndex, ascending) {
                                   print("$columnIndex $ascending");
                                 },
@@ -111,10 +112,16 @@ class _AchatHomePageState extends State<AchatHomePage> {
                               const DataColumn(
                                 label: Text('Effacer'),
                               ),
+                              const DataColumn(
+                                label: Text('Détails'),
+                              ),
+                              const DataColumn(
+                                label: Text('Décaissements'),
+                              ),
                             ],
                             source: DataTableRow(
                               data: buys,
-                              onDelete: ((p0) {}),
+                              onDelete: deleteBuys,
                               onDetails: (p0) {},
                               onEdit: (int) {},
                               oncollection: (int, double) {},
@@ -246,6 +253,90 @@ class _AchatHomePageState extends State<AchatHomePage> {
       ),
     );
   }
+
+  //read sells
+  Future<void> readBuys() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await ReadBuys(compagnie_id);
+    if (response.error == null) {
+      if (response.statusCode == 200) {
+        List<dynamic> data = response.data as List<dynamic>;
+        buys = data.map((p) => Buys.fromJson(p)).toList();
+        setState(() {
+          isLoading = false;
+        });
+      }
+    } else {
+      if (response.statusCode == 403) {
+        setState(() {
+          isNotSuscribe = true;
+        });
+      }
+    }
+  }
+
+  //delete buys
+  void deleteBuys(int buy_id)async{
+     bool sendMessage = false;
+    int compagnie_id = await getCompagnie_id();
+    String? message;
+    String color = "red";
+    ApiResponse response = await DeleteBuys(compagnie_id, buy_id);
+    if (response.statusCode == 200) {
+      if (response.status == "success") {
+        Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const AchatHomePage()));
+
+        message = "L'achat a été supprimé avec succès";
+        setState(() {
+          sendMessage = true;
+          color = "green";
+        });
+      } else {
+        message = "La suppression a échouée";
+        setState(() {
+          sendMessage = true;
+        });
+      }
+    } else if (response.statusCode == 403) {
+      message = "Vous n'êtes pas autorisé à effectuer cette action";
+      setState(() {
+        sendMessage = true;
+      });
+    } else if (response.statusCode == 500) {
+      print(response.statusCode);
+      message = "La suppression a échouée !";
+      setState(() {
+        sendMessage = true;
+      });
+    } else {
+      message = "La suppression a échouée !";
+      setState(() {
+        sendMessage = true;
+      });
+    }
+    if (sendMessage == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor:
+              color == "green" ? Colors.green[800] : Colors.red[800],
+          content: SizedBox(
+            width: double.infinity,
+            height: 20,
+            child: Center(
+              child: Text(
+                message,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+          duration: const Duration(milliseconds: 2000),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
 }
 
 enum DrawerSections {
@@ -258,4 +349,84 @@ enum DrawerSections {
   client,
   privacy_policy,
   logout,
+}
+
+class DataTableRow extends DataTableSource {
+  final List<dynamic> data;
+  final Function(int) onDelete;
+  final Function(int) onEdit;
+  final Function(int) onDetails;
+  final Function(int, double) oncollection;
+  DataTableRow(
+      {required this.data,
+      required this.onDelete,
+      required this.onEdit,
+      required this.onDetails,
+      required this.oncollection});
+
+  @override
+  DataRow getRow(int index) {
+    final Buys buy = buys[index];
+
+    return DataRow.byIndex(
+      index: index,
+      cells: <DataCell>[
+        DataCell(Center(child: Text(buy.supplier_name.toString()))),
+        DataCell(Center(child: Text(buy.amount.toString()))),
+        DataCell(Center(child: Text(buy.reste.toString()))),
+        DataCell(Center(child: Text(buy.date_buy.toString()))),
+        DataCell(Center(
+          child: IconButton(
+              icon: const Icon(
+                Icons.edit,
+                color: Colors.blue,
+              ),
+              onPressed: () async {
+                onEdit(
+                  buy.id,
+                );
+              }),
+        )),
+        DataCell(Center(
+          child: IconButton(
+              icon: const Icon(
+                Icons.delete,
+                color: Colors.red,
+              ),
+              onPressed: () async {
+                onDelete(buy.id);
+              }),
+        )),
+        DataCell(Center(
+          child: IconButton(
+              icon: const Icon(
+                Icons.info,
+                color: Colors.blue,
+              ),
+              onPressed: () {
+                onDetails(buy.id);
+              }),
+        )),
+        DataCell(Center(
+          child: IconButton(
+              icon: Icon(
+                Icons.attach_money_outlined,
+                color: Colors.green[700],
+              ),
+              onPressed: () async {
+                oncollection(buy.id, buy.amount);
+              }),
+        ))
+      ],
+    );
+  }
+
+  @override
+  int get rowCount => buys.length;
+
+  @override
+  bool get isRowCountApproximate => false;
+
+  @override
+  int get selectedRowCount => 0;
 }

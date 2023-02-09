@@ -7,6 +7,7 @@ const testURL = '$baseURL/test-api';
 const categoriesURL = '$baseURL/categories';
 const productsURL = '$baseURL/products';
 const sellsURL = '$baseURL/sells';
+const buysURL = '$baseURL/buys';
 const clientsURL = '$baseURL/clients';
 const encaissementsURL = '$baseURL/encaissements';
 const suppliersURL = '$baseURL/suppliers';

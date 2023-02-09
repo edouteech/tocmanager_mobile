@@ -1,13 +1,16 @@
 // ignore_for_file: non_constant_identifier_names
 
 import 'dart:convert';
-import 'package:dio/dio.dart';
-import 'package:tocmanager/models/api_response.dart';
+
 import 'package:tocmanager/services/constant.dart';
 import 'package:tocmanager/services/user_service.dart';
 import 'package:http/http.dart' as http;
+import '../models/api_response.dart';
+import 'package:dio/dio.dart';
 
-Future<ApiResponse> ReadSuppliers(
+
+//read buys
+Future<ApiResponse> ReadBuys(
   int compagnie_id,
 ) async {
   ApiResponse apiResponse = ApiResponse();
@@ -15,15 +18,15 @@ Future<ApiResponse> ReadSuppliers(
     String token = await getToken();
 
     final response = await http.get(
-      Uri.parse('$suppliersURL?compagnie_id=$compagnie_id'),
+      Uri.parse('$buysURL?compagnie_id=$compagnie_id'),
       headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
     );
+
     switch (response.statusCode) {
       case 200:
         apiResponse.statusCode = response.statusCode;
         apiResponse.data = response.body;
         apiResponse.data = jsonDecode(response.body)['data']['data'] as List;
-     
 
         break;
       case 422:
@@ -46,19 +49,66 @@ Future<ApiResponse> ReadSuppliers(
   return apiResponse;
 }
 
-//create categories
-Future<ApiResponse> CreateSuppliers(String compagnie_id, String name,
-    String email, String phone, int nature) async {
+//create buys
+Future<ApiResponse> CreateBuys(
+  Map<String, dynamic> achats,
+  int compagnie_id,
+) async {
+  final body = json.encode(achats);
+
   ApiResponse apiResponse = ApiResponse();
 
   Dio dio = Dio();
   String token = await getToken();
-  final response = await dio.post('$suppliersURL?compagnie_id=$compagnie_id',
+  final response = await dio.post(buysURL,
       options: Options(headers: {
         'Accept': 'application/json',
         'Authorization': 'Bearer $token'
       }),
-      data: {"name": name, "email": email, "phone": phone, "nature": nature});
+      data: body);
+
+  switch (response.statusCode) {
+    case 200:
+      if (response.data['status'] == "success") {
+        apiResponse.statusCode = response.statusCode;
+        apiResponse.status = response.data['status'];
+        apiResponse.message = response.data['message'];
+      } else {
+        apiResponse.statusCode = response.statusCode;
+        apiResponse.status = response.data['status'];
+        apiResponse.message = response.data['message'];
+      }
+      break;
+    case 403:
+      apiResponse.error = response.data['message'];
+      apiResponse.statusCode = response.statusCode;
+      break;
+    case 500:
+      apiResponse.error = response.data['message'];
+      apiResponse.statusCode = response.statusCode;
+      break;
+    default:
+      apiResponse.error = somethingWentWrong;
+      break;
+  }
+
+  return apiResponse;
+}
+
+
+//delete buys
+Future<ApiResponse> DeleteBuys(int compagnie_id, int buy_id) async {
+  ApiResponse apiResponse = ApiResponse();
+
+  Dio dio = Dio();
+  String token = await getToken();
+  final response = await dio.delete(
+    "$buysURL/$buy_id?compagnie_id=$compagnie_id",
+    options: Options(headers: {
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $token'
+    }),
+  );
   switch (response.statusCode) {
     case 200:
       if (response.data['status'] == "success") {
