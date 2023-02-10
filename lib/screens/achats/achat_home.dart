@@ -1,7 +1,9 @@
-// ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, unnecessary_this, avoid_print, unused_local_variable
+// ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, unnecessary_this, avoid_print, unused_local_variable, unused_element
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:tocmanager/screens/achats/achat_details.dart';
 import 'package:tocmanager/screens/achats/ajouter_achat.dart';
+import 'package:tocmanager/screens/achats/decaissement.dart';
 import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/fournisseurs/ajouter_fournisseur.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
@@ -122,9 +124,9 @@ class _AchatHomePageState extends State<AchatHomePage> {
                             source: DataTableRow(
                               data: buys,
                               onDelete: deleteBuys,
-                              onDetails: (p0) {},
+                              onDetails: details,
                               onEdit: (int) {},
-                              oncollection: (int, double) {},
+                              oncollection: collection,
                             ),
                           ),
                         ),
@@ -276,8 +278,8 @@ class _AchatHomePageState extends State<AchatHomePage> {
   }
 
   //delete buys
-  void deleteBuys(int buy_id)async{
-     bool sendMessage = false;
+  void deleteBuys(int buy_id) async {
+    bool sendMessage = false;
     int compagnie_id = await getCompagnie_id();
     String? message;
     String color = "red";
@@ -337,6 +339,24 @@ class _AchatHomePageState extends State<AchatHomePage> {
     }
   }
 
+  //send to details page
+  void details(int buy_id) {
+    nextScreen(
+        context,
+        AchatDetails(
+          buy_id: buy_id,
+        ));
+  }
+
+  //send to collection page
+  void collection(int sell_id, double reste) {
+    nextScreen(
+        context,
+        DecaissementPage(
+          buy_id: sell_id,
+          reste: reste,
+        ));
+  }
 }
 
 enum DrawerSections {
@@ -414,7 +434,7 @@ class DataTableRow extends DataTableSource {
                 color: Colors.green[700],
               ),
               onPressed: () async {
-                oncollection(buy.id, buy.amount);
+                oncollection(buy.id, buy.reste);
               }),
         ))
       ],

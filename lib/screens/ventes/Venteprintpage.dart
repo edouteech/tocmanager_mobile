@@ -2,7 +2,6 @@
 import 'dart:io';
 import 'package:tocmanager/screens/ventes/details_vente.dart';
 import 'package:tocmanager/services/sells_services.dart';
-
 import '../../database/sqfdb.dart';
 import 'package:blue_print_pos/blue_print_pos.dart';
 import 'package:blue_print_pos/models/blue_device.dart';
@@ -14,11 +13,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:esc_pos_utils_plus/esc_pos_utils.dart';
-
-import '../../models/Sells.dart';
 import '../../models/api_response.dart';
 import '../../services/user_service.dart';
-import '../../widgets/widgets.dart';
 
 class VentePrint extends StatefulWidget {
   final int sell_id;
@@ -190,8 +186,7 @@ class _VentePrintState extends State<VentePrint> {
     ); 
   }
 
-  /* Database */
-  SqlDb sqlDb = SqlDb();
+
   void readSellsData() async {
     int compagnie_id = await getCompagnie_id();
     ApiResponse response = await DetailsSells(compagnie_id, widget.sell_id);

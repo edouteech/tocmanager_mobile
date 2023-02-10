@@ -11,6 +11,7 @@ const buysURL = '$baseURL/buys';
 const clientsURL = '$baseURL/clients';
 const encaissementsURL = '$baseURL/encaissements';
 const suppliersURL = '$baseURL/suppliers';
+const decaissementsURL = '$baseURL/decaissements';
 
 // ----error-----------
 const serverError = 'Server error';

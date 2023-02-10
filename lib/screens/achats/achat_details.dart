@@ -1,103 +1,156 @@
-// ignore_for_file: avoid_print, depend_on_referenced_packages
+// ignore_for_file: avoid_print, depend_on_referenced_packages, non_constant_identifier_names
 
-import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:tocmanager/screens/achats/printachatpage.dart';
+import 'package:tocmanager/services/buys_service.dart';
 import '../../database/sqfdb.dart';
+import '../../models/Buy_lines.dart';
+import '../../models/api_response.dart';
+import '../../services/user_service.dart';
 import '../../widgets/widgets.dart';
 
 class AchatDetails extends StatefulWidget {
-  final String id;
+  final int buy_id;
   const AchatDetails({
     Key? key,
-    required this.id,
+    required this.buy_id,
   }) : super(key: key);
   @override
   State<AchatDetails> createState() => _AchatDetailsState();
 }
 
-class _AchatDetailsState extends State<AchatDetails> {
-  /* Database */
-  SqlDb sqlDb = SqlDb();
-  /* Read data for database */
-  List buyline = [];
-  Future readBuyLineData() async {
-    List<Map> response = await sqlDb.readData(
-        "SELECT Buy_lines.*,Products.name as product_name FROM 'Products','Buy_lines' WHERE Buy_lines.product_id = Products.id AND buy_id='${widget.id}'");
-    buyline.addAll(response);
+List<dynamic> buy_lines = [];
 
-    if (mounted) {
-      setState(() {});
-    }
-  }
+class _AchatDetailsState extends State<AchatDetails> {
+  bool isLoading = true;
 
   @override
   void initState() {
-    readBuyLineData();
+    readBuy();
     super.initState();
+  }
+
+  readBuy() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await DetailsBuys(compagnie_id, widget.buy_id);
+    if (response.error == null) {
+      if (response.statusCode == 200) {
+        List<dynamic> data = response.data as List<dynamic>;
+        List<dynamic> Selllines = data[0]["buy_lines"] as List<dynamic>;
+        buy_lines = Selllines.map((p) => Buy_lines.fromJson(p)).toList();
+        setState(() {
+          isLoading = false;
+        });
+      }
+    } else {
+      if (response.statusCode == 403) {
+        // setState(() {
+        //   isNotSuscribe = true;
+        // });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          nextScreen(context,  PrintPageAchat( buy_id: widget.id,));
-        },
-        backgroundColor: const Color.fromARGB(255, 45, 157, 220),
-        child: const Icon(
-          Icons.print,
-          size: 32,
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      appBar: AppBar(
-          centerTitle: true,
-          backgroundColor: Colors.grey[100],
-          iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
-          title: const Text(
-            'Détails Achat',
-            style: TextStyle(color: Colors.black, fontFamily: 'Oswald'),
-          )),
-      body: DataTable2(
-          showBottomBorder: true,
-          border: TableBorder.all(color: Colors.black),
-          headingTextStyle: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            nextScreen(
+                context,
+                PrintPageAchat(
+                  buy_id: widget.buy_id,
+                ));
+          },
+          backgroundColor: const Color.fromARGB(255, 45, 157, 220),
+          child: const Icon(
+            Icons.print,
+            size: 35,
           ),
-          dataRowColor: MaterialStateProperty.all(Colors.white),
-          headingRowColor: MaterialStateProperty.all(Colors.blue[200]),
-          columnSpacing: 12,
-          horizontalMargin: 12,
-          minWidth: 600,
-          columns: const [
-            DataColumn2(
-              label: Center(child: Text('Nom du produit')),
-              size: ColumnSize.L,
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+        appBar: AppBar(
+            automaticallyImplyLeading: false,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black),
+              onPressed: () => Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => PrintPageAchat(
+                          buy_id: widget.buy_id,
+                        )),
+                (Route<dynamic> route) => false,
+              ),
             ),
-            DataColumn(
-              label: Center(child: Text('Quantité')),
-            ),
-            DataColumn(
-              label: Center(child: Text('Montant')),
-            ),
-            DataColumn(
-              label: Center(child: Text('Date')),
-            ),
-          ],
-          rows: List<DataRow>.generate(
-              buyline.length,
-              (index) => DataRow(cells: [
-                    DataCell(Center(
-                        child: Text('${buyline[index]["product_name"]}'))),
-                    DataCell(
-                        Center(child: Text('${buyline[index]["quantity"]}'))),
-                    DataCell(
-                        Center(child: Text('${buyline[index]["amount"]}'))),
-                    DataCell(
-                        Center(child: Text('${buyline[index]["created_at"]}'))),
-                  ]))),
+            centerTitle: true,
+            backgroundColor: Colors.grey[100],
+            iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
+            title: const Text(
+              'Achat Details',
+              style: TextStyle(fontFamily: 'Oswald', color: Colors.black),
+            )),
+        body: Container(
+          child: isLoading == true
+              ? const Center(
+                  child: CircularProgressIndicator(),
+                )
+              : SizedBox(
+                  width: double.infinity,
+                  child: SingleChildScrollView(
+                    child: PaginatedDataTable(
+                      rowsPerPage: 10,
+                      columns: const <DataColumn>[
+                        DataColumn(
+                          label: Text('Produits'),
+                        ),
+                        DataColumn(
+                          label: Text('Quantité'),
+                        ),
+                        DataColumn(
+                          label: Text('Prix'),
+                        ),
+                        DataColumn(
+                          label: Text('Montant'),
+                        ),
+                      ],
+                      source: DataTableRow(
+                        data: buy_lines,
+                      ),
+                    ),
+                  ),
+                ),
+        ));
+  }
+}
+
+class DataTableRow extends DataTableSource {
+  final List<dynamic> data;
+
+  DataTableRow({
+    required this.data,
+  });
+
+  @override
+  DataRow getRow(int index) {
+    final Buy_lines buy_line = buy_lines[index];
+
+    return DataRow.byIndex(
+      index: index,
+      cells: <DataCell>[
+        DataCell(Center(child: Text(buy_line.product_name.toString()))),
+        DataCell(Center(child: Text(buy_line.quantity.toString()))),
+        DataCell(Center(child: Text(buy_line.price.toString()))),
+        DataCell(Center(child: Text(buy_line.amount.toString()))),
+      ],
     );
   }
+
+  @override
+  int get rowCount => buy_lines.length;
+
+  @override
+  bool get isRowCountApproximate => false;
+
+  @override
+  int get selectedRowCount => 0;
 }
