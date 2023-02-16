@@ -294,7 +294,7 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                             sum = (sum - buy_lines[i]["amount"]);
                             buy_lines.remove(i);
                           });
-                        });
+                        }, edit: () {  },);
                   },
                 ),
               ),

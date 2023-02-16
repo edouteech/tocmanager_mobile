@@ -272,8 +272,11 @@ class _EditAchatPageState extends State<EditAchatPage> {
                   final element = elements[i];
                   return AjouterLine(
                       elmt: element,
-                      edit: (){
-                        // var discount = buy_lines[i]['discount']
+                      edit: () {
+                        // var discount = ((buy_lines[i]['discount']) /
+                        //         (buy_lines[i]['amount'])) *
+                        //     100;
+                        print(buy_lines[i]['discount']);
                         //  var discount = (buy_lines[i]
                         //         ['amount']) +
                         //     ((buy_lines[i]['amount']));
@@ -286,7 +289,6 @@ class _EditAchatPageState extends State<EditAchatPage> {
                         //       buy_lines[i]['quantity'].toString();
                         //   discountController.text = discount.toString();
                         // });
-
                       },
                       delete: () {
                         setState(() {
@@ -619,7 +621,7 @@ class _EditAchatPageState extends State<EditAchatPage> {
         });
   }
 
-    void updateBuys(Map<String, dynamic> achats) async {
+  void updateBuys(Map<String, dynamic> achats) async {
     ApiResponse response = await UpdateBuys(achats, widget.buy_id);
 
     if (response.statusCode == 200) {

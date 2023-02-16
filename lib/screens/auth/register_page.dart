@@ -7,9 +7,11 @@ import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
+import 'package:tocmanager/models/api_response.dart';
 import 'package:tocmanager/screens/auth/login_page.dart';
 import 'package:tocmanager/screens/home/size_config.dart';
 import '../../services/auth_service.dart';
+import '../../services/user_service.dart';
 import '../../widgets/widgets.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -84,7 +86,6 @@ class _RegisterPageState extends State<RegisterPage> {
   TextEditingController nameController = TextEditingController();
   TextEditingController emailController = TextEditingController();
   TextEditingController phoneController = TextEditingController();
-  TextEditingController countryController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
   TextEditingController c_passwordController = TextEditingController();
   TextEditingController compagnieController = TextEditingController();
@@ -230,48 +231,6 @@ class _RegisterPageState extends State<RegisterPage> {
                             }),
                       ),
                     ),
-
-                    //Country field
-                    Container(
-                      alignment: Alignment.center,
-                      margin:
-                          const EdgeInsets.only(left: 20, right: 20, top: 20),
-                      child: SizedBox(
-                        width: 350,
-                        child: TextFormField(
-                            controller: countryController,
-                            autovalidateMode:
-                                AutovalidateMode.onUserInteraction,
-                            cursorColor:
-                                const Color.fromARGB(255, 45, 157, 220),
-                            decoration: const InputDecoration(
-                              enabledBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                      color: Color.fromARGB(255, 45, 157, 220)),
-                                  borderRadius:
-                                      BorderRadius.all(Radius.circular(10))),
-                              border: OutlineInputBorder(
-                                  borderRadius:
-                                      BorderRadius.all(Radius.circular(10))),
-                              label: Text(
-                                "Pays",
-                              ),
-                              labelStyle:
-                                  TextStyle(fontSize: 13, color: Colors.black),
-                              prefixIcon: Icon(
-                                Icons.place,
-                                color: Color.fromARGB(255, 45, 157, 220),
-                              ),
-                            ),
-                            validator: (val) {
-                              if (val!.isNotEmpty) {
-                                return null;
-                              } else {
-                                return "Le pays ne peut pas être vide";
-                              }
-                            }),
-                      ),
-                    ),
                   ],
                 ))),
         Step(
@@ -315,8 +274,8 @@ class _RegisterPageState extends State<RegisterPage> {
                             ),
                           ),
                           validator: (val) {
-                            if (val!.length < 8) {
-                              return "Le mot de passe doit être au moins de 8 caractères";
+                            if (val!.length < 6) {
+                              return "Le mot de passe doit être au moins de 6 caractères";
                             }
                             if (val.isEmpty) {
                               return "Veuillez entrer un mot de passe ";
@@ -359,7 +318,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             ),
                           ),
                           validator: (val) {
-                            if (val!.length < 8) {
+                            if (val!.length < 6) {
                               return "Le mot de passe doit être au moins de 6 caractères";
                             }
                             if (val != passwordController.text) {
@@ -533,15 +492,14 @@ class _RegisterPageState extends State<RegisterPage> {
                   currentStep: _activeStepIndex,
                   steps: stepList(),
                   onStepContinue: () {
-                    print("object");
-                    checkConnection();
+                    // checkConnection();
 
                     if (!formkeys[_activeStepIndex].currentState!.validate()) {
                       return;
                     } else if (formkeys[1].currentState!.validate()) {
-                      setState(() {
-                        _isLoading = true;
-                      });
+                      // setState(() {
+                      //   _isLoading = true;
+                      // });
                       register();
                     }
 
@@ -564,62 +522,71 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  // register() async {
-  //   if (formKey.currentState!.validate()) {
-  //   setState(() {
-  //     _isLoading = true;
-  //   });
-  //     await authService
-  //         .registerUserWithEmailandPassword(
-  //             fullName, email, password, phone, country)
-  //         .then((value) async {
-  //       if (value == true) {
-  //         // saving the shared preference state
-  //         await HelperFunctions.saveUserLoggedInStatus(true);
-  //         await HelperFunctions.saveUserEmailSF(email);
-  //         await HelperFunctions.saveUserNameSF(fullName);
-  //         await HelperFunctions.saveUserNameSF(phone);
-  //         await HelperFunctions.saveUserNameSF(country);
-  //         nextScreenReplace(context, const HomePage());
-  //       } else {
-  //         showSnackbar(context, const Color.fromARGB(255, 45, 157, 220), value);
-  //         setState(() {
-  //           _isLoading = false;
-  //         });
-  //       }
-  //     });
-  //   }
-  // }
-  Dio dio = Dio();
   register() async {
-    String pathUrl = 'https://teste.tocmanager.com/api/register';
+    String errorMessage = "";
+    Compagnie compagnie = Compagnie(name: compagnieController.text);
+    Data data = Data(
+        name: nameController.text,
+        email: emailController.text,
+        phone: phoneController.text,
+        password: passwordController.text,
+        password_confirmation: c_passwordController.text,
+        compagnie: compagnie);
+    Map<String, dynamic> dataMap = data.toJson();
 
-    var data = {
-      'name': nameController.text,
-      'email': emailController.text,
-      'password': passwordController.text,
-      'password_confirmation': c_passwordController.text,
-      'phone': phoneController.text,
-      "country": countryController.text,
-      'compagnie': {"name": compagnieController.text}
+    Map<String, dynamic> sendData = {
+      "name": dataMap["name"],
+      "email": dataMap["email"],
+      "phone": dataMap["phone"],
+      "password": dataMap["password"],
+      "password_confirmation": dataMap["password_confirmation"],
+      "compagnie": {"name": dataMap["compagnie"]['name']}
     };
-    var response = await dio.post(pathUrl,
-        data: data,
-        options: Options(
-          headers: {
-            'Accept': 'application/json',
-          },
-        ));
-    if (response.statusCode == 200) {
-      var body = json.decode(response.data);
-      _saveAndRedirectHome(body);
-    } else {
-      print(response.statusCode);
-    }
-  }
 
-  _saveAndRedirectHome(body) async {
-    print(body);
+    ApiResponse response = await Register(sendData);
+    if (response.statusCode == 200) {
+      if (response.status == "error") {
+        if (response.data != null) {
+          Map data = response.data as Map;
+
+          if (data.containsKey("phone")) {
+            List<dynamic> phoneErrors = data["phone"];
+            if (phoneErrors.isNotEmpty) {
+              errorMessage = phoneErrors[0];
+            }
+          }
+        } else {
+          errorMessage = response.message!;
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.transparent,
+            content: Container(
+              width: double.infinity,
+              height: 50,
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(
+                child: Text(
+                  errorMessage,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+            duration: const Duration(milliseconds: 2000),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(MaterialPageRoute(
+            builder: (context) => LoginPage(
+                  email: emailController.text,
+                )));
+      }
+    }
   }
 }
 
@@ -652,4 +619,39 @@ class MyConnectivity {
   }
 
   void disposeStream() => _controller.close();
+}
+
+class Data {
+  final String name;
+  final String email;
+  final String phone;
+  final String password;
+  final String password_confirmation;
+  final Compagnie compagnie;
+  Data({
+    required this.name,
+    required this.email,
+    required this.phone,
+    required this.password,
+    required this.password_confirmation,
+    required this.compagnie,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      "name": name,
+      "email": email,
+      "phone": phone,
+      "password": password,
+      "password_confirmation": password_confirmation,
+      "compagnie": {
+        "name": compagnie.name,
+      },
+    };
+  }
+}
+
+class Compagnie {
+  final String name;
+  Compagnie({required this.name});
 }

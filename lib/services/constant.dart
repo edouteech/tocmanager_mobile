@@ -1,7 +1,7 @@
 // ----Strings-----------
 const baseURL = 'https://teste.tocmanager.com/api';
 const loginURL = '$baseURL/login';
-const registerURL = '$baseURL/regsiter';
+const registerURL = '$baseURL/register';
 const userURL = '$baseURL/user';
 const testURL = '$baseURL/test-api';
 const categoriesURL = '$baseURL/categories';

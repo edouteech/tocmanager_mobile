@@ -1,6 +1,7 @@
 // ignore_for_file: non_constant_identifier_names
 
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tocmanager/models/api_response.dart';
 import 'package:http/http.dart' as http;
@@ -37,32 +38,47 @@ Future<ApiResponse> Login(String email, String password) async {
   return apiResponse;
 }
 
-//test
-// Future<ApiResponse> test() async {
-//   ApiResponse apiResponse = ApiResponse();
-//   try {
-//     final response = await http.get(Uri.parse(testURL));
-//     switch (response.statusCode) {
-//       case 200:
-//         apiResponse.data = jsonDecode(response.body);
-//         break;
-//       case 422:
-//         final errors = jsonDecode(response.body)['errors'];
-//         apiResponse.error = errors[errors.keys.elementAt(0)][0];
-//         break;
-//       case 403:
-//         apiResponse.error = jsonDecode(response.body)['message'];
-//         break;
-//       default:
-//         apiResponse.error = somethingWentWrong;
-//         break;
-//     }
-//   } catch (e) {
-//     apiResponse.error = serverError;
-//   }
+//register
+Future<ApiResponse> Register(Map<String, dynamic> data) async {
+  dynamic body = json.encode(data);
 
-//   return apiResponse;
-// }
+  ApiResponse apiResponse = ApiResponse();
+
+  Dio dio = Dio();
+  final response = await dio.post(registerURL,
+      options: Options(headers: {
+        'Accept': 'application/json',
+      }),
+      data: body);
+  switch (response.statusCode) {
+    case 200:
+      if (response.data['status'] == "success") {
+        apiResponse.statusCode = response.statusCode;
+        apiResponse.status = response.data['status'];
+        apiResponse.message = response.data['message'];
+        apiResponse.data = response.data['data'];
+      } else {
+        apiResponse.statusCode = response.statusCode;
+        apiResponse.status = response.data['status'];
+        apiResponse.message = response.data['message'];
+        apiResponse.data = response.data['data'];
+      }
+      break;
+    case 403:
+      apiResponse.error = response.data['message'];
+      apiResponse.statusCode = response.statusCode;
+      break;
+    case 500:
+      apiResponse.error = response.data['message'];
+      apiResponse.statusCode = response.statusCode;
+      break;
+    default:
+      apiResponse.error = somethingWentWrong;
+      break;
+  }
+
+  return apiResponse;
+}
 
 //Users
 Future<ApiResponse> getUsersDetail() async {
@@ -73,7 +89,7 @@ Future<ApiResponse> getUsersDetail() async {
       Uri.parse(userURL),
       headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
     );
-    
+
     switch (response.statusCode) {
       case 200:
         apiResponse.data = jsonDecode(response.body);
@@ -95,93 +111,6 @@ Future<ApiResponse> getUsersDetail() async {
 
   return apiResponse;
 }
-
-Future<ApiResponse> Create_sells(
-    DateTime date_sell,
-    int tax,
-    int discount,
-    int amount,
-    int amount_received,
-    int user_id,
-    int client_id,
-    int compagnie_id,
-    Object sell_lines) async {
-  ApiResponse apiResponse = ApiResponse();
-
-  try {
-    String token = await getToken();
-    final response = await http.post(Uri.parse(sellsURL), headers: {
-      'Accept': 'application/json',
-      'Authorization': 'Bearer $token'
-    }, body: {
-      'date_sell': date_sell,
-      'tax': tax,
-      'discount': discount,
-      'amount': amount,
-      'amount_received': amount_received,
-      'user_id': user_id,
-      'client_id': client_id,
-      'compagnie_id': compagnie_id,
-      'sell_lines': sell_lines
-    });
-
-    switch (response.statusCode) {
-      case 200:
-        apiResponse.data = response.body;
-        break;
-      case 422:
-        final errors = jsonDecode(response.body)['errors'];
-        apiResponse.error = errors[errors.keys.elementAt(0)][0];
-        break;
-      case 403:
-        apiResponse.error = jsonDecode(response.body)['message'];
-        break;
-      default:
-        apiResponse.error = somethingWentWrong;
-        break;
-    }
-  } catch (e) {
-    apiResponse.error = serverError;
-  }
-
-  return apiResponse;
-}
-
-Future<ApiResponse> Create_categorie(int compagnie_id) async {
-  ApiResponse apiResponse = ApiResponse();
-  try {
-    String token = await getToken();
-    final response = await http.get(
-      Uri.parse(
-          'https://teste.tocmanager.com/api/categories?compagnie_id=$compagnie_id'),
-      headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
-    );
-
-    switch (response.statusCode) {
-      case 200:
-        apiResponse.data = response.body;
-        break;
-      case 422:
-        final errors = jsonDecode(response.body)['errors'];
-        apiResponse.error = errors[errors.keys.elementAt(0)][0];
-        break;
-      case 403:
-        apiResponse.error = jsonDecode(response.body)['message'];
-        break;
-      case 500:
-        apiResponse.error = "erreur 500";
-        break;
-      default:
-        apiResponse.error = somethingWentWrong;
-        break;
-    }
-  } catch (e) {
-    apiResponse.error = serverError;
-  }
-
-  return apiResponse;
-}
-
 
 //get token
 Future<String> getToken() async {

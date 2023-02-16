@@ -15,7 +15,8 @@ import '../home_page.dart';
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({Key? key}) : super(key: key);
+  final String? email;
+  const LoginPage({Key? key, this.email}) : super(key: key);
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -27,6 +28,16 @@ class _LoginPageState extends State<LoginPage> {
   String password = "";
   bool _isLoading = false;
   AuthService authService = AuthService();
+  @override
+  void initState() {
+    if (widget.email != null) {
+      setState(() {
+        email = widget.email!;
+      });
+    }
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
     SizeConfig().init(context);
@@ -87,6 +98,7 @@ class _LoginPageState extends State<LoginPage> {
                                     child: SizedBox(
                                       width: 350,
                                       child: TextFormField(
+                                        initialValue: email,
                                         autovalidateMode:
                                             AutovalidateMode.onUserInteraction,
                                         cursorColor: const Color.fromARGB(
