@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 class AjouterLine extends StatelessWidget {
   final Elements elmt;
   final VoidCallback delete;
-  const AjouterLine({super.key, required this.elmt, required this.delete});
+    final VoidCallback edit;
+
+  const AjouterLine({super.key, required this.elmt, required this.delete, required this.edit});
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +35,7 @@ class AjouterLine extends StatelessWidget {
                       color: Colors.blue,
                       size: 30,
                     ),
-                    onPressed: delete),
+                    onPressed: edit),
                 IconButton(
                     icon: const Icon(
                       Icons.delete,

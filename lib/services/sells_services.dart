@@ -1,5 +1,5 @@
 //read products
-// ignore_for_file: non_constant_identifier_names, avoid_print
+// ignore_for_file: non_constant_identifier_names, avoid_print, unused_local_variable
 
 import 'dart:convert';
 
@@ -51,11 +51,8 @@ Future<ApiResponse> ReadSells(
 }
 
 //create sells
-Future<ApiResponse> CreateSells(
-  Map<String, dynamic> ventes,
-  int compagnie_id,
-) async {
-  final body = json.encode(ventes);
+Future<ApiResponse> CreateSells(Map<String, dynamic> ventes) async {
+  dynamic body = json.encode(ventes);
 
   ApiResponse apiResponse = ApiResponse();
 
@@ -67,7 +64,7 @@ Future<ApiResponse> CreateSells(
         'Authorization': 'Bearer $token'
       }),
       data: body);
-
+  // print(response.data['message']);
   switch (response.statusCode) {
     case 200:
       if (response.data['status'] == "success") {
@@ -152,7 +149,6 @@ Future<ApiResponse> DetailsSells(int compagnie_id, int sell_id) async {
       case 200:
         apiResponse.statusCode = response.statusCode;
         apiResponse.data = jsonDecode(response.body)['data'] as List;
-       
 
         break;
       case 422:
@@ -171,6 +167,52 @@ Future<ApiResponse> DetailsSells(int compagnie_id, int sell_id) async {
   } catch (e) {
     print(e);
     apiResponse.error = serverError;
+  }
+
+  return apiResponse;
+}
+
+//Update sells
+Future<ApiResponse> UpdateSells(
+    Map<String, dynamic> ventes, int sell_id) async {
+  dynamic body = json.encode(ventes);
+
+
+
+  ApiResponse apiResponse = ApiResponse();
+
+  Dio dio = Dio();
+  String token = await getToken();
+  final response = await dio.put('$sellsURL/$sell_id',
+      options: Options(headers: {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token'
+      }),
+      data: body);
+  print(response.statusCode);
+  switch (response.statusCode) {
+    case 200:
+      if (response.data['status'] == "success") {
+        apiResponse.statusCode = response.statusCode;
+        apiResponse.status = response.data['status'];
+        apiResponse.message = response.data['message'];
+      } else {
+        apiResponse.statusCode = response.statusCode;
+        apiResponse.status = response.data['status'];
+        apiResponse.message = response.data['message'];
+      }
+      break;
+    case 403:
+      apiResponse.error = response.data['message'];
+      apiResponse.statusCode = response.statusCode;
+      break;
+    case 500:
+      apiResponse.error = response.data['message'];
+      apiResponse.statusCode = response.statusCode;
+      break;
+    default:
+      apiResponse.error = somethingWentWrong;
+      break;
   }
 
   return apiResponse;

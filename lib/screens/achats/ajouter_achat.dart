@@ -403,13 +403,6 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                     setState(() {
                       amount = (quantite * prix).toString();
                     });
-                    // var discount_amount = 0.0;
-                    // if (discountController.text.isNotEmpty) {
-                    //   discount_amount =
-                    //       (double.parse("${discountController.text}") *
-                    //               double.parse(amount)) /
-                    //           100;
-                    // }
 
                     Elements elmt = Elements(
                         product_id: int.parse(product_id.toString()),
@@ -437,28 +430,6 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                       product_id = null;
                       _formuKey.currentState?.reset();
                     });
-
-                    // Elements elmt = Elements(
-                    //     name: '${nameProductsController.text}',
-                    //     amount: '$amount',
-                    //     quantity: '${quantityController.text}');
-                    // setState(() {
-                    //   elements.add(elmt);
-                    //   achats.add({
-                    //     "id": "$product_id",
-                    //     "name": "${nameProductsController.text}",
-                    //     "amount": '$amount',
-                    //     "quantity": '${quantityController.text}'
-                    //   });
-
-                    //   sum = (sum + (double.parse(amount)));
-                    // });
-                    // Navigator.of(context).pop();
-                    // setState(() {
-                    //   product_id = null;
-                    //   _formuKey.currentState?.reset();
-                    //   sommeclientController.text = sum.toString();
-                    // });
                   }
                 },
               ),
@@ -753,9 +724,8 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
 
   createBuys(Map<String, dynamic> achats) async {
     bool _sendMessage = false;
-    int compagnie_id = await getCompagnie_id();
     String? message;
-    ApiResponse response = await CreateBuys(achats, compagnie_id);
+    ApiResponse response = await CreateBuys(achats);
     if (response.statusCode == 200) {
       if (response.status == "success") {
         setState(() {
@@ -766,7 +736,7 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
         });
         Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const AchatHomePage()));
-      } else {
+      } else if(response.status == "error") {
         message = "L'achat a échoué. Veuillez reprendre";
         setState(() {
           _sendMessage = true;
@@ -778,11 +748,6 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
         _sendMessage = true;
       });
     } else if (response.statusCode == 500) {
-      message = "L'achat a échoué. Veuillez reprendre";
-      setState(() {
-        _sendMessage = true;
-      });
-    } else {
       message = "L'achat a échoué. Veuillez reprendre";
       setState(() {
         _sendMessage = true;

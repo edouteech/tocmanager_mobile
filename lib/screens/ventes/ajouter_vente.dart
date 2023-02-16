@@ -1,6 +1,5 @@
 // ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, depend_on_referenced_packages, unnecessary_string_interpolations, avoid_print, body_might_complete_normally_nullable, unnecessary_this, import_of_legacy_library_into_null_safe, unused_field, unused_local_variable, prefer_typing_uninitialized_variables, camel_case_types, no_leading_underscores_for_local_identifiers
 
-import 'dart:convert';
 
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +12,6 @@ import '../../models/Products.dart';
 import '../../models/api_response.dart';
 import '../../services/auth_service.dart';
 import 'package:form_field_validator/form_field_validator.dart';
-import '../../database/sqfdb.dart';
 import 'package:intl/intl.dart';
 
 import '../../services/clients_services.dart';
@@ -47,9 +45,6 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
   final _sellsformKey = GlobalKey<FormState>();
   final _formuKey = GlobalKey<FormState>();
   final _sell_lineFormkey = GlobalKey<FormState>();
-
-  /* Database */
-  SqlDb sqlDb = SqlDb();
 
   /* =============================Products=================== */
   /* List products */
@@ -220,6 +215,9 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                     final element = elements[i];
                     return VenteLine(
                         elmt: element,
+                        edit: () {
+                          print("object");
+                        },
                         delete: () {
                           setState(() {
                             elements.removeAt(i);
@@ -398,9 +396,10 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
   // create sells
   void createSells(Map<String, dynamic> ventes) async {
     bool _sendMessage = false;
-    int compagnie_id = await getCompagnie_id();
     String? message;
-    ApiResponse response = await CreateSells(ventes, compagnie_id);
+
+    ApiResponse response = await CreateSells(ventes);
+
     if (response.statusCode == 200) {
       if (response.status == "success") {
         setState(() {

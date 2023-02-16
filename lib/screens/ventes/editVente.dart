@@ -1,143 +1,197 @@
-// ignore_for_file: file_names, non_constant_identifier_names, avoid_print, unused_local_variable, use_build_context_synchronously
+// ignore_for_file: file_names, non_constant_identifier_names, avoid_print, unused_local_variable, use_build_context_synchronously, camel_case_types, prefer_typing_uninitialized_variables
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:intl/intl.dart';
-import 'package:tocmanager/database/sqfdb.dart';
+import 'package:tocmanager/screens/ventes/ajouter_vente.dart';
+import 'package:tocmanager/screens/ventes/line_vente.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
+import 'package:tocmanager/services/user_service.dart';
+
+import '../../models/Clients.dart';
+import '../../models/Products.dart';
+import '../../models/api_response.dart';
+import '../../services/clients_services.dart';
+import '../../services/products_service.dart';
+import '../../services/sells_services.dart';
 
 class EditVentePage extends StatefulWidget {
-  final String clientId;
-  final String amount;
-  final String sellId;
-  final String sellDate;
-  final String sellReste;
-  const EditVentePage(
-      {super.key,
-      required this.clientId,
-      required this.amount,
-      required this.sellId,
-      required this.sellReste,
-      required this.sellDate});
+  final int sell_id;
+
+  const EditVentePage({
+    super.key,
+    required this.sell_id,
+  });
 
   @override
   State<EditVentePage> createState() => _EditVentePageState();
 }
 
+List<dynamic> clients = [];
+List<dynamic> sell_lines = [];
+List<dynamic> sells = [];
+List<dynamic> elements = [];
+
 class _EditVentePageState extends State<EditVentePage> {
   double sum = 0.0;
-  double reste = 0.0;
-  var sell_reste = 0.0;
-  var total = "";
+  var amount_after_discount = 0.0;
+  double total = 0.0;
+  var tax_amount = 0.0;
+  var Newsum;
+
   final format = DateFormat("yyyy-MM-dd HH:mm:ss");
   /* Form key */
-  final _formKey = GlobalKey<FormState>();
+  final _sellsformKey = GlobalKey<FormState>();
   final _formuKey = GlobalKey<FormState>();
-  final _formaKey = GlobalKey<FormState>();
+  final _sell_lineFormkey = GlobalKey<FormState>();
 
   /* Fields Controller */
-  TextEditingController productsController = TextEditingController();
-  TextEditingController nameProductsController = TextEditingController();
-  TextEditingController priceProductController = TextEditingController();
+  TextEditingController priceController = TextEditingController();
   TextEditingController quantityController = TextEditingController();
+  TextEditingController discountController = TextEditingController();
+  TextEditingController taxController = TextEditingController();
+  TextEditingController discountSellController = TextEditingController();
+  TextEditingController Amount_HTController = TextEditingController();
+  TextEditingController Amount_TTC_Controller = TextEditingController();
+
   TextEditingController dateController = TextEditingController();
-  TextEditingController sommeclientController = TextEditingController();
+  TextEditingController nameClientController = TextEditingController();
+  TextEditingController amountController = TextEditingController();
 
   @override
   void initState() {
-    reloadData();
-    readSell_line();
+    readSellData();
     readclientsData();
-    readData();
+    readProducts();
     super.initState();
   }
 
-  /* =============================Clients=================== */
+  /* ========================== ===Clients=================== */
   /* List clients */
-  List clients = [];
 
   /* Read data for database */
-  Future readclientsData() async {
-    List<Map> response = await sqlDb.readData("SELECT * FROM 'clients'");
-    clients.addAll(response);
-    if (mounted) {
-      setState(() {});
+  Future<void> readclientsData() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await ReadClients(compagnie_id);
+    if (response.error == null) {
+      if (response.statusCode == 200) {
+        List<dynamic> data = response.data as List<dynamic>;
+        clients = data.map((p) => Clients.fromJson(p)).toList();
+      }
     }
   }
 
-  /* Dropdown products items */
-  String? selectedclientsValue;
-  List<DropdownMenuItem<String>> get dropdownclientsItems {
-    List<DropdownMenuItem<String>> menuclientsItems = [];
+  /* Dropdown clients items */
+  String? client_id;
+  List<DropdownMenuItem<String>> get dropdownClientsItems {
+    List<DropdownMenuItem<String>> menuClientsItems = [];
     for (var i = 0; i < clients.length; i++) {
-      menuclientsItems.add(DropdownMenuItem(
-        value: "${clients[i]["id"]}",
-        child: Text(
-          "${clients[i]["name"]}",
-          style: "${clients[i]["name"]}".length > 20
-              ? const TextStyle(fontSize: 15)
-              : null,
-        ),
+      menuClientsItems.add(DropdownMenuItem(
+        value: clients[i].id.toString(),
+        child: Text(clients[i].name, style: const TextStyle(fontSize: 15)),
       ));
     }
-    return menuclientsItems;
+    return menuClientsItems;
   }
+
+  String? _selectedPayment;
+  List<dynamic> paiements = [
+    {"id": 1, "name": "ESPECES"},
+    {"id": 2, "name": "VIREMENT"},
+    {"id": 3, "name": "CARTE BANCAIRE"},
+    {"id": 4, "name": "MOBILE MONEY"},
+    {"id": 5, "name": "CHEQUES"},
+    {"id": 6, "name": "CREDIT"},
+    {"id": 7, "name": "AUTRES"},
+  ];
+
+  String? _echeancePayment;
+  List<dynamic> echances = [
+    {"id": 1, "name": "30"},
+    {"id": 2, "name": "60"},
+    {"id": 3, "name": "90"},
+  ];
 
   /* =============================End Clients=================== */
-
-  reloadData() {
-    dateController.text = widget.sellDate;
-    selectedclientsValue = widget.clientId;
-    sum = double.parse(widget.amount);
-    reste = double.parse(widget.amount) - double.parse(widget.sellReste);
-    sommeclientController.text = reste.toString();
-  }
-
   /* Read data for database */
-  Future readData() async {
-    List<Map> response = await sqlDb.readData("SELECT * FROM 'Products'");
-    products.addAll(response);
-    if (mounted) {
-      setState(() {});
-    }
-  }
+  Future<void> readSellData() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await DetailsSells(compagnie_id, widget.sell_id);
+    if (response.error == null) {
+      if (response.statusCode == 200) {
+        sells = response.data as List<dynamic>;
+        for (var i = 0; i < sells.length; i++) {
+          sell_lines = sells[i]["sell_lines"] as List<dynamic>;
+          for (var i = 0; i < sell_lines.length; i++) {
+            sell_lines[i].remove("product");
+            Elements elmt = Elements(
+              product_id: sell_lines[i]['product_id'],
+              quantity: sell_lines[i]["quantity"],
+              price: double.parse(sell_lines[i]["price"].toString()),
+              amount: double.parse(sell_lines[i]["amount"].toString()),
+              amount_after_discount: double.parse(
+                  sell_lines[i]["amount_after_discount"].toString()),
+              date: sell_lines[i]["date"],
+              compagnie_id: sell_lines[i]["compagnie_id"],
+            );
+            setState(() {
+              elements.add(elmt);
+            });
+          }
+          setState(() {
+            dateController.text = sells[i]['date_sell'].toString();
+            client_id = sells[i]['client']['id'].toString();
+            sum = double.parse(sells[i]["amount_ttc"].toString());
+          });
+        }
 
-  SqlDb sqlDb = SqlDb();
-  List sell_line = [];
-  List elements = [];
-  Future readSell_line() async {
-    List<Map> response = await sqlDb.readData(
-        "SELECT Sell_lines.*,Products.name as product_name FROM 'Products','Sell_lines' WHERE Sell_lines.product_id = Products.id AND sell_id='${widget.sellId}'");
-    sell_line.addAll(response);
-    for (var i = 0; i < sell_line.length; i++) {
-      var prix_nitaire = double.parse('${sell_line[i]["amount"]}') /
-          double.parse('${sell_line[i]["quantity"]}');
-      elements.add({
-        "id": "${sell_line[i]['id']}",
-        "product_name": "${sell_line[i]['product_name']}",
-        "product_id": "${sell_line[i]['product_id']}",
-        "total": '${sell_line[i]['amount']}',
-        "prix_nitaire": '$prix_nitaire',
-        "quantity": '${sell_line[i]['quantity']}'
-      });
-    }
-    if (mounted) {
-      setState(() {});
+       
+        print(sell_lines);
+       
+      }
     }
   }
 
   /* Dropdown products items */
-  List products = [];
-  String? selectedProductValue;
+  List<dynamic> products = [];
+  String? product_id;
   List<DropdownMenuItem<String>> get dropdownProductsItems {
     List<DropdownMenuItem<String>> menuProductsItems = [];
     for (var i = 0; i < products.length; i++) {
       menuProductsItems.add(DropdownMenuItem(
-        value: "${products[i]["id"]}",
-        child: Text("${products[i]["name"]}"),
+        value: products[i].id.toString(),
+        child: Text(products[i].name, style: const TextStyle(fontSize: 15)),
       ));
     }
     return menuProductsItems;
+  }
+
+  //read products
+  Future<void> readProducts() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await ReadProducts(compagnie_id);
+    if (response.error == null) {
+      if (response.statusCode == 200) {
+        List<dynamic> data = response.data as List<dynamic>;
+        products = data.map((p) => Product.fromJson(p)).toList();
+      }
+    }
+  }
+
+  //read product price
+  void productPrice(int? product_id) async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await ReadProductbyId(compagnie_id, product_id);
+    if (response.error == null) {
+      if (response.statusCode == 200) {
+        List<dynamic> data = response.data as List<dynamic>;
+        for (var product in data) {
+          setState(() {
+            priceController.text = product['price_sell'].toString();
+          });
+        }
+      }
+    }
   }
 
   @override
@@ -162,12 +216,21 @@ class _EditVentePageState extends State<EditVentePage> {
       floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
+          automaticallyImplyLeading: false,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () => Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const VenteHome()),
+              (Route<dynamic> route) => false,
+            ),
+          ),
           centerTitle: true,
           backgroundColor: Colors.grey[100],
           iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
           title: const Text(
             'Modifier',
-            style: TextStyle(fontSize: 30, color: Colors.black),
+            style: TextStyle(fontFamily: 'Oswald', color: Colors.black),
           )),
       body: SingleChildScrollView(
           child: Column(
@@ -175,7 +238,7 @@ class _EditVentePageState extends State<EditVentePage> {
           SizedBox(
             height: 90,
             child: Form(
-              key: _formKey,
+              key: _sellsformKey,
               child: Row(
                 children: [
                   Flexible(
@@ -217,24 +280,13 @@ class _EditVentePageState extends State<EditVentePage> {
                                 validator: (value) => value == null
                                     ? 'Sélectionner un client'
                                     : null,
-                                value: selectedclientsValue,
+                                value: client_id,
                                 onChanged: (String? newValue) {
                                   setState(() {
-                                    selectedclientsValue = newValue!;
-                                    if (selectedclientsValue != null) {
-                                      setState(() async {
-                                        var supplier = await sqlDb.readData(
-                                            "SELECT * FROM Clients WHERE id =$selectedclientsValue");
-
-                                        setState(() {
-                                          nameProductsController.text =
-                                              "${clients[0]["name"]}";
-                                        });
-                                      });
-                                    }
+                                    client_id = newValue!;
                                   });
                                 },
-                                items: dropdownclientsItems)),
+                                items: dropdownClientsItems)),
                   ),
                   Flexible(
                     child: Container(
@@ -274,185 +326,110 @@ class _EditVentePageState extends State<EditVentePage> {
             ),
           ),
           SizedBox(
-            height: 470,
-            child: Scrollbar(
-              child: ListView.builder(
-                primary: true,
-                itemCount: elements.length,
-                shrinkWrap: true,
-                itemBuilder: (BuildContext context, i) {
-                  return Container(
-                    margin: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        color: Colors.white),
-                    child: ListTile(
-                        onTap: () {},
-                        title: Center(
-                          child: Text(
-                            "${elements[i]["quantity"]}  x  ${elements[i]["product_name"]} = ${elements[i]["total"]}",
-                            style: const TextStyle(fontSize: 20),
-                          ),
-                        ),
-                        trailing: SizedBox(
-                          width: 100,
-                          child: Row(
-                            children: [
-                              IconButton(
-                                  icon: const Icon(
-                                    Icons.edit,
-                                    color: Colors.blue,
-                                    size: 30,
-                                  ),
-                                  onPressed: () {}),
-                              IconButton(
-                                  icon: const Icon(
-                                    Icons.delete,
-                                    color: Colors.red,
-                                    size: 30,
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      sum = (sum -
-                                          (double.parse(elements[i]["total"])));
-                                      sommeclientController.text =
-                                          sum.toString();
-                                      elements.removeAt(i);
-                                    });
-                                  }),
-                            ],
-                          ),
-                        )),
-                  );
-                },
-              ),
-            ),
-          ),
+              height: MediaQuery.of(context).size.height * 0.65,
+              child: Scrollbar(
+                child: ListView.builder(
+                  primary: true,
+                  itemCount: elements.length,
+                  shrinkWrap: true,
+                  itemBuilder: (BuildContext context, i) {
+                    final element = elements[i];
+                    return VenteLine(
+                      elmt: element,
+                      delete: () {
+                        setState(() {
+                          elements.removeAt(i);
+                          sum = (sum - sell_lines[i]["amount_after_discount"]);
+                          sell_lines.remove(i);
+                        });
+                      },
+                      edit: () {
+                        var discount = (sell_lines[i]
+                                ['amount_after_discount']) -
+                            ((sell_lines[i]['amount']));
+                        setState(() {
+                          product_id =
+                              sell_lines[i]['product_id'].toString();
+                          priceController.text =
+                              sell_lines[i]['price'].toString();
+                          quantityController.text =
+                              sell_lines[i]['quantity'].toString();
+                          discountController.text = discount.toString();
+                        });
+
+                        _showFormDialog(context, i);
+                      },
+                    );
+                  },
+                ),
+              )),
           SizedBox(
             height: 70,
             child: Form(
-              key: _formaKey,
+              key: _sell_lineFormkey,
               child: Row(
                 children: [
                   Flexible(
-                    child:
-                        //Somme perçue
-                        Container(
-                            padding: const EdgeInsets.only(left: 20, right: 20),
-                            child: TextFormField(
-                              keyboardType: TextInputType.number,
-                              controller: sommeclientController,
-                              validator: (value) {
-                                if (value!.isEmpty) {
-                                  return "Veuillez entrer un montant";
-                                } else if (double.parse(value).toInt() > sum) {
-                                  return """ Montant maximun : $sum """;
+                    child: Center(
+                      child: Container(
+                        width: MediaQuery.of(context).size.width * 0.60,
+                        padding: const EdgeInsets.only(left: 20, right: 20),
+                        margin: const EdgeInsets.only(top: 10),
+                        child: GestureDetector(
+                          onTap: () async {
+                            if (sum != 0.0) {
+                              if (_sell_lineFormkey.currentState!.validate()) {
+                                if (_sellsformKey.currentState!.validate()) {
+                                  setState(() {
+                                    _selectedPayment = "ESPECES";
+                                    discountSellController.text = 0.toString();
+                                    taxController.text = 0.toString();
+                                    total = sum;
+                                    amountController.text = 0.toString();
+                                    Amount_HTController.text = total.toString();
+                                    Amount_TTC_Controller.text =
+                                        total.toString();
+                                  });
+                                  _showFinishFormDialog(context);
                                 }
-                                return null;
-                              },
-                              autovalidateMode:
-                                  AutovalidateMode.onUserInteraction,
-                              decoration: const InputDecoration(
-                                contentPadding:
-                                    EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
-                                enabledBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                        color:
-                                            Color.fromARGB(255, 45, 157, 220)),
-                                    borderRadius:
-                                        BorderRadius.all(Radius.circular(10))),
-                                border: OutlineInputBorder(
-                                    borderRadius:
-                                        BorderRadius.all(Radius.circular(10))),
-                                label: Text("Somme reçue"),
-                                labelStyle: TextStyle(
-                                    fontSize: 13, color: Colors.black),
-                              ),
-                            )),
-                  ),
-                  Flexible(
-                    child: Container(
-                      padding: const EdgeInsets.only(left: 20, right: 20),
-                      margin: const EdgeInsets.only(top: 10),
-                      child: GestureDetector(
-                        onTap: () async {
-                          if (sum != 0.0) {
-                            if (_formaKey.currentState!.validate()) {
-                              print("== Amount equal to : $sum");
-                              if (_formKey.currentState!.validate()) {
-                                print("== Date and user are mentionned");
-                                print('$sommeclientController.text');
-
-                                // Update sell
-                                int UpdateSells = await sqlDb.updateData(
-                                    ''' UPDATE Sells SET date_sell ='${dateController.text}', client_id = '$selectedclientsValue' WHERE id="${widget.sellId}" ''');
-                                print("==== SELLS UPDATE DONE ====");
-
-                                //Delete sell line
-                                int DeleteSell_line = await sqlDb.deleteData(
-                                    ''' DELETE FROM Sell_lines WHERE sell_id ="${widget.sellId}" ''');
-                                print("==== ALL SELL LINE DELETE====");
-
-                                //Insert sell_line
-                                for (var i = 0; i < elements.length; i++) {
-                                  int InsertSell_line = await sqlDb.inserData(
-                                      ''' INSERT INTO Sell_lines(quantity, amount, sell_id, product_id) VALUES('${elements[i]["quantity"]}','${elements[i]["total"]}','${widget.sellId}', '${elements[i]["product_id"]}') ''');
-                                  print(
-                                      "===== SELL_LINE INSERTION DONE ======");
-                                }
-
-                                //cheick amount
-                                var SellsAmount = await sqlDb.readData(
-                                    ''' SELECT SUM (amount) as sellAmount FROM Sell_lines WHERE sell_id='${widget.sellId}' ''');
-                                print(
-                                    "===== Sells Amount Checked ==> $SellsAmount ==========");
-
-                                //Get Reste
-                                var sell_reste = SellsAmount[0]['sellAmount'] -
-                                    double.parse(sommeclientController.text);
-
-                                //Update amount and reste
-                                var NewUpdateSells = await sqlDb.updateData(
-                                    ''' UPDATE Sells SET amount ="${SellsAmount[0]['sellAmount']}", reste = "$sell_reste" WHERE id="${widget.sellId}" ''');
-                                print("===== SELL INSERTION DONE ==========");
-
-                                //Delete Encaissement
-
-                                int DeleteEncaissement = await sqlDb.deleteData(
-                                    ''' DELETE FROM Encaissements WHERE sell_id ="${widget.sellId}" ''');
-                                print("==== ALL SELL LINE DELETE====");
-
-                                //Encaissement
-                                int response_encaissement = await sqlDb.inserData(
-                                    ''' INSERT INTO Encaissements(amount, date_encaissement, client_id, sell_id) VALUES ('${sommeclientController.text}', '${dateController.text}','$selectedclientsValue', '${widget.sellId}') ''');
-                                print("===== SELLS INSERTION DONE =====");
-
-                                Navigator.of(context).pushReplacement(
-                                    MaterialPageRoute(
-                                        builder: (context) =>
-                                            const VenteHome()));
                               }
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: Colors.red[900],
+                                  content: const SizedBox(
+                                    width: double.infinity,
+                                    height: 20,
+                                    child: Center(
+                                      child: Text(
+                                        "Le panier de vente est vide",
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                    ),
+                                  ),
+                                  duration: const Duration(milliseconds: 2000),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
                             }
-                          } else {
-                            print("==No Data==");
-                          }
-                        },
-                        child: Container(
-                          alignment: Alignment.center,
-                          height: 54,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            color: const Color.fromARGB(255, 45, 157, 220),
-                            boxShadow: const [
-                              BoxShadow(
-                                  offset: Offset(0, 5),
-                                  blurRadius: 10,
-                                  color: Color(0xffEEEEEE)),
-                            ],
-                          ),
-                          child: Text(
-                            "$sum",
-                            style: const TextStyle(color: Colors.white),
+                          },
+                          child: Container(
+                            alignment: Alignment.center,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              color: const Color.fromARGB(255, 45, 157, 220),
+                              boxShadow: const [
+                                BoxShadow(
+                                    offset: Offset(0, 5),
+                                    blurRadius: 10,
+                                    color: Color(0xffEEEEEE)),
+                              ],
+                            ),
+                            child: Text(
+                              "$sum",
+                              style: const TextStyle(color: Colors.white),
+                            ),
                           ),
                         ),
                       ),
@@ -467,7 +444,7 @@ class _EditVentePageState extends State<EditVentePage> {
     );
   }
 
-  _showFormDialog(BuildContext context) {
+  _showFormDialog(BuildContext context, [int i = -1]) {
     return showDialog(
         context: context,
         barrierDismissible: true,
@@ -486,31 +463,56 @@ class _EditVentePageState extends State<EditVentePage> {
               TextButton(
                 child: const Text('Valider',
                     style: TextStyle(color: Colors.green)),
-                onPressed: () {
+                onPressed: () async {
                   if (_formuKey.currentState!.validate()) {
-                    var prix = double.parse(priceProductController.text);
-                    var quantite = int.parse(quantityController.text);
-                    setState(() {
-                      total = (quantite * prix).toString();
-                    });
-
-                    setState(() {
-                      elements.add({
-                        "id": widget.sellId,
-                        "product_name": nameProductsController.text,
-                        "product_id": "$selectedProductValue",
-                        "total": total,
-                        "prix_nitaire": priceProductController.text,
-                        "quantity": quantityController.text
+                    if (i != -1) {
+                      var prix = double.parse(priceController.text);
+                      var quantite = int.parse(quantityController.text);
+                      setState(() {
+                        amount = (quantite * prix).toString();
                       });
+                    }
 
-                      sum = (sum + (double.parse(total)));
+                    int compagnie_id = await getCompagnie_id();
+
+                    if (discountController.text.isNotEmpty) {
+                      amount_after_discount = double.parse(amount) -
+                          (double.parse(discountController.text));
+                    }
+
+                    Elements elmt = Elements(
+                        product_id: int.parse(product_id.toString()),
+                        quantity: int.parse(quantityController.text),
+                        price: double.parse(priceController.text),
+                        amount: double.parse(amount),
+                        amount_after_discount: amount_after_discount,
+                        date: dateController.text,
+                        compagnie_id: compagnie_id);
+
+                    Map<String, dynamic> newElement = {
+                      "id": sell_lines[i]['id'],
+                      "sell_id": sell_lines[i]['sell_id'],
+                      "product_id": int.parse(product_id.toString()),
+                      "quantity": int.parse(quantityController.text),
+                      "price": double.parse(priceController.text),
+                      "amount": double.parse(amount),
+                      "amount_after_discount": amount_after_discount,
+                      "date": dateController.text,
+                      "compagnie_id": compagnie_id
+                    };
+
+                    setState(() {
+                      elements.removeAt(i);
+                      elements.insert(i, elmt);
+
+                      sell_lines.removeAt(i);
+                      sell_lines.insert(i, newElement);
                     });
+                    sum = (sum + amount_after_discount);
                     Navigator.of(context).pop();
                     setState(() {
-                      selectedProductValue = null;
+                      product_id = null;
                       _formuKey.currentState?.reset();
-                      sommeclientController.text = sum.toString();
                     });
                   }
                 },
@@ -526,6 +528,7 @@ class _EditVentePageState extends State<EditVentePage> {
                     padding: const EdgeInsets.only(left: 20, right: 20),
                     margin: const EdgeInsets.only(top: 10),
                     child: DropdownButtonFormField(
+                        isExpanded: true,
                         validator: (value) =>
                             value == null ? 'Sélectionner un produit' : null,
                         decoration: const InputDecoration(
@@ -542,24 +545,14 @@ class _EditVentePageState extends State<EditVentePage> {
                               TextStyle(fontSize: 13, color: Colors.black),
                         ),
                         dropdownColor: Colors.white,
-                        value: selectedProductValue,
+                        value: product_id,
                         onChanged: (String? newValue) {
                           setState(() {
-                            selectedProductValue = newValue!;
-                            if (selectedProductValue != null) {
-                              setState(() async {
-                                var prix = await sqlDb.readData(
-                                    "SELECT * FROM Products WHERE id =$selectedProductValue");
-
-                                setState(() {
-                                  priceProductController.text =
-                                      "${prix[0]["price_sell"]}";
-                                  nameProductsController.text =
-                                      "${prix[0]["name"]}";
-                                });
-                              });
-                            }
+                            product_id = newValue!;
                           });
+                          if (product_id != null) {
+                            productPrice(int.parse(product_id!));
+                          }
                         },
                         items: dropdownProductsItems)),
                 //Prix unitaire
@@ -567,11 +560,12 @@ class _EditVentePageState extends State<EditVentePage> {
                     alignment: Alignment.center,
                     margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
                     child: TextFormField(
+                        readOnly: true,
                         validator: MultiValidator([
                           RequiredValidator(
                               errorText: "Veuillez entrer un prix")
                         ]),
-                        controller: priceProductController,
+                        controller: priceController,
                         autovalidateMode: AutovalidateMode.onUserInteraction,
                         decoration: const InputDecoration(
                           enabledBorder: OutlineInputBorder(
@@ -612,10 +606,423 @@ class _EditVentePageState extends State<EditVentePage> {
                         labelStyle:
                             TextStyle(fontSize: 13, color: Colors.black),
                       ),
+                    )),
+
+                //Reduction
+                Container(
+                    alignment: Alignment.center,
+                    margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
+                    child: TextFormField(
+                      keyboardType: TextInputType.number,
+                      controller: discountController,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      decoration: const InputDecoration(
+                        enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                                color: Color.fromARGB(255, 45, 157, 220)),
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(10))),
+                        border: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(10))),
+                        label: Text("Reduction(%)"),
+                        labelStyle:
+                            TextStyle(fontSize: 13, color: Colors.black),
+                      ),
                     ))
               ]),
             )),
           );
         });
   }
+
+  _showFinishFormDialog(BuildContext context) {
+    var discount_amount;
+    return showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (param) {
+          return AlertDialog(
+            actions: [
+              TextButton(
+                child: const Text(
+                  'Annuler',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                },
+              ),
+              TextButton(
+                child: const Text('Valider',
+                    style: TextStyle(color: Colors.green)),
+                onPressed: () async {
+                  int compagnie_id = await getCompagnie_id();
+                  int user_id = await getUsersId();
+
+                  int? echeance;
+                  if (_echeancePayment != null) {
+                    echeance = int.tryParse(_echeancePayment.toString());
+                  } else {
+                    echeance = null;
+                  }
+                  sellso sell = sellso(
+                      compagnie_id: compagnie_id,
+                      date_sell: dateController.text,
+                      tax: tax_amount,
+                      amount_ht: double.parse(Amount_HTController.text),
+                      amount_ttc: double.parse(Amount_TTC_Controller.text),
+                      user_id: user_id,
+                      client_id: int.parse(client_id.toString()),
+                      payment: _selectedPayment.toString(),
+                      amount_received: double.parse(amountController.text),
+                      echeance: echeance,
+                      discount: discount_amount,
+                      amount: double.parse(Amount_TTC_Controller.text),
+                      sell_lines: sell_lines);
+                  Map<String, dynamic> sellsMap = {
+                    'compagnie_id': sell.compagnie_id,
+                    'date_sell': sell.date_sell,
+                    "tax": sell.tax,
+                    "amount_ht": sell.amount_ht,
+                    "amount_ttc": sell.amount_ttc,
+                    "user_id": sell.user_id,
+                    "client_id": sell.client_id,
+                    "payment": sell.payment,
+                    "amount_received": sell.amount_received,
+                    "echeance": sell.echeance,
+                    "discount": sell.discount,
+                    "amount": sell.amount,
+                    'sell_lines': sell.sell_lines
+                  };
+                  if (_formuKey.currentState!.validate()) {
+                    updateSells(sellsMap);
+                  }
+                },
+              ),
+            ],
+            title: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Text(
+                    'Solder',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 20,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            content: SingleChildScrollView(
+                child: Form(
+              key: _formuKey,
+              child: Column(
+                children: [
+                  //Reduction
+                  Container(
+                      alignment: Alignment.center,
+                      margin:
+                          const EdgeInsets.only(left: 20, right: 20, top: 30),
+                      child: TextFormField(
+                        keyboardType: TextInputType.number,
+                        controller: discountSellController,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        validator: MultiValidator([
+                          RequiredValidator(
+                              errorText: "Veuillez entrer une valeur")
+                        ]),
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Reduction(%)"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            taxController.text = 0.toString();
+                          });
+                          var Temp_discount_amount =
+                              (total * double.parse(value)) / 100;
+                          discount_amount = total - Temp_discount_amount;
+
+                          setState(() {
+                            Amount_HTController.text =
+                                discount_amount.toString();
+                          });
+
+                          var Temp_TTC = (discount_amount *
+                                  double.parse(taxController.text)) /
+                              100;
+                          var TTC = Temp_TTC + discount_amount;
+
+                          setState(() {
+                            Amount_TTC_Controller.text = TTC.toString();
+                          });
+                        },
+                      )),
+
+                  //Montant ht
+                  Container(
+                      alignment: Alignment.center,
+                      margin:
+                          const EdgeInsets.only(left: 20, right: 20, top: 30),
+                      child: TextFormField(
+                        keyboardType: TextInputType.number,
+                        readOnly: true,
+                        controller: Amount_HTController,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Montant HT"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                      )),
+
+                  //Tax
+                  Container(
+                      alignment: Alignment.center,
+                      margin:
+                          const EdgeInsets.only(left: 20, right: 20, top: 30),
+                      child: TextFormField(
+                        keyboardType: TextInputType.number,
+                        controller: taxController,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        validator: MultiValidator([
+                          RequiredValidator(
+                              errorText: "Veuillez entrer une valeur")
+                        ]),
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Tax(%)"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                        onChanged: (value) {
+                          var Temp_TTC =
+                              (double.parse(Amount_HTController.text) *
+                                      double.parse(taxController.text)) /
+                                  100;
+                          var TTC = (double.parse(Amount_HTController.text)) +
+                              Temp_TTC;
+                          setState(() {
+                            Amount_TTC_Controller.text = TTC.toString();
+                          });
+                        },
+                      )),
+
+                  //Montant ttc
+                  Container(
+                      alignment: Alignment.center,
+                      margin:
+                          const EdgeInsets.only(left: 20, right: 20, top: 30),
+                      child: TextFormField(
+                        keyboardType: TextInputType.number,
+                        readOnly: true,
+                        controller: Amount_TTC_Controller,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        validator: MultiValidator([
+                          RequiredValidator(
+                              errorText: "Veuillez entrer une valeur")
+                        ]),
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Montant TTC"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                      )),
+
+                  //Moyen de paiment
+                  Container(
+                      padding: const EdgeInsets.only(left: 20, right: 20),
+                      margin: const EdgeInsets.only(top: 10),
+                      child: DropdownButtonFormField(
+                        isExpanded: true,
+                        validator: (value) => value == null
+                            ? 'Sélectionner un moyen de paiement'
+                            : null,
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Paiement"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                        dropdownColor: Colors.white,
+                        value: _selectedPayment,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedPayment = value as String?;
+                          });
+                        },
+                        items: paiements.map((payment) {
+                          return DropdownMenuItem<String>(
+                            value: payment["name"],
+                            child: Text(payment["name"]),
+                          );
+                        }).toList(),
+                      )),
+
+                  //Echeance
+                  Container(
+                      padding: const EdgeInsets.only(left: 20, right: 20),
+                      margin: const EdgeInsets.only(top: 10),
+                      child: DropdownButtonFormField(
+                        isExpanded: true,
+                        // validator: (value) =>
+                        //     value == null ? 'Sélectionner une échéance' : null,
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Echéance"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                        dropdownColor: Colors.white,
+                        value: _echeancePayment,
+                        onChanged: (value) {
+                          setState(() {
+                            _echeancePayment = value as String?;
+                          });
+                        },
+                        items: echances.map((echances) {
+                          return DropdownMenuItem<String>(
+                            value: echances["name"],
+                            child: Text(echances["name"]),
+                          );
+                        }).toList(),
+                      )),
+
+                  //Somme perçue
+                  Container(
+                      margin: const EdgeInsets.only(top: 10),
+                      padding: const EdgeInsets.only(left: 20, right: 20),
+                      child: TextFormField(
+                        keyboardType: TextInputType.number,
+                        controller: amountController,
+                        validator: (value) {
+                          if (value!.isEmpty) {
+                            return "Veuillez entrer un montant";
+                          } else if (double.parse(value).toInt() >
+                              double.parse(Amount_TTC_Controller.text)) {
+                            return """ Montant maximun : ${Amount_TTC_Controller.text} """;
+                          }
+                          return null;
+                        },
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        decoration: const InputDecoration(
+                          contentPadding:
+                              EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Somme reçue"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                      )),
+                ],
+              ),
+            )),
+          );
+        });
+  }
+
+  void updateSells(Map<String, dynamic> ventes) async {
+    ApiResponse response = await UpdateSells(ventes, widget.sell_id);
+
+    if (response.statusCode == 200) {
+      if (response.status == "success") {
+        setState(() {
+          elements.clear();
+          sum = 0.0;
+          _sell_lineFormkey.currentState?.reset();
+          _sellsformKey.currentState?.reset();
+        });
+        Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const VenteHome()));
+      } else {}
+    } else if (response.statusCode == 403) {
+    } else if (response.statusCode == 500) {
+    } else {}
+  }
+}
+
+class sellso {
+  final int compagnie_id;
+  final String date_sell;
+  final dynamic tax;
+  final double amount_ht;
+  final double amount_ttc;
+  final int user_id;
+  final int client_id;
+  final String payment;
+  final double amount_received;
+  final dynamic echeance;
+  final dynamic discount;
+  final double amount;
+  final List<dynamic> sell_lines;
+
+  sellso(
+      {required this.tax,
+      required this.amount_ht,
+      required this.amount_ttc,
+      required this.user_id,
+      required this.client_id,
+      required this.payment,
+      required this.amount_received,
+      required this.echeance,
+      required this.discount,
+      required this.amount,
+      required this.compagnie_id,
+      required this.date_sell,
+      required this.sell_lines});
 }

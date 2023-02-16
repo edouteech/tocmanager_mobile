@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 class VenteLine extends StatelessWidget {
   final Elements elmt;
   final VoidCallback delete;
-  const VenteLine({Key? key, required this.elmt, required this.delete})
+  final VoidCallback edit;
+  const VenteLine({Key? key, required this.elmt, required this.delete, required this.edit})
       : super(key: key);
 
   @override
@@ -33,7 +34,7 @@ class VenteLine extends StatelessWidget {
                       color: Colors.blue,
                       size: 30,
                     ),
-                    onPressed: delete),
+                    onPressed: edit),
                 IconButton(
                     icon: const Icon(
                       Icons.delete,

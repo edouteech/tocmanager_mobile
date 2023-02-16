@@ -8,6 +8,7 @@ import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/fournisseurs/ajouter_fournisseur.dart';
 import 'package:tocmanager/screens/ventes/ajouter_vente.dart';
 import 'package:tocmanager/screens/ventes/details_vente.dart';
+import 'package:tocmanager/screens/ventes/editVente.dart';
 import 'package:tocmanager/screens/ventes/encaissement.dart';
 import 'package:tocmanager/services/sells_services.dart';
 import '../../models/Sells.dart';
@@ -128,7 +129,7 @@ class _VenteHomeState extends State<VenteHome> {
                               data: sells,
                               onDelete: deleteSells,
                               onDetails: details,
-                              onEdit: (int) {},
+                              onEdit: _edit,
                               oncollection: collection,
                             ),
                           ),
@@ -359,6 +360,15 @@ class _VenteHomeState extends State<VenteHome> {
           sell_id: sell_id,
           reste: reste,
         ));
+  }
+
+  void _edit(int sell_id) {
+    nextScreen(
+      context,
+      EditVentePage(
+        sell_id: sell_id,
+      ),
+    );
   }
 }
 
