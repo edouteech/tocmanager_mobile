@@ -37,7 +37,7 @@ class _EditVentePageState extends State<EditVentePage> {
   var amount_after_discount = 0.0;
   double total = 0.0;
   var tax_amount = 0.0;
-  var Newsum;
+ 
 
   final format = DateFormat("yyyy-MM-dd HH:mm:ss");
   /* Form key */
@@ -125,6 +125,7 @@ class _EditVentePageState extends State<EditVentePage> {
           for (var i = 0; i < sell_lines.length; i++) {
             sell_lines[i].remove("product");
             Elements elmt = Elements(
+              discount: double.parse(sell_lines[i]["price"].toString()),
               product_id: sell_lines[i]['product_id'],
               quantity: sell_lines[i]["quantity"],
               price: double.parse(sell_lines[i]["price"].toString()),
@@ -485,6 +486,7 @@ class _EditVentePageState extends State<EditVentePage> {
                         quantity: int.parse(quantityController.text),
                         price: double.parse(priceController.text),
                         amount: double.parse(amount),
+                        discount: double.parse(amount),
                         amount_after_discount: amount_after_discount,
                         date: dateController.text,
                         compagnie_id: compagnie_id);

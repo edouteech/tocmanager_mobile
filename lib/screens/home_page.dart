@@ -58,27 +58,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // string manipulation
-  // String getId(String res) {
-  //   return res.substring(0, res.indexOf("_"));
-  // }
 
-  // String getName(String res) {
-  //   return res.substring(res.indexOf("_") + 1);
-  // }
-
-  // gettingUserData() async {
-  //   await HelperFunctions.getUserEmailFromSF().then((value) {
-  //     setState(() {
-  //       email = value!;
-  //     });
-  //   });
-  //   await HelperFunctions.getUserNameFromSF().then((val) {
-  //     setState(() {
-  //       userName = val!;
-  //     });
-  //   });
-  // }
 
   var currentPage = DrawerSections.dashboard;
   @override

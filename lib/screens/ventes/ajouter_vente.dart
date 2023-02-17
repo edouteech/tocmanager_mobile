@@ -1,7 +1,7 @@
 // ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, depend_on_referenced_packages, unnecessary_string_interpolations, avoid_print, body_might_complete_normally_nullable, unnecessary_this, import_of_legacy_library_into_null_safe, unused_field, unused_local_variable, prefer_typing_uninitialized_variables, camel_case_types, no_leading_underscores_for_local_identifiers
 
-
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
+import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:tocmanager/screens/ventes/line_vente.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
@@ -30,6 +30,7 @@ List<dynamic> ventes = [];
 List<dynamic> clients = [];
 var amount = "";
 var discount = "";
+double total = 0.0;
 var sum = 0.0;
 List<dynamic> products = [];
 
@@ -61,15 +62,15 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
 
   /* =============================End Products=================== */
 
-  /* =============================Clients=================== */
-
-  /* =============================End Clients=================== */
-
   /* Fields Controller */
   TextEditingController priceController = TextEditingController();
   TextEditingController quantityController = TextEditingController();
   TextEditingController discountController = TextEditingController();
   TextEditingController taxController = TextEditingController();
+  TextEditingController discountSellController = TextEditingController();
+  TextEditingController Amount_HTController = TextEditingController();
+  TextEditingController Amount_TTC_Controller = TextEditingController();
+  TextEditingController totalController = TextEditingController();
 
   TextEditingController dateController = TextEditingController();
   TextEditingController nameClientController = TextEditingController();
@@ -84,6 +85,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
           onPressed: () {
             setState(() {
               quantityController.text = "1";
+              discountController.text = '0';
             });
             _showFormDialog(context);
           },
@@ -216,7 +218,19 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                     return VenteLine(
                         elmt: element,
                         edit: () {
-                          print("object");
+                          setState(() {
+                            product_id = (elements[i].product_id).toString();
+                            priceController.text =
+                                (elements[i].price).toString();
+                            quantityController.text =
+                                (elements[i].quantity).toString();
+                            discountController.text =
+                                (elements[i].discount.round()).toString();
+                            totalController.text =
+                                (elements[i].amount_after_discount).toString();
+                          });
+
+                          _showFormDialog(context, i);
                         },
                         delete: () {
                           setState(() {
@@ -250,8 +264,16 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                                     .validate()) {
                                   if (_sellsformKey.currentState!.validate()) {
                                     setState(() {
-                                      amountController.text = sum.toString();
                                       _selectedPayment = "ESPECES";
+                                      discountSellController.text =
+                                          0.toString();
+                                      taxController.text = 0.toString();
+                                      total = sum;
+                                      amountController.text = 0.toString();
+                                      Amount_HTController.text =
+                                          total.toString();
+                                      Amount_TTC_Controller.text =
+                                          total.toString();
                                     });
                                     _showFinishFormDialog(context);
                                   }
@@ -344,6 +366,13 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
         for (var product in data) {
           setState(() {
             priceController.text = product['price_sell'].toString();
+          });
+          var temp_total = double.parse(priceController.text) *
+              double.parse(quantityController.text);
+          var disc = (double.parse(discountController.text) * temp_total) / 100;
+          var total = temp_total - disc;
+          setState(() {
+            totalController.text = total.toString();
           });
         }
       }
@@ -453,7 +482,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
     }
   }
 
-  _showFinishFormDialog(BuildContext context) {
+  _showFormDialog(BuildContext context, [int i = -1]) {
     return showDialog(
         context: context,
         barrierDismissible: true,
@@ -466,252 +495,9 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                   style: TextStyle(color: Colors.red),
                 ),
                 onPressed: () async {
-                  Navigator.of(context).pop();
-                },
-              ),
-              TextButton(
-                child: const Text('Valider',
-                    style: TextStyle(color: Colors.green)),
-                onPressed: () async {
-                  int compagnie_id = await getCompagnie_id();
-                  int user_id = await getUsersId();
-                  var discount_amount = 0.0;
-                  var tax_amount = 0.0;
-                  var Newsum;
-                  if (discountController.text.isNotEmpty) {
-                    discount_amount =
-                        (double.parse("${discountController.text}") *
-                                double.parse(sum.toString())) /
-                            100;
-                    setState(() {
-                      Newsum = sum - discount_amount;
-                    });
-                  } else {
-                    setState(() {
-                      Newsum = sum;
-                    });
-                  }
-                  var amount_ttc;
-                  tax_amount =
-                      (double.parse("${taxController.text}") * sum) / 100;
-                  amount_ttc = sum + tax_amount;
-                  int? echeance;
-                  if (_echeancePayment != null) {
-                    echeance = int.tryParse(_echeancePayment.toString());
-                  } else {
-                    echeance = null;
-                  }
-                  sells sell = sells(
-                      compagnie_id: compagnie_id,
-                      date_sell: dateController.text,
-                      tax: int.parse(taxController.text),
-                      amount_ht: Newsum,
-                      amount_ttc: amount_ttc,
-                      user_id: user_id,
-                      client_id: int.parse(client_id.toString()),
-                      payment: _selectedPayment.toString(),
-                      amount_received: double.parse(amountController.text),
-                      echeance: echeance,
-                      discount: discountController.text.isEmpty
-                          ? 0
-                          : double.parse(discountController.text),
-                      amount: amount_ttc,
-                      sell_lines: sell_lines);
-                  Map<String, dynamic> sellsMap = {
-                    'compagnie_id': sell.compagnie_id,
-                    'date_sell': sell.date_sell,
-                    "tax": sell.tax,
-                    "amount_ht": sell.amount_ht,
-                    "amount_ttc": sell.amount_ttc,
-                    "user_id": sell.user_id,
-                    "client_id": sell.client_id,
-                    "payment": sell.payment,
-                    "amount_received": sell.amount_received,
-                    "echeance": sell.echeance,
-                    "discount": sell.discount,
-                    "amount": sell.amount,
-                    'sell_lines': sell.sell_lines
-                  };
-
-                  createSells(sellsMap);
-                },
-              ),
-            ],
-            title: const Center(child: Text("Solder")),
-            content: SingleChildScrollView(
-                child: Form(
-              key: _formuKey,
-              child: Column(
-                children: [
-                  //Somme perçue
-                  Container(
-                      padding: const EdgeInsets.only(left: 20, right: 20),
-                      child: TextFormField(
-                        keyboardType: TextInputType.number,
-                        controller: amountController,
-                        validator: (value) {
-                          if (value!.isEmpty) {
-                            return "Veuillez entrer un montant";
-                          } else if (double.parse(value).toInt() > sum) {
-                            return """ Montant maximun : $sum """;
-                          }
-                          return null;
-                        },
-                        autovalidateMode: AutovalidateMode.onUserInteraction,
-                        decoration: const InputDecoration(
-                          contentPadding:
-                              EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
-                          enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color.fromARGB(255, 45, 157, 220)),
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          border: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          label: Text("Somme reçue"),
-                          labelStyle:
-                              TextStyle(fontSize: 13, color: Colors.black),
-                        ),
-                      )),
-                  //Reduction
-                  Container(
-                      alignment: Alignment.center,
-                      margin:
-                          const EdgeInsets.only(left: 20, right: 20, top: 30),
-                      child: TextFormField(
-                        keyboardType: TextInputType.number,
-                        controller: discountController,
-                        autovalidateMode: AutovalidateMode.onUserInteraction,
-                        decoration: const InputDecoration(
-                          enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color.fromARGB(255, 45, 157, 220)),
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          border: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          label: Text("Reduction(%)"),
-                          labelStyle:
-                              TextStyle(fontSize: 13, color: Colors.black),
-                        ),
-                      )),
-                  //Tax
-                  Container(
-                      alignment: Alignment.center,
-                      margin:
-                          const EdgeInsets.only(left: 20, right: 20, top: 30),
-                      child: TextFormField(
-                        keyboardType: TextInputType.number,
-                        controller: taxController,
-                        autovalidateMode: AutovalidateMode.onUserInteraction,
-                        decoration: const InputDecoration(
-                          enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color.fromARGB(255, 45, 157, 220)),
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          border: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          label: Text("Tax(%)"),
-                          labelStyle:
-                              TextStyle(fontSize: 13, color: Colors.black),
-                        ),
-                      )),
-                  //Moyen de paiment
-                  Container(
-                      padding: const EdgeInsets.only(left: 20, right: 20),
-                      margin: const EdgeInsets.only(top: 10),
-                      child: DropdownButtonFormField(
-                        isExpanded: true,
-                        validator: (value) => value == null
-                            ? 'Sélectionner un moyen de paiement'
-                            : null,
-                        decoration: const InputDecoration(
-                          enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color.fromARGB(255, 45, 157, 220)),
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          border: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          label: Text("Paiement"),
-                          labelStyle:
-                              TextStyle(fontSize: 13, color: Colors.black),
-                        ),
-                        dropdownColor: Colors.white,
-                        value: _selectedPayment,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedPayment = value as String?;
-                          });
-                        },
-                        items: paiements.map((payment) {
-                          return DropdownMenuItem<String>(
-                            value: payment["name"],
-                            child: Text(payment["name"]),
-                          );
-                        }).toList(),
-                      )),
-
-                  //Echeance
-                  Container(
-                      padding: const EdgeInsets.only(left: 20, right: 20),
-                      margin: const EdgeInsets.only(top: 10),
-                      child: DropdownButtonFormField(
-                        isExpanded: true,
-                        validator: (value) =>
-                            value == null ? 'Sélectionner une échéance' : null,
-                        decoration: const InputDecoration(
-                          enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color.fromARGB(255, 45, 157, 220)),
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          border: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          label: Text("Echéance"),
-                          labelStyle:
-                              TextStyle(fontSize: 13, color: Colors.black),
-                        ),
-                        dropdownColor: Colors.white,
-                        value: _echeancePayment,
-                        onChanged: (value) {
-                          setState(() {
-                            _echeancePayment = value as String?;
-                          });
-                        },
-                        items: echances.map((echances) {
-                          return DropdownMenuItem<String>(
-                            value: echances["name"],
-                            child: Text(echances["name"]),
-                          );
-                        }).toList(),
-                      )),
-                ],
-              ),
-            )),
-          );
-        });
-  }
-
-  _showFormDialog(BuildContext context) {
-    return showDialog(
-        context: context,
-        barrierDismissible: true,
-        builder: (param) {
-          return AlertDialog(
-            actions: [
-              TextButton(
-                child: const Text(
-                  'Annuler',
-                  style: TextStyle(color: Colors.red),
-                ),
-                onPressed: () async {
+                  setState(() {
+                    _formuKey.currentState?.reset();
+                  });
                   Navigator.of(context).pop();
                 },
               ),
@@ -720,49 +506,87 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                     style: TextStyle(color: Colors.green)),
                 onPressed: () async {
                   if (_formuKey.currentState!.validate()) {
-                    var prix = double.parse("${priceController.text}");
-                    var quantite = int.parse("${quantityController.text}");
-                    setState(() {
-                      amount = (quantite * prix).toString();
-                    });
-                    int compagnie_id = await getCompagnie_id();
-                    var discount_amount = 0.0;
-                    if (discountController.text.isNotEmpty) {
-                      discount_amount =
-                          (double.parse("${discountController.text}") *
-                                  double.parse(amount)) /
-                              100;
-                    }
-                    var amount_after_discount =
-                        double.parse(amount) - discount_amount;
+                    if (i != -1) {
+                      setState(() {
+                        sum = (sum - sell_lines[i]["amount_after_discount"]);
+                      });
+                      int compagnie_id = await getCompagnie_id();
+                      var amount = double.parse(priceController.text) *
+                          double.parse(quantityController.text);
 
-                    Elements elmt = Elements(
-                        product_id: int.parse(product_id.toString()),
-                        quantity: int.parse(quantityController.text),
-                        price: double.parse(priceController.text),
-                        amount: double.parse(amount),
-                        amount_after_discount: amount_after_discount,
-                        date: dateController.text,
-                        compagnie_id: compagnie_id);
+                      var amount_after_discount =
+                          double.parse(totalController.text);
 
-                    setState(() {
-                      elements.add(elmt);
-                      sell_lines.add({
+                      Elements elmt = Elements(
+                          product_id: int.parse(product_id.toString()),
+                          quantity: int.parse(quantityController.text),
+                          price: double.parse(priceController.text),
+                          amount: amount,
+                          discount: double.parse(discountController.text),
+                          amount_after_discount: amount_after_discount,
+                          date: dateController.text,
+                          compagnie_id: compagnie_id);
+
+                      Map<String, dynamic> newElement = {
                         "product_id": int.parse(product_id.toString()),
                         "quantity": int.parse(quantityController.text),
                         "price": double.parse(priceController.text),
-                        "amount": double.parse(amount),
+                        "amount": amount,
                         "amount_after_discount": amount_after_discount,
                         "date": dateController.text,
                         "compagnie_id": compagnie_id
+                      };
+
+                      setState(() {
+                        elements.removeAt(i);
+                        elements.insert(i, elmt);
+
+                        sell_lines.removeAt(i);
+                        sell_lines.insert(i, newElement);
                       });
-                    });
-                    sum = (sum + amount_after_discount);
-                    Navigator.of(context).pop();
-                    setState(() {
-                      product_id = null;
-                      _formuKey.currentState?.reset();
-                    });
+                      sum = (sum + amount_after_discount);
+                      Navigator.of(context).pop();
+                      setState(() {
+                        product_id = null;
+                        _formuKey.currentState?.reset();
+                      });
+                    } else {
+                      int compagnie_id = await getCompagnie_id();
+                      var amount = double.parse(priceController.text) *
+                          double.parse(quantityController.text);
+
+                      var amount_after_discount =
+                          double.parse(totalController.text);
+
+                      Elements elmt = Elements(
+                          product_id: int.parse(product_id.toString()),
+                          quantity: int.parse(quantityController.text),
+                          price: double.parse(priceController.text),
+                          amount: amount,
+                          discount: double.parse(discountController.text),
+                          amount_after_discount: amount_after_discount,
+                          date: dateController.text,
+                          compagnie_id: compagnie_id);
+
+                      setState(() {
+                        elements.add(elmt);
+                        sell_lines.add({
+                          "product_id": int.parse(product_id.toString()),
+                          "quantity": int.parse(quantityController.text),
+                          "price": double.parse(priceController.text),
+                          "amount": amount,
+                          "amount_after_discount": amount_after_discount,
+                          "date": dateController.text,
+                          "compagnie_id": compagnie_id
+                        });
+                      });
+                      sum = (sum + amount_after_discount);
+                      Navigator.of(context).pop();
+                      setState(() {
+                        product_id = null;
+                        _formuKey.currentState?.reset();
+                      });
+                    }
                   }
                 },
               ),
@@ -804,31 +628,32 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                           }
                         },
                         items: dropdownProductsItems)),
+
                 //Prix unitaire
                 Container(
                     alignment: Alignment.center,
                     margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
                     child: TextFormField(
-                        readOnly: true,
-                        validator: MultiValidator([
-                          RequiredValidator(
-                              errorText: "Veuillez entrer un prix")
-                        ]),
-                        controller: priceController,
-                        autovalidateMode: AutovalidateMode.onUserInteraction,
-                        decoration: const InputDecoration(
-                          enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color.fromARGB(255, 45, 157, 220)),
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          border: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          label: Text("Prix unitaire"),
-                          labelStyle:
-                              TextStyle(fontSize: 13, color: Colors.black),
-                        ))),
+                      readOnly: true,
+                      validator: MultiValidator([
+                        RequiredValidator(errorText: "Veuillez entrer un prix")
+                      ]),
+                      controller: priceController,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      decoration: const InputDecoration(
+                        enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                                color: Color.fromARGB(255, 45, 157, 220)),
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(10))),
+                        border: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(10))),
+                        label: Text("Prix unitaire"),
+                        labelStyle:
+                            TextStyle(fontSize: 13, color: Colors.black),
+                      ),
+                    )),
 
                 //Quantité
                 Container(
@@ -837,10 +662,14 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                     child: TextFormField(
                       keyboardType: TextInputType.number,
                       controller: quantityController,
-                      validator: MultiValidator([
-                        RequiredValidator(
-                            errorText: "Veuillez entrer une quantité")
-                      ]),
+                      validator: (value) {
+                        if (value!.isEmpty) {
+                          return "Veuillez entrer une quantité";
+                        } else if (int.parse(value).toInt() <= 0) {
+                          return "Quantité min: 1";
+                        }
+                        return null;
+                      },
                       autovalidateMode: AutovalidateMode.onUserInteraction,
                       decoration: const InputDecoration(
                         enabledBorder: OutlineInputBorder(
@@ -855,6 +684,16 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                         labelStyle:
                             TextStyle(fontSize: 13, color: Colors.black),
                       ),
+                      onChanged: (value) {
+                        setState(() {
+                          discountController.text = "0";
+                        });
+                        var total = double.parse(priceController.text) *
+                            double.parse(value);
+                        setState(() {
+                          totalController.text = total.toString();
+                        });
+                      },
                     )),
 
                 //Reduction
@@ -865,6 +704,10 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                       keyboardType: TextInputType.number,
                       controller: discountController,
                       autovalidateMode: AutovalidateMode.onUserInteraction,
+                      validator: MultiValidator([
+                        RequiredValidator(
+                            errorText: "Veuillez entrer une valeur")
+                      ]),
                       decoration: const InputDecoration(
                         enabledBorder: OutlineInputBorder(
                             borderSide: BorderSide(
@@ -878,8 +721,409 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                         labelStyle:
                             TextStyle(fontSize: 13, color: Colors.black),
                       ),
-                    ))
+                      onChanged: (value) {
+                        var total = double.parse(priceController.text) *
+                            double.parse(quantityController.text);
+                        var Temp_discount_amount =
+                            (double.parse(value) * total) / 100;
+
+                        var temp_amount = total - Temp_discount_amount;
+
+                        setState(() {
+                          totalController.text = temp_amount.toString();
+                        });
+                        print(totalController.text);
+                      },
+                    )),
+
+                //Total
+                Container(
+                  alignment: Alignment.center,
+                  margin: const EdgeInsets.only(left: 20, right: 20, top: 30),
+                  child: TextFormField(
+                    readOnly: true,
+                    keyboardType: TextInputType.number,
+                    controller: totalController,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    decoration: InputDecoration(
+                      enabledBorder: const OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: Color.fromARGB(255, 45, 157, 220),
+                        ),
+                        borderRadius: BorderRadius.all(
+                          Radius.circular(10),
+                        ),
+                      ),
+                      border: const OutlineInputBorder(
+                        borderRadius: BorderRadius.all(
+                          Radius.circular(10),
+                        ),
+                      ),
+                      label: const Text(
+                        "Total",
+                      ),
+                      labelStyle: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.black,
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[200],
+                      hintStyle: TextStyle(
+                        color: Colors.grey[400],
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 15,
+                      ),
+                    ),
+                  ),
+                )
               ]),
+            )),
+          );
+        });
+  }
+
+  _showFinishFormDialog(BuildContext context) {
+    return showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (param) {
+          return AlertDialog(
+            actions: [
+              TextButton(
+                child: const Text(
+                  'Annuler',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                },
+              ),
+              TextButton(
+                child: const Text('Valider',
+                    style: TextStyle(color: Colors.green)),
+                onPressed: () async {
+                  int compagnie_id = await getCompagnie_id();
+                  int user_id = await getUsersId();
+                 
+                  int? echeance;
+                  if (_echeancePayment != null) {
+                    echeance = int.tryParse(_echeancePayment.toString());
+                  } else {
+                    echeance = null;
+                  }
+                  sells sell = sells(
+                      compagnie_id: compagnie_id,
+                      date_sell: dateController.text,
+                      tax: int.parse(taxController.text),
+                      amount_ht: double.parse(Amount_HTController.text),
+                      amount_ttc: double.parse(Amount_TTC_Controller.text),
+                      user_id: user_id,
+                      client_id: int.parse(client_id.toString()),
+                      payment: _selectedPayment.toString(),
+                      amount_received: double.parse(amountController.text),
+                      echeance: echeance,
+                      discount:  double.parse(discountController.text),
+                      amount: double.parse(Amount_TTC_Controller.text),
+                      sell_lines: sell_lines);
+                  Map<String, dynamic> sellsMap = {
+                    'compagnie_id': sell.compagnie_id,
+                    'date_sell': sell.date_sell,
+                    "tax": sell.tax,
+                    "amount_ht": sell.amount_ht,
+                    "amount_ttc": sell.amount_ttc,
+                    "user_id": sell.user_id,
+                    "client_id": sell.client_id,
+                    "payment": sell.payment,
+                    "amount_received": sell.amount_received,
+                    "echeance": sell.echeance,
+                    "discount": sell.discount,
+                    "amount": sell.amount,
+                    'sell_lines': sell.sell_lines
+                  };
+
+                  createSells(sellsMap);
+                },
+              ),
+            ],
+            title: const Center(child: Text("Solder")),
+            content: SingleChildScrollView(
+                child: Form(
+              key: _formuKey,
+              child: Column(
+                children: [
+                  //Reduction
+                  Container(
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.only(left: 20, right: 20),
+                      child: TextFormField(
+                        keyboardType: TextInputType.number,
+                        controller: discountSellController,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        validator: MultiValidator([
+                          RequiredValidator(
+                              errorText: "Veuillez entrer une valeur")
+                        ]),
+                        decoration: const InputDecoration(
+                          contentPadding:
+                              EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Reduction(%)"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                        onChanged: (value) {
+                          var discount_amount;
+                          setState(() {
+                            taxController.text = 0.toString();
+                          });
+                          var Temp_discount_amount =
+                              (total * double.parse(value)) / 100;
+                          discount_amount = total - Temp_discount_amount;
+
+                          setState(() {
+                            Amount_HTController.text =
+                                discount_amount.toString();
+                          });
+
+                          var Temp_TTC = (discount_amount *
+                                  double.parse(taxController.text)) /
+                              100;
+                          var TTC = Temp_TTC + discount_amount;
+
+                          setState(() {
+                            Amount_TTC_Controller.text = TTC.toString();
+                          });
+                        },
+                      )),
+
+                  //Montant ht
+                  Container(
+                      alignment: Alignment.center,
+                      margin:
+                          const EdgeInsets.only(left: 20, right: 20, top: 20),
+                      child: TextFormField(
+                        keyboardType: TextInputType.number,
+                        readOnly: true,
+                        controller: Amount_HTController,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.grey[200],
+                          hintStyle: TextStyle(
+                            color: Colors.grey[400],
+                          ),
+                          contentPadding:
+                              const EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
+                          enabledBorder: const OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: const OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: const Text("Montant HT"),
+                          labelStyle: const TextStyle(
+                              fontSize: 13, color: Colors.black),
+                        ),
+                      )),
+
+                  //Tax
+                  Container(
+                      alignment: Alignment.center,
+                      margin:
+                          const EdgeInsets.only(left: 20, right: 20, top: 20),
+                      child: TextFormField(
+                        keyboardType: TextInputType.number,
+                        controller: taxController,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        validator: MultiValidator([
+                          RequiredValidator(
+                              errorText: "Veuillez entrer une valeur")
+                        ]),
+                        decoration: const InputDecoration(
+                          contentPadding:
+                              EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Tax(%)"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                        onChanged: (value) {
+                          var Temp_TTC =
+                              (double.parse(Amount_HTController.text) *
+                                      double.parse(taxController.text)) /
+                                  100;
+                          var TTC = (double.parse(Amount_HTController.text)) +
+                              Temp_TTC;
+                          setState(() {
+                            Amount_TTC_Controller.text = TTC.toString();
+                          });
+                        },
+                      )),
+
+                  //Montant ttc
+                  Container(
+                      alignment: Alignment.center,
+                      margin:
+                          const EdgeInsets.only(left: 20, right: 20, top: 20),
+                      child: TextFormField(
+                        keyboardType: TextInputType.number,
+                        readOnly: true,
+                        controller: Amount_TTC_Controller,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        validator: MultiValidator([
+                          RequiredValidator(
+                              errorText: "Veuillez entrer une valeur")
+                        ]),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.grey[200],
+                          hintStyle: TextStyle(
+                            color: Colors.grey[400],
+                          ),
+                          contentPadding:
+                              const EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
+                          enabledBorder: const OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: const OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: const Text("Montant TTC"),
+                          labelStyle: const TextStyle(
+                              fontSize: 13, color: Colors.black),
+                        ),
+                      )),
+
+                  //Moyen de paiment
+                  Container(
+                      margin:
+                          const EdgeInsets.only(left: 20, right: 20, top: 20),
+                      child: DropdownButtonFormField(
+                        isExpanded: true,
+                        validator: (value) => value == null
+                            ? 'Sélectionner un moyen de paiement'
+                            : null,
+                        decoration: const InputDecoration(
+                          contentPadding:
+                              EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Paiement"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                        dropdownColor: Colors.white,
+                        value: _selectedPayment,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedPayment = value as String?;
+                          });
+                        },
+                        items: paiements.map((payment) {
+                          return DropdownMenuItem<String>(
+                            value: payment["name"],
+                            child: Text(payment["name"]),
+                          );
+                        }).toList(),
+                      )),
+
+                  //Echeance
+                  Container(
+                      margin:
+                          const EdgeInsets.only(left: 20, right: 20, top: 20),
+                      child: DropdownButtonFormField(
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          contentPadding:
+                              EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Echéance"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                        dropdownColor: Colors.white,
+                        value: _echeancePayment,
+                        onChanged: (value) {
+                          setState(() {
+                            _echeancePayment = value as String?;
+                          });
+                        },
+                        items: echances.map((echances) {
+                          return DropdownMenuItem<String>(
+                            value: echances["name"],
+                            child: Text(echances["name"]),
+                          );
+                        }).toList(),
+                      )),
+
+                  //Somme perçue
+                  Container(
+                      margin:
+                          const EdgeInsets.only(left: 20, right: 20, top: 20),
+                      child: TextFormField(
+                        keyboardType: TextInputType.number,
+                        controller: amountController,
+                        validator: (value) {
+                          if (value!.isEmpty) {
+                            return "Veuillez entrer un montant";
+                          } else if (double.parse(value).toInt() >
+                              double.parse(Amount_TTC_Controller.text)) {
+                            return """ Montant maximun : ${Amount_TTC_Controller.text} """;
+                          }
+                          return null;
+                        },
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        decoration: const InputDecoration(
+                          contentPadding:
+                              EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color.fromARGB(255, 45, 157, 220)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(10))),
+                          label: Text("Somme reçue"),
+                          labelStyle:
+                              TextStyle(fontSize: 13, color: Colors.black),
+                        ),
+                      )),
+                ],
+              ),
             )),
           );
         });

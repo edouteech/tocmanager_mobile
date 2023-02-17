@@ -5,7 +5,8 @@ class VenteLine extends StatelessWidget {
   final Elements elmt;
   final VoidCallback delete;
   final VoidCallback edit;
-  const VenteLine({Key? key, required this.elmt, required this.delete, required this.edit})
+  const VenteLine(
+      {Key? key, required this.elmt, required this.delete, required this.edit})
       : super(key: key);
 
   @override
@@ -54,17 +55,18 @@ class Elements {
   final int quantity;
   final double price;
   final double amount;
+  final double discount;
   final double amount_after_discount;
   final String date;
   final int compagnie_id;
 
-  Elements({
-    required this.product_id,
-    required this.quantity,
-    required this.price,
-    required this.amount,
-    required this.amount_after_discount,
-    required this.date,
-    required this.compagnie_id
-  });
+  Elements(
+      {required this.product_id,
+      required this.quantity,
+      required this.price,
+      required this.amount,
+      required this.discount,
+      required this.amount_after_discount,
+      required this.date,
+      required this.compagnie_id});
 }

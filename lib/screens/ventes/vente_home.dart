@@ -93,6 +93,7 @@ class _VenteHomeState extends State<VenteHome> {
                       )
                     : SizedBox(
                         width: double.infinity,
+                        height: MediaQuery.of(context).size.height * 0.97,
                         child: SingleChildScrollView(
                           child: PaginatedDataTable(
                             rowsPerPage: 10,
