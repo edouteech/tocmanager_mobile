@@ -1,8 +1,8 @@
-
 // ignore_for_file: non_constant_identifier_names
 
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:tocmanager/models/api_response.dart';
 import 'package:tocmanager/services/constant.dart';
 import 'package:http/http.dart' as http;
@@ -23,7 +23,6 @@ Future<ApiResponse> ReadEncaissements(int compagnie_id, int sell_id) async {
         apiResponse.statusCode = response.statusCode;
         apiResponse.data = response.body;
         apiResponse.data = jsonDecode(response.body)['data']['data'] as List;
-        
 
         break;
       case 422:
@@ -41,6 +40,51 @@ Future<ApiResponse> ReadEncaissements(int compagnie_id, int sell_id) async {
     }
   } catch (e) {
     apiResponse.error = serverError;
+  }
+
+  return apiResponse;
+}
+
+//create sells
+Future<ApiResponse> CreateEncaissement(
+    Map<String, dynamic> encaissement, int compagnie_id, int sell_id) async {
+  dynamic body = json.encode(encaissement);
+  print(body);
+
+  ApiResponse apiResponse = ApiResponse();
+
+  Dio dio = Dio();
+  String token = await getToken();
+  final response = await dio.post(
+      "$encaissementsURL?compagnie_id=$compagnie_id&sell_id=$sell_id",
+      options: Options(headers: {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token'
+      }),
+      data: body);
+  switch (response.statusCode) {
+    case 200:
+      if (response.data['status'] == "success") {
+        apiResponse.statusCode = response.statusCode;
+        apiResponse.status = response.data['status'];
+        apiResponse.message = response.data['message'];
+      } else {
+        apiResponse.statusCode = response.statusCode;
+        apiResponse.status = response.data['status'];
+        apiResponse.message = response.data['message'];
+      }
+      break;
+    case 403:
+      apiResponse.error = response.data['message'];
+      apiResponse.statusCode = response.statusCode;
+      break;
+    case 500:
+      apiResponse.error = response.data['message'];
+      apiResponse.statusCode = response.statusCode;
+      break;
+    default:
+      apiResponse.error = somethingWentWrong;
+      break;
   }
 
   return apiResponse;

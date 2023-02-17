@@ -354,12 +354,12 @@ class _VenteHomeState extends State<VenteHome> {
   }
 
   //send to collection page
-  void collection(int sell_id, double reste) {
+  void collection(int sell_id) {
     nextScreen(
         context,
         EncaissementPage(
           sell_id: sell_id,
-          reste: reste,
+         
         ));
   }
 
@@ -378,7 +378,7 @@ class DataTableRow extends DataTableSource {
   final Function(int) onDelete;
   final Function(int) onEdit;
   final Function(int) onDetails;
-  final Function(int, double) oncollection;
+  final Function(int) oncollection;
   DataTableRow(
       {required this.data,
       required this.onDelete,
@@ -436,7 +436,7 @@ class DataTableRow extends DataTableSource {
                 color: Colors.green[700],
               ),
               onPressed: () async {
-                oncollection(sell.id, sell.reste);
+                oncollection(sell.id);
               }),
         ))
       ],
