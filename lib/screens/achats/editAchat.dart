@@ -378,15 +378,17 @@ class _EditAchatPageState extends State<EditAchatPage> {
                             if (sum != 0.0) {
                               if (_buy_lineFormkey.currentState!.validate()) {
                                 if (_buyformKey.currentState!.validate()) {
-                                  _showFinishFormDialog(context);
                                   setState(() {
-                                    amountController.text = 0.toString();
                                     _selectedPayment = "ESPECES";
                                     discountBuyController.text = 0.toString();
                                     taxController.text = 0.toString();
                                     total = sum;
-                                    totalController.text = total.toString();
+                                    amountController.text = 0.toString();
+                                    Amount_HTController.text = total.toString();
+                                    Amount_TTC_Controller.text =
+                                        total.toString();
                                   });
+                                  _showFinishFormDialog(context);
                                 }
                               }
                             } else {
@@ -466,9 +468,9 @@ class _EditAchatPageState extends State<EditAchatPage> {
                   buyso buy = buyso(
                       compagnie_id: compagnie_id,
                       date_buy: dateController.text,
-                      tax: Temp_tax_amount,
-                      discount: Temp_discount_amount,
-                      amount: double.parse(totalController.text),
+                      tax: double.parse(taxController.text),
+                      discount: double.parse(discountBuyController.text),
+                      amount: double.parse(Amount_TTC_Controller.text),
                       user_id: user_id,
                       supplier_id: int.parse(supplier_id.toString()),
                       amount_sent: double.parse(amountController.text),
@@ -987,6 +989,7 @@ class _EditAchatPageState extends State<EditAchatPage> {
         setState(() {
           elements.clear();
           sum = 0.0;
+          buy_lines = [];
           _buy_lineFormkey.currentState?.reset();
           _buyformKey.currentState?.reset();
         });

@@ -1,6 +1,7 @@
 // ignore_for_file: avoid_print, depend_on_referenced_packages, non_constant_identifier_names
 
 import 'package:flutter/material.dart';
+import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/achats/printachatpage.dart';
 import 'package:tocmanager/services/buys_service.dart';
 import '../../database/sqfdb.dart';
@@ -75,10 +76,7 @@ class _AchatDetailsState extends State<AchatDetails> {
               icon: const Icon(Icons.arrow_back, color: Colors.black),
               onPressed: () => Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(
-                    builder: (context) => PrintPageAchat(
-                          buy_id: widget.buy_id,
-                        )),
+                MaterialPageRoute(builder: (context) => const AchatHomePage()),
                 (Route<dynamic> route) => false,
               ),
             ),

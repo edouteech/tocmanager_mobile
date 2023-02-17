@@ -25,8 +25,9 @@ class PrintPageAchat extends StatefulWidget {
   @override
   State<PrintPageAchat> createState() => _PrintPageAchatState();
 }
-  List buyline = [];
-  List buys = [];
+
+List buyline = [];
+List buys = [];
 
 class _PrintPageAchatState extends State<PrintPageAchat> {
   @override
@@ -34,7 +35,6 @@ class _PrintPageAchatState extends State<PrintPageAchat> {
     super.initState();
     readBuysData();
   }
-
 
   Future<void> readBuysData() async {
     int compagnie_id = await getCompagnie_id();
@@ -191,7 +191,7 @@ class _PrintPageAchatState extends State<PrintPageAchat> {
     _goBack();
   }
 
-   void _goBack() {
+  void _goBack() {
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
@@ -199,7 +199,7 @@ class _PrintPageAchatState extends State<PrintPageAchat> {
                 buy_id: widget.buy_id,
               )),
       (Route<dynamic> route) => false,
-    ); 
+    );
   }
 
   @override
@@ -207,12 +207,22 @@ class _PrintPageAchatState extends State<PrintPageAchat> {
     return Scaffold(
       backgroundColor: Colors.grey[300],
       appBar: AppBar(
+          automaticallyImplyLeading: false,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () => Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => AchatDetails(buy_id: widget.buy_id)),
+              (Route<dynamic> route) => false,
+            ),
+          ),
           centerTitle: true,
           backgroundColor: Colors.grey[100],
           iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
           title: const Text(
-            'Appareil Disponibles',
-            style: TextStyle(color: Colors.black, fontFamily: 'RobotoMono'),
+            'Appareils disponibles',
+            style: TextStyle(fontFamily: 'Oswald', color: Colors.black),
           )),
       body: SafeArea(
         child: _isLoading && _blueDevices.isEmpty
