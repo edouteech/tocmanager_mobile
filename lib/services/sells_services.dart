@@ -176,8 +176,7 @@ Future<ApiResponse> DetailsSells(int compagnie_id, int sell_id) async {
 Future<ApiResponse> UpdateSells(
     Map<String, dynamic> ventes, int sell_id) async {
   dynamic body = json.encode(ventes);
-
-
+  print(body);
 
   ApiResponse apiResponse = ApiResponse();
 

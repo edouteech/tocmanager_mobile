@@ -426,6 +426,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
   void createSells(Map<String, dynamic> ventes) async {
     bool _sendMessage = false;
     String? message;
+    print(ventes);
 
     ApiResponse response = await CreateSells(ventes);
 
@@ -436,7 +437,10 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
           sum = 0.0;
           _sell_lineFormkey.currentState?.reset();
           _sellsformKey.currentState?.reset();
+          sell_lines = [];
+         
         });
+         print(ventes);
         Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const VenteHome()));
       } else {
@@ -605,6 +609,8 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                         validator: (value) =>
                             value == null ? 'Sélectionner un produit' : null,
                         decoration: const InputDecoration(
+                          contentPadding:
+                              EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
                           enabledBorder: OutlineInputBorder(
                               borderSide: BorderSide(
                                   color: Color.fromARGB(255, 45, 157, 220)),
@@ -641,6 +647,8 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                       controller: priceController,
                       autovalidateMode: AutovalidateMode.onUserInteraction,
                       decoration: const InputDecoration(
+                        contentPadding:
+                            EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
                         enabledBorder: OutlineInputBorder(
                             borderSide: BorderSide(
                                 color: Color.fromARGB(255, 45, 157, 220)),
@@ -672,6 +680,8 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                       },
                       autovalidateMode: AutovalidateMode.onUserInteraction,
                       decoration: const InputDecoration(
+                        contentPadding:
+                            EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
                         enabledBorder: OutlineInputBorder(
                             borderSide: BorderSide(
                                 color: Color.fromARGB(255, 45, 157, 220)),
@@ -709,6 +719,8 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                             errorText: "Veuillez entrer une valeur")
                       ]),
                       decoration: const InputDecoration(
+                        contentPadding:
+                            EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
                         enabledBorder: OutlineInputBorder(
                             borderSide: BorderSide(
                                 color: Color.fromARGB(255, 45, 157, 220)),
@@ -771,10 +783,8 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                       hintStyle: TextStyle(
                         color: Colors.grey[400],
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 10,
-                        horizontal: 15,
-                      ),
+                      contentPadding:
+                          const EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
                     ),
                   ),
                 )
@@ -806,7 +816,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                 onPressed: () async {
                   int compagnie_id = await getCompagnie_id();
                   int user_id = await getUsersId();
-                 
+
                   int? echeance;
                   if (_echeancePayment != null) {
                     echeance = int.tryParse(_echeancePayment.toString());
@@ -824,7 +834,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                       payment: _selectedPayment.toString(),
                       amount_received: double.parse(amountController.text),
                       echeance: echeance,
-                      discount:  double.parse(discountController.text),
+                      discount: double.parse(discountSellController.text),
                       amount: double.parse(Amount_TTC_Controller.text),
                       sell_lines: sell_lines);
                   Map<String, dynamic> sellsMap = {

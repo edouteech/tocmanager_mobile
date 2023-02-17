@@ -5,9 +5,13 @@ import 'package:flutter/material.dart';
 class AjouterLine extends StatelessWidget {
   final Elements elmt;
   final VoidCallback delete;
-    final VoidCallback edit;
+  final VoidCallback edit;
 
-  const AjouterLine({super.key, required this.elmt, required this.delete, required this.edit});
+  const AjouterLine(
+      {super.key,
+      required this.elmt,
+      required this.delete,
+      required this.edit});
 
   @override
   Widget build(BuildContext context) {
@@ -55,15 +59,15 @@ class Elements {
   final int quantity;
   final double price;
   final double amount;
+
   final String date;
   final int compagnie_id;
 
-  Elements({
-    required this.product_id,
-    required this.quantity,
-    required this.price,
-    required this.amount,
-    required this.date,
-    required this.compagnie_id
-  });
+  Elements(
+      {required this.product_id,
+      required this.quantity,
+      required this.price,
+      required this.amount,
+      required this.date,
+      required this.compagnie_id});
 }
