@@ -1,4 +1,4 @@
-// ignore_for_file: unnecessary_this, sized_box_for_whitespace, avoid_print, use_build_context_synchronously, non_constant_identifier_names
+// ignore_for_file: unnecessary_this, sized_box_for_whitespace, avoid_print, use_build_context_synchronously, non_constant_identifier_names, unused_local_variable
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:tocmanager/models/Products.dart';
@@ -21,7 +21,7 @@ List<dynamic> products = [];
 
 class _ProduitListPageState extends State<ProduitListPage> {
   bool isNotSuscribe = false;
-  bool isLoading = true;
+  bool? isLoading;
 
   /*List of categories */
   List<dynamic> categories = [];
@@ -67,9 +67,6 @@ class _ProduitListPageState extends State<ProduitListPage> {
       if (response.statusCode == 200) {
         List<dynamic> data = response.data as List<dynamic>;
         categories = data.map((p) => Category.fromJson(p)).toList();
-        setState(() {
-          isLoading = true;
-        });
       }
     } else {
       if (response.statusCode == 403) {
@@ -79,7 +76,6 @@ class _ProduitListPageState extends State<ProduitListPage> {
       }
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +90,6 @@ class _ProduitListPageState extends State<ProduitListPage> {
                     width: double.infinity,
                     child: SingleChildScrollView(
                       child: PaginatedDataTable(
-                        
                         columns: const [
                           DataColumn(label: Center(child: Text("Name"))),
                           DataColumn(label: Center(child: Text("Categorie"))),
@@ -112,7 +107,6 @@ class _ProduitListPageState extends State<ProduitListPage> {
                             data: products,
                             onDelete: _deleteProducts,
                             onEdit: _showFormDialog),
-                        
                       ),
                     ),
                   ),
@@ -141,22 +135,68 @@ class _ProduitListPageState extends State<ProduitListPage> {
   }
 
   //delete products
-  _deleteProducts(int? produit_id) async {
+  void _deleteProducts(int? produit_id) async {
     int compagnie_id = await getCompagnie_id();
+    bool sendMessage = false;
+    String? message;
+    String color = "red";
     ApiResponse response = await DeleteProducts(compagnie_id, produit_id);
     if (response.error == null) {
       if (response.statusCode == 200) {
         if (response.status == "success") {
           Navigator.of(context).pushReplacement(MaterialPageRoute(
               builder: (context) => const AjouterProduitPage()));
+          message = "Le produit a été supprimé avec succès";
+          setState(() {
+            sendMessage = true;
+            color = "green";
+          });
+        } else {
+          message = "La suppression a échouée";
+          setState(() {
+            sendMessage = true;
+          });
         }
       }
     } else {
       if (response.statusCode == 403) {
+        message = "Vous n'êtes pas autorisé à effectuer cette action";
         setState(() {
-          isNotSuscribe = true;
+          sendMessage = true;
+        });
+      } else if (response.statusCode == 500) {
+        print(response.statusCode);
+        message = "La suppression a échouée !";
+        setState(() {
+          sendMessage = true;
+        });
+      } else {
+        message = "La suppression a échouée";
+        setState(() {
+          sendMessage = true;
         });
       }
+    }
+
+    if (sendMessage == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor:
+              color == "green" ? Colors.green[900] : Colors.red[900],
+          content: SizedBox(
+            width: double.infinity,
+            height: 20,
+            child: Center(
+              child: Text(
+                message!,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+          duration: const Duration(milliseconds: 2000),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -202,7 +242,19 @@ class _ProduitListPageState extends State<ProduitListPage> {
                       style: TextStyle(color: Colors.green)),
                   onPressed: () async {
                     if (_formKey.currentState!.validate()) {
-                      // createProducts();
+                      int compagnie_id = await getCompagnie_id();
+                      Map<String, dynamic> produitMap = {
+                        'compagnie_id': compagnie_id.toString(),
+                        'category_id':null,
+                        'name': name.text,
+                        'quantity': quantity.text,
+                        'price_sell': price_sell.text,
+                        'price_buy': price_buy.text,
+                        'stock_min': stock_min.text,
+                        'stock_max': stock_max.text,
+                        'code': code.text
+                      };
+                      updateProducts(produitMap, update_product_id);
                     }
                   },
                 ),
@@ -454,6 +506,26 @@ class _ProduitListPageState extends State<ProduitListPage> {
             ));
       },
     );
+  }
+
+  void updateProducts(products, product_id) async {
+    print(products);
+    ApiResponse response = await UpdateProducts(products, product_id);
+    if (response.error == null) {
+      if (response.statusCode == 200) {
+        if (response.status == "error") {
+          String? message = response.message;
+        } else {
+          Navigator.of(context).pushReplacement(MaterialPageRoute(
+              builder: (context) => const AjouterProduitPage()));
+        }
+      }
+    } else {
+      if (response.statusCode == 403) {
+      } else {
+        print(response.error);
+      }
+    }
   }
 }
 

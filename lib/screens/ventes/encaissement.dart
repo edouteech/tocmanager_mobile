@@ -112,6 +112,7 @@ class _EncaissementPageState extends State<EncaissementPage> {
                       ],
                       source: EncaissementsDataTableRow(
                         data: encaissements,
+                        onDelete: onDelete
                       ),
                     ),
                   ),
@@ -358,14 +359,79 @@ class _EncaissementPageState extends State<EncaissementPage> {
       }
     }
   }
+
+
+    void onDelete(int encaissement_id, int sell_id) async {
+    bool sendMessage = false;
+    int compagnie_id = await getCompagnie_id();
+    String? message;
+    String color = "red";
+    ApiResponse response =
+        await DeleteEncaissement(compagnie_id, encaissement_id);
+    if (response.statusCode == 200) {
+      if (response.status == "success") {
+        Navigator.of(context).pushReplacement(MaterialPageRoute(
+            builder: (context) =>  EncaissementPage(
+                  sell_id: sell_id,
+                )));
+
+        message = "Supprimé avec succès";
+        setState(() {
+          sendMessage = true;
+          color = "green";
+        });
+      } else {
+        message = "La suppression a échouée";
+        setState(() {
+          sendMessage = true;
+        });
+      }
+    } else if (response.statusCode == 403) {
+      message = "Vous n'êtes pas autorisé à effectuer cette action";
+      setState(() {
+        sendMessage = true;
+      });
+    } else if (response.statusCode == 500) {
+      print(response.statusCode);
+      message = "La suppression a échouée !";
+      setState(() {
+        sendMessage = true;
+      });
+    } else {
+      message = "La suppression a échouée !";
+      setState(() {
+        sendMessage = true;
+      });
+    }
+    if (sendMessage == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor:
+              color == "green" ? Colors.green[800] : Colors.red[800],
+          content: SizedBox(
+            width: double.infinity,
+            height: 20,
+            child: Center(
+              child: Text(
+                message,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+          duration: const Duration(milliseconds: 2000),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
 }
 
 class EncaissementsDataTableRow extends DataTableSource {
   final List<dynamic> data;
-  // final Function(int) onDelete;
+   final Function(int, int) onDelete;
   // final Function(int) onEdit;
 
-  EncaissementsDataTableRow({required this.data});
+  EncaissementsDataTableRow({required this.data, required this.onDelete});
 
   @override
   DataRow getRow(int index) {
@@ -396,7 +462,7 @@ class EncaissementsDataTableRow extends DataTableSource {
                 color: Colors.red,
               ),
               onPressed: () async {
-                // onDelete(encaissement.id);
+               onDelete(encaissement.id, encaissement.sell_id);
               }),
         )),
       ],

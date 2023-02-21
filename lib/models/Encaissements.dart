@@ -10,6 +10,7 @@ class Encaissements {
   String client_name;
 
   String payment_method;
+  int sell_id;
   String created_at;
   String updated_at;
   Encaissements(
@@ -21,6 +22,7 @@ class Encaissements {
       required this.reference,
       required this.client_name,
       required this.payment_method,
+      required this.sell_id,
       required this.created_at,
       required this.updated_at});
 
@@ -34,6 +36,7 @@ class Encaissements {
       reference: json['reference'],
       client_name: json['client']['name'],
       payment_method: json['payment_method'],
+      sell_id: json['sell_id'],
       created_at: json['created_at'],
       updated_at: json['updated_at'],
     );

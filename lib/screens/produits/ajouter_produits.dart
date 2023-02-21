@@ -4,7 +4,6 @@ import 'package:form_field_validator/form_field_validator.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
-import '../../database/sqfdb.dart';
 import '../../models/Category.dart';
 import '../../models/api_response.dart';
 import '../../services/auth_service.dart';
@@ -29,13 +28,12 @@ class AjouterProduitPage extends StatefulWidget {
 class _AjouterProduitPageState extends State<AjouterProduitPage> {
   bool isNotSuscribe = false;
   String? message;
-  bool? isLoading;
+
   //Form key
   final _formKey = GlobalKey<FormState>();
   AuthService authService = AuthService();
   var currentPage = DrawerSections.produit;
-  /* Database*/
-  SqlDb sqlDb = SqlDb();
+
 
   /*List of categories */
   List<dynamic> categories = [];
@@ -521,12 +519,9 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
     int compagnie_id = await getCompagnie_id();
     ApiResponse response = await ReadCategories(compagnie_id);
     if (response.error == null) {
-      if (response.statusCode == 200) {
+            if (response.statusCode == 200) {
         List<dynamic> data = response.data as List<dynamic>;
         categories = data.map((p) => Category.fromJson(p)).toList();
-        setState(() {
-          isLoading = true;
-        });
       }
     } else {
       if (response.statusCode == 403) {

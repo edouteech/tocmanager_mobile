@@ -38,7 +38,6 @@ List<dynamic> sell_lines = [];
 double? discount_amount;
 
 class _AjouterVentePageState extends State<AjouterVentePage> {
-  bool isLoading = true;
   AuthService authService = AuthService();
   final format = DateFormat("yyyy-MM-dd HH:mm:ss");
 
@@ -426,8 +425,6 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
   void createSells(Map<String, dynamic> ventes) async {
     bool _sendMessage = false;
     String? message;
-    print(ventes);
-
     ApiResponse response = await CreateSells(ventes);
 
     if (response.statusCode == 200) {
@@ -438,9 +435,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
           _sell_lineFormkey.currentState?.reset();
           _sellsformKey.currentState?.reset();
           sell_lines = [];
-         
         });
-         print(ventes);
         Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const VenteHome()));
       } else {

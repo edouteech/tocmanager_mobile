@@ -45,7 +45,7 @@ Future<ApiResponse> ReadEncaissements(int compagnie_id, int sell_id) async {
   return apiResponse;
 }
 
-//create sells
+//create encaissement
 Future<ApiResponse> CreateEncaissement(
     Map<String, dynamic> encaissement, int compagnie_id, int sell_id) async {
   dynamic body = json.encode(encaissement);
@@ -89,3 +89,45 @@ Future<ApiResponse> CreateEncaissement(
 
   return apiResponse;
 }
+
+//delete encaissement
+Future<ApiResponse> DeleteEncaissement(int compagnie_id, int sell_id)async{
+   ApiResponse apiResponse = ApiResponse();
+
+  Dio dio = Dio();
+  String token = await getToken();
+  final response = await dio.delete(
+    "$encaissementsURL/$sell_id?compagnie_id=$compagnie_id",
+    options: Options(headers: {
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $token'
+    }),
+  );
+  switch (response.statusCode) {
+    case 200:
+      if (response.data['status'] == "success") {
+        apiResponse.statusCode = response.statusCode;
+        apiResponse.status = response.data['status'];
+        apiResponse.message = response.data['message'];
+      } else {
+        apiResponse.statusCode = response.statusCode;
+        apiResponse.status = response.data['status'];
+        apiResponse.message = response.data['message'];
+      }
+      break;
+    case 403:
+      apiResponse.error = response.data['message'];
+      apiResponse.statusCode = response.statusCode;
+      break;
+    case 500:
+      apiResponse.error = response.data['message'];
+      apiResponse.statusCode = response.statusCode;
+      break;
+    default:
+      apiResponse.error = somethingWentWrong;
+      break;
+  }
+
+  return apiResponse;
+}
+

@@ -9,6 +9,7 @@ class Decaissements {
   String reference;
   String supplier_name;
   String payment_method;
+  int buy_id;
   String created_at;
   String updated_at;
   Decaissements(
@@ -20,6 +21,7 @@ class Decaissements {
       required this.reference,
       required this.supplier_name,
       required this.payment_method,
+      required this.buy_id,
       required this.created_at,
       required this.updated_at});
 
@@ -33,6 +35,7 @@ class Decaissements {
       reference: json['reference'],
       supplier_name: json['supplier']['name'],
       payment_method: json['payment_method'],
+      buy_id: json['buy_id'],
       created_at: json['created_at'],
       updated_at: json['updated_at'],
     );

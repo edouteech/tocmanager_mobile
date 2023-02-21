@@ -32,7 +32,7 @@ List<dynamic> buys = [];
 
 class _AchatHomePageState extends State<AchatHomePage> {
   bool isNotSuscribe = false;
-  bool isLoading = true;
+  bool? isLoading;
   /* =============================Buys=================== */
   /* List products */
 
@@ -262,6 +262,9 @@ class _AchatHomePageState extends State<AchatHomePage> {
     int compagnie_id = await getCompagnie_id();
     ApiResponse response = await ReadBuys(compagnie_id);
     if (response.error == null) {
+       setState(() {
+          isLoading = true;
+        });
       if (response.statusCode == 200) {
         List<dynamic> data = response.data as List<dynamic>;
         buys = data.map((p) => Buys.fromJson(p)).toList();
@@ -355,7 +358,7 @@ class _AchatHomePageState extends State<AchatHomePage> {
         context,
         DecaissementPage(
           buy_id: sell_id,
-          reste: reste,
+          
         ));
   }
 

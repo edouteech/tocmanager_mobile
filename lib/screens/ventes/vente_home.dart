@@ -34,7 +34,7 @@ List<dynamic> sells = [];
 
 class _VenteHomeState extends State<VenteHome> {
   bool isNotSuscribe = false;
-  bool isLoading = true;
+  bool? isLoading;
 
   var currentPage = DrawerSections.vente;
   AuthService authService = AuthService();
@@ -266,6 +266,9 @@ class _VenteHomeState extends State<VenteHome> {
     int compagnie_id = await getCompagnie_id();
     ApiResponse response = await ReadSells(compagnie_id);
     if (response.error == null) {
+       setState(() {
+          isLoading = true;
+        });
       if (response.statusCode == 200) {
         List<dynamic> data = response.data as List<dynamic>;
         sells = data.map((p) => Sells.fromJson(p)).toList();

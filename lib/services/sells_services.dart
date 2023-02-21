@@ -176,10 +176,7 @@ Future<ApiResponse> DetailsSells(int compagnie_id, int sell_id) async {
 Future<ApiResponse> UpdateSells(
     Map<String, dynamic> ventes, int sell_id) async {
   dynamic body = json.encode(ventes);
-  print(body);
-
   ApiResponse apiResponse = ApiResponse();
-
   Dio dio = Dio();
   String token = await getToken();
   final response = await dio.put('$sellsURL/$sell_id',
@@ -188,7 +185,6 @@ Future<ApiResponse> UpdateSells(
         'Authorization': 'Bearer $token'
       }),
       data: body);
-  print(response.statusCode);
   switch (response.statusCode) {
     case 200:
       if (response.data['status'] == "success") {

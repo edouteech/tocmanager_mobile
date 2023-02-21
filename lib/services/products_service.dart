@@ -7,6 +7,7 @@ import 'package:tocmanager/models/api_response.dart';
 import 'package:tocmanager/services/constant.dart';
 import 'package:tocmanager/services/user_service.dart';
 import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 
 //read products
 Future<ApiResponse> ReadProducts(
@@ -20,7 +21,7 @@ Future<ApiResponse> ReadProducts(
       Uri.parse('$productsURL?compagnie_id=$compagnie_id&is_paginated=0'),
       headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
     );
-    
+
     switch (response.statusCode) {
       case 200:
         apiResponse.statusCode = response.statusCode;
@@ -190,6 +191,58 @@ Future<ApiResponse> ReadProductbyId(int compagnie_id, int? product_id) async {
     }
   } catch (e) {
     apiResponse.error = serverError;
+  }
+
+  return apiResponse;
+}
+
+//update product
+Future<ApiResponse> UpdateProducts(
+    Map<String, dynamic> products, int product_id) async {
+       Dio dio = Dio();
+  dynamic body = json.encode(products);
+  ApiResponse apiResponse = ApiResponse();
+
+ 
+  String token = await getToken();
+  try {
+    final response = await dio.put('$productsURL/$product_id',
+        options: Options(headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token'
+        }),
+        data: body);
+    print(response.statusCode);
+
+    switch (response.statusCode) {
+      case 200:
+        if (jsonDecode(response.data)['status'] == 'error') {
+          apiResponse.message = jsonDecode(response.data)['message'];
+          print(apiResponse.message);
+          apiResponse.status = jsonDecode(response.data)['status'];
+        } else {
+          apiResponse.statusCode = response.statusCode;
+          apiResponse.data = jsonDecode(response.data);
+          apiResponse.status = jsonDecode(response.data)['status'];
+        }
+
+        break;
+      case 422:
+        final errors = jsonDecode(response.data)['errors'];
+        apiResponse.error = errors[errors.keys.elementAt(0)][0];
+        apiResponse.statusCode = response.statusCode;
+        break;
+      case 403:
+        apiResponse.error = jsonDecode(response.data)['message'];
+        apiResponse.statusCode = response.statusCode;
+        break;
+      default:
+        apiResponse.error = somethingWentWrong;
+        break;
+    }
+  } catch (e) {
+    print(e);
+    // apiResponse.error = serverError;
   }
 
   return apiResponse;
