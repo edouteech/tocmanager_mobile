@@ -4,9 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:intl/intl.dart';
 import 'package:tocmanager/screens/categories/ajouter_categorie.dart';
-import 'package:tocmanager/screens/produits/ajouter_produits.dart';
 import 'package:tocmanager/services/categorie_service.dart';
-
 import '../../models/Category.dart';
 import '../../models/api_response.dart';
 import '../../services/user_service.dart';
@@ -25,7 +23,7 @@ List<dynamic> categories = [];
 
 class _CategoriesListState extends State<CategoriesList> {
   bool isNotSuscribe = false;
-  bool isLoading = true;
+  bool isLoading = false;
   //Fields Controller
   TextEditingController name = TextEditingController();
   //Form key
@@ -41,7 +39,11 @@ class _CategoriesListState extends State<CategoriesList> {
   Future<void> readCategories() async {
     int compagnie_id = await getCompagnie_id();
     ApiResponse response = await ReadCategories(compagnie_id);
+
     if (response.error == null) {
+      setState(() {
+        isLoading = true;
+      });
       if (response.statusCode == 200) {
         List<dynamic> data = response.data as List<dynamic>;
         categories = data.map((p) => Category.fromJson(p)).toList();
@@ -134,10 +136,9 @@ class _CategoriesListState extends State<CategoriesList> {
       if (response.statusCode == 200) {
         if (response.status == "error") {
           String? message = response.message;
-          
         } else {
           Navigator.of(context).pushReplacement(MaterialPageRoute(
-              builder: (context) => const AjouterProduitPage()));
+              builder: (context) => const AjouterCategoriePage()));
         }
       }
     } else {
