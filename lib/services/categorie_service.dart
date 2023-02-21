@@ -48,7 +48,7 @@ Future<ApiResponse> ReadCategories(
 
 //create categories
 Future<ApiResponse> CreateCategories(
-    String compagnie_id, String name, String? parent_id) async {
+    String compagnie_id, String name, String? parent_id,) async {
   ApiResponse apiResponse = ApiResponse();
 
   try {

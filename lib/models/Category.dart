@@ -8,6 +8,7 @@ class Category {
   String? updated_at;
   dynamic sum_products;
   String? compagnie_parent;
+  
   Category(
       {this.id,
       this.name,

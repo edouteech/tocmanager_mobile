@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:intl/intl.dart';
-import 'package:tocmanager/database/sqfdb.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/categories/categorielist.dart';
 import 'package:tocmanager/screens/clients/ajouter_client.dart';
@@ -13,7 +12,6 @@ import 'package:tocmanager/screens/suscribe_screen/suscribe_screen.dart';
 import 'package:tocmanager/services/user_service.dart';
 import '../../models/Category.dart';
 import '../../models/api_response.dart';
-import '../../services/auth_service.dart';
 import '../../services/categorie_service.dart';
 import '../../widgets/widgets.dart';
 import '../home_page.dart';
@@ -37,8 +35,6 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
   String? message;
   bool? isLoading;
 
-  /* Read data for database */
-
   @override
   void initState() {
     super.initState();
@@ -60,8 +56,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
 
   //Fields Controller
   TextEditingController name = TextEditingController();
-  //Auth service
-  AuthService authService = AuthService();
+ 
   //Current page
   var currentPage = DrawerSections.categorie;
   String? verif;
@@ -192,11 +187,13 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
                         ),
                         IconButton(
                           onPressed: () async {
-                            await authService.signOut();
-                            Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(
-                                    builder: (context) => const LoginPage()),
-                                (route) => false);
+                           logout().then((value) => {
+                                  Navigator.of(context).pushAndRemoveUntil(
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const LoginPage()),
+                                      (route) => false)
+                                });
                           },
                           icon: const Icon(
                             Icons.done,

@@ -49,7 +49,6 @@ Future<ApiResponse> ReadEncaissements(int compagnie_id, int sell_id) async {
 Future<ApiResponse> CreateEncaissement(
     Map<String, dynamic> encaissement, int compagnie_id, int sell_id) async {
   dynamic body = json.encode(encaissement);
-  print(body);
 
   ApiResponse apiResponse = ApiResponse();
 

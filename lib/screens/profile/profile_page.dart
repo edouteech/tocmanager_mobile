@@ -1,10 +1,8 @@
 // ignore_for_file: use_build_context_synchronously, must_be_immutable, deprecated_member_use, non_constant_identifier_names, avoid_print, prefer_typing_uninitialized_variables
 import 'package:flutter/material.dart';
 import 'package:tocmanager/models/api_response.dart';
-import 'package:tocmanager/screens/profile/update_page.dart';
 import 'package:tocmanager/screens/profile/update_password.dart';
 import 'package:tocmanager/services/user_service.dart';
-import '../../services/auth_service.dart';
 import '../../widgets/widgets.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -47,7 +45,6 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  AuthService authService = AuthService();
   @override
   Widget build(BuildContext context) {
     return Scaffold(

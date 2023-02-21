@@ -28,19 +28,10 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    // getUserLoggedInStatus();
     _loadUserInfo();
   }
 
-  // getUserLoggedInStatus() async {
-  //   await HelperFunctions.getUserLoggedInStatus().then((value) {
-  //     if (value != null) {
-  //       setState(() {
-  //         _isSignedIn = value;
-  //       });
-  //     }
-  //   });
-  // }
+
 
   _loadUserInfo() async {
     String token = await getToken();

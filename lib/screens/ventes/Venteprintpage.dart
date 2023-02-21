@@ -1,8 +1,7 @@
-// ignore_for_file: non_constant_identifier_names, avoid_print, library_prefixes, depend_on_referenced_packages
+// ignore_for_file: non_constant_identifier_names, avoid_print, library_prefixes, depend_on_referenced_packages, file_names
 import 'dart:io';
 import 'package:tocmanager/screens/ventes/details_vente.dart';
 import 'package:tocmanager/services/sells_services.dart';
-import '../../database/sqfdb.dart';
 import 'package:blue_print_pos/blue_print_pos.dart';
 import 'package:blue_print_pos/models/blue_device.dart';
 import 'package:blue_print_pos/models/connection_status.dart';

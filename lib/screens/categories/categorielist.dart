@@ -86,7 +86,10 @@ class _CategoriesListState extends State<CategoriesList> {
                     width: double.infinity,
                     child: SingleChildScrollView(
                       child: PaginatedDataTable(
-                        onRowsPerPageChanged: (perPage) {},
+                       
+                        onRowsPerPageChanged: (perPage) {
+
+                        },
                         rowsPerPage: 10,
                         columns: const [
                           DataColumn(label: Center(child: Text("Date"))),

@@ -7,7 +7,6 @@ import 'package:tocmanager/widgets/widgets.dart';
 
 import '../../models/Users.dart';
 import '../../models/api_response.dart';
-import '../../services/auth_service.dart';
 import '../../services/user_service.dart';
 import '../home_page.dart';
 import 'register_page.dart';
@@ -25,7 +24,7 @@ class _LoginPageState extends State<LoginPage> {
   String email = "";
   String password = "";
   bool _isLoading = false;
-  AuthService authService = AuthService();
+
   @override
   void initState() {
     if (widget.email != null) {

@@ -165,7 +165,6 @@ Future<ApiResponse> DetailsBuys(int compagnie_id, int buy_id) async {
         break;
     }
   } catch (e) {
-    print(e);
     apiResponse.error = serverError;
   }
 
@@ -189,7 +188,6 @@ Future<ApiResponse> UpdateBuys(
         'Authorization': 'Bearer $token'
       }),
       data: body);
-  print(response.statusCode);
   switch (response.statusCode) {
     case 200:
       if (response.data['status'] == "success") {

@@ -6,13 +6,10 @@ import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/profile/profile_page.dart';
 import 'package:tocmanager/screens/suscribe_screen/suscribe_screen.dart';
+import 'package:tocmanager/screens/ventes/ajouter_vente.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 import 'package:tocmanager/services/user_service.dart';
-import '../database/sqfdb.dart';
-import '../helper/helper_function.dart';
-import '../models/Users.dart';
 import '../models/api_response.dart';
-import '../services/auth_service.dart';
 import '../services/categorie_service.dart';
 import '../widgets/widgets.dart';
 import 'categories/ajouter_categorie.dart';
@@ -31,10 +28,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  SqlDb sqlDb = SqlDb();
   bool isNotSuscribe = false;
-
-  AuthService authService = AuthService();
 
   @override
   void initState() {
@@ -46,7 +40,7 @@ class _HomePageState extends State<HomePage> {
   Future readHomePage() async {
     int compagnie_id = await getCompagnie_id();
     ApiResponse response = await ReadCategories(compagnie_id);
-   
+
     if (response.error == null) {
       dynamic data = response.data;
     } else {
@@ -57,8 +51,6 @@ class _HomePageState extends State<HomePage> {
       }
     }
   }
-
-
 
   var currentPage = DrawerSections.dashboard;
   @override
@@ -74,11 +66,7 @@ class _HomePageState extends State<HomePage> {
             ? null
             : FloatingActionButton(
                 onPressed: () async {
-                  var delete = await sqlDb.mydeleteDatabase();
-
-                  print(delete);
-
-                  // nextScreen(context, const AjouterVentePage());
+                  nextScreen(context, const AjouterVentePage());
                 },
                 backgroundColor: Colors.blue,
                 child: const Icon(
@@ -300,11 +288,13 @@ class _HomePageState extends State<HomePage> {
                         ),
                         IconButton(
                           onPressed: () async {
-                            await authService.signOut();
-                            Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(
-                                    builder: (context) => const LoginPage()),
-                                (route) => false);
+                            logout().then((value) => {
+                                  Navigator.of(context).pushAndRemoveUntil(
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const LoginPage()),
+                                      (route) => false)
+                                });
                           },
                           icon: const Icon(
                             Icons.done,

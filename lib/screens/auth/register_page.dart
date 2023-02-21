@@ -8,7 +8,7 @@ import 'package:form_field_validator/form_field_validator.dart';
 import 'package:tocmanager/models/api_response.dart';
 import 'package:tocmanager/screens/auth/login_page.dart';
 import 'package:tocmanager/screens/home/size_config.dart';
-import '../../services/auth_service.dart';
+
 import '../../services/user_service.dart';
 import '../../widgets/widgets.dart';
 
@@ -374,7 +374,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 ))),
       ];
   final bool _isLoading = false;
-  AuthService authService = AuthService();
+ 
   int _activeStepIndex = 0;
   @override
   Widget build(BuildContext context) {

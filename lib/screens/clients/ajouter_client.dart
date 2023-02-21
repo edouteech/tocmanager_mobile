@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
-import 'package:tocmanager/database/sqfdb.dart';
 import 'package:tocmanager/screens/categories/ajouter_categorie.dart';
 import 'package:tocmanager/screens/clients/client_list.dart';
 import 'package:tocmanager/screens/fournisseurs/ajouter_fournisseur.dart';
@@ -10,8 +9,8 @@ import 'package:tocmanager/screens/home_page.dart';
 import 'package:tocmanager/screens/auth/login_page.dart';
 import 'package:tocmanager/screens/produits/ajouter_produits.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
-import 'package:tocmanager/services/auth_service.dart';
 
+import '../../services/user_service.dart';
 import '../../widgets/widgets.dart';
 import '../achats/achat_home.dart';
 import '../home_widgets/drawer_header.dart';
@@ -26,12 +25,9 @@ class AjouterClientPage extends StatefulWidget {
 class _AjouterClientPageState extends State<AjouterClientPage> {
   //Current page
   var currentPage = DrawerSections.client;
-  //Auth service
-  AuthService authService = AuthService();
   //Formkey
   final _formKey = GlobalKey<FormState>();
-  /* Database*/
-  SqlDb sqlDb = SqlDb();
+ 
 
   /* Fields controller*/
   TextEditingController name = TextEditingController();
@@ -160,11 +156,13 @@ class _AjouterClientPageState extends State<AjouterClientPage> {
                         ),
                         IconButton(
                           onPressed: () async {
-                            await authService.signOut();
-                            Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(
-                                    builder: (context) => const LoginPage()),
-                                (route) => false);
+                           logout().then((value) => {
+                                  Navigator.of(context).pushAndRemoveUntil(
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const LoginPage()),
+                                      (route) => false)
+                                });
                           },
                           icon: const Icon(
                             Icons.done,

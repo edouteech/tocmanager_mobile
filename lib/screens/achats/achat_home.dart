@@ -11,7 +11,6 @@ import 'package:tocmanager/screens/ventes/vente_home.dart';
 import 'package:tocmanager/services/buys_service.dart';
 import '../../models/Buys.dart';
 import '../../models/api_response.dart';
-import '../../services/auth_service.dart';
 import '../../services/user_service.dart';
 import '../../widgets/widgets.dart';
 import '../categories/ajouter_categorie.dart';
@@ -44,7 +43,6 @@ class _AchatHomePageState extends State<AchatHomePage> {
 
   /* =============================End Buys=================== */
 
-  AuthService authService = AuthService();
   var currentPage = DrawerSections.achat;
   @override
   Widget build(BuildContext context) {
@@ -217,11 +215,13 @@ class _AchatHomePageState extends State<AchatHomePage> {
                         ),
                         IconButton(
                           onPressed: () async {
-                            await authService.signOut();
-                            Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(
-                                    builder: (context) => const LoginPage()),
-                                (route) => false);
+                            logout().then((value) => {
+                                  Navigator.of(context).pushAndRemoveUntil(
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const LoginPage()),
+                                      (route) => false)
+                                });
                           },
                           icon: const Icon(
                             Icons.done,
@@ -262,9 +262,9 @@ class _AchatHomePageState extends State<AchatHomePage> {
     int compagnie_id = await getCompagnie_id();
     ApiResponse response = await ReadBuys(compagnie_id);
     if (response.error == null) {
-       setState(() {
-          isLoading = true;
-        });
+      setState(() {
+        isLoading = true;
+      });
       if (response.statusCode == 200) {
         List<dynamic> data = response.data as List<dynamic>;
         buys = data.map((p) => Buys.fromJson(p)).toList();
@@ -358,12 +358,10 @@ class _AchatHomePageState extends State<AchatHomePage> {
         context,
         DecaissementPage(
           buy_id: sell_id,
-          
         ));
   }
 
-
-    void _edit(int buy_id) {
+  void _edit(int buy_id) {
     nextScreen(
       context,
       EditAchatPage(

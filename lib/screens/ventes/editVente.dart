@@ -3,7 +3,6 @@ import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:intl/intl.dart';
-import 'package:tocmanager/screens/ventes/ajouter_vente.dart';
 import 'package:tocmanager/screens/ventes/line_vente.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 import 'package:tocmanager/services/user_service.dart';

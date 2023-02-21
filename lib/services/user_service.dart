@@ -126,12 +126,10 @@ Future<ApiResponse> ModifyPassword(Map<String, dynamic> data) async {
           'Authorization': 'Bearer $token'
         }),
         data: body);
- print(apiResponse.statusCode);
     switch (response.statusCode) {
       case 200:
         if (jsonDecode(response.data)['status'] == 'error') {
           apiResponse.message = jsonDecode(response.data)['message'];
-          print(apiResponse.message);
           apiResponse.status = jsonDecode(response.data)['status'];
         } else {
           apiResponse.statusCode = response.statusCode;
@@ -154,7 +152,6 @@ Future<ApiResponse> ModifyPassword(Map<String, dynamic> data) async {
         break;
     }
   } catch (e) {
-    print(e);
     // apiResponse.error = serverError;
   }
 

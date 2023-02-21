@@ -5,8 +5,6 @@ import 'package:form_field_validator/form_field_validator.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
-import 'package:tocmanager/services/auth_service.dart';
-import '../../database/sqfdb.dart';
 import '../../models/api_response.dart';
 import '../../services/suppliers_services.dart';
 import '../../services/user_service.dart';
@@ -28,8 +26,6 @@ class AjouterFournisseurPage extends StatefulWidget {
 class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
   //Formkey
   final _formKey = GlobalKey<FormState>();
-  /* Auth service*/
-  AuthService authService = AuthService();
 
   String? client_nature;
   List<dynamic> ClientNatureList = [
@@ -166,11 +162,13 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
                         ),
                         IconButton(
                           onPressed: () async {
-                            await authService.signOut();
-                            Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(
-                                    builder: (context) => const LoginPage()),
-                                (route) => false);
+                            logout().then((value) => {
+                                  Navigator.of(context).pushAndRemoveUntil(
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const LoginPage()),
+                                      (route) => false)
+                                });
                           },
                           icon: const Icon(
                             Icons.done,
@@ -385,7 +383,6 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
     if (response.error == null) {
       if (response.statusCode == 200) {
         if (response.status == "error") {
-          String? message = response.message;
         } else {
           Navigator.of(context).pushReplacement(MaterialPageRoute(
               builder: (context) => const AjouterFournisseurPage()));

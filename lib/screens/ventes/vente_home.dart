@@ -13,7 +13,6 @@ import 'package:tocmanager/screens/ventes/encaissement.dart';
 import 'package:tocmanager/services/sells_services.dart';
 import '../../models/Sells.dart';
 import '../../models/api_response.dart';
-import '../../services/auth_service.dart';
 import '../../services/user_service.dart';
 import '../../widgets/widgets.dart';
 import '../categories/ajouter_categorie.dart';
@@ -37,7 +36,6 @@ class _VenteHomeState extends State<VenteHome> {
   bool? isLoading;
 
   var currentPage = DrawerSections.vente;
-  AuthService authService = AuthService();
 
   @override
   void initState() {
@@ -221,11 +219,13 @@ class _VenteHomeState extends State<VenteHome> {
                         ),
                         IconButton(
                           onPressed: () async {
-                            await authService.signOut();
-                            Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(
-                                    builder: (context) => const LoginPage()),
-                                (route) => false);
+                            logout().then((value) => {
+                                  Navigator.of(context).pushAndRemoveUntil(
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const LoginPage()),
+                                      (route) => false)
+                                });
                           },
                           icon: const Icon(
                             Icons.done,
@@ -266,9 +266,9 @@ class _VenteHomeState extends State<VenteHome> {
     int compagnie_id = await getCompagnie_id();
     ApiResponse response = await ReadSells(compagnie_id);
     if (response.error == null) {
-       setState(() {
-          isLoading = true;
-        });
+      setState(() {
+        isLoading = true;
+      });
       if (response.statusCode == 200) {
         List<dynamic> data = response.data as List<dynamic>;
         sells = data.map((p) => Sells.fromJson(p)).toList();
@@ -362,7 +362,6 @@ class _VenteHomeState extends State<VenteHome> {
         context,
         EncaissementPage(
           sell_id: sell_id,
-         
         ));
   }
 

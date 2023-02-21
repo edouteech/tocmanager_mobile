@@ -22,7 +22,7 @@ class _ListFournisseurState extends State<ListFournisseur> {
   bool isNotSuscribe = false;
   bool isLoading = true;
   //Formkey
-  final _formKey = GlobalKey<FormState>();
+  // final _formKey = GlobalKey<FormState>();
   /* Fields controller*/
   TextEditingController name = TextEditingController();
   TextEditingController email = TextEditingController();

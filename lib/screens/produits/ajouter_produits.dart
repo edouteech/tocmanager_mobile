@@ -6,7 +6,6 @@ import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 import '../../models/Category.dart';
 import '../../models/api_response.dart';
-import '../../services/auth_service.dart';
 import '../../services/categorie_service.dart';
 import '../../services/products_service.dart';
 import '../../services/user_service.dart';
@@ -31,7 +30,7 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
 
   //Form key
   final _formKey = GlobalKey<FormState>();
-  AuthService authService = AuthService();
+
   var currentPage = DrawerSections.produit;
 
 
@@ -194,11 +193,13 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
                         ),
                         IconButton(
                           onPressed: () async {
-                            await authService.signOut();
-                            Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(
-                                    builder: (context) => const LoginPage()),
-                                (route) => false);
+                          logout().then((value) => {
+                                  Navigator.of(context).pushAndRemoveUntil(
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const LoginPage()),
+                                      (route) => false)
+                                });
                           },
                           icon: const Icon(
                             Icons.done,
@@ -548,7 +549,6 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
     if (response.error == null) {
       if (response.statusCode == 200) {
         if (response.status == "error") {
-          String? message = response.message;
         } else {
           Navigator.of(context).pushReplacement(MaterialPageRoute(
               builder: (context) => const AjouterProduitPage()));
