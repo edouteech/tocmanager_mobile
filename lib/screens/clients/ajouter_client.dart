@@ -1,4 +1,4 @@
-// ignore_for_file: non_constant_identifier_names
+// ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names
 
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
@@ -224,13 +224,6 @@ class _AjouterClientPageState extends State<AjouterClientPage> {
                     style: TextStyle(color: Colors.green)),
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
-                    int response = await sqlDb.inserData('''
-                    INSERT INTO Clients( name, email,phone )
-                    VALUES("${name.text}","${email.text}","${phone.text}")
-                  ''');
-
-                    print("===$response==== INSERTION DONE ==========");
-
                     Navigator.of(context).pushReplacement(MaterialPageRoute(
                         builder: (context) => const AjouterClientPage()));
                   }

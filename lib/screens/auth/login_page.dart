@@ -1,6 +1,4 @@
 // ignore_for_file: use_build_context_synchronously, avoid_printimport 'dart:convert';, unused_local_variable, non_constant_identifier_names
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tocmanager/screens/home/size_config.dart';

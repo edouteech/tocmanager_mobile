@@ -12,6 +12,7 @@ const clientsURL = '$baseURL/clients';
 const encaissementsURL = '$baseURL/encaissements';
 const suppliersURL = '$baseURL/suppliers';
 const decaissementsURL = '$baseURL/decaissements';
+const modifyPaswwordURL = '$baseURL/modify-password';
 
 // ----error-----------
 const serverError = 'Server error';

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/achats/printachatpage.dart';
 import 'package:tocmanager/services/buys_service.dart';
-import '../../database/sqfdb.dart';
 import '../../models/Buy_lines.dart';
 import '../../models/api_response.dart';
 import '../../services/user_service.dart';

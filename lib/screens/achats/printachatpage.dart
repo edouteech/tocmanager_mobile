@@ -1,7 +1,6 @@
 // ignore_for_file: non_constant_identifier_names, depend_on_referenced_packages
 
 import 'package:flutter/material.dart';
-import 'package:tocmanager/database/sqfdb.dart';
 import 'dart:io';
 import 'package:blue_print_pos/blue_print_pos.dart';
 import 'package:blue_print_pos/models/blue_device.dart';

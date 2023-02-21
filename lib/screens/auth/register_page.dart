@@ -1,9 +1,7 @@
 // ignore_for_file: use_build_context_synchronously, non_constant_identifier_names
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
@@ -375,7 +373,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ],
                 ))),
       ];
-  bool _isLoading = false;
+  final bool _isLoading = false;
   AuthService authService = AuthService();
   int _activeStepIndex = 0;
   @override

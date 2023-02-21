@@ -57,7 +57,7 @@ class _ProfilePageState extends State<ProfilePage> {
         iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
         title: const Text('Profil',
             style: TextStyle(
-                fontFamily: 'Oswald', fontSize: 30, color: Colors.black)),
+                fontFamily: 'Oswald', color: Colors.black)),
       ),
       body: SingleChildScrollView(
         child: Container(
@@ -91,7 +91,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                         Expanded(
-                          child: Text(Name! ,
+                          child: Text(Name ,
                               style: const TextStyle(
                                 fontSize: 17,
                                 color: Colors.black,
@@ -119,7 +119,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                         Expanded(
-                          child: Text(Email!,
+                          child: Text(Email,
                               style: const TextStyle(
                                 fontSize: 17,
                                 color: Colors.black,
@@ -144,7 +144,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         Expanded(
                           child:
-                              Text(Phone! ,style: const TextStyle(fontSize: 17)),
+                              Text(Phone ,style: const TextStyle(fontSize: 17)),
                         ),
                       ],
                     )),
@@ -163,7 +163,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           color: Theme.of(context).primaryColor,
                         ),
                         Expanded(
-                          child: Text(Country!,
+                          child: Text(Country,
                               style: const TextStyle(fontSize: 17)),
                         ),
                       ],
@@ -171,35 +171,35 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
 
               //Mettre à jour profile
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: GestureDetector(
-                  onTap: () {
-                    nextScreen(context, const UpdateProfile());
-                  },
-                  child: Container(
-                    alignment: Alignment.center,
-                    margin: const EdgeInsets.only(left: 20, right: 20, top: 15),
-                    padding: const EdgeInsets.only(left: 20, right: 20),
-                    height: 54,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(50),
-                      color: const Color.fromARGB(255, 45, 157, 220),
-                      boxShadow: const [
-                        BoxShadow(
-                            offset: Offset(0, 10),
-                            blurRadius: 50,
-                            color: Color(0xffEEEEEE)),
-                      ],
-                    ),
-                    child: const Text(
-                      "METTRE A JOUR",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ),
-              ),
+              // Padding(
+              //   padding:
+              //       const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              //   child: GestureDetector(
+              //     onTap: () {
+              //       nextScreen(context, const UpdateProfile());
+              //     },
+              //     child: Container(
+              //       alignment: Alignment.center,
+              //       margin: const EdgeInsets.only(left: 20, right: 20, top: 15),
+              //       padding: const EdgeInsets.only(left: 20, right: 20),
+              //       height: 54,
+              //       decoration: BoxDecoration(
+              //         borderRadius: BorderRadius.circular(50),
+              //         color: const Color.fromARGB(255, 45, 157, 220),
+              //         boxShadow: const [
+              //           BoxShadow(
+              //               offset: Offset(0, 10),
+              //               blurRadius: 50,
+              //               color: Color(0xffEEEEEE)),
+              //         ],
+              //       ),
+              //       child: const Text(
+              //         "METTRE A JOUR",
+              //         style: TextStyle(color: Colors.white),
+              //       ),
+              //     ),
+              //   ),
+              // ),
 
               //Mettre à jour mot de passe
               Padding(

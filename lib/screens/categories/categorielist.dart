@@ -135,7 +135,6 @@ class _CategoriesListState extends State<CategoriesList> {
     if (response.error == null) {
       if (response.statusCode == 200) {
         if (response.status == "error") {
-          String? message = response.message;
         } else {
           Navigator.of(context).pushReplacement(MaterialPageRoute(
               builder: (context) => const AjouterCategoriePage()));
@@ -147,7 +146,6 @@ class _CategoriesListState extends State<CategoriesList> {
           isNotSuscribe = true;
         });
       } else {
-        print(response.error);
       }
     }
   }

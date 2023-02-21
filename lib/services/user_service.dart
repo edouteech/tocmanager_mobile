@@ -112,6 +112,55 @@ Future<ApiResponse> getUsersDetail() async {
   return apiResponse;
 }
 
+//modify password
+Future<ApiResponse> ModifyPassword(Map<String, dynamic> data) async {
+  dynamic body = json.encode(data);
+
+  Dio dio = Dio();
+  ApiResponse apiResponse = ApiResponse();
+  String token = await getToken();
+  try {
+    final response = await dio.post(modifyPaswwordURL,
+        options: Options(headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token'
+        }),
+        data: body);
+ print(apiResponse.statusCode);
+    switch (response.statusCode) {
+      case 200:
+        if (jsonDecode(response.data)['status'] == 'error') {
+          apiResponse.message = jsonDecode(response.data)['message'];
+          print(apiResponse.message);
+          apiResponse.status = jsonDecode(response.data)['status'];
+        } else {
+          apiResponse.statusCode = response.statusCode;
+          apiResponse.data = jsonDecode(response.data);
+          apiResponse.status = jsonDecode(response.data)['status'];
+        }
+
+        break;
+      case 422:
+        final errors = jsonDecode(response.data)['errors'];
+        apiResponse.error = errors[errors.keys.elementAt(0)][0];
+        apiResponse.statusCode = response.statusCode;
+        break;
+      case 403:
+        apiResponse.error = jsonDecode(response.data)['message'];
+        apiResponse.statusCode = response.statusCode;
+        break;
+      default:
+        apiResponse.error = somethingWentWrong;
+        break;
+    }
+  } catch (e) {
+    print(e);
+    // apiResponse.error = serverError;
+  }
+
+  return apiResponse;
+}
+
 //get token
 Future<String> getToken() async {
   SharedPreferences localStorage = await SharedPreferences.getInstance();
