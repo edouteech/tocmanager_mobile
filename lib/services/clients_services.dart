@@ -7,6 +7,7 @@ import 'package:tocmanager/models/api_response.dart';
 import 'package:tocmanager/services/constant.dart';
 import 'package:tocmanager/services/user_service.dart';
 import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 
 Future<ApiResponse> ReadClients(
   int compagnie_id,
@@ -42,6 +43,48 @@ Future<ApiResponse> ReadClients(
     }
   } catch (e) {
     apiResponse.error = serverError;
+  }
+
+  return apiResponse;
+}
+
+
+//create clients
+Future<ApiResponse> CreateClienrs(String compagnie_id, String name,
+    String email, String phone) async {
+  ApiResponse apiResponse = ApiResponse();
+
+  Dio dio = Dio();
+  String token = await getToken();
+  final response = await dio.post('$clientsURL?compagnie_id=$compagnie_id',
+      options: Options(headers: {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token'
+      }),
+      data: {"name": name, "email": email, "phone": phone,});
+  switch (response.statusCode) {
+    case 200:
+      if (response.data['status'] == "success") {
+        apiResponse.statusCode = response.statusCode;
+        apiResponse.status = response.data['status'];
+        apiResponse.message = response.data['message'];
+      } else {
+        apiResponse.statusCode = response.statusCode;
+        apiResponse.status = response.data['status'];
+        apiResponse.message = response.data['message'];
+      }
+      break;
+    case 403:
+      apiResponse.error = response.data['message'];
+      apiResponse.statusCode = response.statusCode;
+      break;
+    case 500:
+      apiResponse.error = response.data['message'];
+      apiResponse.statusCode = response.statusCode;
+      break;
+    default:
+      apiResponse.error = somethingWentWrong;
+      break;
   }
 
   return apiResponse;

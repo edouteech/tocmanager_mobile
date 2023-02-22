@@ -35,6 +35,9 @@ class _VenteHomeState extends State<VenteHome> {
   bool isNotSuscribe = false;
   bool? isLoading;
 
+  int rowsPerPage = 9;
+  int currentDataPage = 1;
+
   var currentPage = DrawerSections.vente;
 
   @override
@@ -94,7 +97,16 @@ class _VenteHomeState extends State<VenteHome> {
                         height: MediaQuery.of(context).size.height * 0.97,
                         child: SingleChildScrollView(
                           child: PaginatedDataTable(
-                            rowsPerPage: 10,
+                            onPageChanged: (index) {
+                              print(index);
+                            },
+                            rowsPerPage: rowsPerPage,
+                            // availableRowsPerPage: const [10, 25, 50],
+                            // onRowsPerPageChanged: (newRowsPerPage) {
+                            //   setState(() {
+                            //     rowsPerPage = newRowsPerPage!;
+                            //   });
+                            // },
                             columns: <DataColumn>[
                               DataColumn(
                                 label: const Text('Client'),
@@ -261,10 +273,19 @@ class _VenteHomeState extends State<VenteHome> {
     );
   }
 
+  void handlePageChange(int page) {
+   
+    setState(() {
+      currentDataPage = page;
+    });
+    readSells();
+  }
+
   //read sells
   Future<void> readSells() async {
+    print(currentDataPage);
     int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await ReadSells(compagnie_id);
+    ApiResponse response = await ReadSells(compagnie_id, currentDataPage);
     if (response.error == null) {
       setState(() {
         isLoading = true;

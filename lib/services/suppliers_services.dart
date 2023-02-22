@@ -23,7 +23,6 @@ Future<ApiResponse> ReadSuppliers(
         apiResponse.statusCode = response.statusCode;
         apiResponse.data = response.body;
         apiResponse.data = jsonDecode(response.body)['data']['data'] as List;
-     
 
         break;
       case 422:
@@ -46,7 +45,7 @@ Future<ApiResponse> ReadSuppliers(
   return apiResponse;
 }
 
-//create categories
+//create suppliers
 Future<ApiResponse> CreateSuppliers(String compagnie_id, String name,
     String email, String phone, int nature) async {
   ApiResponse apiResponse = ApiResponse();
@@ -86,3 +85,47 @@ Future<ApiResponse> CreateSuppliers(String compagnie_id, String name,
 
   return apiResponse;
 }
+
+//delete suppliers
+
+Future<ApiResponse> DeleteSuppliers(int compagnie_id, int supplier_id) async {
+  ApiResponse apiResponse = ApiResponse();
+
+  Dio dio = Dio();
+  String token = await getToken();
+  final response = await dio.delete(
+    '$suppliersURL/$supplier_id?compagnie_id=$compagnie_id',
+    options: Options(headers: {
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $token'
+    }),
+  );
+  switch (response.statusCode) {
+    case 200:
+      if (response.data['status'] == "success") {
+        apiResponse.statusCode = response.statusCode;
+        apiResponse.status = response.data['status'];
+        apiResponse.message = response.data['message'];
+      } else {
+        apiResponse.statusCode = response.statusCode;
+        apiResponse.status = response.data['status'];
+        apiResponse.message = response.data['message'];
+      }
+      break;
+    case 403:
+      apiResponse.error = response.data['message'];
+      apiResponse.statusCode = response.statusCode;
+      break;
+    case 500:
+      apiResponse.error = response.data['message'];
+      apiResponse.statusCode = response.statusCode;
+      break;
+    default:
+      apiResponse.error = somethingWentWrong;
+      break;
+  }
+
+  return apiResponse;
+}
+
+

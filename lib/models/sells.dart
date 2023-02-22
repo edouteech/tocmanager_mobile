@@ -2,7 +2,7 @@
 class Sells {
   int id;
   int user_id;
-   String date_sell;
+  String date_sell;
   int compagnie_id;
   int client_id;
   dynamic amount;
@@ -10,6 +10,10 @@ class Sells {
   String client_name;
   String created_at;
   String updated_at;
+  int? totalItems;
+  int? itemsPerPage;
+  int? currentPage;
+
   List<dynamic> sellLines;
 
   Sells(
@@ -23,7 +27,10 @@ class Sells {
       required this.client_name,
       required this.created_at,
       required this.updated_at,
-      required this.sellLines
+      required this.totalItems,
+      required this.itemsPerPage,
+      required this.currentPage,
+      required this.sellLines,
       });
 
   //function to convert json data to sells model
@@ -39,8 +46,9 @@ class Sells {
         client_name: json["client"]['name'],
         created_at: json['created_at'],
         updated_at: json['updated_at'],
-        sellLines: json['sell_lines']
-        );
-        
+        totalItems: json['total'],
+        itemsPerPage: json['per_page'],
+        currentPage: json['current_page'],
+        sellLines: json['sell_lines']);
   }
 }

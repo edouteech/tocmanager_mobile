@@ -12,13 +12,14 @@ import 'package:dio/dio.dart';
 //read sell
 Future<ApiResponse> ReadSells(
   int compagnie_id,
+  int page
 ) async {
   ApiResponse apiResponse = ApiResponse();
   try {
     String token = await getToken();
 
     final response = await http.get(
-      Uri.parse('$sellsURL?compagnie_id=$compagnie_id'),
+      Uri.parse('$sellsURL?compagnie_id=$compagnie_id&page=$page'),
       headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
     );
 

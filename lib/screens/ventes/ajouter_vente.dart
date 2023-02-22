@@ -7,13 +7,13 @@ import 'package:tocmanager/screens/ventes/vente_home.dart';
 import 'package:tocmanager/services/sells_services.dart';
 import 'package:tocmanager/services/user_service.dart';
 import '../../models/Clients.dart';
-import '../../models/Products.dart';
 import '../../models/api_response.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:intl/intl.dart';
 
 import '../../services/clients_services.dart';
 import '../../services/products_service.dart';
+import 'package:dropdown_plus/dropdown_plus.dart';
 
 class AjouterVentePage extends StatefulWidget {
   const AjouterVentePage({Key? key}) : super(key: key);
@@ -26,6 +26,7 @@ class AjouterVentePage extends StatefulWidget {
 List<dynamic> elements = [];
 List<dynamic> ventes = [];
 List<dynamic> clients = [];
+
 var amount = "";
 var discount = "";
 double total = 0.0;
@@ -55,6 +56,8 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
         DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
     taxController.text = 0.toString();
   }
+
+  List<Map<String, dynamic>> productMapList = [];
 
   /* =============================End Products=================== */
 
@@ -334,7 +337,12 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
     if (response.error == null) {
       if (response.statusCode == 200) {
         List<dynamic> data = response.data as List<dynamic>;
-        products = data.map((p) => Product.fromJson(p)).toList();
+
+        for (var product in data) {
+          var productMap = product as Map<String, dynamic>;
+          productMapList.add(productMap);
+        }
+        print(productMapList);
       }
     }
   }
@@ -596,36 +604,51 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                 Container(
                     padding: const EdgeInsets.only(left: 20, right: 20),
                     margin: const EdgeInsets.only(top: 10),
-                    child: DropdownButtonFormField(
-                        isExpanded: true,
-                        validator: (value) =>
-                            value == null ? 'Sélectionner un produit' : null,
-                        decoration: const InputDecoration(
-                          contentPadding:
-                              EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
-                          enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color.fromARGB(255, 45, 157, 220)),
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          border: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          label: Text("Nom du produit"),
-                          labelStyle:
-                              TextStyle(fontSize: 13, color: Colors.black),
-                        ),
-                        dropdownColor: Colors.white,
-                        value: product_id,
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            product_id = newValue!;
-                          });
-                          if (product_id != null) {
-                            productPrice(int.parse(product_id!));
-                          }
-                        },
-                        items: dropdownProductsItems)),
+                    child: DropdownFormField(
+                      decoration: const InputDecoration(
+                        contentPadding:
+                            EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
+                        enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                                color: Color.fromARGB(255, 45, 157, 220)),
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(10))),
+                        border: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(10))),
+                        label: Text("Nom du produit"),
+                        labelStyle:
+                            TextStyle(fontSize: 13, color: Colors.black),
+                      ),
+                      dropdownColor: Colors.white,
+                      findFn: (dynamic str) async => productMapList,
+                      selectedFn: (dynamic item1, dynamic item2) {
+                        if (item1 != null && item2 != null) {
+                          return item1['name'] == item2['name'];
+                        }
+                        return false;
+                      },
+                      displayItemFn: (dynamic item) => Text(
+                        (item ?? {})['name'] ?? '',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      onSaved: (dynamic str) {},
+                      onChanged: (dynamic str) {
+                        print(str);
+                      },
+                      filterFn: (dynamic item, str) =>
+                          item['name'].toLowerCase().indexOf(str.toLowerCase()) >=
+                          0,
+                      dropdownItemFn: (dynamic item, int position, bool focused,
+                              bool selected, Function() onTap) =>
+                          ListTile(
+                        title: Text(item['name']),
+                        tileColor: focused
+                            ? const Color.fromARGB(20, 0, 0, 0)
+                            : Colors.transparent,
+                        onTap: onTap,
+                      ),
+                    )),
 
                 //Prix unitaire
                 Container(
