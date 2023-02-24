@@ -30,7 +30,6 @@ dependencies:
   
   cloud_firestore: ^3.4.9
   cupertino_icons: ^1.0.5
-  data_table_2: ^2.3.7
   date_field: ^3.0.1
   datetime_picker_formfield: ^2.0.1
   dropdown_textfield: ^1.0.5
@@ -57,7 +56,6 @@ dependencies:
   connectivity_plus: ^3.0.2
   internet_connection_checker: ^1.0.0+1
   url_launcher: ^6.1.8
-  dropdown_search: ^5.0.5
   dropdown_plus: ^0.0.9
   
 

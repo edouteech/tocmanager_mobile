@@ -19,6 +19,7 @@ import '../home_widgets/drawer_header.dart';
 import '../auth/login_page.dart';
 import '../produits/ajouter_produits.dart';
 import '../ventes/vente_home.dart';
+import 'package:dropdown_plus/dropdown_plus.dart';
 
 class AjouterCategoriePage extends StatefulWidget {
   const AjouterCategoriePage({
@@ -37,26 +38,43 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
 
   @override
   void initState() {
+    checkSuscribe();
     super.initState();
     readCategories();
   }
 
+  Future<void> checkSuscribe() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await SuscribeCheck(compagnie_id);
+    if (response.data == null) {
+      ApiResponse response = await SuscribeGrace(compagnie_id);
+      if (response.statusCode == 200) {
+        if (response.status == "error") {
+          setState(() {
+            isNotSuscribe = true;
+          });
+        } else if (response.status == "success") {
+          var data = response.data as Map<String, dynamic>;
+          var hasEndGrace = data['hasEndGrace'];
+          var graceEndDate = data['graceEndDate'];
+          if (hasEndGrace == false && graceEndDate != null) {
+            setState(() {
+              isNotSuscribe = true;
+            });
+          }
+        }
+      }
+    }
+  }
+
+  List<Map<String, dynamic>> categoryMapList = [];
+
   /* Dropdown items */
   String? parent_id;
-  List<DropdownMenuItem<String>> get dropdownItems {
-    List<DropdownMenuItem<String>> menuItems = [];
-    for (var i = 0; i < categories.length; i++) {
-      menuItems.add(DropdownMenuItem(
-        value: categories[i].id.toString(),
-        child: Text(categories[i].name, style: const TextStyle(fontSize: 15)),
-      ));
-    }
-    return menuItems;
-  }
 
   //Fields Controller
   TextEditingController name = TextEditingController();
- 
+
   //Current page
   var currentPage = DrawerSections.categorie;
   String? verif;
@@ -187,7 +205,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
                         ),
                         IconButton(
                           onPressed: () async {
-                           logout().then((value) => {
+                            logout().then((value) => {
                                   Navigator.of(context).pushAndRemoveUntil(
                                       MaterialPageRoute(
                                           builder: (context) =>
@@ -295,13 +313,10 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
                             ]),
                           ),
                         ),
-
-                        //Catégorie parente
                         Container(
                             padding: const EdgeInsets.only(left: 20, right: 20),
                             margin: const EdgeInsets.only(top: 10),
-                            child: DropdownButtonFormField(
-                              isExpanded: true,
+                            child: DropdownFormField(
                               decoration: const InputDecoration(
                                 enabledBorder: OutlineInputBorder(
                                     borderSide: BorderSide(
@@ -312,18 +327,47 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
                                 border: OutlineInputBorder(
                                     borderRadius:
                                         BorderRadius.all(Radius.circular(10))),
-                                label: Text("Catégorie Parente"),
+                                label: Text("Categorie Parente"),
                                 labelStyle: TextStyle(
                                     fontSize: 13, color: Colors.black),
                               ),
                               dropdownColor: Colors.white,
-                              value: parent_id,
-                              onChanged: (String? newValue) {
+                              findFn: (dynamic str) async => categoryMapList,
+                              selectedFn: (dynamic item1, dynamic item2) {
+                                if (item1 != null && item2 != null) {
+                                  return item1['id'] == item2['id'];
+                                }
+                                return false;
+                              },
+                              displayItemFn: (dynamic item) => Text(
+                                (item ?? {})['name'] ?? '',
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                              onSaved: (dynamic str) {
+                                print(str);
+                              },
+                              onChanged: (dynamic str) {
                                 setState(() {
-                                  parent_id = newValue!;
+                                  parent_id = str['id'].toString();
                                 });
                               },
-                              items: dropdownItems,
+                              filterFn: (dynamic item, str) =>
+                                  item['name']
+                                      .toLowerCase()
+                                      .indexOf(str.toLowerCase()) >=
+                                  0,
+                              dropdownItemFn: (dynamic item,
+                                      int position,
+                                      bool focused,
+                                      bool selected,
+                                      Function() onTap) =>
+                                  ListTile(
+                                title: Text(item['name']),
+                                tileColor: focused
+                                    ? const Color.fromARGB(20, 0, 0, 0)
+                                    : Colors.transparent,
+                                onTap: onTap,
+                              ),
                             )),
                       ],
                     ),
@@ -367,19 +411,11 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
     ApiResponse response = await ReadCategories(compagnie_id);
     if (response.error == null) {
       if (response.statusCode == 200) {
-       
         List<dynamic> data = response.data as List<dynamic>;
-        categories = data.map((p) => Category.fromJson(p)).toList();
-
-        setState(() {
-          isLoading = true;
-        });
-      }
-    } else {
-      if (response.statusCode == 403) {
-        setState(() {
-          isNotSuscribe = true;
-        });
+        for (var category in data) {
+          var categoryMap = category as Map<String, dynamic>;
+          categoryMapList.add(categoryMap);
+        }
       }
     }
   }

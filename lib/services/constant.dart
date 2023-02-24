@@ -13,6 +13,9 @@ const encaissementsURL = '$baseURL/encaissements';
 const suppliersURL = '$baseURL/suppliers';
 const decaissementsURL = '$baseURL/decaissements';
 const modifyPaswwordURL = '$baseURL/modify-password';
+const suscribeGraceURL = '$baseURL/compagnies/grace';
+const suscribeURL = '$baseURL/index/abonnement/compagnie/active';
+const tableauDeBordURL = '$baseURL/tableau/de/bord';
 
 // ----error-----------
 const serverError = 'Server error';

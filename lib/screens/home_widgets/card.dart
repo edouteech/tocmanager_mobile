@@ -5,12 +5,10 @@ import 'package:flutter/material.dart';
 class MyCard extends StatelessWidget{
   const MyCard({Key? key, 
   required this.balance, 
-  required this.dateBalance, 
   required this.title,
   this.color}) : super(key: key);
 
   final double balance;
-  final String  dateBalance;
   final String title;
   final color;
   @override
@@ -37,7 +35,7 @@ class MyCard extends StatelessWidget{
             ),
             const SizedBox(height: 15,),
 
-             Text(balance.toString() + 'Fcfa',
+             Text(balance.toString() + '  Fcfa',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize:36,
@@ -47,18 +45,18 @@ class MyCard extends StatelessWidget{
 
             const SizedBox(height: 10,),
             
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children:  [
-                //date début
-                Text(dateBalance,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold
-                  ),
-                )
-              ],
-            )
+            // Row(
+            //   mainAxisAlignment: MainAxisAlignment.end,
+            //   children:  [
+            //     //date début
+            //     Text(dateBalance,
+            //       style: const TextStyle(
+            //         color: Colors.white,
+            //         fontWeight: FontWeight.bold
+            //       ),
+            //     )
+            //   ],
+            // )
 
             
                       

@@ -18,6 +18,7 @@ class ProduitListPage extends StatefulWidget {
 }
 
 List<dynamic> products = [];
+List<Map<String, dynamic>> productMapList = [];
 
 class _ProduitListPageState extends State<ProduitListPage> {
   bool isNotSuscribe = false;
@@ -54,9 +55,34 @@ class _ProduitListPageState extends State<ProduitListPage> {
 
   @override
   void initState() {
+    readCategories();
     super.initState();
     readProducts();
     readCategories();
+  }
+
+  Future<void> checkSuscribe() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await SuscribeCheck(compagnie_id);
+    if (response.data == null) {
+      ApiResponse response = await SuscribeGrace(compagnie_id);
+      if (response.statusCode == 200) {
+        if (response.status == "error") {
+          setState(() {
+            isNotSuscribe = true;
+          });
+        } else if (response.status == "success") {
+          var data = response.data as Map<String, dynamic>;
+          var hasEndGrace = data['hasEndGrace'];
+          var graceEndDate = data['graceEndDate'];
+          if (hasEndGrace == false && graceEndDate != null) {
+            setState(() {
+              isNotSuscribe = true;
+            });
+          }
+        }
+      }
+    }
   }
 
   //readCategories
@@ -115,6 +141,9 @@ class _ProduitListPageState extends State<ProduitListPage> {
 
   //read products
   Future<void> readProducts() async {
+    setState(() {
+      isLoading = false;
+    });
     int compagnie_id = await getCompagnie_id();
     ApiResponse response = await ReadProducts(compagnie_id);
     if (response.error == null) {
@@ -245,7 +274,7 @@ class _ProduitListPageState extends State<ProduitListPage> {
                       int compagnie_id = await getCompagnie_id();
                       Map<String, dynamic> produitMap = {
                         'compagnie_id': compagnie_id.toString(),
-                        'category_id':null,
+                        'category_id': null,
                         'name': name.text,
                         'quantity': quantity.text,
                         'price_sell': price_sell.text,

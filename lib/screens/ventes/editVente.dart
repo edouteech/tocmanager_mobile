@@ -61,6 +61,7 @@ class _EditVentePageState extends State<EditVentePage> {
   void initState() {
     readSellData();
     readclientsData();
+      elements.clear();
     readProducts();
     super.initState();
   }

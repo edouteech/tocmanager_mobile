@@ -11,13 +11,14 @@ import 'package:dio/dio.dart';
 //read buys
 Future<ApiResponse> ReadBuys(
   int compagnie_id,
+  int page
 ) async {
   ApiResponse apiResponse = ApiResponse();
   try {
     String token = await getToken();
 
     final response = await http.get(
-      Uri.parse('$buysURL?compagnie_id=$compagnie_id'),
+      Uri.parse('$buysURL?compagnie_id=$compagnie_id&page=$page'),
       headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
     );
 
@@ -26,6 +27,11 @@ Future<ApiResponse> ReadBuys(
         apiResponse.statusCode = response.statusCode;
         apiResponse.data = response.body;
         apiResponse.data = jsonDecode(response.body)['data']['data'] as List;
+         apiResponse.current_page =
+            jsonDecode(response.body)['data']['current_page'];
+        apiResponse.next_page_url = jsonDecode(response.body)['data']['next_page_url'];
+        apiResponse.prev_page_url = jsonDecode(response.body)['data']['prev_page_url'];
+        apiResponse.totalPage = jsonDecode(response.body)['data']['total'];
 
         break;
       case 422:

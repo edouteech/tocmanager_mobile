@@ -1,7 +1,8 @@
-// ignore_for_file: unused_local_variable, non_constant_identifier_names
+// ignore_for_file: unused_local_variable, non_constant_identifier_names, use_build_context_synchronously
 
 import 'package:flutter/material.dart';
 import 'package:tocmanager/models/Clients.dart';
+import 'package:tocmanager/screens/clients/ajouter_client.dart';
 
 import '../../models/api_response.dart';
 import '../../services/clients_services.dart';
@@ -23,7 +24,32 @@ class _ListClientState extends State<ListClient> {
   @override
   void initState() {
     readclient();
+    checkSuscribe();
     super.initState();
+  }
+
+    Future<void> checkSuscribe() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await SuscribeCheck(compagnie_id);
+    if (response.data == null) {
+      ApiResponse response = await SuscribeGrace(compagnie_id);
+      if (response.statusCode == 200) {
+        if (response.status == "error") {
+          setState(() {
+            isNotSuscribe = true;
+          });
+        } else if (response.status == "success") {
+          var data = response.data as Map<String, dynamic>;
+          var hasEndGrace = data['hasEndGrace'];
+          var graceEndDate = data['graceEndDate'];
+          if (hasEndGrace == false && graceEndDate != null) {
+            setState(() {
+              isNotSuscribe = true;
+            });
+          }
+        }
+      }
+    }
   }
 
   Future<void> readclient() async {
@@ -46,9 +72,11 @@ class _ListClientState extends State<ListClient> {
     }
   }
 
+
+
   @override
   Widget build(BuildContext context) {
-   return isNotSuscribe == true
+    return isNotSuscribe == true
         ? const SuscribePage()
         : Container(
             child: isLoading == true
@@ -62,16 +90,15 @@ class _ListClientState extends State<ListClient> {
                         onRowsPerPageChanged: (perPage) {},
                         rowsPerPage: 10,
                         columns: const [
-                          DataColumn(label: Center(child: Text("Date"))),
-                          DataColumn(label: Center(child: Text("Name"))),
-                          DataColumn(
-                              label: Center(child: Text("Categorie parente"))),
+                          DataColumn(label: Center(child: Text("Nom"))),
+                          DataColumn(label: Center(child: Text("Email"))),
+                          DataColumn(label: Center(child: Text("Numéro"))),
                           DataColumn(label: Center(child: Text("Editer"))),
                           DataColumn(label: Center(child: Text("Effacer"))),
                         ],
                         source: DataTableRow(
                           data: clients,
-                          // onDelete: _deleteCategory,
+                          onDelete: _deleteClient,
                           // onEdit: _showFormDialog,
                         ),
                       ),
@@ -79,14 +106,74 @@ class _ListClientState extends State<ListClient> {
                   ),
           );
   }
+
+  void _deleteClient(client_id) async {
+    bool sendMessage = false;
+    int compagnie_id = await getCompagnie_id();
+    String? message;
+    String color = "red";
+    ApiResponse response = await DeleteClients(compagnie_id, client_id);
+    if (response.statusCode == 200) {
+      if (response.status == "success") {
+        Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const AjouterClientPage()));
+
+        message = "Supprimé avec succès";
+        setState(() {
+          sendMessage = true;
+          color = "green";
+        });
+      } else {
+        message = "La suppression a échouée";
+        setState(() {
+          sendMessage = true;
+        });
+      }
+    } else if (response.statusCode == 403) {
+      message = "Vous n'êtes pas autorisé à effectuer cette action";
+      setState(() {
+        sendMessage = true;
+      });
+    } else if (response.statusCode == 500) {
+      print("object");
+      message = "La suppression a échouée !";
+      setState(() {
+        sendMessage = true;
+      });
+    } else {
+      message = "La suppression a échouée !";
+      setState(() {
+        sendMessage = true;
+      });
+    }
+    if (sendMessage == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor:
+              color == "green" ? Colors.green[800] : Colors.red[800],
+          content: SizedBox(
+            width: double.infinity,
+            height: 20,
+            child: Center(
+              child: Text(
+                message,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+          duration: const Duration(milliseconds: 2000),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
 }
 
 class DataTableRow extends DataTableSource {
   final List<dynamic> data;
-  // final Function(int?) onDelete;
+  final Function(int) onDelete;
   // final Function(int?, int?, String?) onEdit;
-  DataTableRow(
-      {required this.data});
+  DataTableRow({required this.data, required this.onDelete});
 
   @override
   DataRow getRow(int index) {
@@ -118,7 +205,7 @@ class DataTableRow extends DataTableSource {
                 color: Colors.red,
               ),
               onPressed: () async {
-                // onDelete(client.id);
+                onDelete(client.id);
               }),
         ))
       ],

@@ -40,6 +40,31 @@ class _ListFournisseurState extends State<ListFournisseur> {
   void initState() {
     readSuppliers();
     super.initState();
+    checkSuscribe();
+  }
+
+    Future<void> checkSuscribe() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await SuscribeCheck(compagnie_id);
+    if (response.data == null) {
+      ApiResponse response = await SuscribeGrace(compagnie_id);
+      if (response.statusCode == 200) {
+        if (response.status == "error") {
+          setState(() {
+            isNotSuscribe = true;
+          });
+        } else if (response.status == "success") {
+          var data = response.data as Map<String, dynamic>;
+          var hasEndGrace = data['hasEndGrace'];
+          var graceEndDate = data['graceEndDate'];
+          if (hasEndGrace == false && graceEndDate != null) {
+            setState(() {
+              isNotSuscribe = true;
+            });
+          }
+        }
+      }
+    }
   }
 
   String? client_nature;

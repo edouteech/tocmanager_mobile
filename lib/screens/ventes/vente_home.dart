@@ -11,7 +11,6 @@ import 'package:tocmanager/screens/ventes/details_vente.dart';
 import 'package:tocmanager/screens/ventes/editVente.dart';
 import 'package:tocmanager/screens/ventes/encaissement.dart';
 import 'package:tocmanager/services/sells_services.dart';
-import '../../models/Sells.dart';
 import '../../models/api_response.dart';
 import '../../services/user_service.dart';
 import '../../widgets/widgets.dart';
@@ -29,124 +28,292 @@ class VenteHome extends StatefulWidget {
   State<VenteHome> createState() => _VenteHomeState();
 }
 
-List<dynamic> sells = [];
+List<Map<String, dynamic>> sellMapList = [];
 
 class _VenteHomeState extends State<VenteHome> {
   bool isNotSuscribe = false;
   bool? isLoading;
-
-  int rowsPerPage = 9;
-  int currentDataPage = 1;
+  var page = 1;
+  String? prev_page_url;
+  String? next_page_url;
+  var totalPage = 0;
 
   var currentPage = DrawerSections.vente;
 
   @override
   void initState() {
-    readSells();
+    sellMapList.clear();
+    checkSuscribe();
+    readSells(page);
     super.initState();
+  }
+
+  Future<void> checkSuscribe() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await SuscribeCheck(compagnie_id);
+    if (response.data == null) {
+      ApiResponse response = await SuscribeGrace(compagnie_id);
+      if (response.statusCode == 200) {
+        if (response.status == "error") {
+          setState(() {
+            isNotSuscribe = true;
+          });
+        } else if (response.status == "success") {
+          var data = response.data as Map<String, dynamic>;
+          var hasEndGrace = data['hasEndGrace'];
+          var graceEndDate = data['graceEndDate'];
+          if (hasEndGrace == false && graceEndDate != null) {
+            setState(() {
+              isNotSuscribe = true;
+            });
+          }
+        }
+      }
+    }
   }
 
   final format = DateFormat("yyyy-MM-dd HH:mm:ss");
 
   @override
   Widget build(BuildContext context) {
-    // DataTableSource dataSource(List<Map> sellsi) => MyData(data: sellsi);
     return Scaffold(
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            nextScreen(context, const AjouterVentePage());
-          },
-          backgroundColor: Colors.blue,
-          child: const Icon(
-            Icons.add,
-            size: 32,
-          ),
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-        backgroundColor: Colors.grey[300],
-        appBar: AppBar(
-            centerTitle: true,
-            backgroundColor: Colors.grey[100],
-            iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
-            title: const Text(
-              'Ventes',
-              style: TextStyle(color: Colors.black),
-            )),
-        drawer: Drawer(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                const MyHeaderDrawer(),
-                MyDrawerList(),
-                const SizedBox(
-                  height: 20,
-                ),
-              ],
+      floatingActionButton: isNotSuscribe == true
+          ? null
+          : FloatingActionButton(
+              onPressed: () {
+                nextScreen(context, const AjouterVentePage());
+              },
+              backgroundColor: Colors.blue,
+              child: const Icon(
+                Icons.add,
+                size: 32,
+              ),
             ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+      backgroundColor: Colors.grey[300],
+      appBar: AppBar(
+          centerTitle: true,
+          backgroundColor: Colors.grey[100],
+          iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
+          title: const Text(
+            'Ventes',
+            style: TextStyle(color: Colors.black),
+          )),
+      drawer: Drawer(
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              const MyHeaderDrawer(),
+              MyDrawerList(),
+              const SizedBox(
+                height: 20,
+              ),
+            ],
           ),
         ),
-        body: isNotSuscribe == true
-            ? const SuscribePage()
-            : Container(
-                child: isLoading == true
-                    ? const Center(
-                        child: CircularProgressIndicator(),
-                      )
-                    : SizedBox(
-                        width: double.infinity,
-                        height: MediaQuery.of(context).size.height * 0.97,
-                        child: SingleChildScrollView(
-                          child: PaginatedDataTable(
-                            onPageChanged: (index) {
-                              print(index);
-                            },
-                            rowsPerPage: rowsPerPage,
-                            // availableRowsPerPage: const [10, 25, 50],
-                            // onRowsPerPageChanged: (newRowsPerPage) {
-                            //   setState(() {
-                            //     rowsPerPage = newRowsPerPage!;
-                            //   });
-                            // },
-                            columns: <DataColumn>[
+      ),
+      body: isNotSuscribe == true
+          ? const SuscribePage()
+          : SizedBox(
+              width: double.infinity,
+              height: MediaQuery.of(context).size.height * 0.99,
+              child: isLoading == true
+                  ? const Center(
+                      child: CircularProgressIndicator(),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: DataTable(
+                            columns: const <DataColumn>[
                               DataColumn(
-                                label: const Text('Client'),
-                                onSort: (columnIndex, ascending) {
-                                  print("$columnIndex $ascending");
-                                },
+                                label: Expanded(
+                                  child: Text(
+                                    'Nom client',
+                                    style:
+                                        TextStyle(fontStyle: FontStyle.italic),
+                                  ),
+                                ),
                               ),
-                              const DataColumn(
-                                label: Text('Montant'),
+                              DataColumn(
+                                label: Expanded(
+                                  child: Text(
+                                    'Montant',
+                                    style:
+                                        TextStyle(fontStyle: FontStyle.italic),
+                                  ),
+                                ),
                               ),
-                              const DataColumn(
-                                label: Text('Reste'),
+                              DataColumn(
+                                label: Expanded(
+                                  child: Text(
+                                    'Reste',
+                                    style:
+                                        TextStyle(fontStyle: FontStyle.italic),
+                                  ),
+                                ),
                               ),
-                              const DataColumn(
-                                label: Text('Date'),
+                              DataColumn(
+                                label: Expanded(
+                                  child: Text(
+                                    'Réduction',
+                                    style:
+                                        TextStyle(fontStyle: FontStyle.italic),
+                                  ),
+                                ),
                               ),
-                              const DataColumn(
-                                label: Text('Editer'),
+                              DataColumn(
+                                label: Expanded(
+                                  child: Text(
+                                    'Taxe',
+                                    style:
+                                        TextStyle(fontStyle: FontStyle.italic),
+                                  ),
+                                ),
                               ),
-                              const DataColumn(
-                                label: Text('Effacer'),
+                              DataColumn(
+                                label: Expanded(
+                                  child: Text(
+                                    'Editer',
+                                    style:
+                                        TextStyle(fontStyle: FontStyle.italic),
+                                  ),
+                                ),
                               ),
-                              const DataColumn(
-                                label: Text('Détails'),
+                              DataColumn(
+                                label: Expanded(
+                                  child: Text(
+                                    'Supprimer',
+                                    style:
+                                        TextStyle(fontStyle: FontStyle.italic),
+                                  ),
+                                ),
                               ),
-                              const DataColumn(
-                                label: Text('Encaissements'),
+                              DataColumn(
+                                label: Expanded(
+                                  child: Text(
+                                    'Détails',
+                                    style:
+                                        TextStyle(fontStyle: FontStyle.italic),
+                                  ),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Expanded(
+                                  child: Text(
+                                    'Encaissements',
+                                    style:
+                                        TextStyle(fontStyle: FontStyle.italic),
+                                  ),
+                                ),
                               ),
                             ],
-                            source: DataTableRow(
-                              data: sells,
-                              onDelete: deleteSells,
-                              onDetails: details,
-                              onEdit: _edit,
-                              oncollection: collection,
+                            rows: List<DataRow>.generate(
+                              sellMapList.length,
+                              (int index) => DataRow(
+                                cells: [
+                                  DataCell(Text(
+                                      "${sellMapList[index]['client']['name']}")),
+                                  DataCell(Text(
+                                      "${sellMapList[index]['amount_ttc']}")),
+                                  DataCell(
+                                      Text("${sellMapList[index]['rest']}")),
+                                  DataCell(Text(
+                                      "${sellMapList[index]['discount']}")),
+                                  DataCell(
+                                      Text("${sellMapList[index]['tax']}")),
+                                  DataCell(Center(
+                                    child: IconButton(
+                                        icon: const Icon(
+                                          Icons.edit,
+                                          color: Colors.blue,
+                                        ),
+                                        onPressed: () async {
+                                          _edit(sellMapList[index]['id']);
+                                        }),
+                                  )),
+                                  DataCell(Center(
+                                    child: IconButton(
+                                        icon: const Icon(
+                                          Icons.delete,
+                                          color: Colors.red,
+                                        ),
+                                        onPressed: () {
+                                          deleteSells(sellMapList[index]['id']);
+                                        }),
+                                  )),
+                                  DataCell(Center(
+                                    child: IconButton(
+                                        icon: const Icon(
+                                          Icons.info,
+                                          color: Colors.blue,
+                                        ),
+                                        onPressed: () {
+                                          details(sellMapList[index]['id']);
+                                        }),
+                                  )),
+                                  DataCell(Center(
+                                    child: IconButton(
+                                        icon: Icon(
+                                          Icons.attach_money_outlined,
+                                          color: Colors.green[700],
+                                        ),
+                                        onPressed: () async {
+                                          collection(sellMapList[index]['id']);
+                                        }),
+                                  ))
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-              ));
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                color: Colors.white,
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    prev_page_url != null
+                                        ? TextButton(
+                                            onPressed: () {
+                                              setState(() {
+                                                sellMapList.clear();
+                                                page = page - 1;
+                                              });
+
+                                              readSells(page);
+                                            },
+                                            child: const Text('Previous'),
+                                          )
+                                        : const SizedBox.shrink(),
+                                    Text('${sellMapList.length}/$totalPage'),
+                                    next_page_url != null
+                                        ? TextButton(
+                                            onPressed: () {
+                                              setState(() {
+                                                sellMapList.clear();
+                                                page = page + 1;
+                                              });
+
+                                              readSells(page);
+                                            },
+                                            child: const Text('Next'),
+                                          )
+                                        : const SizedBox.shrink(),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      ],
+                    )),
+    );
   }
 
   Widget MyDrawerList() {
@@ -273,26 +440,27 @@ class _VenteHomeState extends State<VenteHome> {
     );
   }
 
-  void handlePageChange(int page) {
-   
-    setState(() {
-      currentDataPage = page;
-    });
-    readSells();
-  }
-
   //read sells
-  Future<void> readSells() async {
-    print(currentDataPage);
+  Future<void> readSells(int page) async {
     int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await ReadSells(compagnie_id, currentDataPage);
+    ApiResponse response = await ReadSells(compagnie_id, page);
+    setState(() {
+      isLoading = true;
+    });
     if (response.error == null) {
-      setState(() {
-        isLoading = true;
-      });
       if (response.statusCode == 200) {
         List<dynamic> data = response.data as List<dynamic>;
-        sells = data.map((p) => Sells.fromJson(p)).toList();
+        for (var sell in data) {
+          var productMap = sell as Map<String, dynamic>;
+          sellMapList.add(productMap);
+        }
+        setState(() {
+          page = response.current_page!;
+          next_page_url = response.next_page_url;
+          prev_page_url = response.prev_page_url;
+          totalPage = response.totalPage!;
+        });
+
         setState(() {
           isLoading = false;
         });
@@ -394,86 +562,6 @@ class _VenteHomeState extends State<VenteHome> {
       ),
     );
   }
-}
-
-class DataTableRow extends DataTableSource {
-  final List<dynamic> data;
-  final Function(int) onDelete;
-  final Function(int) onEdit;
-  final Function(int) onDetails;
-  final Function(int) oncollection;
-  DataTableRow(
-      {required this.data,
-      required this.onDelete,
-      required this.onEdit,
-      required this.onDetails,
-      required this.oncollection});
-
-  @override
-  DataRow getRow(int index) {
-    final Sells sell = sells[index];
-
-    return DataRow.byIndex(
-      index: index,
-      cells: <DataCell>[
-        DataCell(Center(child: Text(sell.client_name.toString()))),
-        DataCell(Center(child: Text(sell.amount.toString()))),
-        DataCell(Center(child: Text(sell.reste.toString()))),
-        DataCell(Center(child: Text(sell.date_sell.toString()))),
-        DataCell(Center(
-          child: IconButton(
-              icon: const Icon(
-                Icons.edit,
-                color: Colors.blue,
-              ),
-              onPressed: () async {
-                onEdit(
-                  sell.id,
-                );
-              }),
-        )),
-        DataCell(Center(
-          child: IconButton(
-              icon: const Icon(
-                Icons.delete,
-                color: Colors.red,
-              ),
-              onPressed: () async {
-                onDelete(sell.id);
-              }),
-        )),
-        DataCell(Center(
-          child: IconButton(
-              icon: const Icon(
-                Icons.info,
-                color: Colors.blue,
-              ),
-              onPressed: () {
-                onDetails(sell.id);
-              }),
-        )),
-        DataCell(Center(
-          child: IconButton(
-              icon: Icon(
-                Icons.attach_money_outlined,
-                color: Colors.green[700],
-              ),
-              onPressed: () async {
-                oncollection(sell.id);
-              }),
-        ))
-      ],
-    );
-  }
-
-  @override
-  int get rowCount => sells.length;
-
-  @override
-  bool get isRowCountApproximate => false;
-
-  @override
-  int get selectedRowCount => 0;
 }
 
 enum DrawerSections {

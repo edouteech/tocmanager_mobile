@@ -23,7 +23,7 @@ List<dynamic> categories = [];
 
 class _CategoriesListState extends State<CategoriesList> {
   bool isNotSuscribe = false;
-  bool isLoading = false;
+  bool? isLoading;
   //Fields Controller
   TextEditingController name = TextEditingController();
   //Form key
@@ -31,21 +31,46 @@ class _CategoriesListState extends State<CategoriesList> {
 
   @override
   void initState() {
+    checkSuscribe();
     super.initState();
     readCategories();
+  }
+
+  Future<void> checkSuscribe() async {
+     int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await SuscribeCheck(compagnie_id);
+    if (response.data == null) {
+      ApiResponse response = await SuscribeGrace(compagnie_id);
+      if (response.statusCode == 200) {
+        if (response.status == "error") {
+          setState(() {
+            isNotSuscribe = true;
+          });
+        } else if (response.status == "success") {
+          var data = response.data as Map<String, dynamic>;
+          var hasEndGrace = data['hasEndGrace'];
+          var graceEndDate = data['graceEndDate'];
+          if (hasEndGrace == false && graceEndDate != null) {
+            setState(() {
+              isNotSuscribe = true;
+            });
+          }
+        }
+      }
+    }
   }
 
   //readCategories
   Future<void> readCategories() async {
     int compagnie_id = await getCompagnie_id();
     ApiResponse response = await ReadCategories(compagnie_id);
-
+    setState(() {
+      isLoading = true;
+    });
     if (response.error == null) {
-      setState(() {
-        isLoading = true;
-      });
       if (response.statusCode == 200) {
         List<dynamic> data = response.data as List<dynamic>;
+
         categories = data.map((p) => Category.fromJson(p)).toList();
         setState(() {
           isLoading = false;
@@ -86,10 +111,7 @@ class _CategoriesListState extends State<CategoriesList> {
                     width: double.infinity,
                     child: SingleChildScrollView(
                       child: PaginatedDataTable(
-                       
-                        onRowsPerPageChanged: (perPage) {
-
-                        },
+                        onRowsPerPageChanged: (perPage) {},
                         rowsPerPage: 10,
                         columns: const [
                           DataColumn(label: Center(child: Text("Date"))),
@@ -148,8 +170,7 @@ class _CategoriesListState extends State<CategoriesList> {
         setState(() {
           isNotSuscribe = true;
         });
-      } else {
-      }
+      } else {}
     }
   }
 

@@ -158,6 +158,128 @@ Future<ApiResponse> ModifyPassword(Map<String, dynamic> data) async {
   return apiResponse;
 }
 
+//chech grace period
+Future<ApiResponse> SuscribeGrace(int compagnie_id) async {
+  ApiResponse apiResponse = ApiResponse();
+  try {
+    String token = await getToken();
+
+    final response = await http.get(
+      Uri.parse(
+        '$suscribeGraceURL/$compagnie_id',
+      ),
+      headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
+    );
+
+    switch (response.statusCode) {
+      case 200:
+        apiResponse.statusCode = response.statusCode;
+        apiResponse.status = jsonDecode(response.body)['status'];
+        apiResponse.data = jsonDecode(response.body)['data'];
+        break;
+      case 422:
+        final errors = jsonDecode(response.body)['errors'];
+        apiResponse.error = errors[errors.keys.elementAt(0)][0];
+        apiResponse.statusCode = response.statusCode;
+        break;
+      case 403:
+        apiResponse.error = jsonDecode(response.body)['message'];
+        apiResponse.statusCode = response.statusCode;
+        break;
+      default:
+        apiResponse.error = somethingWentWrong;
+        break;
+    }
+  } catch (e) {
+    apiResponse.error = serverError;
+  }
+
+  return apiResponse;
+}
+
+//suscribe
+Future<ApiResponse> SuscribeCheck(int compagnie_id) async {
+  ApiResponse apiResponse = ApiResponse();
+  try {
+    String token = await getToken();
+
+    final response = await http.get(
+      Uri.parse(
+        '$suscribeURL/$compagnie_id',
+      ),
+      headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
+    );
+
+    switch (response.statusCode) {
+      case 200:
+        apiResponse.statusCode = response.statusCode;
+        apiResponse.status = jsonDecode(response.body)['status'];
+        apiResponse.data = jsonDecode(response.body)['data'];
+        break;
+      case 422:
+        final errors = jsonDecode(response.body)['errors'];
+        apiResponse.error = errors[errors.keys.elementAt(0)][0];
+        apiResponse.statusCode = response.statusCode;
+        break;
+      case 403:
+        apiResponse.error = jsonDecode(response.body)['message'];
+        apiResponse.statusCode = response.statusCode;
+        break;
+      default:
+        apiResponse.error = somethingWentWrong;
+        break;
+    }
+  } catch (e) {
+    apiResponse.error = serverError;
+  }
+
+  return apiResponse;
+}
+
+Future<ApiResponse> TableauDeBord(int compagnie_id) async {
+  ApiResponse apiResponse = ApiResponse();
+  try {
+    String token = await getToken();
+
+    final response = await http.post(
+        Uri.parse(
+          tableauDeBordURL,
+        ),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token'
+        },
+        body: {
+          'compagnie_id': compagnie_id.toString()
+        });
+
+    switch (response.statusCode) {
+      case 200:
+        apiResponse.statusCode = response.statusCode;
+        apiResponse.status = jsonDecode(response.body)['status'];
+        apiResponse.data = jsonDecode(response.body)['data'];
+        break;
+      case 422:
+        final errors = jsonDecode(response.body)['errors'];
+        apiResponse.error = errors[errors.keys.elementAt(0)][0];
+        apiResponse.statusCode = response.statusCode;
+        break;
+      case 403:
+        apiResponse.error = jsonDecode(response.body)['message'];
+        apiResponse.statusCode = response.statusCode;
+        break;
+      default:
+        apiResponse.error = somethingWentWrong;
+        break;
+    }
+  } catch (e) {
+    print(e);
+    apiResponse.error = serverError;
+  }
+
+  return apiResponse;
+}
+
 //get token
 Future<String> getToken() async {
   SharedPreferences localStorage = await SharedPreferences.getInstance();
@@ -185,7 +307,11 @@ Future<int> getUserState() async {
 //logout
 Future<bool> logout() async {
   SharedPreferences pref = await SharedPreferences.getInstance();
-  return await pref.remove('token');
+  pref.remove('token');
+  pref.remove('compagnie_id');
+  pref.remove('userId');
+  pref.remove('userState');
+  return true;
 }
 
 getUsers() async {

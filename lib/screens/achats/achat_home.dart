@@ -9,7 +9,6 @@ import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/fournisseurs/ajouter_fournisseur.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 import 'package:tocmanager/services/buys_service.dart';
-import '../../models/Buys.dart';
 import '../../models/api_response.dart';
 import '../../services/user_service.dart';
 import '../../widgets/widgets.dart';
@@ -27,36 +26,65 @@ class AchatHomePage extends StatefulWidget {
   State<AchatHomePage> createState() => _AchatHomePageState();
 }
 
-List<dynamic> buys = [];
+List<Map<String, dynamic>> buyMapList = [];
 
 class _AchatHomePageState extends State<AchatHomePage> {
   bool isNotSuscribe = false;
   bool? isLoading;
-  /* =============================Buys=================== */
-  /* List products */
+  var page = 1;
+  String? prev_page_url;
+  String? next_page_url;
+  var totalPage = 0;
 
   @override
   void initState() {
-    readBuys();
+    checkSuscribe();
+    buyMapList.clear();
+    readBuys(page);
     super.initState();
   }
 
-  /* =============================End Buys=================== */
+  Future<void> checkSuscribe() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await SuscribeCheck(compagnie_id);
+    if (response.data == null) {
+      ApiResponse response = await SuscribeGrace(compagnie_id);
+      if (response.statusCode == 200) {
+        if (response.status == "error") {
+          setState(() {
+            isNotSuscribe = true;
+          });
+        } else if (response.status == "success") {
+          var data = response.data as Map<String, dynamic>;
+          var hasEndGrace = data['hasEndGrace'];
+          var graceEndDate = data['graceEndDate'];
+          if (hasEndGrace == false && graceEndDate != null) {
+            setState(() {
+              isNotSuscribe = true;
+            });
+          }
+        }
+      }
+    }
+  }
 
   var currentPage = DrawerSections.achat;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            nextScreen(context, const AjouterAchatPage());
-          },
-          backgroundColor: const Color.fromARGB(255, 45, 157, 220),
-          child: const Icon(
-            Icons.add,
-            size: 32,
-          ),
-        ),
+        backgroundColor: Colors.grey[300],
+        floatingActionButton: isNotSuscribe == true
+            ? null
+            : FloatingActionButton(
+                onPressed: () {
+                  nextScreen(context, const AjouterAchatPage());
+                },
+                backgroundColor: const Color.fromARGB(255, 45, 157, 220),
+                child: const Icon(
+                  Icons.add,
+                  size: 32,
+                ),
+              ),
         floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
         appBar: AppBar(
             centerTitle: true,
@@ -81,56 +109,194 @@ class _AchatHomePageState extends State<AchatHomePage> {
         ),
         body: isNotSuscribe == true
             ? const SuscribePage()
-            : Container(
+            : SizedBox(
+                width: double.infinity,
+                height: MediaQuery.of(context).size.height * 0.99,
                 child: isLoading == true
                     ? const Center(
                         child: CircularProgressIndicator(),
                       )
-                    : SizedBox(
-                        width: double.infinity,
-                        child: SingleChildScrollView(
-                          child: PaginatedDataTable(
-                            rowsPerPage: 10,
-                            columns: <DataColumn>[
-                              DataColumn(
-                                label: const Text('Fournisseur'),
-                                onSort: (columnIndex, ascending) {
-                                  print("$columnIndex $ascending");
-                                },
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: DataTable(
+                              columns: const <DataColumn>[
+                                DataColumn(
+                                  label: Expanded(
+                                    child: Text(
+                                      'Nom Fournisseur',
+                                      style: TextStyle(
+                                          fontStyle: FontStyle.italic),
+                                    ),
+                                  ),
+                                ),
+                                DataColumn(
+                                  label: Expanded(
+                                    child: Text(
+                                      'Montant',
+                                      style: TextStyle(
+                                          fontStyle: FontStyle.italic),
+                                    ),
+                                  ),
+                                ),
+                                DataColumn(
+                                  label: Expanded(
+                                    child: Text(
+                                      'Reste',
+                                      style: TextStyle(
+                                          fontStyle: FontStyle.italic),
+                                    ),
+                                  ),
+                                ),
+                                DataColumn(
+                                  label: Expanded(
+                                    child: Text(
+                                      'Réduction',
+                                      style: TextStyle(
+                                          fontStyle: FontStyle.italic),
+                                    ),
+                                  ),
+                                ),
+                                DataColumn(
+                                  label: Expanded(
+                                    child: Text(
+                                      'Editer',
+                                      style: TextStyle(
+                                          fontStyle: FontStyle.italic),
+                                    ),
+                                  ),
+                                ),
+                                DataColumn(
+                                  label: Expanded(
+                                    child: Text(
+                                      'Supprimer',
+                                      style: TextStyle(
+                                          fontStyle: FontStyle.italic),
+                                    ),
+                                  ),
+                                ),
+                                DataColumn(
+                                  label: Expanded(
+                                    child: Text(
+                                      'Détails',
+                                      style: TextStyle(
+                                          fontStyle: FontStyle.italic),
+                                    ),
+                                  ),
+                                ),
+                                DataColumn(
+                                  label: Expanded(
+                                    child: Text(
+                                      'Décaissements',
+                                      style: TextStyle(
+                                          fontStyle: FontStyle.italic),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              rows: List<DataRow>.generate(
+                                buyMapList.length,
+                                (int index) => DataRow(
+                                  cells: [
+                                    DataCell(Text(
+                                        "${buyMapList[index]['supplier']['name']}")),
+                                    DataCell(
+                                        Text("${buyMapList[index]['amount']}")),
+                                    DataCell(
+                                        Text("${buyMapList[index]['rest']}")),
+                                    DataCell(Text(
+                                        "${buyMapList[index]['discount']}")),
+                                    DataCell(Center(
+                                      child: IconButton(
+                                          icon: const Icon(
+                                            Icons.edit,
+                                            color: Colors.blue,
+                                          ),
+                                          onPressed: () async {
+                                            _edit(buyMapList[index]['id']);
+                                          }),
+                                    )),
+                                    DataCell(Center(
+                                      child: IconButton(
+                                          icon: const Icon(
+                                            Icons.delete,
+                                            color: Colors.red,
+                                          ),
+                                          onPressed: () {
+                                            deleteBuys(buyMapList[index]['id']);
+                                          }),
+                                    )),
+                                    DataCell(Center(
+                                      child: IconButton(
+                                          icon: const Icon(
+                                            Icons.info,
+                                            color: Colors.blue,
+                                          ),
+                                          onPressed: () {
+                                            details(buyMapList[index]['id']);
+                                          }),
+                                    )),
+                                    DataCell(Center(
+                                      child: IconButton(
+                                          icon: Icon(
+                                            Icons.attach_money_outlined,
+                                            color: Colors.green[700],
+                                          ),
+                                          onPressed: () async {
+                                            collection(buyMapList[index]['id']);
+                                          }),
+                                    ))
+                                  ],
+                                ),
                               ),
-                              const DataColumn(
-                                label: Text('Montant'),
-                              ),
-                              const DataColumn(
-                                label: Text('Reste'),
-                              ),
-                              const DataColumn(
-                                label: Text('Date'),
-                              ),
-                              const DataColumn(
-                                label: Text('Editer'),
-                              ),
-                              const DataColumn(
-                                label: Text('Effacer'),
-                              ),
-                              const DataColumn(
-                                label: Text('Détails'),
-                              ),
-                              const DataColumn(
-                                label: Text('Décaissements'),
-                              ),
-                            ],
-                            source: DataTableRow(
-                              data: buys,
-                              onDelete: deleteBuys,
-                              onDetails: details,
-                              onEdit: _edit,
-                              oncollection: collection,
                             ),
                           ),
-                        ),
-                      ),
-              ));
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  color: Colors.white,
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      prev_page_url != null
+                                          ? TextButton(
+                                              onPressed: () {
+                                                setState(() {
+                                                  buyMapList.clear();
+                                                  page = page - 1;
+                                                });
+
+                                                readBuys(page);
+                                              },
+                                              child: const Text('Previous'),
+                                            )
+                                          : const SizedBox.shrink(),
+                                      Text('${buyMapList.length}/$totalPage'),
+                                      next_page_url != null
+                                          ? TextButton(
+                                              onPressed: () {
+                                                setState(() {
+                                                  buyMapList.clear();
+                                                  page = page + 1;
+                                                });
+
+                                                readBuys(page);
+                                              },
+                                              child: const Text('Next'),
+                                            )
+                                          : const SizedBox.shrink(),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        ],
+                      )));
   }
 
   Widget MyDrawerList() {
@@ -258,24 +424,28 @@ class _AchatHomePageState extends State<AchatHomePage> {
   }
 
   //read sells
-  Future<void> readBuys() async {
+  Future<void> readBuys(page) async {
     int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await ReadBuys(compagnie_id);
+    setState(() {
+      isLoading = true;
+    });
+    ApiResponse response = await ReadBuys(compagnie_id, page);
     if (response.error == null) {
-      setState(() {
-        isLoading = true;
-      });
       if (response.statusCode == 200) {
         List<dynamic> data = response.data as List<dynamic>;
-        buys = data.map((p) => Buys.fromJson(p)).toList();
+
+        for (var sell in data) {
+          var productMap = sell as Map<String, dynamic>;
+          buyMapList.add(productMap);
+        }
+        setState(() {
+          page = response.current_page!;
+          next_page_url = response.next_page_url;
+          prev_page_url = response.prev_page_url;
+          totalPage = response.totalPage!;
+        });
         setState(() {
           isLoading = false;
-        });
-      }
-    } else {
-      if (response.statusCode == 403) {
-        setState(() {
-          isNotSuscribe = true;
         });
       }
     }
@@ -353,7 +523,7 @@ class _AchatHomePageState extends State<AchatHomePage> {
   }
 
   //send to collection page
-  void collection(int sell_id, double reste) {
+  void collection(int sell_id) {
     nextScreen(
         context,
         DecaissementPage(
@@ -381,84 +551,4 @@ enum DrawerSections {
   client,
   privacy_policy,
   logout,
-}
-
-class DataTableRow extends DataTableSource {
-  final List<dynamic> data;
-  final Function(int) onDelete;
-  final Function(int) onEdit;
-  final Function(int) onDetails;
-  final Function(int, double) oncollection;
-  DataTableRow(
-      {required this.data,
-      required this.onDelete,
-      required this.onEdit,
-      required this.onDetails,
-      required this.oncollection});
-
-  @override
-  DataRow getRow(int index) {
-    final Buys buy = buys[index];
-
-    return DataRow.byIndex(
-      index: index,
-      cells: <DataCell>[
-        DataCell(Center(child: Text(buy.supplier_name.toString()))),
-        DataCell(Center(child: Text(buy.amount.toString()))),
-        DataCell(Center(child: Text(buy.reste.toString()))),
-        DataCell(Center(child: Text(buy.date_buy.toString()))),
-        DataCell(Center(
-          child: IconButton(
-              icon: const Icon(
-                Icons.edit,
-                color: Colors.blue,
-              ),
-              onPressed: () async {
-                onEdit(
-                  buy.id,
-                );
-              }),
-        )),
-        DataCell(Center(
-          child: IconButton(
-              icon: const Icon(
-                Icons.delete,
-                color: Colors.red,
-              ),
-              onPressed: () async {
-                onDelete(buy.id);
-              }),
-        )),
-        DataCell(Center(
-          child: IconButton(
-              icon: const Icon(
-                Icons.info,
-                color: Colors.blue,
-              ),
-              onPressed: () {
-                onDetails(buy.id);
-              }),
-        )),
-        DataCell(Center(
-          child: IconButton(
-              icon: Icon(
-                Icons.attach_money_outlined,
-                color: Colors.green[700],
-              ),
-              onPressed: () async {
-                oncollection(buy.id, buy.reste);
-              }),
-        ))
-      ],
-    );
-  }
-
-  @override
-  int get rowCount => buys.length;
-
-  @override
-  bool get isRowCountApproximate => false;
-
-  @override
-  int get selectedRowCount => 0;
 }

@@ -33,7 +33,6 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
 
   var currentPage = DrawerSections.produit;
 
-
   /*List of categories */
   List<dynamic> categories = [];
 
@@ -48,12 +47,35 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
   TextEditingController code = TextEditingController();
   TextEditingController categoryId = TextEditingController();
 
-
-
   @override
   void initState() {
     readCategories();
     super.initState();
+    checkSuscribe();
+  }
+
+  Future<void> checkSuscribe() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await SuscribeCheck(compagnie_id);
+    if (response.data == null) {
+      ApiResponse response = await SuscribeGrace(compagnie_id);
+      if (response.statusCode == 200) {
+        if (response.status == "error") {
+          setState(() {
+            isNotSuscribe = true;
+          });
+        } else if (response.status == "success") {
+          var data = response.data as Map<String, dynamic>;
+          var hasEndGrace = data['hasEndGrace'];
+          var graceEndDate = data['graceEndDate'];
+          if (hasEndGrace == false && graceEndDate != null) {
+            setState(() {
+              isNotSuscribe = true;
+            });
+          }
+        }
+      }
+    }
   }
 
   /* Dropdown items */
@@ -72,19 +94,21 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          setState(() {
-            quantity.text = "1";
-          });
-          _showFormDialog(context);
-        },
-        backgroundColor: Colors.blue,
-        child: const Icon(
-          Icons.add,
-          size: 32,
-        ),
-      ),
+      floatingActionButton: isNotSuscribe == true
+          ? null
+          : FloatingActionButton(
+              onPressed: () {
+                setState(() {
+                  quantity.text = "1";
+                });
+                _showFormDialog(context);
+              },
+              backgroundColor: Colors.blue,
+              child: const Icon(
+                Icons.add,
+                size: 32,
+              ),
+            ),
       floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
       appBar: AppBar(
           centerTitle: true,
@@ -193,7 +217,7 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
                         ),
                         IconButton(
                           onPressed: () async {
-                          logout().then((value) => {
+                            logout().then((value) => {
                                   Navigator.of(context).pushAndRemoveUntil(
                                       MaterialPageRoute(
                                           builder: (context) =>
@@ -520,7 +544,7 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
     int compagnie_id = await getCompagnie_id();
     ApiResponse response = await ReadCategories(compagnie_id);
     if (response.error == null) {
-            if (response.statusCode == 200) {
+      if (response.statusCode == 200) {
         List<dynamic> data = response.data as List<dynamic>;
         categories = data.map((p) => Category.fromJson(p)).toList();
       }

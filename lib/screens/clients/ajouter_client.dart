@@ -10,6 +10,8 @@ import 'package:tocmanager/screens/auth/login_page.dart';
 import 'package:tocmanager/screens/produits/ajouter_produits.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 
+import '../../models/api_response.dart';
+import '../../services/clients_services.dart';
 import '../../services/user_service.dart';
 import '../../widgets/widgets.dart';
 import '../achats/achat_home.dart';
@@ -23,31 +25,69 @@ class AjouterClientPage extends StatefulWidget {
 }
 
 class _AjouterClientPageState extends State<AjouterClientPage> {
+  @override
+  void initState() {
+   checkSuscribe();
+    super.initState();
+  }
+
+    Future<void> checkSuscribe() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await SuscribeCheck(compagnie_id);
+    if (response.data == null) {
+      ApiResponse response = await SuscribeGrace(compagnie_id);
+      if (response.statusCode == 200) {
+        if (response.status == "error") {
+          setState(() {
+            isNotSuscribe = true;
+          });
+        } else if (response.status == "success") {
+          var data = response.data as Map<String, dynamic>;
+          var hasEndGrace = data['hasEndGrace'];
+          var graceEndDate = data['graceEndDate'];
+          if (hasEndGrace == false && graceEndDate != null) {
+            setState(() {
+              isNotSuscribe = true;
+            });
+          }
+        }
+      }
+    }
+  }
+  
   //Current page
   var currentPage = DrawerSections.client;
   //Formkey
   final _formKey = GlobalKey<FormState>();
- 
+  bool isNotSuscribe = false;
+
+  String? supplier_nature;
+  List<dynamic> SupplierNatureList = [
+    {"id": 1, "name": "Particulier", "value": "0"},
+    {"id": 2, "name": "Entreprise", "value": "1"},
+  ];
 
   /* Fields controller*/
-  TextEditingController name = TextEditingController();
-  TextEditingController email = TextEditingController();
-  TextEditingController phone = TextEditingController();
+  TextEditingController nameController = TextEditingController();
+  TextEditingController emailController = TextEditingController();
+  TextEditingController phoneController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[300],
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _showFormDialog(context);
-        },
-        backgroundColor: Colors.blue,
-        child: const Icon(
-          Icons.add,
-          size: 32,
-        ),
-      ),
+      floatingActionButton: isNotSuscribe == true
+          ? null
+          : FloatingActionButton(
+              onPressed: () {
+                _showFormDialog(context);
+              },
+              backgroundColor: Colors.blue,
+              child: const Icon(
+                Icons.add,
+                size: 32,
+              ),
+            ),
       floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
       appBar: AppBar(
           centerTitle: true,
@@ -156,7 +196,7 @@ class _AjouterClientPageState extends State<AjouterClientPage> {
                         ),
                         IconButton(
                           onPressed: () async {
-                           logout().then((value) => {
+                            logout().then((value) => {
                                   Navigator.of(context).pushAndRemoveUntil(
                                       MaterialPageRoute(
                                           builder: (context) =>
@@ -222,8 +262,9 @@ class _AjouterClientPageState extends State<AjouterClientPage> {
                     style: TextStyle(color: Colors.green)),
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
-                    Navigator.of(context).pushReplacement(MaterialPageRoute(
-                        builder: (context) => const AjouterClientPage()));
+                    if (_formKey.currentState!.validate()) {
+                      _createClients();
+                    }
                   }
                 },
               ),
@@ -241,7 +282,7 @@ class _AjouterClientPageState extends State<AjouterClientPage> {
                           const EdgeInsets.only(left: 20, right: 20, top: 30),
                       child: TextFormField(
                           autovalidateMode: AutovalidateMode.onUserInteraction,
-                          controller: name,
+                          controller: nameController,
                           cursorColor: const Color.fromARGB(255, 45, 157, 220),
                           decoration: const InputDecoration(
                             enabledBorder: OutlineInputBorder(
@@ -270,7 +311,7 @@ class _AjouterClientPageState extends State<AjouterClientPage> {
                       child: TextFormField(
                         keyboardType: TextInputType.emailAddress,
                         autovalidateMode: AutovalidateMode.onUserInteraction,
-                        controller: email,
+                        controller: emailController,
                         cursorColor: const Color.fromARGB(255, 45, 157, 220),
                         decoration: const InputDecoration(
                           enabledBorder: OutlineInputBorder(
@@ -301,7 +342,7 @@ class _AjouterClientPageState extends State<AjouterClientPage> {
                       margin:
                           const EdgeInsets.only(left: 20, right: 20, top: 30),
                       child: TextFormField(
-                        controller: phone,
+                        controller: phoneController,
                         autovalidateMode: AutovalidateMode.onUserInteraction,
                         cursorColor: const Color.fromARGB(255, 45, 157, 220),
                         decoration: const InputDecoration(
@@ -323,12 +364,75 @@ class _AjouterClientPageState extends State<AjouterClientPage> {
                         ]),
                       ),
                     ),
+
+                    // Address of suppliers
+                    Container(
+                        padding: const EdgeInsets.only(left: 20, right: 20),
+                        margin: const EdgeInsets.only(top: 10),
+                        child: DropdownButtonFormField(
+                          isExpanded: true,
+                          validator: (value) => value == null
+                              ? 'Sélectionner la nature du fournisseur'
+                              : null,
+                          decoration: const InputDecoration(
+                            enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                    color: Color.fromARGB(255, 45, 157, 220)),
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(10))),
+                            border: OutlineInputBorder(
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(10))),
+                            label: Text("Nature"),
+                            labelStyle:
+                                TextStyle(fontSize: 13, color: Colors.black),
+                          ),
+                          dropdownColor: Colors.white,
+                          value: supplier_nature,
+                          onChanged: (value) {
+                            setState(() {
+                              supplier_nature = value as String?;
+                            });
+                          },
+                          items: SupplierNatureList.map((nature) {
+                            return DropdownMenuItem<String>(
+                              value: nature["value"],
+                              child: Text(nature["name"]),
+                            );
+                          }).toList(),
+                        )),
                   ],
                 ),
               ),
             ),
           );
         });
+  }
+
+  void _createClients() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await CreateClients(
+        compagnie_id.toString(),
+        nameController.text,
+        emailController.text,
+        phoneController.text,
+        int.parse(supplier_nature.toString()));
+
+    if (response.error == null) {
+      if (response.statusCode == 200) {
+        if (response.status == "error") {
+        } else {
+          Navigator.of(context).pushReplacement(MaterialPageRoute(
+              builder: (context) => const AjouterClientPage()));
+        }
+      }
+    } else {
+      if (response.statusCode == 403) {
+        print(response.error);
+      } else {
+        print(response.error);
+      }
+    }
   }
 }
 

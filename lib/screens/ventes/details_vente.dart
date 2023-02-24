@@ -20,7 +20,7 @@ class DetailsVentes extends StatefulWidget {
 List<dynamic> sell_lines = [];
 
 class _DetailsVentesState extends State<DetailsVentes> {
-  bool isLoading = true;
+  bool? isLoading;
   @override
   void initState() {
     readsell();
@@ -30,6 +30,9 @@ class _DetailsVentesState extends State<DetailsVentes> {
   Future<void> readsell() async {
     int compagnie_id = await getCompagnie_id();
     ApiResponse response = await DetailsSells(compagnie_id, widget.sell_id);
+    setState(() {
+      isLoading = true;
+    });
     if (response.error == null) {
       if (response.statusCode == 200) {
         List<dynamic> data = response.data as List<dynamic>;
@@ -80,7 +83,7 @@ class _DetailsVentesState extends State<DetailsVentes> {
             backgroundColor: Colors.grey[100],
             iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
             title: const Text(
-              'Details',
+              'Vente Details',
               style: TextStyle(fontFamily: 'Oswald', color: Colors.black),
             )),
         body: Container(

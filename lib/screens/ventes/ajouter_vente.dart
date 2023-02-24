@@ -337,28 +337,17 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
     if (response.error == null) {
       if (response.statusCode == 200) {
         List<dynamic> data = response.data as List<dynamic>;
-
         for (var product in data) {
           var productMap = product as Map<String, dynamic>;
           productMapList.add(productMap);
         }
-        print(productMapList);
       }
     }
   }
 
   /* Dropdown products items */
   String? product_id;
-  List<DropdownMenuItem<String>> get dropdownProductsItems {
-    List<DropdownMenuItem<String>> menuProductsItems = [];
-    for (var i = 0; i < products.length; i++) {
-      menuProductsItems.add(DropdownMenuItem(
-        value: products[i].id.toString(),
-        child: Text(products[i].name, style: const TextStyle(fontSize: 15)),
-      ));
-    }
-    return menuProductsItems;
-  }
+
 
   //read product price
   void productPrice(int? product_id) async {
@@ -624,7 +613,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                       findFn: (dynamic str) async => productMapList,
                       selectedFn: (dynamic item1, dynamic item2) {
                         if (item1 != null && item2 != null) {
-                          return item1['name'] == item2['name'];
+                          return item1['id'] == item2['id'];
                         }
                         return false;
                       },
@@ -632,12 +621,21 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                         (item ?? {})['name'] ?? '',
                         style: const TextStyle(fontSize: 16),
                       ),
-                      onSaved: (dynamic str) {},
-                      onChanged: (dynamic str) {
+                      onSaved: (dynamic str) {
                         print(str);
                       },
+                      onChanged: (dynamic str) {
+                        setState(() {
+                          product_id = str['id'].toString();
+                        });
+                        if (product_id != null) {
+                          productPrice(int.parse(product_id!));
+                        }
+                      },
                       filterFn: (dynamic item, str) =>
-                          item['name'].toLowerCase().indexOf(str.toLowerCase()) >=
+                          item['name']
+                              .toLowerCase()
+                              .indexOf(str.toLowerCase()) >=
                           0,
                       dropdownItemFn: (dynamic item, int position, bool focused,
                               bool selected, Function() onTap) =>

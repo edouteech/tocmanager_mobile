@@ -10,10 +10,7 @@ import 'package:tocmanager/services/user_service.dart';
 import 'package:dio/dio.dart';
 
 //read sell
-Future<ApiResponse> ReadSells(
-  int compagnie_id,
-  int page
-) async {
+Future<ApiResponse> ReadSells(int compagnie_id, int page) async {
   ApiResponse apiResponse = ApiResponse();
   try {
     String token = await getToken();
@@ -22,12 +19,17 @@ Future<ApiResponse> ReadSells(
       Uri.parse('$sellsURL?compagnie_id=$compagnie_id&page=$page'),
       headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
     );
-
+    print('$sellsURL?compagnie_id=$compagnie_id&page=$page');
     switch (response.statusCode) {
       case 200:
         apiResponse.statusCode = response.statusCode;
         apiResponse.data = response.body;
         apiResponse.data = jsonDecode(response.body)['data']['data'] as List;
+        apiResponse.current_page =
+            jsonDecode(response.body)['data']['current_page'];
+        apiResponse.next_page_url = jsonDecode(response.body)['data']['next_page_url'];
+        apiResponse.prev_page_url = jsonDecode(response.body)['data']['prev_page_url'];
+        apiResponse.totalPage = jsonDecode(response.body)['data']['total'];
 
         break;
       case 422:
@@ -65,7 +67,7 @@ Future<ApiResponse> CreateSells(Map<String, dynamic> ventes) async {
         'Authorization': 'Bearer $token'
       }),
       data: body);
-  // print(response.data['message']);
+
   switch (response.statusCode) {
     case 200:
       if (response.data['status'] == "success") {

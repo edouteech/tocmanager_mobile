@@ -22,7 +22,7 @@ class AchatDetails extends StatefulWidget {
 List<dynamic> buy_lines = [];
 
 class _AchatDetailsState extends State<AchatDetails> {
-  bool isLoading = true;
+  bool? isLoading;
 
   @override
   void initState() {
@@ -33,11 +33,14 @@ class _AchatDetailsState extends State<AchatDetails> {
   readBuy() async {
     int compagnie_id = await getCompagnie_id();
     ApiResponse response = await DetailsBuys(compagnie_id, widget.buy_id);
+    setState(() {
+      isLoading = true;
+    });
     if (response.error == null) {
       if (response.statusCode == 200) {
         List<dynamic> data = response.data as List<dynamic>;
-        List<dynamic> Selllines = data[0]["buy_lines"] as List<dynamic>;
-        buy_lines = Selllines.map((p) => Buy_lines.fromJson(p)).toList();
+        List<dynamic> Buylines = data[0]["buy_lines"] as List<dynamic>;
+        buy_lines = Buylines.map((p) => Buy_lines.fromJson(p)).toList();
         setState(() {
           isLoading = false;
         });

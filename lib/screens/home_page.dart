@@ -10,7 +10,6 @@ import 'package:tocmanager/screens/ventes/ajouter_vente.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 import 'package:tocmanager/services/user_service.dart';
 import '../models/api_response.dart';
-import '../services/categorie_service.dart';
 import '../widgets/widgets.dart';
 import 'categories/ajouter_categorie.dart';
 import 'fournisseurs/ajouter_fournisseur.dart';
@@ -27,27 +26,61 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
+List<Map<String, dynamic>> statsMapList = [];
+
 class _HomePageState extends State<HomePage> {
   bool isNotSuscribe = false;
+  double chiffreAffaire = 0.0;
+  double encaissement = 0.0;
+  double decaissement = 0.0;
 
   @override
   void initState() {
+    statsMapList.clear();
     super.initState();
-    // gettingUserData();
-    readHomePage();
+    checkSuscribe();
+    TableauBord();
   }
 
-  Future readHomePage() async {
+  Future<void> TableauBord() async {
     int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await ReadCategories(compagnie_id);
+    ApiResponse response = await TableauDeBord(compagnie_id);
+    if (response.status == "success") {
+      Object? responseData = response.data;
+      if (responseData is Map<String, dynamic>) {
+        Map<String, dynamic> data = responseData;
+        statsMapList.add(data);
+        print(statsMapList);
+      }
+      setState(() {
+        chiffreAffaire =
+            double.parse(statsMapList[0]['chiffre_affaire'].toString());
+        encaissement = double.parse(statsMapList[0]['encaissement'].toString());
+        decaissement = double.parse(statsMapList[0]['decaissement'].toString());
+      });
+    }
+  }
 
-    if (response.error == null) {
-      dynamic data = response.data;
-    } else {
-      if (response.statusCode == 403) {
-        setState(() {
-          isNotSuscribe = true;
-        });
+  Future<void> checkSuscribe() async {
+    int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await SuscribeCheck(compagnie_id);
+    if (response.data == null) {
+      ApiResponse response = await SuscribeGrace(compagnie_id);
+      if (response.statusCode == 200) {
+        if (response.status == "error") {
+          setState(() {
+            isNotSuscribe = true;
+          });
+        } else if (response.status == "success") {
+          var data = response.data as Map<String, dynamic>;
+          var hasEndGrace = data['hasEndGrace'];
+          var graceEndDate = data['graceEndDate'];
+          if (hasEndGrace == false && graceEndDate != null) {
+            setState(() {
+              isNotSuscribe = true;
+            });
+          }
+        }
       }
     }
   }
@@ -126,23 +159,20 @@ class _HomePageState extends State<HomePage> {
                       child: PageView(
                         scrollDirection: Axis.horizontal,
                         controller: _controller,
-                        children: const [
+                        children: [
                           MyCard(
                             title: 'Chiffre d\'affaire',
-                            balance: 259000,
-                            dateBalance: '17/20/2020',
-                            color: Color.fromARGB(255, 45, 157, 220),
+                            balance: chiffreAffaire,
+                            color: const Color.fromARGB(255, 45, 157, 220),
                           ),
                           MyCard(
                             title: 'Encaissement',
-                            balance: 259000,
-                            dateBalance: '17/20/2020',
+                            balance: encaissement,
                             color: Colors.deepPurple,
                           ),
                           MyCard(
                             title: 'Décaissement',
-                            balance: 259000,
-                            dateBalance: '17/20/2020',
+                            balance: decaissement.toDouble(),
                             color: Colors.green,
                           ),
                         ],
