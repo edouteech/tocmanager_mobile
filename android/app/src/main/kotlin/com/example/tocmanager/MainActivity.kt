@@ -1,4 +1,4 @@
-package com.example.tocmanager
+package com.edoutech.tocmanager
 
 import io.flutter.embedding.android.FlutterActivity
 

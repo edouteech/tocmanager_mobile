@@ -428,9 +428,7 @@ class _AjouterClientPageState extends State<AjouterClientPage> {
       }
     } else {
       if (response.statusCode == 403) {
-        print(response.error);
       } else {
-        print(response.error);
       }
     }
   }

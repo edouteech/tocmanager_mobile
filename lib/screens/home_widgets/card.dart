@@ -2,11 +2,10 @@
 
 import 'package:flutter/material.dart';
 
-class MyCard extends StatelessWidget{
-  const MyCard({Key? key, 
-  required this.balance, 
-  required this.title,
-  this.color}) : super(key: key);
+class MyCard extends StatelessWidget {
+  const MyCard(
+      {Key? key, required this.balance, required this.title, this.color})
+      : super(key: key);
 
   final double balance;
   final String title;
@@ -14,37 +13,41 @@ class MyCard extends StatelessWidget{
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal:25),
+     padding: const EdgeInsets.symmetric(horizontal: 18 , vertical: 8),
       child: Container(
-        width: 300,
-        padding: const EdgeInsets.all(20),
+        width: MediaQuery.of(context).size.width,
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(16)
-        ),
+            color: color, borderRadius: BorderRadius.circular(5)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children:  [
-             Text( title,
+          children: [
+            Text(
+              title,
               style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontStyle: FontStyle.italic
-              ),
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontStyle: FontStyle.normal),
             ),
-            const SizedBox(height: 15,),
-
-             Text(balance.toString() + '  Fcfa',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize:36,
-                fontWeight: FontWeight.bold
-              ),
+            const SizedBox(
+              height: 10,
             ),
 
-            const SizedBox(height: 10,),
-            
+            Center(
+              child: Text(
+                balance.toString() + ' F',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold),
+              ),
+            ),
+
+            // const SizedBox(
+            //   height: 10,
+            // ),
+
             // Row(
             //   mainAxisAlignment: MainAxisAlignment.end,
             //   children:  [
@@ -57,9 +60,6 @@ class MyCard extends StatelessWidget{
             //     )
             //   ],
             // )
-
-            
-                      
           ],
         ),
       ),

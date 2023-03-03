@@ -108,10 +108,10 @@ class _CategoriesListState extends State<CategoriesList> {
                     child: CircularProgressIndicator(),
                   )
                 : SizedBox(
-                    width: double.infinity,
+                   
                     child: SingleChildScrollView(
                       child: PaginatedDataTable(
-                        onRowsPerPageChanged: (perPage) {},
+                         horizontalMargin: 10,
                         rowsPerPage: 10,
                         columns: const [
                           DataColumn(label: Center(child: Text("Date"))),
@@ -120,16 +120,22 @@ class _CategoriesListState extends State<CategoriesList> {
                               label: Center(child: Text("Categorie parente"))),
                           DataColumn(label: Center(child: Text("Editer"))),
                           DataColumn(label: Center(child: Text("Effacer"))),
+                           DataColumn(label: Center(child: Text("Détails"))),
                         ],
                         source: DataTableRow(
                           data: categories,
                           onDelete: _deleteCategory,
                           onEdit: _showFormDialog,
+                          details: _detailsCategory
                         ),
                       ),
                     ),
                   ),
           );
+  }
+
+  void _detailsCategory(int? category_id){
+
   }
 
   //delete categories
@@ -287,8 +293,9 @@ class DataTableRow extends DataTableSource {
   final List<dynamic> data;
   final Function(int?) onDelete;
   final Function(int?, int?, String?) onEdit;
+  final Function(int?) details;
   DataTableRow(
-      {required this.data, required this.onDelete, required this.onEdit});
+      {required this.data, required this.onDelete, required this.onEdit, required this.details});
 
   @override
   DataRow getRow(int index) {
@@ -320,6 +327,16 @@ class DataTableRow extends DataTableSource {
               icon: const Icon(
                 Icons.delete,
                 color: Colors.red,
+              ),
+              onPressed: () async {
+                onDelete(category.id);
+              }),
+        )),
+         DataCell(Center(
+          child: IconButton(
+              icon: const Icon(
+                Icons.info,
+                color: Colors.blue,
               ),
               onPressed: () async {
                 onDelete(category.id);

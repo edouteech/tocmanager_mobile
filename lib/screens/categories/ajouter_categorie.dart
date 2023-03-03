@@ -84,7 +84,6 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        backgroundColor: Colors.grey[300],
         floatingActionButton: isNotSuscribe == true
             ? null
             : FloatingActionButton(

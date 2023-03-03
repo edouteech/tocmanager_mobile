@@ -135,7 +135,6 @@ class _ListClientState extends State<ListClient> {
         sendMessage = true;
       });
     } else if (response.statusCode == 500) {
-      print("object");
       message = "La suppression a échouée !";
       setState(() {
         sendMessage = true;

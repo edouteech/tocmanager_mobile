@@ -1,12 +1,12 @@
 // ignore_for_file: use_build_context_synchronously, avoid_unnecessary_containers, non_constant_identifier_names, constant_identifier_names, sized_box_for_whitespace, no_leading_underscores_for_local_identifiers, avoid_print, unused_local_variable
 
+import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 import 'package:flutter/material.dart';
-import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:intl/intl.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/profile/profile_page.dart';
 import 'package:tocmanager/screens/suscribe_screen/suscribe_screen.dart';
-import 'package:tocmanager/screens/ventes/ajouter_vente.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 import 'package:tocmanager/services/user_service.dart';
 import '../models/api_response.dart';
@@ -15,7 +15,6 @@ import 'categories/ajouter_categorie.dart';
 import 'fournisseurs/ajouter_fournisseur.dart';
 import 'home_widgets/card.dart';
 import 'home_widgets/drawer_header.dart';
-import 'home_widgets/my_button.dart';
 import 'auth/login_page.dart';
 import 'produits/ajouter_produits.dart';
 
@@ -50,7 +49,6 @@ class _HomePageState extends State<HomePage> {
       if (responseData is Map<String, dynamic>) {
         Map<String, dynamic> data = responseData;
         statsMapList.add(data);
-        print(statsMapList);
       }
       setState(() {
         chiffreAffaire =
@@ -95,20 +93,20 @@ class _HomePageState extends State<HomePage> {
         return false;
       },
       child: Scaffold(
-        floatingActionButton: isNotSuscribe == true
-            ? null
-            : FloatingActionButton(
-                onPressed: () async {
-                  nextScreen(context, const AjouterVentePage());
-                },
-                backgroundColor: Colors.blue,
-                child: const Icon(
-                  Icons.add,
-                  size: 32,
-                ),
-              ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-        backgroundColor: Colors.grey[300],
+        // floatingActionButton: isNotSuscribe == true
+        //     ? null
+        //     : FloatingActionButton(
+        //         onPressed: () async {
+        //           nextScreen(context, const AjouterVentePage());
+        //         },
+        //         backgroundColor: Colors.blue,
+        //         child: const Icon(
+        //           Icons.add,
+        //           size: 32,
+        //         ),
+        //       ),
+        // floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+        backgroundColor: Colors.white,
         appBar: AppBar(
           centerTitle: true,
           backgroundColor: Colors.grey[100],
@@ -151,68 +149,214 @@ class _HomePageState extends State<HomePage> {
                 child: SafeArea(
                     child: Column(
                   children: [
-                    const SizedBox(
-                      height: 25,
+                    const SizedBox(height: 15),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            nextScreen(context, const AchatHomePage());
+                          },
+                          icon: const Icon(Icons.shopping_cart),
+                          label: const Text('Achats'),
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            backgroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 15, vertical: 5), // texte en blanc
+                          ),
+                        ),
+                        const SizedBox(
+                            width: 20), // espace de 20 pixels entre les boutons
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            nextScreen(context, const VenteHome());
+                          },
+                          icon: const Icon(Icons.ios_share_rounded),
+                          label: const Text('Ventes'),
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            backgroundColor: Colors.blue[700],
+
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 15, vertical: 5), // texte en blanc
+                          ),
+                        ),
+                      ],
                     ),
-                    Container(
-                      height: 166,
-                      child: PageView(
-                        scrollDirection: Axis.horizontal,
-                        controller: _controller,
+
+                    const SizedBox(height: 15),
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          MyCard(
-                            title: 'Chiffre d\'affaire',
-                            balance: chiffreAffaire,
-                            color: const Color.fromARGB(255, 45, 157, 220),
+                          Flexible(
+                              child: Container(
+                            padding: const EdgeInsets.only(left: 20, right: 20),
+                            margin: const EdgeInsets.only(top: 10),
+                            child: DateTimeField(
+                              // controller: dateController,
+                              decoration: const InputDecoration(
+                                contentPadding:
+                                    EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
+                                enabledBorder: OutlineInputBorder(
+                                    borderSide: BorderSide(
+                                        color:
+                                            Color.fromARGB(255, 45, 157, 220)),
+                                    borderRadius:
+                                        BorderRadius.all(Radius.circular(10))),
+                                border: OutlineInputBorder(
+                                    borderRadius:
+                                        BorderRadius.all(Radius.circular(10))),
+                                label: Text("Date"),
+                                labelStyle: TextStyle(
+                                    fontSize: 13, color: Colors.black),
+                              ),
+                              format: DateFormat("yyyy-MM-dd HH:mm:ss"),
+                              onShowPicker: (context, currentValue) async {
+                                final date = await showDatePicker(
+                                    context: context,
+                                    firstDate: DateTime(1900),
+                                    initialDate: currentValue ?? DateTime.now(),
+                                    lastDate: DateTime(2100));
+                                if (date != null) {
+                                  final time = TimeOfDay.fromDateTime(
+                                      currentValue ?? DateTime.now());
+                                  return DateTimeField.combine(date, time);
+                                } else {
+                                  return currentValue;
+                                }
+                              },
+                            ),
+                          )),
+                          Flexible(
+                            child: Container(
+                              padding:
+                                  const EdgeInsets.only(left: 20, right: 20),
+                              margin: const EdgeInsets.only(top: 10),
+                              child: DateTimeField(
+                                // controller: dateController,
+                                decoration: const InputDecoration(
+                                  contentPadding: EdgeInsets.fromLTRB(
+                                      20.0, 10.0, 20.0, 10.0),
+                                  enabledBorder: OutlineInputBorder(
+                                      borderSide: BorderSide(
+                                          color: Color.fromARGB(
+                                              255, 45, 157, 220)),
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(10))),
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(10))),
+                                  label: Text("Date"),
+                                  labelStyle: TextStyle(
+                                      fontSize: 13, color: Colors.black),
+                                ),
+                                format: DateFormat("yyyy-MM-dd HH:mm:ss"),
+                                onShowPicker: (context, currentValue) async {
+                                  final date = await showDatePicker(
+                                      context: context,
+                                      firstDate: DateTime(1900),
+                                      initialDate:
+                                          currentValue ?? DateTime.now(),
+                                      lastDate: DateTime(2100));
+                                  if (date != null) {
+                                    final time = TimeOfDay.fromDateTime(
+                                        currentValue ?? DateTime.now());
+                                    return DateTimeField.combine(date, time);
+                                  } else {
+                                    return currentValue;
+                                  }
+                                },
+                              ),
+                            ),
                           ),
-                          MyCard(
-                            title: 'Encaissement',
-                            balance: encaissement,
-                            color: Colors.deepPurple,
-                          ),
-                          MyCard(
-                            title: 'Décaissement',
-                            balance: decaissement.toDouble(),
-                            color: Colors.green,
+                          IconButton(
+                            onPressed: () {
+                              // action à effectuer lorsque le bouton achat est pressé
+                            },
+                            icon: const Icon(Icons.visibility),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 15,
+                                  vertical: 5), // texte en blanc
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(
-                      height: 15,
+
+                    const SizedBox(height: 15),
+
+                    MyCard(
+                      title: 'Chiffre d\'affaire (Total des transactions)',
+                      balance: chiffreAffaire,
+                      color: const LinearGradient(
+                        colors: [
+                          Color(0xFF2B5876),
+                          Color(0xFF4E4376),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        transform: GradientRotation(
+                            -20 * 3.14159 / 180), // -20deg to radians
+                      ).colors[0],
                     ),
-                    SmoothPageIndicator(
-                      controller: _controller,
-                      count: 3,
-                      effect: const WormEffect(
-                          dotColor: Colors.grey,
-                          activeDotColor: Color.fromARGB(255, 45, 157, 220),
-                          dotWidth: 10.0,
-                          dotHeight: 8.0),
+
+                    MyCard(
+                      title: 'Encaissements (Total des encaissements)',
+                      balance: encaissement,
+                      color: const RadialGradient(
+                        radius: 248.0, // rayon du cercle
+                        center: Alignment.center, // centre du cercle
+                        colors: [
+                          Color(0xFF16D9E3), // couleur à 0%
+                          Color(0xFF30C7EC), // couleur à 47%
+                          Color(0xFF46AEF7), // couleur à 100%
+                        ],
+                      ).colors[0],
                     ),
-                    const SizedBox(
-                      height: 15,
+
+                    MyCard(
+                      title: 'Décaissements (Total des décaissements)',
+                      balance: decaissement.toDouble(),
+                      color: const LinearGradient(
+                        begin: Alignment.bottomCenter, // début du dégradé
+                        end: Alignment.topCenter, // fin du dégradé
+                        colors: [
+                          Color(0xFF0BA360), // couleur à 0%
+                          Color(0xFF3CBA92), // couleur à 100%
+                        ],
+                      ).colors[0],
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 20.0),
-                      child: Container(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: const [
-                            MyButton(
-                              iconImagePath: 'assets/benefice.png',
-                              buttonText: 'Bénéfice',
-                            ),
-                            MyButton(
-                                iconImagePath: 'assets/benefice.png',
-                                buttonText: 'Volume de vente'),
-                            MyButton(
-                                iconImagePath: 'assets/benefice.png',
-                                buttonText: 'Bénéfice')
-                          ],
-                        ),
-                      ),
-                    ),
+                    MyCard(
+                        title:
+                            'Volume des ventes (Quantité de vente)',
+                        balance: decaissement.toDouble(),
+                        color: Colors.black),
+
+                    // Padding(
+                    //   padding: const EdgeInsets.symmetric(vertical: 20.0),
+                    //   child: Container(
+                    //     child: Row(
+                    //       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    //       children: const [
+                    //         MyButton(
+                    //           iconImagePath: 'assets/benefice.png',
+                    //           buttonText: 'Bénéfice',
+                    //         ),
+                    //         MyButton(
+                    //             iconImagePath: 'assets/benefice.png',
+                    //             buttonText: 'Volume de vente'),
+                    //         MyButton(
+                    //             iconImagePath: 'assets/benefice.png',
+                    //             buttonText: 'Bénéfice')
+                    //       ],
+                    //     ),
+                    //   ),
+                    // ),
                     // Padding(
                     //   padding: const EdgeInsets.all(25.0),
                     //   child: Column(
