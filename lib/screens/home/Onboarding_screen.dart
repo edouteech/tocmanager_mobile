@@ -171,7 +171,7 @@ class OnboardingContent extends StatelessWidget {
         ),
         const Spacer(flex: 1),
         SizedBox(
-          height: getProportionateScreenHeight(250),
+          height: getProportionateScreenHeight(200),
           child: Image.asset(
             image,
             height: getProportionateScreenHeight(265),

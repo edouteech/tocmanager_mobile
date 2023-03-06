@@ -216,11 +216,8 @@ class _LoginPageState extends State<LoginPage> {
                                     }
                                   },
                                   child: Container(
+                                    width: SizeConfig.screenWidth * 0.4,
                                     alignment: Alignment.center,
-                                    margin: const EdgeInsets.only(
-                                        left: 80, right: 80, top: 10),
-                                    padding: const EdgeInsets.only(
-                                        left: 10, right: 10),
                                     height: 54,
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(50),

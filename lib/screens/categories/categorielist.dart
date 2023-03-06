@@ -1,9 +1,9 @@
 // ignore_for_file: non_constant_identifier_names, use_build_context_synchronously
-
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:intl/intl.dart';
 import 'package:tocmanager/screens/categories/ajouter_categorie.dart';
+import 'package:tocmanager/screens/categories/categorie_details.dart';
 import 'package:tocmanager/screens/home/size_config.dart';
 import 'package:tocmanager/services/categorie_service.dart';
 import '../../models/Category.dart';
@@ -38,7 +38,7 @@ class _CategoriesListState extends State<CategoriesList> {
   }
 
   Future<void> checkSuscribe() async {
-     int compagnie_id = await getCompagnie_id();
+    int compagnie_id = await getCompagnie_id();
     ApiResponse response = await SuscribeCheck(compagnie_id);
     if (response.data == null) {
       ApiResponse response = await SuscribeGrace(compagnie_id);
@@ -110,35 +110,55 @@ class _CategoriesListState extends State<CategoriesList> {
                     child: CircularProgressIndicator(),
                   )
                 : SizedBox(
-                  width: SizeConfig.screenWidth,
-                   
+                    width: SizeConfig.screenWidth,
                     child: SingleChildScrollView(
                       child: PaginatedDataTable(
-                         horizontalMargin: 10,
                         rowsPerPage: 10,
                         columns: const [
-                          DataColumn(label: Center(child: Text("Date"))),
-                          DataColumn(label: Center(child: Text("Noms"))),
                           DataColumn(
-                              label: Center(child: Text("Categorie parente"))),
-                          DataColumn(label: Center(child: Text("Editer"))),
-                          DataColumn(label: Center(child: Text("Effacer"))),
-                           DataColumn(label: Center(child: Text("Détails"))),
+                              label: Center(
+                                  child: Text(
+                            "Date",
+                            style: TextStyle(color: Colors.blue),
+                          ))),
+                          DataColumn(
+                              label: Center(
+                            child: Text("Noms",
+                                style: TextStyle(color: Colors.blue)),
+                          )),
+                          DataColumn(
+                              label: Center(
+                                  child: Text("Categorie parente",
+                                      style: TextStyle(color: Colors.blue)))),
+                          DataColumn(
+                              label: Center(
+                                  child: Text("Editer",
+                                      style: TextStyle(color: Colors.blue)))),
+                          DataColumn(
+                              label: Center(
+                                  child: Text("Effacer",
+                                      style: TextStyle(color: Colors.blue)))),
+                          DataColumn(
+                              label: Center(
+                                  child: Text("Détails",
+                                      style: TextStyle(color: Colors.blue)))),
                         ],
                         source: DataTableRow(
-                          data: categories,
-                          onDelete: _deleteCategory,
-                          onEdit: _showFormDialog,
-                          details: _detailsCategory
-                        ),
+                            data: categories,
+                            onDelete: _deleteCategory,
+                            onEdit: _showFormDialog,
+                            onDetails: _detailsCategory),
                       ),
                     ),
                   ),
           );
   }
 
-  void _detailsCategory(int? category_id){
-
+  void _detailsCategory(int? category_id) async {
+    Navigator.of(context).pushReplacement(MaterialPageRoute(
+        builder: (context) => CategorieDetails(
+              category_id: category_id,
+            )));
   }
 
   //delete categories
@@ -296,9 +316,12 @@ class DataTableRow extends DataTableSource {
   final List<dynamic> data;
   final Function(int?) onDelete;
   final Function(int?, int?, String?) onEdit;
-  final Function(int?) details;
+  final Function(int?) onDetails;
   DataTableRow(
-      {required this.data, required this.onDelete, required this.onEdit, required this.details});
+      {required this.data,
+      required this.onDelete,
+      required this.onEdit,
+      required this.onDetails});
 
   @override
   DataRow getRow(int index) {
@@ -306,47 +329,38 @@ class DataTableRow extends DataTableSource {
     return DataRow.byIndex(
       index: index,
       cells: <DataCell>[
-        DataCell(Center(
-          child: Text(DateFormat("dd-MM-yyyy H:mm:s")
-              .format(DateTime.parse(category.created_at.toString()))),
-        )),
-        DataCell(Center(child: Text(category.name.toString()))),
-        DataCell(
-            Center(child: Text(category.compagnie_parent?.toString() ?? '-'))),
-        DataCell(Center(
-          child: IconButton(
-              icon: const Icon(
-                Icons.edit,
-                color: Colors.blue,
-              ),
-              onPressed: () async {
-                onEdit(
-                  category.id,
-                  category.parentId,
-                  category.name.toString(),
-                );
-              }),
-        )),
-        DataCell(Center(
-          child: IconButton(
-              icon: const Icon(
-                Icons.delete,
-                color: Colors.red,
-              ),
-              onPressed: () async {
-                onDelete(category.id);
-              }),
-        )),
-         DataCell(Center(
-          child: IconButton(
-              icon: const Icon(
-                Icons.info,
-                color: Colors.blue,
-              ),
-              onPressed: () async {
-                onDelete(category.id);
-              }),
-        ))
+        DataCell(Text(DateFormat("dd-MM-yyyy H:mm:s")
+            .format(DateTime.parse(category.created_at.toString())))),
+        DataCell(Text(category.name.toString())),
+        DataCell(Text(category.compagnie_parent?.toString() ?? "Aucune")),
+        DataCell(IconButton(
+            icon: const Icon(
+              Icons.edit,
+              color: Colors.blue,
+            ),
+            onPressed: () async {
+              onEdit(
+                category.id,
+                category.parentId,
+                category.name.toString(),
+              );
+            })),
+        DataCell(IconButton(
+            icon: const Icon(
+              Icons.delete,
+              color: Colors.red,
+            ),
+            onPressed: () async {
+              onDelete(category.id);
+            })),
+        DataCell(IconButton(
+            icon: const Icon(
+              Icons.info,
+              color: Colors.blue,
+            ),
+            onPressed: () async {
+              onDetails(category.id);
+            }))
       ],
     );
   }

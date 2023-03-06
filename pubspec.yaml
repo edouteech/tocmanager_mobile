@@ -54,6 +54,7 @@ dependencies:
   internet_connection_checker: ^1.0.0+1
   url_launcher: ^6.1.10
   dropdown_plus: ^0.0.9
+  sqlite3: ^1.9.1
   
 
   

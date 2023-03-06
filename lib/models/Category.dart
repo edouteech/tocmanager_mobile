@@ -7,6 +7,7 @@ class Category {
   String? created_at;
   String? updated_at;
   dynamic sum_products;
+  dynamic valorisation;
   String? compagnie_parent;
   
   Category(
@@ -17,7 +18,9 @@ class Category {
       this.created_at,
       this.sum_products,
       this.updated_at,
-      this.compagnie_parent});
+      this.valorisation,
+      this.compagnie_parent,
+      });
 
   //function to convert json data to category model
   factory Category.fromJson(Map<String, dynamic> json) {
@@ -29,6 +32,7 @@ class Category {
       created_at: json['created_at'],
       updated_at: json['updated_at'],
       sum_products: (json['sum_products']).toString(),
+      valorisation: (json['sum_products']).toString(),
       compagnie_parent: json['parent'] !=null ? json['parent']['name'] : null
     );
   }

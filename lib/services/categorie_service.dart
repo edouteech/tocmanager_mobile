@@ -205,3 +205,46 @@ Future<ApiResponse> EditCategories(String compagnie_id, String name,
 
   return apiResponse;
 }
+
+
+
+//one Category
+Future<ApiResponse> ReadOneCategory(
+  int compagnie_id,
+  int category_id
+) async {
+  ApiResponse apiResponse = ApiResponse();
+  try {
+    String token = await getToken();
+
+    final response = await http.get(
+      Uri.parse('$categoriesURL/$category_id?compagnie_id=$compagnie_id'),
+      headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
+    );
+   
+    switch (response.statusCode) {
+      case 200:
+        apiResponse.statusCode = response.statusCode;
+        apiResponse.data = response.body;
+        apiResponse.data = jsonDecode(response.body)['data']as List;
+
+        break;
+      case 422:
+        final errors = jsonDecode(response.body)['errors'];
+        apiResponse.error = errors[errors.keys.elementAt(0)][0];
+        apiResponse.statusCode = response.statusCode;
+        break;
+      case 403:
+        apiResponse.error = jsonDecode(response.body)['message'];
+        apiResponse.statusCode = response.statusCode;
+        break;
+      default:
+        apiResponse.error = somethingWentWrong;
+        break;
+    }
+  } catch (e) {
+    apiResponse.error = serverError;
+  }
+
+  return apiResponse;
+}

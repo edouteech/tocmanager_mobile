@@ -150,7 +150,6 @@ class _HomePageState extends State<HomePage> {
                     child: Column(
                   children: [
                     const SizedBox(height: 15),
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
@@ -185,7 +184,6 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 15),
                     Padding(
                       padding: const EdgeInsets.all(8.0),
@@ -287,93 +285,72 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 15),
-
-                    MyCard(
-                      title: 'Chiffre d\'affaire (Total des transactions)',
-                      balance: chiffreAffaire,
-                      color: const LinearGradient(
-                        colors: [
-                          Color(0xFF2B5876),
-                          Color(0xFF4E4376),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        transform: GradientRotation(
-                            -20 * 3.14159 / 180), // -20deg to radians
-                      ).colors[0],
+                    Row(
+                      children: [
+                        Expanded(
+                          child: MyCard(
+                            title:
+                                'Chiffre d\'affaire (Total des transactions)',
+                            balance: chiffreAffaire,
+                            color: const LinearGradient(
+                              colors: [
+                                Color(0xFF2B5876),
+                                Color(0xFF4E4376),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              transform: GradientRotation(
+                                  -20 * 3.14159 / 180), // -20deg to radians
+                            ).colors[0],
+                          ),
+                        ),
+                        const SizedBox(
+                            width: 16), // add some spacing between the cards
+                        Expanded(
+                          child: MyCard(
+                            title: 'Encaissements (Total des encaissements)',
+                            balance: encaissement,
+                            color: const RadialGradient(
+                              radius: 248.0, // rayon du cercle
+                              center: Alignment.center, // centre du cercle
+                              colors: [
+                                Color(0xFF16D9E3), // couleur à 0%
+                                Color(0xFF30C7EC), // couleur à 47%
+                                Color(0xFF46AEF7), // couleur à 100%
+                              ],
+                            ).colors[0],
+                          ),
+                        ),
+                      ],
                     ),
-
-                    MyCard(
-                      title: 'Encaissements (Total des encaissements)',
-                      balance: encaissement,
-                      color: const RadialGradient(
-                        radius: 248.0, // rayon du cercle
-                        center: Alignment.center, // centre du cercle
-                        colors: [
-                          Color(0xFF16D9E3), // couleur à 0%
-                          Color(0xFF30C7EC), // couleur à 47%
-                          Color(0xFF46AEF7), // couleur à 100%
-                        ],
-                      ).colors[0],
+                     const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: MyCard(
+                            title: 'Décaissements (Total des décaissements)',
+                            balance: decaissement.toDouble(),
+                            color: const LinearGradient(
+                              begin: Alignment.bottomCenter, // début du dégradé
+                              end: Alignment.topCenter, // fin du dégradé
+                              colors: [
+                                Color(0xFF0BA360), // couleur à 0%
+                                Color(0xFF3CBA92), // couleur à 100%
+                              ],
+                            ).colors[0],
+                          ),
+                        ),
+                        const SizedBox(
+                            width: 16), // add some spacing between the cards
+                        Expanded(
+                          child: MyCard(
+                              title: 'Volume des ventes (Quantité de vente)',
+                              balance: decaissement.toDouble(),
+                              color: Colors.black),
+                        ),
+                      ],
                     ),
-
-                    MyCard(
-                      title: 'Décaissements (Total des décaissements)',
-                      balance: decaissement.toDouble(),
-                      color: const LinearGradient(
-                        begin: Alignment.bottomCenter, // début du dégradé
-                        end: Alignment.topCenter, // fin du dégradé
-                        colors: [
-                          Color(0xFF0BA360), // couleur à 0%
-                          Color(0xFF3CBA92), // couleur à 100%
-                        ],
-                      ).colors[0],
-                    ),
-                    MyCard(
-                        title:
-                            'Volume des ventes (Quantité de vente)',
-                        balance: decaissement.toDouble(),
-                        color: Colors.black),
-
-                    // Padding(
-                    //   padding: const EdgeInsets.symmetric(vertical: 20.0),
-                    //   child: Container(
-                    //     child: Row(
-                    //       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    //       children: const [
-                    //         MyButton(
-                    //           iconImagePath: 'assets/benefice.png',
-                    //           buttonText: 'Bénéfice',
-                    //         ),
-                    //         MyButton(
-                    //             iconImagePath: 'assets/benefice.png',
-                    //             buttonText: 'Volume de vente'),
-                    //         MyButton(
-                    //             iconImagePath: 'assets/benefice.png',
-                    //             buttonText: 'Bénéfice')
-                    //       ],
-                    //     ),
-                    //   ),
-                    // ),
-                    // Padding(
-                    //   padding: const EdgeInsets.all(25.0),
-                    //   child: Column(
-                    //     children: const [
-                    //       //statistic
-                    //       MyListTitle(
-                    //         iconImagePath: 'assets/statistics.png',
-                    //         titleName: 'Encaissement',
-                    //       ),
-
-                    //       MyListTitle(
-                    //         iconImagePath: 'assets/statistics.png',
-                    //         titleName: 'Décaissement',
-                    //       ),
-                    //     ],
-                    //   ),
-                    // )
                   ],
                 )),
               ),
