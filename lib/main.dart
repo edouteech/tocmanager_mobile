@@ -1,5 +1,5 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:tocmanager/services/user_service.dart';
 import 'package:tocmanager/widgets/widgets.dart';
 import 'package:responsive_framework/responsive_framework.dart';
@@ -7,12 +7,20 @@ import 'package:responsive_framework/responsive_framework.dart';
 import 'screens/home/Onboarding_screen.dart';
 import 'screens/home_page.dart';
 
-void main() async {
+// void main() async {
+//   // WidgetsFlutterBinding.ensureInitialized();
+//   // await Firebase.initializeApp();
+//   runApp(
+//     const MyApp(),
+//   );
+// }
+
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  runApp(
-    const MyApp(),
+  SystemChrome.setApplicationSwitcherDescription(
+    const ApplicationSwitcherDescription(),
   );
+   runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
@@ -23,15 +31,13 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  String ? _isSignedIn ;
+  String? _isSignedIn;
 
   @override
   void initState() {
     super.initState();
     _loadUserInfo();
   }
-
-
 
   _loadUserInfo() async {
     String token = await getToken();
@@ -54,7 +60,7 @@ class _MyAppState extends State<MyApp> {
             const ResponsiveBreakpoint.resize(450, name: MOBILE),
             const ResponsiveBreakpoint.autoScale(800, name: TABLET),
             const ResponsiveBreakpoint.autoScale(1000, name: TABLET),
-            const ResponsiveBreakpoint.resize(1200, name: DESKTOP),
+            const ResponsiveBreakpoint.resize(2000, name: DESKTOP),
             const ResponsiveBreakpoint.autoScale(2460, name: "4K"),
           ]),
       theme: ThemeData(

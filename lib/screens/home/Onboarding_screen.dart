@@ -34,6 +34,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     SizeConfig().init(context);
     return Scaffold(
       body: SafeArea(
+        left: false, // Utiliser la largeur de l'écran
+        right: false, // Utiliser la hauteur de l'écran
         child: SizedBox(
           width: double.infinity,
           child: Column(
@@ -56,7 +58,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   flex: 2,
                   child: Padding(
                     padding: EdgeInsets.symmetric(
-                        horizontal: getProportionateScreenWidth(20)),
+                      horizontal: getProportionateScreenWidth(20),
+                      vertical: getProportionateScreenHeight(10),
+                    ),
                     child: Column(
                       children: <Widget>[
                         Row(
@@ -66,7 +70,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         ),
                         const Spacer(),
                         SizedBox(
-                          width: double.infinity,
+                          width: getProportionateScreenWidth(100),
                           height: getProportionateScreenHeight(50),
                           child: ElevatedButton(
                             style: ButtonStyle(
@@ -77,7 +81,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                             BorderRadius.circular(20)))),
                             child: Text('Connexion',
                                 style: TextStyle(
-                                    fontSize: getProportionateScreenWidth(18),
+                                    fontSize: getProportionateScreenWidth(12),
                                     fontFamily: 'Satisfy',
                                     color: Colors.white)),
                             onPressed: () {
@@ -90,10 +94,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           ),
                         ),
                         SizedBox(
-                          height: getProportionateScreenHeight(50),
+                          height: getProportionateScreenHeight(30),
                         ),
                         SizedBox(
-                          width: double.infinity,
+                          width: getProportionateScreenWidth(100),
                           height: getProportionateScreenHeight(50),
                           child: ElevatedButton(
                             style: ButtonStyle(
@@ -104,7 +108,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                             BorderRadius.circular(20)))),
                             child: Text('Inscription',
                                 style: TextStyle(
-                                    fontSize: getProportionateScreenWidth(18),
+                                    fontSize: getProportionateScreenWidth(12),
                                     fontFamily: 'Satisfy',
                                     color: Colors.white)),
                             onPressed: () {
@@ -165,11 +169,14 @@ class OnboardingContent extends StatelessWidget {
           text,
           textAlign: TextAlign.center,
         ),
-        const Spacer(flex: 2),
-        Image.asset(
-          image,
-          height: getProportionateScreenHeight(265),
-          width: getProportionateScreenWidth(235),
+        const Spacer(flex: 1),
+        SizedBox(
+          height: getProportionateScreenHeight(250),
+          child: Image.asset(
+            image,
+            height: getProportionateScreenHeight(265),
+            width: getProportionateScreenWidth(235),
+          ),
         )
       ],
     );

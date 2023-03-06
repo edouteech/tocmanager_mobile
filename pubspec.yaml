@@ -28,17 +28,16 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
   
-  cloud_firestore: ^3.4.9
+  cloud_firestore: ^4.4.3
   cupertino_icons: ^1.0.5
   date_field: ^3.0.1
   datetime_picker_formfield: ^2.0.1
   dropdown_textfield: ^1.0.5
   
-  firebase_auth: ^3.10.0
-  firebase_core: ^1.23.0
+
   flutter:
     sdk: flutter
-  flutter_gen: ^4.3.0
+  flutter_gen: ^5.2.0
   form_field_validator: ^1.1.0
   intl: ^0.17.0
   path_provider: ^2.0.11
@@ -50,7 +49,7 @@ dependencies:
   flutter_reactive_ble: ^5.0.2
   provider: ^6.0.4
   http: ^0.13.5
-  dio: ^4.0.6
+  dio: ^5.0.1
   connectivity_plus: ^3.0.2
   internet_connection_checker: ^1.0.0+1
   url_launcher: ^6.1.10
@@ -64,7 +63,7 @@ dev_dependencies:
   flutter_lints: ^2.0.1
   flutter_test:
     sdk: flutter
-  flutter_launcher_icons: ^0.10.0
+  flutter_launcher_icons: ^0.11.0
   
 
 flutter_native_splash:

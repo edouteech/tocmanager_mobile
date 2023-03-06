@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:intl/intl.dart';
 import 'package:tocmanager/screens/categories/ajouter_categorie.dart';
+import 'package:tocmanager/screens/home/size_config.dart';
 import 'package:tocmanager/services/categorie_service.dart';
 import '../../models/Category.dart';
 import '../../models/api_response.dart';
@@ -100,6 +101,7 @@ class _CategoriesListState extends State<CategoriesList> {
 
   @override
   Widget build(BuildContext context) {
+    SizeConfig().init(context);
     return isNotSuscribe == true
         ? const SuscribePage()
         : Container(
@@ -108,6 +110,7 @@ class _CategoriesListState extends State<CategoriesList> {
                     child: CircularProgressIndicator(),
                   )
                 : SizedBox(
+                  width: SizeConfig.screenWidth,
                    
                     child: SingleChildScrollView(
                       child: PaginatedDataTable(
@@ -115,7 +118,7 @@ class _CategoriesListState extends State<CategoriesList> {
                         rowsPerPage: 10,
                         columns: const [
                           DataColumn(label: Center(child: Text("Date"))),
-                          DataColumn(label: Center(child: Text("Name"))),
+                          DataColumn(label: Center(child: Text("Noms"))),
                           DataColumn(
                               label: Center(child: Text("Categorie parente"))),
                           DataColumn(label: Center(child: Text("Editer"))),
@@ -303,8 +306,10 @@ class DataTableRow extends DataTableSource {
     return DataRow.byIndex(
       index: index,
       cells: <DataCell>[
-        DataCell(Text(DateFormat("dd-MM-yyyy H:mm:s")
-            .format(DateTime.parse(category.created_at.toString())))),
+        DataCell(Center(
+          child: Text(DateFormat("dd-MM-yyyy H:mm:s")
+              .format(DateTime.parse(category.created_at.toString()))),
+        )),
         DataCell(Center(child: Text(category.name.toString()))),
         DataCell(
             Center(child: Text(category.compagnie_parent?.toString() ?? '-'))),

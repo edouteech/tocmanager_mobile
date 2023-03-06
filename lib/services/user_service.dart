@@ -17,7 +17,6 @@ Future<ApiResponse> Login(String email, String password) async {
     final response = await http.post(Uri.parse(loginURL),
         headers: {'Accept': 'application/json'},
         body: {'email': email, 'password': password});
-    print(response.statusCode);
     switch (response.statusCode) {
       case 200:
         apiResponse.data = Users.fromJson(jsonDecode(response.body));

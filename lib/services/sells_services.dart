@@ -19,7 +19,6 @@ Future<ApiResponse> ReadSells(int compagnie_id, int page) async {
       Uri.parse('$sellsURL?compagnie_id=$compagnie_id&page=$page'),
       headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
     );
-    print('$sellsURL?compagnie_id=$compagnie_id&page=$page');
     switch (response.statusCode) {
       case 200:
         apiResponse.statusCode = response.statusCode;
