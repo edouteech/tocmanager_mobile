@@ -21,7 +21,6 @@ Future<ApiResponse> ReadProducts(
       Uri.parse('$productsURL?compagnie_id=$compagnie_id&is_paginated=0'),
       headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
     );
-
     switch (response.statusCode) {
       case 200:
         apiResponse.statusCode = response.statusCode;
@@ -199,11 +198,10 @@ Future<ApiResponse> ReadProductbyId(int compagnie_id, int? product_id) async {
 //update product
 Future<ApiResponse> UpdateProducts(
     Map<String, dynamic> products, int product_id) async {
-       Dio dio = Dio();
+  Dio dio = Dio();
   dynamic body = json.encode(products);
   ApiResponse apiResponse = ApiResponse();
 
- 
   String token = await getToken();
   try {
     final response = await dio.put('$productsURL/$product_id',

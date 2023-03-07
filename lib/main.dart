@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:tocmanager/database/sqfdb.dart';
 import 'package:tocmanager/services/user_service.dart';
 import 'package:tocmanager/widgets/widgets.dart';
-import 'package:responsive_framework/responsive_framework.dart';
 
 import 'screens/home/Onboarding_screen.dart';
 import 'screens/home_page.dart';
@@ -16,11 +16,12 @@ import 'screens/home_page.dart';
 // }
 
 void main() {
+  SqlDb.init();
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setApplicationSwitcherDescription(
     const ApplicationSwitcherDescription(),
   );
-   runApp(const MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {

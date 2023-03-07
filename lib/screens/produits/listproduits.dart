@@ -117,26 +117,56 @@ class _ProduitListPageState extends State<ProduitListPage> {
                     child: SingleChildScrollView(
                       child: PaginatedDataTable(
                         columns: const [
-                          DataColumn(label: Center(child: Text("Name"))),
-                          DataColumn(label: Center(child: Text("Categorie"))),
-                          DataColumn(label: Center(child: Text("Quantié"))),
                           DataColumn(
-                              label: Center(child: Text("Prix de vente"))),
+                              label: Center(
+                                  child: Text("Produit",
+                                      style: TextStyle(color: Colors.blue)))),
                           DataColumn(
-                              label: Center(child: Text("Prix d'achat"))),
+                              label: Center(
+                                  child: Text("Categorie",
+                                      style: TextStyle(color: Colors.blue)))),
                           DataColumn(
-                              label: Center(child: Text("Valorisation"))),
-                          DataColumn(label: Center(child: Text("Editer"))),
-                          DataColumn(label: Center(child: Text("Effacer"))),
+                              label: Center(
+                                  child: Text("Quantié",
+                                      style: TextStyle(color: Colors.blue)))),
+                          DataColumn(
+                              label: Center(
+                                  child: Text("Prix de vente",
+                                      style: TextStyle(color: Colors.blue)))),
+                          DataColumn(
+                              label: Center(
+                                  child: Text("Prix d'achat",
+                                      style: TextStyle(color: Colors.blue)))),
+                          DataColumn(
+                              label: Center(
+                                  child: Text("Valorisation",
+                                      style: TextStyle(color: Colors.blue)))),
+                          DataColumn(
+                              label: Center(
+                                  child: Text("Editer",
+                                      style: TextStyle(color: Colors.blue)))),
+                          DataColumn(
+                              label: Center(
+                                  child: Text("Effacer",
+                                      style: TextStyle(color: Colors.blue)))),
+                                       DataColumn(
+                              label: Center(
+                                  child: Text("Détails",
+                                      style: TextStyle(color: Colors.blue)))),
                         ],
                         source: DataTableRow(
                             data: products,
                             onDelete: _deleteProducts,
-                            onEdit: _showFormDialog),
+                            onEdit: _showFormDialog,
+                            onDetails: _onDetails),
                       ),
                     ),
                   ),
           );
+  }
+
+  void _onDetails(int? product_id) async {
+    print(product_id);
   }
 
   //read products
@@ -563,8 +593,12 @@ class DataTableRow extends DataTableSource {
   final Function(int?) onDelete;
   final Function(
       int?, int?, String?, int?, double?, double?, int?, int?, String?) onEdit;
+  final Function(int?) onDetails;
   DataTableRow(
-      {required this.data, required this.onDelete, required this.onEdit});
+      {required this.data,
+      required this.onDelete,
+      required this.onEdit,
+      required this.onDetails});
 
   @override
   DataRow getRow(int index) {
@@ -606,6 +640,16 @@ class DataTableRow extends DataTableSource {
               ),
               onPressed: () async {
                 onDelete(product.id);
+              }),
+        )),
+        DataCell(Center(
+          child: IconButton(
+              icon: const Icon(
+                Icons.info,
+                color: Colors.blue,
+              ),
+              onPressed: () async {
+                onDetails(product.id);
               }),
         ))
       ],

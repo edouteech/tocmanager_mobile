@@ -1,9 +1,10 @@
 // ignore_for_file: avoid_unnecessary_containers, non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, sized_box_for_whitespace, deprecated_member_use, unused_field, prefer_final_fields, avoid_print, unused_local_variable, prefer_collection_literals, unnecessary_this, unused_import
 import 'dart:convert';
-
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:intl/intl.dart';
+import 'package:tocmanager/database/sqfdb.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/categories/categorielist.dart';
 import 'package:tocmanager/screens/clients/ajouter_client.dart';
@@ -35,6 +36,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
   bool isNotSuscribe = false;
   String? message;
   bool? isLoading;
+  SqlDb sqlDb = SqlDb();
 
   @override
   void initState() {
@@ -87,7 +89,10 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
         floatingActionButton: isNotSuscribe == true
             ? null
             : FloatingActionButton(
-                onPressed: () {
+                onPressed: () async {
+                  // SqlDb.deleteAllDatabaseFiles(
+                  //     '.dart_tool/sqflite_common_ffi/databases');
+                  // SqlDb.mydeleteDatabase();
                   _showFormDialog(context);
                 },
                 backgroundColor: Colors.blue,
@@ -380,28 +385,43 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
 
   //create catégories
   void _createCategories() async {
-    int compagnie_id = await getCompagnie_id();
-    ApiResponse response =
-        await CreateCategories(compagnie_id.toString(), name.text, parent_id);
+    SqlDb sqlDb = SqlDb();
 
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        if (response.status == "error") {
-          String? message = response.message;
-        } else {
-          Navigator.of(context).pushReplacement(MaterialPageRoute(
-              builder: (context) => const AjouterCategoriePage()));
-        }
-      }
+    var response = await sqlDb.insertData('''
+                    INSERT INTO Categories(name, parent_id) VALUES('${name.text}', '$parent_id')
+                  ''');
+    if (response = true) {
+      Navigator.of(context).pushReplacement(MaterialPageRoute(
+          builder: (context) => const AjouterCategoriePage()));
     } else {
-      if (response.statusCode == 403) {
-        setState(() {
-          isNotSuscribe = true;
-        });
-      } else {
-        print(response.error);
-      }
+      print("echec");
     }
+
+    categories = await sqlDb.readData('''SELECT * FROM 'Categories' ''');
+    print(categories);
+
+    // int compagnie_id = await getCompagnie_id();
+    // ApiResponse response =
+    //     await CreateCategories(compagnie_id.toString(), name.text, parent_id);
+
+    // if (response.error == null) {
+    //   if (response.statusCode == 200) {
+    //     if (response.status == "error") {
+    //       String? message = response.message;
+    //     } else {
+    // Navigator.of(context).pushReplacement(MaterialPageRoute(
+    //     builder: (context) => const AjouterCategoriePage()));
+    //     }
+    //   }
+    // } else {
+    //   if (response.statusCode == 403) {
+    //     setState(() {
+    //       isNotSuscribe = true;
+    //     });
+    //   } else {
+    //     print(response.error);
+    //   }
+    // }
   }
 
   //readCategories

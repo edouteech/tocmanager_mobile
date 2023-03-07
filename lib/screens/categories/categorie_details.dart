@@ -9,7 +9,6 @@ import '../../models/Category.dart';
 import '../../models/api_response.dart';
 import '../../services/categorie_service.dart';
 import '../../services/user_service.dart';
-import '../../widgets/widgets.dart';
 
 class CategorieDetails extends StatefulWidget {
   final int? category_id;

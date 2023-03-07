@@ -35,7 +35,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void initState() {
-    statsMapList.clear();
     super.initState();
     checkSuscribe();
     TableauBord();
@@ -324,7 +323,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ],
                     ),
-                     const SizedBox(height: 10),
+                    const SizedBox(height: 10),
                     Row(
                       children: [
                         Expanded(

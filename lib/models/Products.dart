@@ -41,7 +41,7 @@ class Product {
     return Product(
       id: json['id'],
       name: json['name'],
-      quantity: json['quantity'],
+      quantity: json['quantity'].toInt(),
       price_sell: json['price_sell'].toDouble(),
       price_buy: json['price_buy'].toDouble(),
       stock_min: json['stock_min'],
@@ -58,7 +58,7 @@ class Product {
       compagnie_id: json['compagnie_id'],
       reference: json['reference'],
       code: json['code'],
-      stock_initial: json['stock_initial'],
+      stock_initial: json['stock_initial'].toInt(),
       category_name: json['category'] != null ? json['category']['name'] : null,
       created_at: json['created_at'],
       updated_at: json['updated_at']
