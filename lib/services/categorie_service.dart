@@ -18,12 +18,11 @@ Future<ApiResponse> ReadCategories(
       Uri.parse('$categoriesURL?compagnie_id=$compagnie_id&is_paginated=0'),
       headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
     );
-   
     switch (response.statusCode) {
       case 200:
         apiResponse.statusCode = response.statusCode;
         apiResponse.data = response.body;
-        apiResponse.data = jsonDecode(response.body)['data']as List;
+        apiResponse.data = jsonDecode(response.body)['data'] as List;
 
         break;
       case 422:
@@ -48,7 +47,10 @@ Future<ApiResponse> ReadCategories(
 
 //create categories
 Future<ApiResponse> CreateCategories(
-    String compagnie_id, String name, String? parent_id,) async {
+  String compagnie_id,
+  String name,
+  String? parent_id,
+) async {
   ApiResponse apiResponse = ApiResponse();
 
   try {
@@ -206,13 +208,8 @@ Future<ApiResponse> EditCategories(String compagnie_id, String name,
   return apiResponse;
 }
 
-
-
 //one Category
-Future<ApiResponse> ReadOneCategory(
-  int compagnie_id,
-  int category_id
-) async {
+Future<ApiResponse> ReadOneCategory(int compagnie_id, int category_id) async {
   ApiResponse apiResponse = ApiResponse();
   try {
     String token = await getToken();
@@ -221,12 +218,12 @@ Future<ApiResponse> ReadOneCategory(
       Uri.parse('$categoriesURL/$category_id?compagnie_id=$compagnie_id'),
       headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
     );
-   
+
     switch (response.statusCode) {
       case 200:
         apiResponse.statusCode = response.statusCode;
         apiResponse.data = response.body;
-        apiResponse.data = jsonDecode(response.body)['data']as List;
+        apiResponse.data = jsonDecode(response.body)['data'] as List;
 
         break;
       case 422:

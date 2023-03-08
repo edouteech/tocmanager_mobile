@@ -75,39 +75,48 @@ class SqlDb {
     }
   }
 
-  // static Future<List<Map<String, dynamic>>> readData(String sql) async {
-  //   // Init ffi loader if needed.
-  //   sqfliteFfiInit();
-  //   var databaseFactory = databaseFactoryFfi;
-  //   var db = await databaseFactory.openDatabase('tocmanager.db');
-
-  //   List<Map<String, dynamic>> results = await db.rawQuery(sql);
-
-  //   db.close();
-
-  //   return results;
-  // }
-
-  static Future<void> deleteData(String sql) async {
-    // Init ffi loader if needed.
-    sqfliteFfiInit();
+  deleteData(String sql) async {
     var databaseFactory = databaseFactoryFfi;
     var db = await databaseFactory.openDatabase('tocmanager.db');
-
-    await db.execute(sql);
-
-    db.close();
+    try {
+      await db.transaction((txn) async {
+        int rowsAffected = await txn.rawDelete(sql);
+        if (rowsAffected > 0) {
+          print('Delete successful. Rows affected: $rowsAffected');
+          return true;
+        } else {
+          print('Delete failed. No rows affected.');
+          return false;
+        }
+      });
+    } catch (e) {
+      print('Delete error: $e');
+      return false;
+    } finally {
+      await db.close();
+    }
   }
 
-  static Future<void> updateData(String sql) async {
-    // Init ffi loader if needed.
-    sqfliteFfiInit();
+  updateData(String sql) async {
     var databaseFactory = databaseFactoryFfi;
     var db = await databaseFactory.openDatabase('tocmanager.db');
-
-    await db.execute(sql);
-
-    db.close();
+    try {
+      await db.transaction((txn) async {
+        int rowsAffected = await txn.rawUpdate(sql);
+        if (rowsAffected > 0) {
+          print('Update successful. Rows affected: $rowsAffected');
+          return true;
+        } else {
+          print('Update failed. No rows affected.');
+          return false;
+        }
+      });
+    } catch (e) {
+      print('Update error: $e');
+      return false;
+    } finally {
+      await db.close();
+    }
   }
 
   static Future<void> mydeleteDatabase() async {
@@ -122,10 +131,16 @@ Future<void> createTables(db) async {
   await db.execute('''
         CREATE TABLE IF NOT EXISTS Categories(
         id INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
+        isSync BOOLEAN DEFAULT 1,
         name TEXT NOT NULL UNIQUE,
-        parent_id INT,
+        compagnie_id INT,
+        parent_id INT ,
+        parent_name TEXT NULLABLE,
+        sum_products INT NULLABLE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        deleted_at TIMESTAMP NULLABLE
+        )
     ''');
 
   //Create products table

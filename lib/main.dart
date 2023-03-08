@@ -1,3 +1,4 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tocmanager/database/sqfdb.dart';
@@ -33,9 +34,12 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   String? _isSignedIn;
+  bool? isConnected;
+  late ConnectivityResult _connectivityResult;
 
   @override
   void initState() {
+    initConnectivity();
     super.initState();
     _loadUserInfo();
   }
@@ -47,6 +51,26 @@ class _MyAppState extends State<MyApp> {
         _isSignedIn = token;
       });
     }
+  }
+
+  initConnectivity() async {
+    final ConnectivityResult result = await Connectivity().checkConnectivity();
+    setState(() {
+      _connectivityResult = result;
+    });
+    if (_connectivityResult == ConnectivityResult.none) {
+      // Si l'appareil n'est pas connecté à Internet.
+      setState(() {
+        isConnected = false;
+      });
+    } else {
+      // Si l'appareil est connecté à Internet.
+      setState(() {
+        isConnected = true;
+      });
+    }
+
+    return isConnected;
   }
 
   @override

@@ -1,6 +1,7 @@
 // ignore_for_file: avoid_unnecessary_containers, non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, sized_box_for_whitespace, deprecated_member_use, unused_field, prefer_final_fields, avoid_print, unused_local_variable, prefer_collection_literals, unnecessary_this, unused_import
 import 'dart:convert';
 import 'dart:io';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:intl/intl.dart';
@@ -37,12 +38,38 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
   String? message;
   bool? isLoading;
   SqlDb sqlDb = SqlDb();
+  bool? isConnected;
+  late ConnectivityResult _connectivityResult;
 
   @override
   void initState() {
+    initConnectivity();
     checkSuscribe();
     super.initState();
     readCategories();
+  }
+
+  /* Dropdown items */
+  String? parent_id;
+
+  initConnectivity() async {
+    final ConnectivityResult result = await Connectivity().checkConnectivity();
+    setState(() {
+      _connectivityResult = result;
+    });
+    if (_connectivityResult == ConnectivityResult.none) {
+      // Si l'appareil n'est pas connecté à Internet.
+      setState(() {
+        isConnected = false;
+      });
+    } else {
+      // Si l'appareil est connecté à Internet.
+      setState(() {
+        isConnected = true;
+      });
+    }
+
+    return isConnected;
   }
 
   Future<void> checkSuscribe() async {
@@ -70,9 +97,6 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
   }
 
   List<Map<String, dynamic>> categoryMapList = [];
-
-  /* Dropdown items */
-  String? parent_id;
 
   //Fields Controller
   TextEditingController name = TextEditingController();
@@ -385,56 +409,86 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
 
   //create catégories
   void _createCategories() async {
-    SqlDb sqlDb = SqlDb();
+    int compagnie_id = await getCompagnie_id();
 
-    var response = await sqlDb.insertData('''
-                    INSERT INTO Categories(name, parent_id) VALUES('${name.text}', '$parent_id')
+    dynamic isConnected = await initConnectivity();
+
+    if (isConnected == false) {
+      // is app is not connected
+      if (parent_id != null) {
+        var parent = await sqlDb.readData('''
+
+SELECT categories.*, parents.name as parent_name FROM categories join categories as parents on categories.parent_id = parents.id where categories.id = $parent_id        ''');
+        //if parent_id is not selected
+        var response = await sqlDb.insertData('''
+                    INSERT INTO Categories(name, parent_id, parent_name, compagnie_id, isSync) VALUES('${name.text}', '$parent_id', '${parent[0]['name']}', '$compagnie_id', 0)
                   ''');
-    if (response = true) {
-      Navigator.of(context).pushReplacement(MaterialPageRoute(
-          builder: (context) => const AjouterCategoriePage()));
-    } else {
-      print("echec");
+        if (response = true) {
+          Navigator.of(context).pushReplacement(MaterialPageRoute(
+              builder: (context) => const AjouterCategoriePage()));
+        } else {
+          print("echec");
+        }
+      } else {
+        //if parent_id is selected
+        var response = await sqlDb.insertData('''
+                    INSERT INTO Categories(name, compagnie_id, isSync) VALUES('${name.text}', '$compagnie_id', 0)
+                  ''');
+        if (response = true) {
+          Navigator.of(context).pushReplacement(MaterialPageRoute(
+              builder: (context) => const AjouterCategoriePage()));
+        } else {
+          print("echec");
+        }
+      }
+    } else if (isConnected == true) {
+      // is app is  connected
+
+      ApiResponse response =
+          await CreateCategories(compagnie_id.toString(), name.text, parent_id);
+
+      if (response.error == null) {
+        if (response.statusCode == 200) {
+          if (response.status == "error") {
+            String? message = response.message;
+          } else {
+            Navigator.of(context).pushReplacement(MaterialPageRoute(
+                builder: (context) => const AjouterCategoriePage()));
+          }
+        }
+      } else {
+        if (response.statusCode == 403) {
+          setState(() {
+            isNotSuscribe = true;
+          });
+        } else {
+          print(response.error);
+        }
+      }
     }
-
-    categories = await sqlDb.readData('''SELECT * FROM 'Categories' ''');
-    print(categories);
-
-    // int compagnie_id = await getCompagnie_id();
-    // ApiResponse response =
-    //     await CreateCategories(compagnie_id.toString(), name.text, parent_id);
-
-    // if (response.error == null) {
-    //   if (response.statusCode == 200) {
-    //     if (response.status == "error") {
-    //       String? message = response.message;
-    //     } else {
-    // Navigator.of(context).pushReplacement(MaterialPageRoute(
-    //     builder: (context) => const AjouterCategoriePage()));
-    //     }
-    //   }
-    // } else {
-    //   if (response.statusCode == 403) {
-    //     setState(() {
-    //       isNotSuscribe = true;
-    //     });
-    //   } else {
-    //     print(response.error);
-    //   }
-    // }
   }
 
   //readCategories
   Future<void> readCategories() async {
+       dynamic isConnected = await initConnectivity();
     int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await ReadCategories(compagnie_id);
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        List<dynamic> data = response.data as List<dynamic>;
-        for (var category in data) {
-          var categoryMap = category as Map<String, dynamic>;
-          categoryMapList.add(categoryMap);
+    if (isConnected == true) {
+      ApiResponse response = await ReadCategories(compagnie_id);
+      if (response.error == null) {
+        if (response.statusCode == 200) {
+          List<dynamic> data = response.data as List<dynamic>;
+          for (var category in data) {
+            var categoryMap = category as Map<String, dynamic>;
+            categoryMapList.add(categoryMap);
+          }
         }
+      }
+    } else if (isConnected == false) {
+      List<dynamic> data =
+          await sqlDb.readData('''SELECT * FROM Categories ''');
+      for (var category in data) {
+        var categoryMap = category as Map<String, dynamic>;
+        categoryMapList.add(categoryMap);
       }
     }
   }
