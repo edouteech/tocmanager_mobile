@@ -21,6 +21,7 @@ class Product {
   Product(
       {this.id,
       this.name,
+      this.category_id,
       this.quantity,
       this.price_sell,
       this.price_buy,
@@ -41,6 +42,7 @@ class Product {
     return Product(
       id: json['id'],
       name: json['name'],
+      category_id: json['category_id'],
       quantity: json['quantity'].toInt(),
       price_sell: json['price_sell'].toDouble(),
       price_buy: json['price_buy'].toDouble(),

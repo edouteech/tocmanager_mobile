@@ -1,7 +1,9 @@
 // ignore_for_file: constant_identifier_names, non_constant_identifier_names, use_build_context_synchronously, avoid_print
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
+import 'package:tocmanager/database/sqfdb.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
@@ -25,9 +27,13 @@ class AjouterFournisseurPage extends StatefulWidget {
 
 class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
   bool isNotSuscribe = false;
+  bool? isConnected;
+  late ConnectivityResult _connectivityResult;
+  SqlDb sqlDb = SqlDb();
 
   @override
   void initState() {
+    initConnectivity();
     checkSuscribe();
     super.initState();
   }
@@ -56,11 +62,31 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
     }
   }
 
+  initConnectivity() async {
+    final ConnectivityResult result = await Connectivity().checkConnectivity();
+    setState(() {
+      _connectivityResult = result;
+    });
+    if (_connectivityResult == ConnectivityResult.none) {
+      // Si l'appareil n'est pas connecté à Internet.
+      setState(() {
+        isConnected = false;
+      });
+    } else {
+      // Si l'appareil est connecté à Internet.
+      setState(() {
+        isConnected = true;
+      });
+    }
+
+    return isConnected;
+  }
+
   //Formkey
   final _formKey = GlobalKey<FormState>();
 
-  String? client_nature;
-  List<dynamic> ClientNatureList = [
+  String? supplier_nature;
+  List<dynamic> SupplierNatureList = [
     {"id": 1, "name": "Particulier", "value": "0"},
     {"id": 2, "name": "Entreprise", "value": "1"},
   ];
@@ -323,11 +349,16 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
                               TextStyle(fontSize: 13, color: Colors.black),
                         ),
                         validator: (val) {
-                          return RegExp(
-                                      r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
-                                  .hasMatch(val!)
-                              ? null
-                              : "Veuillez entrer un email valide";
+                          if (val == null || val.isEmpty) {
+                            // If the value is null or empty, return null to indicate no error
+                            return null;
+                          } else if (RegExp(
+                                  r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
+                              .hasMatch(val)) {
+                            return null;
+                          } else {
+                            return "Veuillez entrer un email valide";
+                          }
                         },
                       ),
                     ),
@@ -339,7 +370,6 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
                           const EdgeInsets.only(left: 20, right: 20, top: 30),
                       child: TextFormField(
                         controller: phoneController,
-                        autovalidateMode: AutovalidateMode.onUserInteraction,
                         cursorColor: const Color.fromARGB(255, 45, 157, 220),
                         decoration: const InputDecoration(
                           enabledBorder: OutlineInputBorder(
@@ -354,10 +384,6 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
                           labelStyle:
                               TextStyle(fontSize: 13, color: Colors.black),
                         ),
-                        validator: MultiValidator([
-                          RequiredValidator(
-                              errorText: "Veuillez entrer un numéro")
-                        ]),
                       ),
                     ),
 
@@ -384,13 +410,13 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
                                 TextStyle(fontSize: 13, color: Colors.black),
                           ),
                           dropdownColor: Colors.white,
-                          value: client_nature,
+                          value: supplier_nature,
                           onChanged: (value) {
                             setState(() {
-                              client_nature = value as String?;
+                              supplier_nature = value as String?;
                             });
                           },
-                          items: ClientNatureList.map((nature) {
+                          items: SupplierNatureList.map((nature) {
                             return DropdownMenuItem<String>(
                               value: nature["value"],
                               child: Text(nature["name"]),
@@ -406,27 +432,89 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
   }
 
   void _createSuppliers() async {
+    dynamic nature;
     int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await CreateSuppliers(
-        compagnie_id.toString(),
-        nameController.text,
-        emailController.text,
-        phoneController.text,
-        int.parse(client_nature.toString()));
-
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        if (response.status == "error") {
-        } else {
-          Navigator.of(context).pushReplacement(MaterialPageRoute(
-              builder: (context) => const AjouterFournisseurPage()));
+    dynamic isConnected = await initConnectivity();
+    if (isConnected == true) {
+      print(supplier_nature);
+      ApiResponse response = await CreateSuppliers(
+          compagnie_id.toString(),
+          nameController.text,
+          emailController.text.isNotEmpty ? emailController.text : null,
+          phoneController.text.isNotEmpty ? phoneController.text : null,
+          int.parse(supplier_nature.toString()));
+      if (response.error == null) {
+        if (response.statusCode == 200) {
+          if (response.status == "error") {
+            print(response.message);
+          } else {
+            if (int.parse(supplier_nature.toString()) == 0) {
+              setState(() {
+                nature = "Particulier";
+              });
+            } else if (int.parse(supplier_nature.toString()) == 1) {
+              setState(() {
+                nature = "Entreprise";
+              });
+            }
+            var email =
+                emailController.text.isEmpty ? null : emailController.text;
+            var phone =
+                phoneController.text.isEmpty ? null : phoneController.text;
+            var response = await sqlDb.insertData('''
+                    INSERT INTO Suppliers(compagnie_id, name, email, phone, nature) VALUES('$compagnie_id', '${nameController.text}', '$email', '$phone', '$nature')
+                  ''');
+            if (response == true) {
+              Navigator.of(context).pushReplacement(MaterialPageRoute(
+                  builder: (context) => const AjouterFournisseurPage()));
+            } else {
+              if (int.parse(supplier_nature.toString()) == 0) {
+                setState(() {
+                  nature = "Particulier";
+                });
+              } else if (int.parse(supplier_nature.toString()) == 1) {
+                setState(() {
+                  nature = "Entreprise";
+                });
+              }
+              var email =
+                  emailController.text.isEmpty ? null : emailController.text;
+              var phone =
+                  phoneController.text.isEmpty ? null : phoneController.text;
+              var response = await sqlDb.insertData('''
+                    INSERT INTO Suppliers(compagnie_id, name, email, phone, nature,isSync) VALUES('$compagnie_id', '${nameController.text}', '$email', '$phone', '$nature', 0)
+                  ''');
+              if (response == true) {
+                Navigator.of(context).pushReplacement(MaterialPageRoute(
+                    builder: (context) => const AjouterFournisseurPage()));
+              } else {
+                print("echec");
+              }
+              print("echec");
+            }
+          }
         }
       }
-    } else {
-      if (response.statusCode == 403) {
-        print(response.error);
+    } else if (isConnected == false) {
+       if (int.parse(supplier_nature.toString()) == 0) {
+        setState(() {
+          nature = "Particulier";
+        });
+      } else if (int.parse(supplier_nature.toString()) == 1) {
+        setState(() {
+          nature = "Entreprise";
+        });
+      }
+      var email = emailController.text.isEmpty ? null : emailController.text;
+      var phone = phoneController.text.isEmpty ? null : phoneController.text;
+      var response = await sqlDb.insertData('''
+                    INSERT INTO Suppliers(compagnie_id, name, email, phone, nature,isSync) VALUES('$compagnie_id', '${nameController.text}', '$email', '$phone', '$nature', 0)
+                  ''');
+      if (response == true) {
+        Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const AjouterClientPage()));
       } else {
-        print(response.error);
+        print("echec");
       }
     }
   }

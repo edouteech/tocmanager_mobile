@@ -39,20 +39,15 @@ class SqlDb {
   //   db.close();
   // }
 
-  insertData(String sql) async {
+  Future<bool> insertData(String sql) async {
     var databaseFactory = databaseFactoryFfi;
     var db = await databaseFactory.openDatabase('tocmanager.db');
     try {
-      await db.transaction((txn) async {
-        int id = await txn.rawInsert(sql);
-        if (id > 0) {
-          print('New user inserted with id: $id');
-          return true;
-        } else {
-          print('Insertion failed.');
-          return false;
-        }
+      int id = await db.transaction((txn) async {
+        return await txn.rawInsert(sql);
       });
+      print('New Insertion with id: $id');
+      return true;
     } catch (e) {
       print('Insertion error: $e');
       return false;
@@ -75,20 +70,20 @@ class SqlDb {
     }
   }
 
-  deleteData(String sql) async {
+  Future<bool> deleteData(String sql) async {
     var databaseFactory = databaseFactoryFfi;
     var db = await databaseFactory.openDatabase('tocmanager.db');
     try {
-      await db.transaction((txn) async {
-        int rowsAffected = await txn.rawDelete(sql);
-        if (rowsAffected > 0) {
-          print('Delete successful. Rows affected: $rowsAffected');
-          return true;
-        } else {
-          print('Delete failed. No rows affected.');
-          return false;
-        }
+      int rowsAffected = await db.transaction((txn) async {
+        return await txn.rawDelete(sql);
       });
+      if (rowsAffected > 0) {
+        print('Delete successful. Rows affected: $rowsAffected');
+        return true;
+      } else {
+        print('Delete failed. No rows affected.');
+        return false;
+      }
     } catch (e) {
       print('Delete error: $e');
       return false;
@@ -97,20 +92,20 @@ class SqlDb {
     }
   }
 
-  updateData(String sql) async {
+  Future<bool> updateData(String sql) async {
     var databaseFactory = databaseFactoryFfi;
     var db = await databaseFactory.openDatabase('tocmanager.db');
     try {
-      await db.transaction((txn) async {
-        int rowsAffected = await txn.rawUpdate(sql);
-        if (rowsAffected > 0) {
-          print('Update successful. Rows affected: $rowsAffected');
-          return true;
-        } else {
-          print('Update failed. No rows affected.');
-          return false;
-        }
+      int rowsAffected = await db.transaction((txn) async {
+        return await txn.rawUpdate(sql);
       });
+      if (rowsAffected > 0) {
+        print('Update successful. Rows affected: $rowsAffected');
+        return true;
+      } else {
+        print('Update failed. No rows affected.');
+        return false;
+      }
     } catch (e) {
       print('Update error: $e');
       return false;
@@ -145,15 +140,24 @@ Future<void> createTables(db) async {
 
   //Create products table
   await db.execute('''
-        CREATE TABLE IF NOT EXISTS Products(
-        "id" INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
+      CREATE TABLE IF NOT EXISTS Products(
+       id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        isSync BOOLEAN DEFAULT 1,
+        category_id INT,
         name TEXT NOT NULL,
-        quantity INTEGER  NOT NULL,
-        price_sell DOUBLE NOT NULL ,
-        price_buy   DOUBLE NOT NULL,
-        category_id INT NOT NULL,
+        quantity REAL NOT NULL DEFAULT 0,
+        price_sell REAL NOT NULL DEFAULT 0,
+        price_buy REAL NOT NULL DEFAULT 0,
+        stock_min REAL NULL,
+        stock_max REAL NULL,
+        price_moyen_sell REAL DEFAULT 0,
+        price_moyen_buy REAL DEFAULT 0,
+        tax_group TEXT,
+        compagnie_id INTEGER NOT NULL,
+        deleted_at TIMESTAMP NULLABLE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        code TEXT,
         FOREIGN KEY (category_id) REFERENCES Categories (id)
       )
     ''');
@@ -162,25 +166,31 @@ Future<void> createTables(db) async {
   await db.execute('''
         CREATE TABLE IF NOT EXISTS Suppliers(
         id INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        email TEXT NOT NULL,
-        phone TEXT NOT NULL ,
-        address TEXT NOT NULL,
+        compagnie_id INT,
+        isSync BOOLEAN DEFAULT 1,
+        name TEXT,
+        email TEXT NULL,
+        phone TEXT NULL,
+        nature TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        deleted_at TIMESTAMP NULLABLE
         )
     ''');
 
-  //Create suppliers
+  //Create clients
   await db.execute('''
         CREATE TABLE IF NOT EXISTS Clients(
         id INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        email TEXT NOT NULL,
-        phone TEXT NOT NULL ,
-        address TEXT NOT NULL,
+        compagnie_id INT,
+        isSync BOOLEAN DEFAULT 1,
+        name TEXT,
+        email TEXT NULL,
+        phone TEXT NULL,
+        nature TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        deleted_at TIMESTAMP NULLABLE
         )
     ''');
 }

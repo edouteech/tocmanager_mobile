@@ -1,6 +1,8 @@
 // ignore_for_file: unnecessary_this, sized_box_for_whitespace, avoid_print, use_build_context_synchronously, non_constant_identifier_names, unused_local_variable
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
+import 'package:tocmanager/database/sqfdb.dart';
 import 'package:tocmanager/models/Products.dart';
 import 'package:tocmanager/screens/produits/ajouter_produits.dart';
 import 'package:tocmanager/screens/suscribe_screen/suscribe_screen.dart';
@@ -23,6 +25,9 @@ List<Map<String, dynamic>> productMapList = [];
 class _ProduitListPageState extends State<ProduitListPage> {
   bool isNotSuscribe = false;
   bool? isLoading;
+  bool? isConnected;
+  late ConnectivityResult _connectivityResult;
+  SqlDb sqlDb = SqlDb();
 
   /*List of categories */
   List<dynamic> categories = [];
@@ -55,10 +60,30 @@ class _ProduitListPageState extends State<ProduitListPage> {
 
   @override
   void initState() {
-    readCategories();
-    super.initState();
     readProducts();
     readCategories();
+    initConnectivity();
+    super.initState();
+  }
+
+  initConnectivity() async {
+    final ConnectivityResult result = await Connectivity().checkConnectivity();
+    setState(() {
+      _connectivityResult = result;
+    });
+    if (_connectivityResult == ConnectivityResult.none) {
+      // Si l'appareil n'est pas connecté à Internet.
+      setState(() {
+        isConnected = false;
+      });
+    } else {
+      // Si l'appareil est connecté à Internet.
+      setState(() {
+        isConnected = true;
+      });
+    }
+
+    return isConnected;
   }
 
   Future<void> checkSuscribe() async {
@@ -87,19 +112,26 @@ class _ProduitListPageState extends State<ProduitListPage> {
 
   //readCategories
   Future<void> readCategories() async {
+    dynamic isConnected = await initConnectivity();
     int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await ReadCategories(compagnie_id);
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        List<dynamic> data = response.data as List<dynamic>;
-        categories = data.map((p) => Category.fromJson(p)).toList();
+    if (isConnected == true) {
+      ApiResponse response = await ReadCategories(compagnie_id);
+      if (response.error == null) {
+        if (response.statusCode == 200) {
+          List<dynamic> data = response.data as List<dynamic>;
+          categories = data.map((p) => Category.fromJson(p)).toList();
+        }
+      } else {
+        if (response.statusCode == 403) {
+          setState(() {
+            isNotSuscribe = true;
+          });
+        }
       }
-    } else {
-      if (response.statusCode == 403) {
-        setState(() {
-          isNotSuscribe = true;
-        });
-      }
+    } else if (isConnected == false) {
+      List<dynamic> data =
+          await sqlDb.readData('''SELECT * FROM Categories ''');
+      categories = data.map((p) => Category.fromJson(p)).toList();
     }
   }
 
@@ -149,7 +181,7 @@ class _ProduitListPageState extends State<ProduitListPage> {
                               label: Center(
                                   child: Text("Effacer",
                                       style: TextStyle(color: Colors.blue)))),
-                                       DataColumn(
+                          DataColumn(
                               label: Center(
                                   child: Text("Détails",
                                       style: TextStyle(color: Colors.blue)))),
@@ -166,30 +198,80 @@ class _ProduitListPageState extends State<ProduitListPage> {
   }
 
   void _onDetails(int? product_id) async {
-    print(product_id);
+        int compagnie_id = await getCompagnie_id();
+    ApiResponse response = await ReadProductbyId(compagnie_id, product_id!);
+    print(response.data);
+    // Navigator.of(context).pushReplacement(MaterialPageRoute(
+    //     builder: (context) => CategorieDetails(
+    //           category_id: category_id,
+    //         )));
   }
 
   //read products
   Future<void> readProducts() async {
-    setState(() {
-      isLoading = false;
-    });
+    dynamic isConnected = await initConnectivity();
     int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await ReadProducts(compagnie_id);
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        List<dynamic> data = response.data as List<dynamic>;
-        products = data.map((p) => Product.fromJson(p)).toList();
-        setState(() {
-          isLoading = false;
-        });
+
+    if (isConnected == true) {
+      ApiResponse response = await ReadProducts(compagnie_id);
+      setState(() {
+        isLoading = true;
+      });
+      if (response.error == null) {
+        if (response.statusCode == 200) {
+          List<dynamic> data = response.data as List<dynamic>;
+          for (var i = 0; i < data.length; i++) {
+            var response1 = await sqlDb.insertData('''
+                    INSERT INTO Products
+                    (id,
+                      category_id,
+                      compagnie_id,
+                      name,
+                      quantity,
+                      price_sell,
+                      price_buy,
+                      stock_min,
+                      stock_max,
+                      code,
+                       created_at,
+                  updated_at
+                      )VALUES('${data[i]['id']}',
+                      '${data[i]['category_id']}',
+                   '${data[i]['compagnie_id']}',
+                  '${data[i]['name']}',
+                  '${data[i]['quantity']}',
+                  '${data[i]['price_sell']}',
+                  '${data[i]['price_buy']}',
+                  '${data[i]['stock_min']}',
+                  '${data[i]['stock_max']}',
+                   '${data[i]['code']}',
+                   '${data[i]['created_at']}',
+                  '${data[i]['updated_at']}'
+                  )
+                  ''');
+          }
+          products = data.map((p) => Product.fromJson(p)).toList();
+          setState(() {
+            isLoading = false;
+          });
+        }
+      } else {
+        if (response.statusCode == 403) {
+          setState(() {
+            isNotSuscribe = true;
+          });
+        }
       }
-    } else {
-      if (response.statusCode == 403) {
-        setState(() {
-          isNotSuscribe = true;
-        });
-      }
+    } else if (isConnected == false) {
+      setState(() {
+        isLoading = true;
+      });
+      List<dynamic> data = await sqlDb.readData('''SELECT * FROM Products ''');
+      products = data.map((p) => Product.fromJson(p)).toList();
+
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
@@ -199,16 +281,41 @@ class _ProduitListPageState extends State<ProduitListPage> {
     bool sendMessage = false;
     String? message;
     String color = "red";
-    ApiResponse response = await DeleteProducts(compagnie_id, produit_id);
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        if (response.status == "success") {
-          Navigator.of(context).pushReplacement(MaterialPageRoute(
-              builder: (context) => const AjouterProduitPage()));
-          message = "Le produit a été supprimé avec succès";
+    dynamic isConnected = await initConnectivity();
+
+    if (isConnected == true) {
+      ApiResponse response = await DeleteProducts(compagnie_id, produit_id);
+      if (response.error == null) {
+        if (response.statusCode == 200) {
+          if (response.status == "success") {
+            sqlDb.deleteData(''' 
+            DELETE FROM Products WHERE id = '$produit_id'
+            ''');
+            Navigator.of(context).pushReplacement(MaterialPageRoute(
+                builder: (context) => const AjouterProduitPage()));
+            message = "Le produit a été supprimé avec succès";
+            setState(() {
+              sendMessage = true;
+              color = "green";
+            });
+          } else {
+            message = "La suppression a échouée";
+            setState(() {
+              sendMessage = true;
+            });
+          }
+        }
+      } else {
+        if (response.statusCode == 403) {
+          message = "Vous n'êtes pas autorisé à effectuer cette action";
           setState(() {
             sendMessage = true;
-            color = "green";
+          });
+        } else if (response.statusCode == 500) {
+          print(response.statusCode);
+          message = "La suppression a échouée !";
+          setState(() {
+            sendMessage = true;
           });
         } else {
           message = "La suppression a échouée";
@@ -217,24 +324,16 @@ class _ProduitListPageState extends State<ProduitListPage> {
           });
         }
       }
-    } else {
-      if (response.statusCode == 403) {
-        message = "Vous n'êtes pas autorisé à effectuer cette action";
-        setState(() {
-          sendMessage = true;
-        });
-      } else if (response.statusCode == 500) {
-        print(response.statusCode);
-        message = "La suppression a échouée !";
-        setState(() {
-          sendMessage = true;
-        });
-      } else {
-        message = "La suppression a échouée";
-        setState(() {
-          sendMessage = true;
-        });
-      }
+    } else if (isConnected == false) {
+      DateTime now = DateTime.now();
+      sqlDb.updateData(''' 
+            UPDATE Products SET deleted_at=${now.toString()} WHERE id ='$produit_id'
+            ''');
+      message = "Supprimé avec succès";
+      setState(() {
+        sendMessage = true;
+        color = "green";
+      });
     }
 
     if (sendMessage == true) {
@@ -269,13 +368,21 @@ class _ProduitListPageState extends State<ProduitListPage> {
       int? update_product_stock_min,
       int? update_product_stock_max,
       String? update_product_code) {
+    print(update_product_category_id);
     setState(() {
+      category_id = update_product_category_id?.toString();
       name.text = update_product_name!;
       quantity.text = update_product_quantity.toString();
       price_buy.text = update_product_price_buy.toString();
       price_sell.text = update_product_price_sell.toString();
-      stock_min.text = update_product_stock_min.toString();
-      stock_max.text = update_product_stock_max.toString();
+      stock_min.text = (update_product_stock_min != null)
+          ? update_product_stock_min.toString()
+          : "";
+      stock_max.text = (update_product_stock_max != null)
+          ? update_product_stock_max.toString()
+          : "";
+      code.text =
+          (update_product_code != null) ? update_product_code.toString() : "";
     });
 
     return showDialog(
@@ -301,19 +408,7 @@ class _ProduitListPageState extends State<ProduitListPage> {
                       style: TextStyle(color: Colors.green)),
                   onPressed: () async {
                     if (_formKey.currentState!.validate()) {
-                      int compagnie_id = await getCompagnie_id();
-                      Map<String, dynamic> produitMap = {
-                        'compagnie_id': compagnie_id.toString(),
-                        'category_id': null,
-                        'name': name.text,
-                        'quantity': quantity.text,
-                        'price_sell': price_sell.text,
-                        'price_buy': price_buy.text,
-                        'stock_min': stock_min.text,
-                        'stock_max': stock_max.text,
-                        'code': code.text
-                      };
-                      updateProducts(produitMap, update_product_id);
+                      updateProducts(update_product_id);
                     }
                   },
                 ),
@@ -349,9 +444,16 @@ class _ProduitListPageState extends State<ProduitListPage> {
                             onChanged: (String? newValue) {
                               setState(() {
                                 category_id = newValue!;
+                                categoryId.text = category_id!;
                               });
                             },
                             items: dropdownItems,
+                            // validator: (String? value) {
+                            //   if (value == null || value.isEmpty) {
+                            //     return 'Selectionner une catégorie';
+                            //   }
+                            //   return null;
+                            // },
                           )),
 
                       //Nom du produit
@@ -498,10 +600,6 @@ class _ProduitListPageState extends State<ProduitListPage> {
                             labelStyle:
                                 TextStyle(fontSize: 13, color: Colors.black),
                           ),
-                          validator: MultiValidator([
-                            RequiredValidator(
-                                errorText: "Veuillez entrer un stock minimal")
-                          ]),
                         ),
                       ),
 
@@ -528,10 +626,6 @@ class _ProduitListPageState extends State<ProduitListPage> {
                             labelStyle:
                                 TextStyle(fontSize: 13, color: Colors.black),
                           ),
-                          validator: MultiValidator([
-                            RequiredValidator(
-                                errorText: "Veuillez entrer un stock maximal")
-                          ]),
                         ),
                       ),
 
@@ -567,22 +661,48 @@ class _ProduitListPageState extends State<ProduitListPage> {
     );
   }
 
-  void updateProducts(products, product_id) async {
-    print(products);
-    ApiResponse response = await UpdateProducts(products, product_id);
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        if (response.status == "error") {
-          String? message = response.message;
+  void updateProducts(product_id) async {
+    dynamic isConnected = await initConnectivity();
+    int compagnie_id = await getCompagnie_id();
+    if (isConnected == true) {
+      ApiResponse response = await UpdateProducts(
+          compagnie_id,
+          categoryId.text,
+          name.text,
+          quantity.text,
+          price_sell.text,
+          price_buy.text,
+          stock_min.text,
+          stock_max.text,
+          code.text,
+          product_id);
+      if (response.error == null) {
+        if (response.statusCode == 200) {
+          if (response.status == "error") {
+            print(response.message);
+          } else if (response.status == "success") {
+            var response = await sqlDb.updateData('''
+                  UPDATE Products SET compagnie_id ="$compagnie_id", category_id='${categoryId.text}', name='${name.text}', quantity= '${quantity.text}', price_sell= '${price_sell.text}', price_buy ='${price_buy.text}', stock_min ='${stock_min.text}', stock_max ='${stock_max.text}', code='${code.text}' WHERE id="$product_id"
+            ''');
+            Navigator.of(context).pushReplacement(MaterialPageRoute(
+                builder: (context) => const AjouterProduitPage()));
+          }
+        }
+      } else {
+        if (response.statusCode == 403) {
         } else {
-          Navigator.of(context).pushReplacement(MaterialPageRoute(
-              builder: (context) => const AjouterProduitPage()));
+          print(response.error);
         }
       }
-    } else {
-      if (response.statusCode == 403) {
+    } else if (isConnected == false) {
+      var response = await sqlDb.updateData('''
+                  UPDATE Products SET compagnie_id ="$compagnie_id", category_id='${categoryId.text}', name='${name.text}', quantity= '${quantity.text}', price_sell= '${price_sell.text}', price_buy ='${price_buy.text}', stock_min ='${stock_min.text}', stock_max ='${stock_max.text}', code='${code.text}', isSync=0 WHERE id="$product_id"
+            ''');
+      if (response == true) {
+        Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const AjouterProduitPage()));
       } else {
-        print(response.error);
+        print("echec");
       }
     }
   }
@@ -630,6 +750,7 @@ class DataTableRow extends DataTableSource {
                     product.stock_min,
                     product.stock_max,
                     product.code);
+                print(product.category_id);
               }),
         )),
         DataCell(Center(

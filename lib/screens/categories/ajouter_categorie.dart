@@ -116,7 +116,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
                 onPressed: () async {
                   // SqlDb.deleteAllDatabaseFiles(
                   //     '.dart_tool/sqflite_common_ffi/databases');
-                  // SqlDb.mydeleteDatabase();
+                    // SqlDb.mydeleteDatabase();
                   _showFormDialog(context);
                 },
                 backgroundColor: Colors.blue,
@@ -452,6 +452,20 @@ SELECT categories.*, parents.name as parent_name FROM categories join categories
           if (response.status == "error") {
             String? message = response.message;
           } else {
+            if (parent_id != null) {
+              var parent = await sqlDb.readData('''
+
+SELECT categories.*, parents.name as parent_name FROM categories join categories as parents on categories.parent_id = parents.id where categories.id = $parent_id        ''');
+              //if parent_id is not selected
+              var response = await sqlDb.insertData('''
+                    INSERT INTO Categories(name, parent_id, parent_name, compagnie_id) VALUES('${name.text}', '$parent_id', '${parent[0]['name']}', '$compagnie_id')
+                  ''');
+            } else {
+              //if parent_id is selected
+              var response = await sqlDb.insertData('''
+                    INSERT INTO Categories(name, compagnie_id) VALUES('${name.text}', '$compagnie_id')
+                  ''');
+            }
             Navigator.of(context).pushReplacement(MaterialPageRoute(
                 builder: (context) => const AjouterCategoriePage()));
           }
@@ -470,7 +484,7 @@ SELECT categories.*, parents.name as parent_name FROM categories join categories
 
   //readCategories
   Future<void> readCategories() async {
-       dynamic isConnected = await initConnectivity();
+    dynamic isConnected = await initConnectivity();
     int compagnie_id = await getCompagnie_id();
     if (isConnected == true) {
       ApiResponse response = await ReadCategories(compagnie_id);

@@ -1,7 +1,9 @@
-// ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names
+// ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, prefer_typing_uninitialized_variables
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
+import 'package:tocmanager/database/sqfdb.dart';
 import 'package:tocmanager/screens/categories/ajouter_categorie.dart';
 import 'package:tocmanager/screens/clients/client_list.dart';
 import 'package:tocmanager/screens/fournisseurs/ajouter_fournisseur.dart';
@@ -25,13 +27,39 @@ class AjouterClientPage extends StatefulWidget {
 }
 
 class _AjouterClientPageState extends State<AjouterClientPage> {
+  bool? isLoading;
+  bool? isConnected;
+  late ConnectivityResult _connectivityResult;
+  SqlDb sqlDb = SqlDb();
+
   @override
   void initState() {
-   checkSuscribe();
+    checkSuscribe();
+    initConnectivity();
     super.initState();
   }
 
-    Future<void> checkSuscribe() async {
+  initConnectivity() async {
+    final ConnectivityResult result = await Connectivity().checkConnectivity();
+    setState(() {
+      _connectivityResult = result;
+    });
+    if (_connectivityResult == ConnectivityResult.none) {
+      // Si l'appareil n'est pas connecté à Internet.
+      setState(() {
+        isConnected = false;
+      });
+    } else {
+      // Si l'appareil est connecté à Internet.
+      setState(() {
+        isConnected = true;
+      });
+    }
+
+    return isConnected;
+  }
+
+  Future<void> checkSuscribe() async {
     int compagnie_id = await getCompagnie_id();
     ApiResponse response = await SuscribeCheck(compagnie_id);
     if (response.data == null) {
@@ -54,14 +82,14 @@ class _AjouterClientPageState extends State<AjouterClientPage> {
       }
     }
   }
-  
+
   //Current page
   var currentPage = DrawerSections.client;
   //Formkey
   final _formKey = GlobalKey<FormState>();
   bool isNotSuscribe = false;
 
-  String? supplier_nature;
+  String? client_nature;
   List<dynamic> SupplierNatureList = [
     {"id": 1, "name": "Particulier", "value": "0"},
     {"id": 2, "name": "Entreprise", "value": "1"},
@@ -262,9 +290,7 @@ class _AjouterClientPageState extends State<AjouterClientPage> {
                     style: TextStyle(color: Colors.green)),
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
-                    if (_formKey.currentState!.validate()) {
-                      _createClients();
-                    }
+                    _createClients();
                   }
                 },
               ),
@@ -327,11 +353,16 @@ class _AjouterClientPageState extends State<AjouterClientPage> {
                               TextStyle(fontSize: 13, color: Colors.black),
                         ),
                         validator: (val) {
-                          return RegExp(
-                                      r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
-                                  .hasMatch(val!)
-                              ? null
-                              : "Veuillez entrer un email valide";
+                          if (val == null || val.isEmpty) {
+                            // If the value is null or empty, return null to indicate no error
+                            return null;
+                          } else if (RegExp(
+                                  r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
+                              .hasMatch(val)) {
+                            return null;
+                          } else {
+                            return "Veuillez entrer un email valide";
+                          }
                         },
                       ),
                     ),
@@ -343,7 +374,6 @@ class _AjouterClientPageState extends State<AjouterClientPage> {
                           const EdgeInsets.only(left: 20, right: 20, top: 30),
                       child: TextFormField(
                         controller: phoneController,
-                        autovalidateMode: AutovalidateMode.onUserInteraction,
                         cursorColor: const Color.fromARGB(255, 45, 157, 220),
                         decoration: const InputDecoration(
                           enabledBorder: OutlineInputBorder(
@@ -358,10 +388,6 @@ class _AjouterClientPageState extends State<AjouterClientPage> {
                           labelStyle:
                               TextStyle(fontSize: 13, color: Colors.black),
                         ),
-                        validator: MultiValidator([
-                          RequiredValidator(
-                              errorText: "Veuillez entrer un numéro")
-                        ]),
                       ),
                     ),
 
@@ -388,10 +414,10 @@ class _AjouterClientPageState extends State<AjouterClientPage> {
                                 TextStyle(fontSize: 13, color: Colors.black),
                           ),
                           dropdownColor: Colors.white,
-                          value: supplier_nature,
+                          value: client_nature,
                           onChanged: (value) {
                             setState(() {
-                              supplier_nature = value as String?;
+                              client_nature = value as String?;
                             });
                           },
                           items: SupplierNatureList.map((nature) {
@@ -410,25 +436,71 @@ class _AjouterClientPageState extends State<AjouterClientPage> {
   }
 
   void _createClients() async {
+    dynamic nature;
     int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await CreateClients(
-        compagnie_id.toString(),
-        nameController.text,
-        emailController.text,
-        phoneController.text,
-        int.parse(supplier_nature.toString()));
+    dynamic isConnected = await initConnectivity();
+    if (isConnected == true) {
+      ApiResponse response = await CreateClients(
+          compagnie_id.toString(),
+          nameController.text,
+          emailController.text,
+          phoneController.text,
+          int.parse(client_nature.toString()));
+      if (response.error == null) {
+        if (response.statusCode == 200) {
+          if (response.status == "error") {
+            print(response.message);
+          } else {
+            if (int.parse(client_nature.toString()) == 0) {
+              setState(() {
+                nature = "Particulier";
+              });
+            } else if (int.parse(client_nature.toString()) == 1) {
+              setState(() {
+                nature = "Entreprise";
+              });
+            }
+            var email =
+                emailController.text.isEmpty ? null : emailController.text;
+            var phone =
+                phoneController.text.isEmpty ? null : phoneController.text;
 
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        if (response.status == "error") {
-        } else {
-          Navigator.of(context).pushReplacement(MaterialPageRoute(
-              builder: (context) => const AjouterClientPage()));
+            var response = await sqlDb.insertData('''
+                    INSERT INTO Clients(compagnie_id, name, email, phone, nature) VALUES('$compagnie_id', '${nameController.text}', '$email', '$phone', '$nature')
+                  ''');
+            if (response == true) {
+              Navigator.of(context).pushReplacement(MaterialPageRoute(
+                  builder: (context) => const AjouterClientPage()));
+            } else {
+              print("echec");
+            }
+          }
+        }
+      } else {
+        if (response.statusCode == 403) {
+          print(response.message);
         }
       }
-    } else {
-      if (response.statusCode == 403) {
+    } else if (isConnected == false) {
+      if (int.parse(client_nature.toString()) == 0) {
+        setState(() {
+          nature = "Particulier";
+        });
+      } else if (int.parse(client_nature.toString()) == 1) {
+        setState(() {
+          nature = "Entreprise";
+        });
+      }
+      var email = emailController.text.isEmpty ? null : emailController.text;
+      var phone = phoneController.text.isEmpty ? null : phoneController.text;
+      var response = await sqlDb.insertData('''
+                    INSERT INTO Clients(compagnie_id, name, email, phone, nature,isSync) VALUES('$compagnie_id', '${nameController.text}', '$email', '$phone', '$nature', 0)
+                  ''');
+      if (response == true) {
+        Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const AjouterClientPage()));
       } else {
+        print("echec");
       }
     }
   }

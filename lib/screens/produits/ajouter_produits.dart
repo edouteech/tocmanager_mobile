@@ -1,6 +1,8 @@
 // ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, deprecated_member_use, unnecessary_this, import_of_legacy_library_into_null_safe, unnecessary_brace_in_string_interps, avoid_unnecessary_containers, avoid_print, unnecessary_string_interpolations
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
+import 'package:tocmanager/database/sqfdb.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
@@ -27,6 +29,9 @@ class AjouterProduitPage extends StatefulWidget {
 class _AjouterProduitPageState extends State<AjouterProduitPage> {
   bool isNotSuscribe = false;
   String? message;
+  bool? isConnected;
+  late ConnectivityResult _connectivityResult;
+  SqlDb sqlDb = SqlDb();
 
   //Form key
   final _formKey = GlobalKey<FormState>();
@@ -49,9 +54,30 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
 
   @override
   void initState() {
+    initConnectivity();
     readCategories();
     super.initState();
     checkSuscribe();
+  }
+
+  initConnectivity() async {
+    final ConnectivityResult result = await Connectivity().checkConnectivity();
+    setState(() {
+      _connectivityResult = result;
+    });
+    if (_connectivityResult == ConnectivityResult.none) {
+      // Si l'appareil n'est pas connecté à Internet.
+      setState(() {
+        isConnected = false;
+      });
+    } else {
+      // Si l'appareil est connecté à Internet.
+      setState(() {
+        isConnected = true;
+      });
+    }
+
+    return isConnected;
   }
 
   Future<void> checkSuscribe() async {
@@ -324,6 +350,12 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
                               });
                             },
                             items: dropdownItems,
+                            // validator: (String? value) {
+                            //   if (value == null || value.isEmpty) {
+                            //     return 'Selectionner une catégorie';
+                            //   }
+                            //   return null;
+                            // },
                           )),
 
                       //Nom du produit
@@ -470,10 +502,6 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
                             labelStyle:
                                 TextStyle(fontSize: 13, color: Colors.black),
                           ),
-                          validator: MultiValidator([
-                            RequiredValidator(
-                                errorText: "Veuillez entrer un stock minimal")
-                          ]),
                         ),
                       ),
 
@@ -500,10 +528,6 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
                             labelStyle:
                                 TextStyle(fontSize: 13, color: Colors.black),
                           ),
-                          validator: MultiValidator([
-                            RequiredValidator(
-                                errorText: "Veuillez entrer un stock maximal")
-                          ]),
                         ),
                       ),
 
@@ -559,32 +583,98 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
 
   //create products
   Future<void> createProducts() async {
+    dynamic isConnected = await initConnectivity();
     int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await CreateProducts(
-        compagnie_id,
-        categoryId.text,
-        name.text,
-        quantity.text,
-        price_sell.text,
-        price_buy.text,
-        stock_min.text,
-        stock_max.text,
-        code.text);
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        if (response.status == "error") {
+    if (isConnected == true) {
+      ApiResponse response = await CreateProducts(
+          compagnie_id,
+          categoryId.text,
+          name.text,
+          quantity.text,
+          price_sell.text,
+          price_buy.text,
+          stock_min.text,
+          stock_max.text,
+          code.text);
+      if (response.error == null) {
+        if (response.statusCode == 200) {
+          if (response.status == "error") {
+            print(response.message);
+          } else if (response.status == "success") {
+            var response1 = await sqlDb.insertData('''
+                    INSERT INTO Products(
+                      category_id,
+                      compagnie_id,
+                      name,
+                      quantity,
+                      price_sell,
+                      price_buy,
+                      stock_min,
+                      stock_max,
+                      code
+                    ) VALUES(
+                      '${categoryId.text}',
+                      '$compagnie_id',
+                      '${name.text}',
+                      '${quantity.text}',
+                      '${price_sell.text}',
+                      '${price_buy.text}',
+                      '${stock_min.text}',
+                      '${stock_max.text}',
+                      '${code.text}'
+                    )
+                  ''');
+           
+            if (response1 == true) {
+              print("object");
+              Navigator.of(context).pushReplacement(MaterialPageRoute(
+                  builder: (context) => const AjouterProduitPage()));
+            } else if (response1 == false) {
+              print("echec insertion");
+            }
+          }
+        }
+      } else {
+        if (response.statusCode == 403) {
+          setState(() {
+            isNotSuscribe = true;
+          });
         } else {
-          Navigator.of(context).pushReplacement(MaterialPageRoute(
-              builder: (context) => const AjouterProduitPage()));
+          print(response.error);
         }
       }
-    } else {
-      if (response.statusCode == 403) {
-        setState(() {
-          isNotSuscribe = true;
-        });
-      } else {
-        print(response.error);
+    } else if (isConnected == false) {
+      var response1 = await sqlDb.insertData('''
+                    INSERT INTO Products(
+                      category_id,
+                       compagnie_id,
+                      name,
+                      quantity,
+                      price_sell,
+                      price_buy,
+                      stock_min,
+                      stock_max,
+                      code,
+                      isSync
+                    ) VALUES(
+                      '${categoryId.text}',
+                      '$compagnie_id',
+                      '${name.text}',
+                      '${quantity.text}',
+                      '${price_sell.text}',
+                      '${price_buy.text}',
+                      '${stock_min.text}',
+                      '${stock_max.text}',
+                      '${code.text}',
+                      0
+                    )
+                  ''');
+      if (response1 == true) {
+        print("object");
+        Navigator.of(context).pushReplacement(MaterialPageRoute(
+            builder: (context) => const AjouterProduitPage()));
+      } else if (response1 == false) {
+        print("echec insertion");
       }
     }
   }

@@ -4,6 +4,7 @@ class Clients {
   String name;
   String email;
   String phone;
+  String nature;
   String created_at;
   String updated_at;
   Clients({
@@ -11,6 +12,7 @@ class Clients {
     required this.name,
     required this.phone,
     required this.email,
+    required this.nature,
     required this.created_at,
     required this.updated_at,
   });
@@ -22,6 +24,7 @@ class Clients {
       name: json['name'],
       email: json['email'],
       phone: json['phone'],
+      nature: json['nature'],
       created_at: json['created_at'],
       updated_at: json['updated_at'],
     );

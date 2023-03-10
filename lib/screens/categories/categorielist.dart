@@ -40,7 +40,6 @@ class _CategoriesListState extends State<CategoriesList> {
     readCategories();
     checkSuscribe();
     super.initState();
-    
   }
 
   initConnectivity() async {
@@ -93,7 +92,6 @@ class _CategoriesListState extends State<CategoriesList> {
     if (isConnected == true) {
       int compagnie_id = await getCompagnie_id();
       ApiResponse response = await ReadCategories(compagnie_id);
-
       setState(() {
         isLoading = true;
       });
@@ -101,38 +99,37 @@ class _CategoriesListState extends State<CategoriesList> {
         if (response.statusCode == 200) {
           List<dynamic> data = response.data as List<dynamic>;
           for (var i = 0; i < data.length; i++) {
-            var response = await sqlDb.insertData('''
+            var response1 = await sqlDb.insertData('''
                     INSERT INTO Categories
-                    (id,name,
-                compagnie_id,
-                 
+                    (
+                  id,
+                  name,
+                  compagnie_id,
                   sum_products,
                   created_at,
                   updated_at) VALUES('${data[i]['id']}',
                   '${data[i]['name']}',
                   '${data[i]['compagnie_id']}',
-                  
                   '${data[i]['sum_products']}',
                   '${data[i]['created_at']}',
                   '${data[i]['updated_at']}'
                   )
                   ''');
 
-            if (response = true) {
-              print("bien");
-            } else {
-              print("echec");
-            }
-            if (data[i]['parent'] != null) {
-              var response = await sqlDb.updateData(''' 
+            if (response1 == true) {
+             
+              if (data[i]['parent'] != null) {
+                var response2 = await sqlDb.updateData(''' 
                 UPDATE Categories SET parent_name ="${data[i]['parent']['name']}", parent_id="${data[i]['parent_id']}" WHERE id="${data[i]['id']}"
-
               ''');
-              if (response = true) {
-                print("bien update");
-              } else {
-                print("echec update");
+                if (response2 == true) {
+                  print("bien update");
+                } else if (response2 == false) {
+                  print("echec update");
+                }
               }
+            } else if (response1 == false) {
+              print("echec");
             }
           }
 
@@ -150,14 +147,13 @@ class _CategoriesListState extends State<CategoriesList> {
         }
       }
     } else if (isConnected == false) {
-      
       setState(() {
         isLoading = true;
       });
       List<dynamic> data =
           await sqlDb.readData('''SELECT * FROM Categories ''');
       categories = data.map((p) => Category.fromJson(p)).toList();
-      
+
       setState(() {
         isLoading = false;
       });
@@ -241,8 +237,13 @@ class _CategoriesListState extends State<CategoriesList> {
 
   //delete categories
   void _deleteCategory(int? category_id) async {
+    bool sendMessage = false;
+    String? message;
+    String color = "red";
+    dynamic isConnected = await initConnectivity();
+    int compagnie_id = await getCompagnie_id();
+
     if (isConnected == true) {
-      int compagnie_id = await getCompagnie_id();
       ApiResponse response = await DeleteCategories(compagnie_id, category_id);
       if (response.error == null) {
         if (response.statusCode == 200) {
@@ -254,22 +255,75 @@ class _CategoriesListState extends State<CategoriesList> {
             sqlDb.updateData(''' 
             UPDATE Categories SET parent_id=null, parent_name=null FROM Categories WHERE parent_id ='$category_id'
             ''');
+            message = "Supprimé avec succès";
+            setState(() {
+              sendMessage = true;
+              color = "green";
+            });
             Navigator.of(context).pushReplacement(MaterialPageRoute(
                 builder: (context) => const AjouterCategoriePage()));
+          } else {
+            message = "La suppression a échoué";
+            setState(() {
+              sendMessage = true;
+            });
           }
         }
+      } else if (response.statusCode == 403) {
+        message = "Vous n'êtes pas autorisé à effectuer cette action";
+        setState(() {
+          sendMessage = true;
+        });
+      } else if (response.statusCode == 500) {
+        message = "La suppression a échouée !";
+        setState(() {
+          sendMessage = true;
+        });
       } else {
-        if (response.statusCode == 403) {
-          setState(() {
-            isNotSuscribe = true;
-          });
-        }
+        message = "La suppression a échouée !";
+        setState(() {
+          sendMessage = true;
+        });
       }
-    } else if (isConnected == false) {}
+    } else if (isConnected == false) {
+      DateTime now = DateTime.now();
+      sqlDb.updateData(''' 
+            UPDATE Categories SET deleted_at=${now.toString()}  WHERE id ='$category_id'
+            ''');
+      message = "Supprimé avec succès";
+      setState(() {
+        sendMessage = true;
+        color = "green";
+      });
+      Navigator.of(context).pushReplacement(MaterialPageRoute(
+          builder: (context) => const AjouterCategoriePage()));
+    }
+
+    if (sendMessage == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor:
+              color == "green" ? Colors.green[800] : Colors.red[800],
+          content: SizedBox(
+            width: double.infinity,
+            height: 20,
+            child: Center(
+              child: Text(
+                message!,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+          duration: const Duration(milliseconds: 2000),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   //update categories
   void _updateCategories(int? update_category_id) async {
+    dynamic isConnected = await initConnectivity();
     if (isConnected == true) {
       int compagnie_id = await getCompagnie_id();
       ApiResponse response = await EditCategories(
@@ -299,7 +353,19 @@ class _CategoriesListState extends State<CategoriesList> {
         } else {}
       }
     } else if (isConnected == false) {
-      print(isConnected);
+      if (parent_id != null) {
+        sqlDb.updateData('''
+                  UPDATE Categories SET parent_name ="$parent_id", name="${name.text}", isSync=0 WHERE id="$update_category_id"
+            ''');
+        Navigator.of(context).pushReplacement(MaterialPageRoute(
+            builder: (context) => const AjouterCategoriePage()));
+      } else {
+        sqlDb.updateData('''
+                  UPDATE Categories SET  name="${name.text}" , isSync=0 WHERE id="$update_category_id"
+              ''');
+        Navigator.of(context).pushReplacement(MaterialPageRoute(
+            builder: (context) => const AjouterCategoriePage()));
+      }
     }
   }
 
