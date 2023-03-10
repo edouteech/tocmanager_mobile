@@ -1,7 +1,9 @@
 // ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, depend_on_referenced_packages, unnecessary_string_interpolations, avoid_print, body_might_complete_normally_nullable, unnecessary_this, import_of_legacy_library_into_null_safe, unused_field, unused_local_variable, prefer_typing_uninitialized_variables, camel_case_types, no_leading_underscores_for_local_identifiers
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 import 'package:flutter/material.dart';
+import 'package:tocmanager/database/sqfdb.dart';
 import 'package:tocmanager/screens/ventes/line_vente.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 import 'package:tocmanager/services/sells_services.dart';
@@ -43,6 +45,9 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
   final _sellsformKey = GlobalKey<FormState>();
   final _formuKey = GlobalKey<FormState>();
   final _sell_lineFormkey = GlobalKey<FormState>();
+  bool? isConnected;
+  late ConnectivityResult _connectivityResult;
+  SqlDb sqlDb = SqlDb();
 
   /* =============================Products=================== */
   /* List products */
@@ -51,13 +56,35 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
   void initState() {
     readclient();
     readProducts();
+    initConnectivity();
     super.initState();
     dateController.text =
         DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
     taxController.text = 0.toString();
   }
 
+  initConnectivity() async {
+    final ConnectivityResult result = await Connectivity().checkConnectivity();
+    setState(() {
+      _connectivityResult = result;
+    });
+    if (_connectivityResult == ConnectivityResult.none) {
+      // Si l'appareil n'est pas connecté à Internet.
+      setState(() {
+        isConnected = false;
+      });
+    } else {
+      // Si l'appareil est connecté à Internet.
+      setState(() {
+        isConnected = true;
+      });
+    }
+
+    return isConnected;
+  }
+
   List<Map<String, dynamic>> productMapList = [];
+  List<Map<String, dynamic>> ClientsMapList = [];
 
   /* =============================End Products=================== */
 
@@ -115,52 +142,80 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                 child: Row(
                   children: [
                     Flexible(
-                      child: //Nom du client
-                          Container(
-                              padding:
-                                  const EdgeInsets.only(left: 20, right: 20),
-                              margin: const EdgeInsets.only(top: 10),
-                              child: DropdownButtonFormField(
-                                  isExpanded: true,
-                                  autovalidateMode:
-                                      AutovalidateMode.onUserInteraction,
-                                  decoration: const InputDecoration(
-                                    // icon: GestureDetector(
-                                    //   child: const Icon(
-                                    //     Icons.add_box_rounded,
-                                    //     size: 30,
-                                    //     color: Colors.blue,
-                                    //   ),
-                                    //   onTap: () {
-                                    //     _AddSupplierDialog(context);
-                                    //   },
-                                    // ),
-                                    contentPadding:
-                                        EdgeInsets.fromLTRB(5.0, 5.0, 5.0, 5.0),
-                                    enabledBorder: OutlineInputBorder(
-                                        borderSide: BorderSide(
-                                            color: Color.fromARGB(
-                                                255, 45, 157, 220)),
-                                        borderRadius: BorderRadius.all(
-                                            Radius.circular(10))),
-                                    border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.all(
-                                            Radius.circular(10))),
-                                    label: Text("Nom client"),
-                                    labelStyle: TextStyle(
-                                        fontSize: 13, color: Colors.black),
-                                  ),
-                                  dropdownColor: Colors.white,
-                                  validator: (value) => value == null
-                                      ? 'Sélectionner un client'
-                                      : null,
-                                  value: client_id,
-                                  onChanged: (String? newValue) {
-                                    setState(() {
-                                      client_id = newValue!;
-                                    });
-                                  },
-                                  items: dropdownClientsItems)),
+                      child: Container(
+                        padding: const EdgeInsets.only(left: 20, right: 20),
+                        margin: const EdgeInsets.only(top: 10),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(
+                                Icons.add_circle_outline,
+                                color: Colors.blue,
+                              ),
+                              onPressed: () {
+                                // Action à effectuer lorsque le bouton est cliqué
+                              },
+                            ),
+                            Expanded(
+                              child: DropdownFormField(
+                                decoration: const InputDecoration(
+                                  contentPadding: EdgeInsets.fromLTRB(
+                                      20.0, 10.0, 20.0, 10.0),
+                                  enabledBorder: OutlineInputBorder(
+                                      borderSide: BorderSide(
+                                          color: Color.fromARGB(
+                                              255, 45, 157, 220)),
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(10))),
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(10))),
+                                  labelText: "Nom du client",
+                                  labelStyle: TextStyle(
+                                      fontSize: 13, color: Colors.black),
+                                ),
+                                dropdownColor: Colors.white,
+                                findFn: (dynamic str) async => ClientsMapList,
+                                selectedFn: (dynamic item1, dynamic item2) {
+                                  if (item1 != null && item2 != null) {
+                                    return item1['id'] == item2['id'];
+                                  }
+                                  return false;
+                                },
+                                displayItemFn: (dynamic item) => Text(
+                                  (item ?? {})['name'] ?? '',
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                                onSaved: (dynamic str) {
+                                  print(str);
+                                },
+                                onChanged: (dynamic str) {
+                                  setState(() {
+                                    client_id = str['id'].toString();
+                                  });
+                                },
+                                filterFn: (dynamic item, str) =>
+                                    item['name']
+                                        .toLowerCase()
+                                        .indexOf(str.toLowerCase()) >=
+                                    0,
+                                dropdownItemFn: (dynamic item,
+                                        int position,
+                                        bool focused,
+                                        bool selected,
+                                        Function() onTap) =>
+                                    ListTile(
+                                  title: Text(item['name']),
+                                  tileColor: focused
+                                      ? const Color.fromARGB(20, 0, 0, 0)
+                                      : Colors.transparent,
+                                  onTap: onTap,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                     Flexible(
                       child: Container(
@@ -332,15 +387,24 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
 
   //read products
   Future<void> readProducts() async {
+    dynamic isConnected = await initConnectivity();
     int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await ReadProducts(compagnie_id);
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        List<dynamic> data = response.data as List<dynamic>;
-        for (var product in data) {
-          var productMap = product as Map<String, dynamic>;
-          productMapList.add(productMap);
+    if (isConnected == true) {
+      ApiResponse response = await ReadProducts(compagnie_id);
+      if (response.error == null) {
+        if (response.statusCode == 200) {
+          List<dynamic> data = response.data as List<dynamic>;
+          for (var product in data) {
+            var productMap = product as Map<String, dynamic>;
+            productMapList.add(productMap);
+          }
         }
+      }
+    } else if (isConnected == false) {
+      List<dynamic> data = await sqlDb.readData('''SELECT * FROM Products ''');
+      for (var product in data) {
+        var productMap = product as Map<String, dynamic>;
+        productMapList.add(productMap);
       }
     }
   }
@@ -348,54 +412,74 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
   /* Dropdown products items */
   String? product_id;
 
-
   //read product price
   void productPrice(int? product_id) async {
+    dynamic isConnected = await initConnectivity();
     int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await ReadProductbyId(compagnie_id, product_id);
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        List<dynamic> data = response.data as List<dynamic>;
-        for (var product in data) {
-          setState(() {
-            priceController.text = product['price_sell'].toString();
-          });
-          var temp_total = double.parse(priceController.text) *
-              double.parse(quantityController.text);
-          var disc = (double.parse(discountController.text) * temp_total) / 100;
-          var total = temp_total - disc;
-          setState(() {
-            totalController.text = total.toString();
-          });
+    if (isConnected == true) {
+      ApiResponse response = await ReadProductbyId(compagnie_id, product_id);
+      if (response.error == null) {
+        if (response.statusCode == 200) {
+          List<dynamic> data = response.data as List<dynamic>;
+          for (var product in data) {
+            setState(() {
+              priceController.text = product['price_sell'].toString();
+            });
+            var temp_total = double.parse(priceController.text) *
+                double.parse(quantityController.text);
+            var disc =
+                (double.parse(discountController.text) * temp_total) / 100;
+            var total = temp_total - disc;
+            setState(() {
+              totalController.text = total.toString();
+            });
+          }
         }
+      }
+    } else if (isConnected == false) {
+      List<dynamic> data = await sqlDb
+          .readData('''SELECT * FROM Products WHERE id=$product_id ''');
+      for (var product in data) {
+        setState(() {
+          priceController.text = product['price_sell'].toString();
+        });
+        var temp_total = double.parse(priceController.text) *
+            double.parse(quantityController.text);
+        var disc = (double.parse(discountController.text) * temp_total) / 100;
+        var total = temp_total - disc;
+        setState(() {
+          totalController.text = total.toString();
+        });
       }
     }
   }
 
   //read clients
   Future<void> readclient() async {
+    dynamic isConnected = await initConnectivity();
     int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await ReadClients(compagnie_id);
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        List<dynamic> data = response.data as List<dynamic>;
-        clients = data.map((p) => Clients.fromJson(p)).toList();
+    if (isConnected == true) {
+      ApiResponse response = await ReadClients(compagnie_id);
+      if (response.error == null) {
+        if (response.statusCode == 200) {
+          List<dynamic> data = response.data as List<dynamic>;
+          for (var product in data) {
+            var clientMap = product as Map<String, dynamic>;
+            ClientsMapList.add(clientMap);
+          }
+        }
+      }
+    } else if (isConnected == false) {
+      List<dynamic> data = await sqlDb.readData('''SELECT * FROM Clients ''');
+      for (var product in data) {
+        var clientMap = product as Map<String, dynamic>;
+        ClientsMapList.add(clientMap);
       }
     }
   }
 
   /* Dropdown clients items */
   String? client_id;
-  List<DropdownMenuItem<String>> get dropdownClientsItems {
-    List<DropdownMenuItem<String>> menuClientsItems = [];
-    for (var i = 0; i < clients.length; i++) {
-      menuClientsItems.add(DropdownMenuItem(
-        value: clients[i].id.toString(),
-        child: Text(clients[i].name, style: const TextStyle(fontSize: 15)),
-      ));
-    }
-    return menuClientsItems;
-  }
 
   String? _selectedPayment;
   List<dynamic> paiements = [
@@ -419,8 +503,9 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
   void createSells(Map<String, dynamic> ventes) async {
     bool _sendMessage = false;
     String? message;
-    ApiResponse response = await CreateSells(ventes);
+    dynamic isConnected = await initConnectivity();
 
+    ApiResponse response = await CreateSells(ventes);
     if (response.statusCode == 200) {
       if (response.status == "success") {
         setState(() {
@@ -454,6 +539,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
         _sendMessage = true;
       });
     }
+
     if (_sendMessage == true) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -472,6 +558,88 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
           behavior: SnackBarBehavior.floating,
         ),
       );
+    }
+  }
+
+  _localSave() async {
+    int compagnie_id = await getCompagnie_id();
+    int user_id = await getUsersId();
+
+    int? echeance;
+    if (_echeancePayment != null) {
+      echeance = int.tryParse(_echeancePayment.toString());
+    } else {
+      echeance = null;
+    }
+    var rest = double.parse(Amount_TTC_Controller.text) -
+        double.parse(amountController.text);
+    var response1 = await sqlDb.insertData('''
+      INSERT INTO Sells(
+                    compagnie_id,
+                    date_sell,
+                    tax,
+                    amount_ht,
+                    amount_ttc,
+                    user_id,
+                    client_id,
+                    payment,
+                    amount_received,
+                    date_echeance,
+                    discount,
+                    amount,
+                    rest
+                    ) VALUES(
+                      '$compagnie_id',
+                      '${dateController.text.toString()}',
+                      '${int.parse(taxController.text)}',
+                      '${double.parse(Amount_HTController.text)}',
+                      '${double.parse(Amount_TTC_Controller.text)}',
+                      '$user_id',
+                      '${int.parse(client_id.toString())}',
+                      '${_selectedPayment.toString()}',
+                      '${double.parse(amountController.text)}',
+                      '$echeance',
+                      '${double.parse(discountSellController.text)}',
+                      '${double.parse(Amount_TTC_Controller.text)}',
+                      '$rest'
+                    )
+     ''');
+    print(response1);
+
+    if (response1 == true) {
+      var ReadLastInsertion = await sqlDb.readData('''
+                    SELECT * FROM Sells ORDER BY id DESC LIMIT 1
+                  ''');
+      if (ReadLastInsertion != null) {
+        for (var i = 0; i < sell_lines.length; i++) {
+          var InsertSell_line = await sqlDb.insertData('''
+                    INSERT INTO Sell_lines(
+                      sell_id,
+                      product_id,
+                      quantity,
+                      price,
+                      amount,
+                      amount_after_discount,
+                      date,
+                      compagnie_id
+                    ) VALUES(
+                      '${ReadLastInsertion[0]["id"]}',
+                      '${sell_lines[i]["product_id"]}',
+                      '${sell_lines[i]["quantity"]}',
+                      '${sell_lines[i]["price"]}',
+                      '${sell_lines[i]["amount"]}',
+                       '${sell_lines[i]["amount_after_discount"]}',
+                      '${sell_lines[i]["date"]}',
+                      '${sell_lines[i]["compagnie_id"]}'
+                      )
+                  ''');
+        }
+
+        Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const VenteHome()));
+      }
+    } else if (response1 == false) {
+      print(response1);
     }
   }
 
@@ -827,46 +995,51 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                 child: const Text('Valider',
                     style: TextStyle(color: Colors.green)),
                 onPressed: () async {
-                  int compagnie_id = await getCompagnie_id();
-                  int user_id = await getUsersId();
+                  dynamic isConnected = await initConnectivity();
+                  if (isConnected == true) {
+                    int compagnie_id = await getCompagnie_id();
+                    int user_id = await getUsersId();
 
-                  int? echeance;
-                  if (_echeancePayment != null) {
-                    echeance = int.tryParse(_echeancePayment.toString());
-                  } else {
-                    echeance = null;
+                    int? echeance;
+                    if (_echeancePayment != null) {
+                      echeance = int.tryParse(_echeancePayment.toString());
+                    } else {
+                      echeance = null;
+                    }
+                    sells sell = sells(
+                        compagnie_id: compagnie_id,
+                        date_sell: dateController.text,
+                        tax: int.parse(taxController.text),
+                        amount_ht: double.parse(Amount_HTController.text),
+                        amount_ttc: double.parse(Amount_TTC_Controller.text),
+                        user_id: user_id,
+                        client_id: int.parse(client_id.toString()),
+                        payment: _selectedPayment.toString(),
+                        amount_received: double.parse(amountController.text),
+                        echeance: echeance,
+                        discount: double.parse(discountSellController.text),
+                        amount: double.parse(Amount_TTC_Controller.text),
+                        sell_lines: sell_lines);
+                    Map<String, dynamic> sellsMap = {
+                      'compagnie_id': sell.compagnie_id,
+                      'date_sell': sell.date_sell,
+                      "tax": sell.tax,
+                      "amount_ht": sell.amount_ht,
+                      "amount_ttc": sell.amount_ttc,
+                      "user_id": sell.user_id,
+                      "client_id": sell.client_id,
+                      "payment": sell.payment,
+                      "amount_received": sell.amount_received,
+                      "echeance": sell.echeance,
+                      "discount": sell.discount,
+                      "amount": sell.amount,
+                      'sell_lines': sell.sell_lines
+                    };
+
+                    createSells(sellsMap);
+                  } else if (isConnected == false) {
+                    _localSave();
                   }
-                  sells sell = sells(
-                      compagnie_id: compagnie_id,
-                      date_sell: dateController.text,
-                      tax: int.parse(taxController.text),
-                      amount_ht: double.parse(Amount_HTController.text),
-                      amount_ttc: double.parse(Amount_TTC_Controller.text),
-                      user_id: user_id,
-                      client_id: int.parse(client_id.toString()),
-                      payment: _selectedPayment.toString(),
-                      amount_received: double.parse(amountController.text),
-                      echeance: echeance,
-                      discount: double.parse(discountSellController.text),
-                      amount: double.parse(Amount_TTC_Controller.text),
-                      sell_lines: sell_lines);
-                  Map<String, dynamic> sellsMap = {
-                    'compagnie_id': sell.compagnie_id,
-                    'date_sell': sell.date_sell,
-                    "tax": sell.tax,
-                    "amount_ht": sell.amount_ht,
-                    "amount_ttc": sell.amount_ttc,
-                    "user_id": sell.user_id,
-                    "client_id": sell.client_id,
-                    "payment": sell.payment,
-                    "amount_received": sell.amount_received,
-                    "echeance": sell.echeance,
-                    "discount": sell.discount,
-                    "amount": sell.amount,
-                    'sell_lines': sell.sell_lines
-                  };
-
-                  createSells(sellsMap);
                 },
               ),
             ],

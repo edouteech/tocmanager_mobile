@@ -566,18 +566,25 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
   //readCategories
   Future<void> readCategories() async {
     int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await ReadCategories(compagnie_id);
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        List<dynamic> data = response.data as List<dynamic>;
-        categories = data.map((p) => Category.fromJson(p)).toList();
+    dynamic isConnected = await initConnectivity();
+    if (isConnected == true) {
+      ApiResponse response = await ReadCategories(compagnie_id);
+      if (response.error == null) {
+        if (response.statusCode == 200) {
+          List<dynamic> data = response.data as List<dynamic>;
+          categories = data.map((p) => Category.fromJson(p)).toList();
+        }
+      } else {
+        if (response.statusCode == 403) {
+          setState(() {
+            isNotSuscribe = true;
+          });
+        }
       }
-    } else {
-      if (response.statusCode == 403) {
-        setState(() {
-          isNotSuscribe = true;
-        });
-      }
+    } else if (isConnected == false) {
+      List<dynamic> data =
+          await sqlDb.readData('''SELECT * FROM Categories ''');
+      categories = data.map((p) => Category.fromJson(p)).toList();
     }
   }
 
@@ -624,9 +631,9 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
                       '${code.text}'
                     )
                   ''');
-           
+
             if (response1 == true) {
-              print("object");
+             
               Navigator.of(context).pushReplacement(MaterialPageRoute(
                   builder: (context) => const AjouterProduitPage()));
             } else if (response1 == false) {

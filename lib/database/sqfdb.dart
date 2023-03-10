@@ -182,8 +182,8 @@ Future<void> createTables(db) async {
   await db.execute('''
         CREATE TABLE IF NOT EXISTS Clients(
         id INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
-        compagnie_id INT,
         isSync BOOLEAN DEFAULT 1,
+        compagnie_id INT,
         name TEXT,
         email TEXT NULL,
         phone TEXT NULL,
@@ -193,4 +193,92 @@ Future<void> createTables(db) async {
         deleted_at TIMESTAMP NULLABLE
         )
     ''');
+
+  //Create Sells
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS sells(
+      id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      isSync BOOLEAN DEFAULT 0,
+      date_sell DATETIME NOT NULL,
+      tax REAL DEFAULT NULL,
+      discount REAL DEFAULT NULL,
+      amount REAL NOT NULL,
+      amount_ht REAL NOT NULL DEFAULT 0,
+      amount_ttc REAL NOT NULL DEFAULT 0,
+      amount_received REAL NOT NULL DEFAULT 0,
+      rest REAL NOT NULL DEFAULT 0.00,
+      user_id INTEGER NOT NULL,
+      client_id INTEGER NOT NULL,
+      compagnie_id INTEGER NOT NULL,
+      payment TEXT NOT NULL DEFAULT 'ESPECES',
+      date_echeance TEXT DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      deleted_at TIMESTAMP NULLABLE,
+      FOREIGN KEY (client_id) REFERENCES Suppliers(client_id)
+    )
+''');
+
+  //Create sell_line
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS Sell_lines(
+      id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+       isSync BOOLEAN DEFAULT 1,
+      sell_id INTEGER UNSIGNED NOT NULL,
+      product_id INTEGER UNSIGNED NOT NULL,
+      quantity REAL NOT NULL DEFAULT 0,
+      price REAL NOT NULL,
+      amount REAL NOT NULL,
+      amount_after_discount REAL NOT NULL DEFAULT 0.00,
+      date TIMESTAMP NOT NULL,
+      compagnie_id INTEGER  NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      deleted_at TIMESTAMP NULLABLE,
+      FOREIGN KEY (sell_id) REFERENCES Sells(id),
+      FOREIGN KEY (product_id) REFERENCES Products(id)
+    )
+''');
+
+  //Create buys
+  await db.execute('''
+  CREATE TABLE IF NOT EXISTS Buys(
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+     isSync BOOLEAN DEFAULT 1,
+    date_buy TEXT NOT NULL,
+    tax DOUBLE DEFAULT NULL,
+    discount DOUBLE DEFAULT NULL,
+    amount DOUBLE NOT NULL,
+    rest DOUBLE NOT NULL DEFAULT 0.00,
+    user_id INTEGER NOT NULL,
+    supplier_id INTEGER UNSIGNED NOT NULL,
+    compagnie_id INTEGER  NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    payment TEXT NOT NULL DEFAULT 'ESPECES',
+    deleted_at TEXT DEFAULT NULL,
+    FOREIGN KEY (supplier_id) REFERENCES Suppliers(id)
+  )
+''');
+
+  //Create buy_lines
+  await db.execute('''
+        CREATE TABLE IF NOT EXISTS Buy_lines (
+        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        isSync BOOLEAN DEFAULT 1,
+        quantity INTEGER NOT NULL DEFAULT 0,
+        amount DOUBLE NOT NULL,
+        buy_id INTEGER NOT NULL,
+        product_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        compagnie_id INTEGER NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        deleted_at TIMESTAMP NULL,
+        FOREIGN KEY (buy_id) REFERENCES Buys(id),
+        FOREIGN KEY (product_id) REFERENCES Products(id)
+)
+    ''');
+
+  print("DATABASE====TOCMANAGER==== SUCCESSFULLY");
 }
