@@ -1,7 +1,10 @@
 // ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, unnecessary_this, avoid_print, unused_local_variable, no_leading_underscores_for_local_identifiers
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:tocmanager/database/sqfdb.dart';
+import 'package:tocmanager/models/Sells.dart';
 
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/clients/ajouter_client.dart';
@@ -29,11 +32,15 @@ class VenteHome extends StatefulWidget {
 }
 
 List<Map<String, dynamic>> sellMapList = [];
+List<dynamic> sells = [];
 
 class _VenteHomeState extends State<VenteHome> {
   bool isNotSuscribe = false;
   bool? isLoading;
   var page = 1;
+  bool? isConnected;
+  late ConnectivityResult _connectivityResult;
+  SqlDb sqlDb = SqlDb();
   String? prev_page_url;
   String? next_page_url;
   var totalPage = 0;
@@ -46,6 +53,26 @@ class _VenteHomeState extends State<VenteHome> {
     checkSuscribe();
     readSells(page);
     super.initState();
+  }
+
+  initConnectivity() async {
+    final ConnectivityResult result = await Connectivity().checkConnectivity();
+    setState(() {
+      _connectivityResult = result;
+    });
+    if (_connectivityResult == ConnectivityResult.none) {
+      // Si l'appareil n'est pas connecté à Internet.
+      setState(() {
+        isConnected = false;
+      });
+    } else {
+      // Si l'appareil est connecté à Internet.
+      setState(() {
+        isConnected = true;
+      });
+    }
+
+    return isConnected;
   }
 
   Future<void> checkSuscribe() async {
@@ -119,205 +146,250 @@ class _VenteHomeState extends State<VenteHome> {
                     ? const Center(
                         child: CircularProgressIndicator(),
                       )
-                    : SizedBox(
-                        width: double.infinity,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: DataTable(
+                    : isConnected == false
+                        ? SizedBox(
+                            width: double.infinity,
+                            height: MediaQuery.of(context).size.height * 0.97,
+                            child: SingleChildScrollView(
+                              child: PaginatedDataTable(
+                                rowsPerPage: 10,
                                 columns: const <DataColumn>[
                                   DataColumn(
-                                    label: Expanded(
-                                      child: Text(
-                                        'Nom client',
-                                        style: TextStyle(
-                                            fontStyle: FontStyle.italic),
-                                      ),
-                                    ),
+                                    label: Text('Client'),
                                   ),
                                   DataColumn(
-                                    label: Expanded(
-                                      child: Text(
-                                        'Montant',
-                                        style: TextStyle(
-                                            fontStyle: FontStyle.italic),
-                                      ),
-                                    ),
+                                    label: Text('Montant'),
                                   ),
                                   DataColumn(
-                                    label: Expanded(
-                                      child: Text(
-                                        'Reste',
-                                        style: TextStyle(
-                                            fontStyle: FontStyle.italic),
-                                      ),
-                                    ),
+                                    label: Text('Reste'),
                                   ),
                                   DataColumn(
-                                    label: Expanded(
-                                      child: Text(
-                                        'Réduction',
-                                        style: TextStyle(
-                                            fontStyle: FontStyle.italic),
-                                      ),
-                                    ),
+                                    label: Text('Date'),
                                   ),
                                   DataColumn(
-                                    label: Expanded(
-                                      child: Text(
-                                        'Taxe',
-                                        style: TextStyle(
-                                            fontStyle: FontStyle.italic),
-                                      ),
-                                    ),
+                                    label: Text('Editer'),
                                   ),
                                   DataColumn(
-                                    label: Expanded(
-                                      child: Text(
-                                        'Editer',
-                                        style: TextStyle(
-                                            fontStyle: FontStyle.italic),
-                                      ),
-                                    ),
+                                    label: Text('Effacer'),
                                   ),
                                   DataColumn(
-                                    label: Expanded(
-                                      child: Text(
-                                        'Supprimer',
-                                        style: TextStyle(
-                                            fontStyle: FontStyle.italic),
-                                      ),
-                                    ),
+                                    label: Text('Détails'),
                                   ),
                                   DataColumn(
-                                    label: Expanded(
-                                      child: Text(
-                                        'Détails',
-                                        style: TextStyle(
-                                            fontStyle: FontStyle.italic),
-                                      ),
-                                    ),
-                                  ),
-                                  DataColumn(
-                                    label: Expanded(
-                                      child: Text(
-                                        'Encaissements',
-                                        style: TextStyle(
-                                            fontStyle: FontStyle.italic),
-                                      ),
-                                    ),
+                                    label: Text('Encaissements'),
                                   ),
                                 ],
-                                rows: List<DataRow>.generate(
-                                  sellMapList.length,
-                                  (int index) => DataRow(
-                                    cells: [
-                                      DataCell(Text(
-                                          "${sellMapList[index]['client']['name']}")),
-                                      DataCell(Text(
-                                          "${sellMapList[index]['amount_ttc']}")),
-                                      DataCell(Text(
-                                          "${sellMapList[index]['rest']}")),
-                                      DataCell(Text(
-                                          "${sellMapList[index]['discount']}")),
-                                      DataCell(
-                                          Text("${sellMapList[index]['tax']}")),
-                                      DataCell(Center(
-                                        child: IconButton(
-                                            icon: const Icon(
-                                              Icons.edit,
-                                              color: Colors.blue,
-                                            ),
-                                            onPressed: () async {
-                                              _edit(sellMapList[index]['id']);
-                                            }),
-                                      )),
-                                      DataCell(Center(
-                                        child: IconButton(
-                                            icon: const Icon(
-                                              Icons.delete,
-                                              color: Colors.red,
-                                            ),
-                                            onPressed: () {
-                                              deleteSells(
-                                                  sellMapList[index]['id']);
-                                            }),
-                                      )),
-                                      DataCell(Center(
-                                        child: IconButton(
-                                            icon: const Icon(
-                                              Icons.info,
-                                              color: Colors.blue,
-                                            ),
-                                            onPressed: () {
-                                              details(sellMapList[index]['id']);
-                                            }),
-                                      )),
-                                      DataCell(Center(
-                                        child: IconButton(
-                                            icon: Icon(
-                                              Icons.attach_money_outlined,
-                                              color: Colors.green[700],
-                                            ),
-                                            onPressed: () async {
-                                              collection(
-                                                  sellMapList[index]['id']);
-                                            }),
-                                      ))
-                                    ],
-                                  ),
+                                source: DataTableRow(
+                                  data: sellMapList,
+                                  onDelete: deleteSells,
+                                  onDetails: details,
+                                  onEdit: _edit,
+                                  oncollection: collection,
                                 ),
                               ),
                             ),
-                            Row(
+                          )
+                        : SizedBox(
+                            width: double.infinity,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                Expanded(
-                                  child: Container(
-                                    color: Colors.white,
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        prev_page_url != null
-                                            ? TextButton(
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: DataTable(
+                                    columns: const <DataColumn>[
+                                      DataColumn(
+                                        label: Expanded(
+                                          child: Text(
+                                            'Nom client',
+                                            style: TextStyle(
+                                                fontStyle: FontStyle.italic),
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: Expanded(
+                                          child: Text(
+                                            'Montant',
+                                            style: TextStyle(
+                                                fontStyle: FontStyle.italic),
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: Expanded(
+                                          child: Text(
+                                            'Reste',
+                                            style: TextStyle(
+                                                fontStyle: FontStyle.italic),
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: Expanded(
+                                          child: Text(
+                                            'Réduction',
+                                            style: TextStyle(
+                                                fontStyle: FontStyle.italic),
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: Expanded(
+                                          child: Text(
+                                            'Taxe',
+                                            style: TextStyle(
+                                                fontStyle: FontStyle.italic),
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: Expanded(
+                                          child: Text(
+                                            'Editer',
+                                            style: TextStyle(
+                                                fontStyle: FontStyle.italic),
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: Expanded(
+                                          child: Text(
+                                            'Supprimer',
+                                            style: TextStyle(
+                                                fontStyle: FontStyle.italic),
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: Expanded(
+                                          child: Text(
+                                            'Détails',
+                                            style: TextStyle(
+                                                fontStyle: FontStyle.italic),
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: Expanded(
+                                          child: Text(
+                                            'Encaissements',
+                                            style: TextStyle(
+                                                fontStyle: FontStyle.italic),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                    rows: List<DataRow>.generate(
+                                      sellMapList.length,
+                                      (int index) => DataRow(
+                                        cells: [
+                                          DataCell(Text(
+                                              "${sellMapList[index]['client']['name']}")),
+                                          DataCell(Text(
+                                              "${sellMapList[index]['amount_ttc']}")),
+                                          DataCell(Text(
+                                              "${sellMapList[index]['rest']}")),
+                                          DataCell(Text(
+                                              "${sellMapList[index]['discount']}")),
+                                          DataCell(Text(
+                                              "${sellMapList[index]['tax']}")),
+                                          DataCell(Center(
+                                            child: IconButton(
+                                                icon: const Icon(
+                                                  Icons.edit,
+                                                  color: Colors.blue,
+                                                ),
+                                                onPressed: () async {
+                                                  _edit(
+                                                      sellMapList[index]['id']);
+                                                }),
+                                          )),
+                                          DataCell(Center(
+                                            child: IconButton(
+                                                icon: const Icon(
+                                                  Icons.delete,
+                                                  color: Colors.red,
+                                                ),
                                                 onPressed: () {
-                                                  setState(() {
-                                                    sellMapList.clear();
-                                                    page = page - 1;
-                                                  });
-
-                                                  readSells(page);
-                                                },
-                                                child: const Text('Previous'),
-                                              )
-                                            : const SizedBox.shrink(),
-                                        Text(
-                                            '${sellMapList.length}/$totalPage'),
-                                        next_page_url != null
-                                            ? TextButton(
+                                                  deleteSells(
+                                                      sellMapList[index]['id']);
+                                                }),
+                                          )),
+                                          DataCell(Center(
+                                            child: IconButton(
+                                                icon: const Icon(
+                                                  Icons.info,
+                                                  color: Colors.blue,
+                                                ),
                                                 onPressed: () {
-                                                  setState(() {
-                                                    sellMapList.clear();
-                                                    page = page + 1;
-                                                  });
-
-                                                  readSells(page);
-                                                },
-                                                child: const Text('Next'),
-                                              )
-                                            : const SizedBox.shrink(),
-                                      ],
+                                                  details(
+                                                      sellMapList[index]['id']);
+                                                }),
+                                          )),
+                                          DataCell(Center(
+                                            child: IconButton(
+                                                icon: Icon(
+                                                  Icons.attach_money_outlined,
+                                                  color: Colors.green[700],
+                                                ),
+                                                onPressed: () async {
+                                                  collection(
+                                                      sellMapList[index]['id']);
+                                                }),
+                                          ))
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Container(
+                                        color: Colors.white,
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            prev_page_url != null
+                                                ? TextButton(
+                                                    onPressed: () {
+                                                      setState(() {
+                                                        sellMapList.clear();
+                                                        page = page - 1;
+                                                      });
+
+                                                      readSells(page);
+                                                    },
+                                                    child:
+                                                        const Text('Previous'),
+                                                  )
+                                                : const SizedBox.shrink(),
+                                            Text(
+                                                '${sellMapList.length}/$totalPage'),
+                                            next_page_url != null
+                                                ? TextButton(
+                                                    onPressed: () {
+                                                      setState(() {
+                                                        sellMapList.clear();
+                                                        page = page + 1;
+                                                      });
+
+                                                      readSells(page);
+                                                    },
+                                                    child: const Text('Next'),
+                                                  )
+                                                : const SizedBox.shrink(),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
                               ],
-                            )
-                          ],
-                        ),
-                      ),
-              ));
+                            ),
+                          )));
   }
 
   Widget MyDrawerList() {
@@ -447,34 +519,47 @@ class _VenteHomeState extends State<VenteHome> {
   //read sells
   Future<void> readSells(int page) async {
     int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await ReadSells(compagnie_id, page);
-    setState(() {
-      isLoading = true;
-    });
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        List<dynamic> data = response.data as List<dynamic>;
-        for (var sell in data) {
-          var productMap = sell as Map<String, dynamic>;
-          sellMapList.add(productMap);
-        }
-        setState(() {
-          page = response.current_page!;
-          next_page_url = response.next_page_url;
-          prev_page_url = response.prev_page_url;
-          totalPage = response.totalPage!;
-        });
+    dynamic isConnected = await initConnectivity();
+    if (isConnected == true) {
+      ApiResponse response = await ReadSells(compagnie_id, page);
+      setState(() {
+        isLoading = true;
+      });
+      if (response.error == null) {
+        if (response.statusCode == 200) {
+          List<dynamic> data = response.data as List<dynamic>;
+          for (var sell in data) {
+            var productMap = sell as Map<String, dynamic>;
+            sellMapList.add(productMap);
+          }
+          setState(() {
+            page = response.current_page!;
+            next_page_url = response.next_page_url;
+            prev_page_url = response.prev_page_url;
+            totalPage = response.totalPage!;
+          });
 
-        setState(() {
-          isLoading = false;
-        });
+          setState(() {
+            isLoading = false;
+          });
+        }
+      } else {
+        if (response.statusCode == 403) {
+          setState(() {
+            isNotSuscribe = true;
+          });
+        }
       }
-    } else {
-      if (response.statusCode == 403) {
-        setState(() {
-          isNotSuscribe = true;
-        });
-      }
+    } else if (isConnected == false) {
+      setState(() {
+        isLoading = true;
+      });
+      List<dynamic> data = await sqlDb.readData('''SELECT * FROM Sells ''');
+      sells = data.map((p) => Sells.fromJson(p)).toList();
+     
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
@@ -578,4 +663,83 @@ enum DrawerSections {
   fournisseur,
   privacy_policy,
   logout,
+}
+
+class DataTableRow extends DataTableSource {
+  final List<dynamic> data;
+  final Function(int) onDelete;
+  final Function(int) onEdit;
+  final Function(int) onDetails;
+  final Function(int) oncollection;
+  DataTableRow(
+      {required this.data,
+      required this.onDelete,
+      required this.onEdit,
+      required this.onDetails,
+      required this.oncollection});
+
+  @override
+  DataRow getRow(int index) {
+    final Sells sell = sells[index];
+    return DataRow.byIndex(
+      index: index,
+      cells: <DataCell>[
+        DataCell(Center(child: Text(sell.client_name.toString()))),
+        DataCell(Center(child: Text(sell.amount.toString()))),
+        DataCell(Center(child: Text(sell.reste.toString()))),
+        DataCell(Center(child: Text(sell.date_sell.toString()))),
+        DataCell(Center(
+          child: IconButton(
+              icon: const Icon(
+                Icons.edit,
+                color: Colors.blue,
+              ),
+              onPressed: () async {
+                onEdit(
+                  sell.id,
+                );
+              }),
+        )),
+        DataCell(Center(
+          child: IconButton(
+              icon: const Icon(
+                Icons.delete,
+                color: Colors.red,
+              ),
+              onPressed: () async {
+                onDelete(sell.id);
+              }),
+        )),
+        DataCell(Center(
+          child: IconButton(
+              icon: const Icon(
+                Icons.info,
+                color: Colors.blue,
+              ),
+              onPressed: () {
+                onDetails(sell.id);
+              }),
+        )),
+        DataCell(Center(
+          child: IconButton(
+              icon: Icon(
+                Icons.attach_money_outlined,
+                color: Colors.green[700],
+              ),
+              onPressed: () async {
+                oncollection(sell.id);
+              }),
+        ))
+      ],
+    );
+  }
+
+  @override
+  int get rowCount => sells.length;
+
+  @override
+  bool get isRowCountApproximate => false;
+
+  @override
+  int get selectedRowCount => 0;
 }

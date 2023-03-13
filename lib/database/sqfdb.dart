@@ -209,6 +209,7 @@ Future<void> createTables(db) async {
       rest REAL NOT NULL DEFAULT 0.00,
       user_id INTEGER NOT NULL,
       client_id INTEGER NOT NULL,
+      client_name TEXT NULLABLE,
       compagnie_id INTEGER NOT NULL,
       payment TEXT NOT NULL DEFAULT 'ESPECES',
       date_echeance TEXT DEFAULT NULL,

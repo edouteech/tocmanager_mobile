@@ -1,20 +1,20 @@
 // ignore_for_file: non_constant_identifier_names, file_names
 class Product {
   int? id;
-  int? category_id;
+  dynamic category_id;
   String? name;
   int? quantity;
   dynamic price_sell;
   dynamic price_buy;
-  int? stock_min;
-  int? stock_max;
+  dynamic stock_min;
+  dynamic stock_max;
   dynamic price_moyen_sell;
   dynamic price_moyen_buy;
   String? tax_group;
   int? compagnie_id;
   String? reference;
   String? code;
-  int? stock_initial;
+ dynamic stock_initial;
   String? category_name;
   String? created_at;
   String? updated_at;
@@ -60,7 +60,7 @@ class Product {
       compagnie_id: json['compagnie_id'],
       reference: json['reference'],
       code: json['code'],
-      stock_initial: json['stock_initial'].toInt(),
+      stock_initial: json['stock_initial'],
       category_name: json['category'] != null ? json['category']['name'] : null,
       created_at: json['created_at'],
       updated_at: json['updated_at']

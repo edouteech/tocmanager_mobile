@@ -571,6 +571,10 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
     } else {
       echeance = null;
     }
+
+    var client = await sqlDb.readData(""" 
+    SELECT * FROM Clients WHERE id=$client_id
+    """);
     var rest = double.parse(Amount_TTC_Controller.text) -
         double.parse(amountController.text);
     var response1 = await sqlDb.insertData('''
@@ -582,6 +586,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                     amount_ttc,
                     user_id,
                     client_id,
+                    client_name,
                     payment,
                     amount_received,
                     date_echeance,
@@ -595,7 +600,8 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                       '${double.parse(Amount_HTController.text)}',
                       '${double.parse(Amount_TTC_Controller.text)}',
                       '$user_id',
-                      '${int.parse(client_id.toString())}',
+                      '${client[0]['id']}',
+                      '${client[0]['name']}',
                       '${_selectedPayment.toString()}',
                       '${double.parse(amountController.text)}',
                       '$echeance',
@@ -604,8 +610,6 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                       '$rest'
                     )
      ''');
-    print(response1);
-
     if (response1 == true) {
       var ReadLastInsertion = await sqlDb.readData('''
                     SELECT * FROM Sells ORDER BY id DESC LIMIT 1
@@ -633,8 +637,19 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
                       '${sell_lines[i]["compagnie_id"]}'
                       )
                   ''');
+          var selectProduct = await sqlDb.readData(
+              " SELECT * FROM Products WHERE id=${sell_lines[i]["product_id"]}");
+          var newQte = selectProduct[0]['quantity'] - sell_lines[i]["quantity"];
+          var restoreProduct = await sqlDb.updateData(
+              """  UPDATE Products SET quantity=$newQte WHERE id= ${selectProduct[0]['id']} """);
         }
-
+        setState(() {
+          elements.clear();
+          sum = 0.0;
+          _sell_lineFormkey.currentState?.reset();
+          _sellsformKey.currentState?.reset();
+          sell_lines = [];
+        });
         Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const VenteHome()));
       }
