@@ -649,6 +649,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
           _sell_lineFormkey.currentState?.reset();
           _sellsformKey.currentState?.reset();
           sell_lines = [];
+          
         });
         Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const VenteHome()));
