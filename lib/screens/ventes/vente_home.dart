@@ -556,7 +556,7 @@ class _VenteHomeState extends State<VenteHome> {
       });
       List<dynamic> data = await sqlDb.readData('''SELECT * FROM Sells ''');
       sells = data.map((p) => Sells.fromJson(p)).toList();
-     
+
       setState(() {
         isLoading = false;
       });
@@ -569,16 +569,36 @@ class _VenteHomeState extends State<VenteHome> {
     int compagnie_id = await getCompagnie_id();
     String? message;
     String color = "red";
-    ApiResponse response = await DeleteSells(compagnie_id, sell_id);
-    if (response.statusCode == 200) {
-      if (response.status == "success") {
-        Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const VenteHome()));
+    dynamic isConnected = await initConnectivity();
 
-        message = "La vente a été supprimée avec succès";
+    if (isConnected == true) {
+      ApiResponse response = await DeleteSells(compagnie_id, sell_id);
+      if (response.statusCode == 200) {
+        if (response.status == "success") {
+          Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => const VenteHome()));
+
+          message = "La vente a été supprimée avec succès";
+          setState(() {
+            sendMessage = true;
+            color = "green";
+          });
+        } else {
+          message = "La suppression a échouée";
+          setState(() {
+            sendMessage = true;
+          });
+        }
+      } else if (response.statusCode == 403) {
+        message = "Vous n'êtes pas autorisé à effectuer cette action";
         setState(() {
           sendMessage = true;
-          color = "green";
+        });
+      } else if (response.statusCode == 500) {
+        print(response.statusCode);
+        message = "La suppression a échouée !";
+        setState(() {
+          sendMessage = true;
         });
       } else {
         message = "La suppression a échouée";
@@ -586,23 +606,21 @@ class _VenteHomeState extends State<VenteHome> {
           sendMessage = true;
         });
       }
-    } else if (response.statusCode == 403) {
-      message = "Vous n'êtes pas autorisé à effectuer cette action";
+    } else if (isConnected == false) {
+      sqlDb.deleteData(''' 
+            DELETE FROM Sells WHERE id = '$sell_id'
+        ''');
+      sqlDb.deleteData(''' 
+            DELETE FROM Sell_lines WHERE sell_id = '$sell_id'
+        ''');
+        
+      message = "La vente a été supprimée avec succès";
       setState(() {
         sendMessage = true;
-      });
-    } else if (response.statusCode == 500) {
-      print(response.statusCode);
-      message = "La suppression a échouée !";
-      setState(() {
-        sendMessage = true;
-      });
-    } else {
-      message = "La suppression a échouée";
-      setState(() {
-        sendMessage = true;
+        color = "green";
       });
     }
+
     if (sendMessage == true) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -613,7 +631,7 @@ class _VenteHomeState extends State<VenteHome> {
             height: 20,
             child: Center(
               child: Text(
-                message,
+                message!,
                 style: const TextStyle(color: Colors.white),
               ),
             ),

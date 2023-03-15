@@ -518,7 +518,7 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
         Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const VenteHome()));
       } else {
-        message = "La vente a échouée";
+        message = response.message;
         setState(() {
           _sendMessage = true;
         });

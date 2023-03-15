@@ -3,6 +3,7 @@
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:tocmanager/database/sync.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/clients/ajouter_client.dart';
 import 'package:tocmanager/screens/profile/profile_page.dart';
@@ -32,6 +33,7 @@ class _HomePageState extends State<HomePage> {
   double chiffreAffaire = 0.0;
   double encaissement = 0.0;
   double decaissement = 0.0;
+  bool? SyncFinish;
 
   @override
   void initState() {
@@ -381,7 +383,9 @@ class _HomePageState extends State<HomePage> {
               "Politique de confidentialité",
               Icons.privacy_tip_outlined,
               currentPage == DrawerSections.privacy_policy ? true : false),
-          MenuItem(9, "Deconnexion", Icons.logout_outlined,
+          MenuItem(9, "Synchronisation", Icons.sync,
+              currentPage == DrawerSections.synchronisation ? true : false),
+          MenuItem(10, "Deconnexion", Icons.logout_outlined,
               currentPage == DrawerSections.logout ? true : false),
         ],
       ),
@@ -418,6 +422,124 @@ class _HomePageState extends State<HomePage> {
             } else if (id == 8) {
               currentPage = DrawerSections.privacy_policy;
             } else if (id == 9) {
+              String? message;
+              String color = "red";
+              Sync sync = Sync();
+
+              // var syncCategories = await sync.syncCategory();
+              // if (syncCategories == true) {
+              //   setState(() {
+              //     message = "Catégories synchronisés avec succès";
+              //     SyncFinish = true;
+              //     color = "green";
+              //   });
+              // } else {
+              //   setState(() {
+              //     SyncFinish = true;
+              //     message = "Echec de synchronisation des Catégories";
+              //   });
+              // }
+
+              // var syncProducts = await sync.syncProducts();
+              // if (syncProducts == true) {
+              //   setState(() {
+              //     message = "Produits synchronisés avec succès";
+              //     SyncFinish = true;
+              //     color = "green";
+              //   });
+              // } else {
+              //   setState(() {
+              //     SyncFinish = true;
+              //     message = "Echec de synchronisation des produits";
+              //   });
+              // }
+
+              // var syncClients = await sync.synClients();
+              // if (syncClients == true) {
+              //   setState(() {
+              //     message = "Clients synchronisés avec succès";
+              //     SyncFinish = true;
+              //     color = "green";
+              //   });
+              // } else {
+              //   setState(() {
+              //     SyncFinish = true;
+              //     message = "Echec de synchronisation des Clients";
+              //   });
+              // }
+
+              // var syncSuppliers = await sync.syncSuppliers();
+              // if (syncSuppliers == true) {
+              //   setState(() {
+              //     message = "Fournisseurs synchronisés avec succès";
+              //     SyncFinish = true;
+              //     color = "green";
+              //   });
+              // } else {
+              //   setState(() {
+              //     SyncFinish = true;
+              //     message = "Echec de synchronisation des Fournisseurs";
+              //   });
+              // }
+
+              var syncSells = await sync.syncSells();
+              if (syncSells == true) {
+                setState(() {
+                  message = "Ventes synchronisés avec succès";
+                  SyncFinish = true;
+                  color = "green";
+                });
+              } else {
+                setState(() {
+                  SyncFinish = true;
+                  message = "Echec de synchronisation des Ventes";
+                });
+              }
+
+              var syncBuys = await sync.syncBuys();
+              if (syncBuys == true) {
+                setState(() {
+                  message = "Achats synchronisés avec succès";
+                  SyncFinish = true;
+                  color = "green";
+                });
+              } else {
+                setState(() {
+                  SyncFinish = true;
+                  message = "Echec de synchronisation des Achats";
+                });
+              }
+
+              if (SyncFinish == true) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    backgroundColor:
+                        color == "green" ? Colors.green[800] : Colors.red[800],
+                    content: SizedBox(
+                      width: double.infinity,
+                      height: 40,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          LinearProgressIndicator(
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                                Colors.white),
+                            backgroundColor: Colors.grey[300],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            message!,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ],
+                      ),
+                    ),
+                    duration: const Duration(milliseconds: 2000),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            } else if (id == 10) {
               showDialog(
                   barrierDismissible: false,
                   context: context,
@@ -492,5 +614,6 @@ enum DrawerSections {
   fournisseur,
   client,
   privacy_policy,
-  logout,
+  synchronisation,
+  logout
 }

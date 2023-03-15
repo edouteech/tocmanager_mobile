@@ -122,6 +122,7 @@ class _ListFournisseurState extends State<ListFournisseur> {
                           DataColumn(label: Center(child: Text("Nature"))),
                           DataColumn(label: Center(child: Text("Editer"))),
                           DataColumn(label: Center(child: Text("Effacer"))),
+                          DataColumn(label: Center(child: Text("Info"))),
                         ],
                         source: DataTableRow(
                             data: suppliers,
@@ -155,6 +156,10 @@ class _ListFournisseurState extends State<ListFournisseur> {
       if (response.error == null) {
         if (response.statusCode == 200) {
           List<dynamic> data = response.data as List<dynamic>;
+            suppliers = data.map((p) => Suppliers.fromJson(p)).toList();
+          setState(() {
+            isLoading = false;
+          });
           for (var i = 0; i < data.length; i++) {
             var email = data[i]['email'] != null ? '${data[i]['email']}' : null;
             var phone = data[i]['phone'] != null ? '${data[i]['phone']}' : null;
@@ -178,10 +183,6 @@ class _ListFournisseurState extends State<ListFournisseur> {
                   )
                   ''');
           }
-          suppliers = data.map((p) => Suppliers.fromJson(p)).toList();
-          setState(() {
-            isLoading = false;
-          });
         }
       } else {
         if (response.statusCode == 403) {
@@ -551,10 +552,32 @@ class DataTableRow extends DataTableSource {
       index: index,
       cells: <DataCell>[
         DataCell(Text(DateFormat("dd-MM-yyyy H:mm:s")
-            .format(DateTime.parse(supplier.created_at.toString())))),
+            .format(DateTime.parse(supplier.created_at)))),
         DataCell(Center(child: Text(supplier.name.toString()))),
-        DataCell(Center(child: Text(supplier.email))),
-        DataCell(Center(child: Text(supplier.phone))),
+        DataCell(
+          Center(
+            child: Text(
+              supplier.email == null ? "-" : supplier.email.toString(),
+              style: TextStyle(
+                fontWeight: supplier.email == null
+                    ? FontWeight.bold
+                    : FontWeight.normal,
+              ),
+            ),
+          ),
+        ),
+        DataCell(
+          Center(
+            child: Text(
+              supplier.phone == null ? "-" : supplier.phone.toString(),
+              style: TextStyle(
+                fontWeight: supplier.phone == null
+                    ? FontWeight.bold
+                    : FontWeight.normal,
+              ),
+            ),
+          ),
+        ),
         DataCell(Center(child: Text(supplier.nature))),
         DataCell(Center(
           child: IconButton(
@@ -584,7 +607,7 @@ class DataTableRow extends DataTableSource {
                 color: Colors.blue,
               ),
               onPressed: () async {
-                onDelete(supplier.id);
+                onDetails(supplier.id);
               }),
         ))
       ],

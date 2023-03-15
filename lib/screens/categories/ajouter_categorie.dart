@@ -517,5 +517,5 @@ enum DrawerSections {
   fournisseur,
   client,
   privacy_policy,
-  logout,
+  logout
 }

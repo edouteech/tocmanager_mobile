@@ -1,14 +1,15 @@
 // ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, depend_on_referenced_packages, unnecessary_string_interpolations, avoid_print, body_might_complete_normally_nullable, unnecessary_this, import_of_legacy_library_into_null_safe, unused_field, unused_local_variable, camel_case_types, no_leading_underscores_for_local_identifiers, prefer_typing_uninitialized_variables
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
+import 'package:dropdown_plus/dropdown_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
+import 'package:tocmanager/database/sqfdb.dart';
 import 'package:tocmanager/models/Suppliers.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/achats/line_achat.dart';
 import 'package:tocmanager/services/suppliers_services.dart';
 import 'package:intl/intl.dart';
-
-import '../../models/Products.dart';
 import '../../models/api_response.dart';
 import '../../services/buys_service.dart';
 import '../../services/products_service.dart';
@@ -27,6 +28,8 @@ List<dynamic> achats = [];
 List<dynamic> buy_lines = [];
 var sum = 0.0;
 double total = 0.0;
+List<Map<String, dynamic>> productMapList = [];
+List<Map<String, dynamic>> SuppliersMapList = [];
 
 class _AjouterAchatPageState extends State<AjouterAchatPage> {
   final format = DateFormat("yyyy-MM-dd HH:mm:ss");
@@ -35,13 +38,38 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
   final _formuKey = GlobalKey<FormState>();
   final _buy_lineformKey = GlobalKey<FormState>();
 
+  bool? isConnected;
+  late ConnectivityResult _connectivityResult;
+  SqlDb sqlDb = SqlDb();
+
   @override
   void initState() {
     readProductsData();
     readSuppliersData();
+    initConnectivity();
     dateController.text =
         DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
     super.initState();
+  }
+
+  initConnectivity() async {
+    final ConnectivityResult result = await Connectivity().checkConnectivity();
+    setState(() {
+      _connectivityResult = result;
+    });
+    if (_connectivityResult == ConnectivityResult.none) {
+      // Si l'appareil n'est pas connecté à Internet.
+      setState(() {
+        isConnected = false;
+      });
+    } else {
+      // Si l'appareil est connecté à Internet.
+      setState(() {
+        isConnected = true;
+      });
+    }
+
+    return isConnected;
   }
 
   /* =============================Products=================== */
@@ -49,31 +77,31 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
   List<dynamic> products = [];
 
   /* Read data for database */
-  Future readProductsData() async {
+  Future<void> readProductsData() async {
+    dynamic isConnected = await initConnectivity();
     int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await ReadProducts(compagnie_id);
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        List<dynamic> data = response.data as List<dynamic>;
-        products = data.map((p) => Product.fromJson(p)).toList();
+    if (isConnected == true) {
+      ApiResponse response = await ReadProducts(compagnie_id);
+      if (response.error == null) {
+        if (response.statusCode == 200) {
+          List<dynamic> data = response.data as List<dynamic>;
+          for (var product in data) {
+            var productMap = product as Map<String, dynamic>;
+            productMapList.add(productMap);
+          }
+        }
+      }
+    } else if (isConnected == false) {
+      List<dynamic> data = await sqlDb.readData('''SELECT * FROM Products ''');
+      for (var product in data) {
+        var productMap = product as Map<String, dynamic>;
+        productMapList.add(productMap);
       }
     }
   }
 
-  /* Dropdown products items */
-  String? product_id;
-  List<DropdownMenuItem<String>> get dropdownProductsItems {
-    List<DropdownMenuItem<String>> menuProductsItems = [];
-    for (var i = 0; i < products.length; i++) {
-      menuProductsItems.add(DropdownMenuItem(
-        value: products[i].id.toString(),
-        child: Text(products[i].name, style: const TextStyle(fontSize: 15)),
-      ));
-    }
-    return menuProductsItems;
-  }
-
   //read product price
+  String? product_id;
   void productPrice(int? product_id) async {
     int compagnie_id = await getCompagnie_id();
     ApiResponse response = await ReadProductbyId(compagnie_id, product_id);
@@ -98,31 +126,29 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
 
   /* =============================Suppliers=================== */
   /* List suppliers */
-  List<dynamic> suppliers = [];
-
+  String? supplier_id;
   /* Read data for database */
   Future readSuppliersData() async {
     int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await ReadSuppliers(compagnie_id);
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        List<dynamic> data = response.data as List<dynamic>;
-        suppliers = data.map((p) => Suppliers.fromJson(p)).toList();
+    dynamic isConnected = await initConnectivity();
+    if (isConnected == true) {
+      ApiResponse response = await ReadSuppliers(compagnie_id);
+      if (response.error == null) {
+        if (response.statusCode == 200) {
+          List<dynamic> data = response.data as List<dynamic>;
+          for (var product in data) {
+            var clientMap = product as Map<String, dynamic>;
+            SuppliersMapList.add(clientMap);
+          }
+        }
+      }
+    } else if (isConnected == false) {
+      List<dynamic> data = await sqlDb.readData('''SELECT * FROM Suppliers ''');
+      for (var product in data) {
+        var clientMap = product as Map<String, dynamic>;
+        SuppliersMapList.add(clientMap);
       }
     }
-  }
-
-  /* Dropdown products items */
-  String? supplier_id;
-  List<DropdownMenuItem<String>> get dropdownSuppliersItems {
-    List<DropdownMenuItem<String>> menuSuppliersItems = [];
-    for (var i = 0; i < suppliers.length; i++) {
-      menuSuppliersItems.add(DropdownMenuItem(
-        value: suppliers[i].id.toString(),
-        child: Text(suppliers[i].name, style: const TextStyle(fontSize: 15)),
-      ));
-    }
-    return menuSuppliersItems;
   }
 
   /* =============================End Suppliers=================== */
@@ -200,51 +226,80 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                 child: Row(
                   children: [
                     Flexible(
-                      //Nom fournisseur
                       child: Container(
-                          padding: const EdgeInsets.only(left: 20, right: 20),
-                          margin: const EdgeInsets.only(top: 10),
-                          child: DropdownButtonFormField(
-                              isExpanded: true,
-                              autovalidateMode:
-                                  AutovalidateMode.onUserInteraction,
-                              decoration: const InputDecoration(
-                                // icon: GestureDetector(
-                                //   child: const Icon(
-                                //     Icons.add_box_rounded,
-                                //     size: 30,
-                                //     color: Colors.blue,
-                                //   ),
-                                //   onTap: () {
-                                //     _AddSupplierDialog(context);
-                                //   },
-                                // ),
-                                contentPadding:
-                                    EdgeInsets.fromLTRB(5.0, 5.0, 5.0, 5.0),
-                                enabledBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                        color:
-                                            Color.fromARGB(255, 45, 157, 220)),
-                                    borderRadius:
-                                        BorderRadius.all(Radius.circular(10))),
-                                border: OutlineInputBorder(
-                                    borderRadius:
-                                        BorderRadius.all(Radius.circular(10))),
-                                label: Text("Nom fournisseur"),
-                                labelStyle: TextStyle(
-                                    fontSize: 13, color: Colors.black),
+                        padding: const EdgeInsets.only(left: 20, right: 20),
+                        margin: const EdgeInsets.only(top: 10),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(
+                                Icons.add_circle_outline,
+                                color: Colors.blue,
                               ),
-                              dropdownColor: Colors.white,
-                              validator: (value) => value == null
-                                  ? 'Sélectionner un fournisseur'
-                                  : null,
-                              value: supplier_id,
-                              onChanged: (String? newValue) {
-                                setState(() {
-                                  supplier_id = newValue;
-                                });
+                              onPressed: () {
+                                // Action à effectuer lorsque le bouton est cliqué
                               },
-                              items: dropdownSuppliersItems)),
+                            ),
+                            Expanded(
+                              child: DropdownFormField(
+                                decoration: const InputDecoration(
+                                  contentPadding: EdgeInsets.fromLTRB(
+                                      20.0, 10.0, 20.0, 10.0),
+                                  enabledBorder: OutlineInputBorder(
+                                      borderSide: BorderSide(
+                                          color: Color.fromARGB(
+                                              255, 45, 157, 220)),
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(10))),
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(10))),
+                                  labelText: "Nom du client",
+                                  labelStyle: TextStyle(
+                                      fontSize: 13, color: Colors.black),
+                                ),
+                                dropdownColor: Colors.white,
+                                findFn: (dynamic str) async => SuppliersMapList,
+                                selectedFn: (dynamic item1, dynamic item2) {
+                                  if (item1 != null && item2 != null) {
+                                    return item1['id'] == item2['id'];
+                                  }
+                                  return false;
+                                },
+                                displayItemFn: (dynamic item) => Text(
+                                  (item ?? {})['name'] ?? '',
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                                onSaved: (dynamic str) {
+                                  print(str);
+                                },
+                                onChanged: (dynamic str) {
+                                  setState(() {
+                                    supplier_id = str['id'].toString();
+                                  });
+                                },
+                                filterFn: (dynamic item, str) =>
+                                    item['name']
+                                        .toLowerCase()
+                                        .indexOf(str.toLowerCase()) >=
+                                    0,
+                                dropdownItemFn: (dynamic item,
+                                        int position,
+                                        bool focused,
+                                        bool selected,
+                                        Function() onTap) =>
+                                    ListTile(
+                                  title: Text(item['name']),
+                                  tileColor: focused
+                                      ? const Color.fromARGB(20, 0, 0, 0)
+                                      : Colors.transparent,
+                                  onTap: onTap,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                     Flexible(
                       child: Container(
@@ -274,6 +329,13 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                                 firstDate: DateTime(1900),
                                 initialDate: currentValue ?? DateTime.now(),
                                 lastDate: DateTime(2100));
+                            if (date != null) {
+                              final time = TimeOfDay.fromDateTime(
+                                  currentValue ?? DateTime.now());
+                              return DateTimeField.combine(date, time);
+                            } else {
+                              return currentValue;
+                            }
                           },
                         ),
                       ),
@@ -302,7 +364,6 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                         });
                       },
                       edit: () {
-                        
                         setState(() {
                           product_id = (elements[i].product_id).toString();
                           priceController.text = (elements[i].price).toString();
@@ -502,37 +563,62 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
               child: Column(children: [
                 //Nom produit
                 Container(
-                    margin: const EdgeInsets.only(left: 20, right: 20, top: 20),
-                    child: DropdownButtonFormField(
-                        isExpanded: true,
-                        validator: (value) =>
-                            value == null ? 'Sélectionner un produit' : null,
-                        decoration: const InputDecoration(
-                          contentPadding:
-                              EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
-                          enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color.fromARGB(255, 45, 157, 220)),
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          border: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          label: Text("Nom du produit"),
-                          labelStyle:
-                              TextStyle(fontSize: 13, color: Colors.black),
-                        ),
-                        dropdownColor: Colors.white,
-                        value: product_id,
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            product_id = newValue!;
-                            if (product_id != null) {
-                              productPrice(int.parse(product_id!));
-                            }
-                          });
-                        },
-                        items: dropdownProductsItems)),
+                    padding: const EdgeInsets.only(left: 20, right: 20),
+                    margin: const EdgeInsets.only(top: 10),
+                    child: DropdownFormField(
+                      decoration: const InputDecoration(
+                        contentPadding:
+                            EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
+                        enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                                color: Color.fromARGB(255, 45, 157, 220)),
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(10))),
+                        border: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(10))),
+                        label: Text("Nom du produit"),
+                        labelStyle:
+                            TextStyle(fontSize: 13, color: Colors.black),
+                      ),
+                      dropdownColor: Colors.white,
+                      findFn: (dynamic str) async => productMapList,
+                      selectedFn: (dynamic item1, dynamic item2) {
+                        if (item1 != null && item2 != null) {
+                          return item1['id'] == item2['id'];
+                        }
+                        return false;
+                      },
+                      displayItemFn: (dynamic item) => Text(
+                        (item ?? {})['name'] ?? '',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      onSaved: (dynamic str) {
+                        print(str);
+                      },
+                      onChanged: (dynamic str) {
+                        setState(() {
+                          product_id = str['id'].toString();
+                        });
+                        if (product_id != null) {
+                          productPrice(int.parse(product_id!));
+                        }
+                      },
+                      filterFn: (dynamic item, str) =>
+                          item['name']
+                              .toLowerCase()
+                              .indexOf(str.toLowerCase()) >=
+                          0,
+                      dropdownItemFn: (dynamic item, int position, bool focused,
+                              bool selected, Function() onTap) =>
+                          ListTile(
+                        title: Text(item['name']),
+                        tileColor: focused
+                            ? const Color.fromARGB(20, 0, 0, 0)
+                            : Colors.transparent,
+                        onTap: onTap,
+                      ),
+                    )),
                 //Prix unitaire
                 Container(
                     alignment: Alignment.center,
@@ -664,34 +750,39 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                 child: const Text('Valider',
                     style: TextStyle(color: Colors.green)),
                 onPressed: () async {
-                  int compagnie_id = await getCompagnie_id();
-                  int user_id = await getUsersId();
-                 
-                  buys buy = buys(
-                      compagnie_id: compagnie_id,
-                      date_buy: dateController.text,
-                      tax: double.parse(taxController.text),
-                      discount: double.parse(discountBuyController.text),
-                      amount: double.parse(Amount_TTC_Controller.text),
-                      user_id: user_id,
-                      supplier_id: int.parse(supplier_id.toString()),
-                      amount_sent: double.parse(amountController.text),
-                      payment: _selectedPayment.toString(),
-                      buy_lines: buy_lines);
+                  dynamic isConnected = await initConnectivity();
+                  if (isConnected == true) {
+                    int compagnie_id = await getCompagnie_id();
+                    int user_id = await getUsersId();
 
-                  Map<String, dynamic> buysMap = {
-                    "compagnie_id": buy.compagnie_id,
-                    "date_buy": buy.date_buy,
-                    "tax": buy.tax,
-                    "discount": buy.discount,
-                    "amount": buy.amount,
-                    "user_id": buy.user_id,
-                    "supplier_id": buy.supplier_id,
-                    "amount_sent": buy.amount_sent,
-                    "payment": buy.payment,
-                    "buy_lines": buy.buy_lines
-                  };
-                  createBuys(buysMap);
+                    buys buy = buys(
+                        compagnie_id: compagnie_id,
+                        date_buy: dateController.text,
+                        tax: double.parse(taxController.text),
+                        discount: double.parse(discountBuyController.text),
+                        amount: double.parse(Amount_TTC_Controller.text),
+                        user_id: user_id,
+                        supplier_id: int.parse(supplier_id.toString()),
+                        amount_sent: double.parse(amountController.text),
+                        payment: _selectedPayment.toString(),
+                        buy_lines: buy_lines);
+
+                    Map<String, dynamic> buysMap = {
+                      "compagnie_id": buy.compagnie_id,
+                      "date_buy": buy.date_buy,
+                      "tax": buy.tax,
+                      "discount": buy.discount,
+                      "amount": buy.amount,
+                      "user_id": buy.user_id,
+                      "supplier_id": buy.supplier_id,
+                      "amount_sent": buy.amount_sent,
+                      "payment": buy.payment,
+                      "buy_lines": buy.buy_lines
+                    };
+                    createBuys(buysMap);
+                  } else if (isConnected == false) {
+                    _localSave();
+                  }
                 },
               ),
             ],
@@ -939,6 +1030,92 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
             )),
           );
         });
+  }
+
+  _localSave() async {
+    int compagnie_id = await getCompagnie_id();
+    int user_id = await getUsersId();
+    var supplier = await sqlDb.readData(""" 
+    SELECT * FROM Suppliers WHERE id=$supplier_id
+    """);
+    var rest = double.parse(Amount_TTC_Controller.text) -
+        double.parse(amountController.text);
+
+    var response1 = await sqlDb.insertData('''
+      INSERT INTO Buys(
+                    compagnie_id,
+                    date_sell,
+                    tax,
+                    amount_ttc,
+                    user_id,
+                    supplier_id,
+                    supplier_name,
+                    payment,
+                    amount_sent,
+                    discount,
+                    amount,
+                    rest
+                    ) VALUES(
+                      '$compagnie_id',
+                      '${dateController.text.toString()}',
+                      '${int.parse(taxController.text)}',
+                      '${double.parse(Amount_TTC_Controller.text)}',
+                      '$user_id',
+                      '${supplier[0]['id']}',
+                      '${supplier[0]['name']}',
+                      '${_selectedPayment.toString()}',
+                      '${double.parse(amountController.text)}',
+                      '${double.parse(discountBuyController.text)}',
+                      '${double.parse(Amount_TTC_Controller.text)}',
+                      '$rest'
+                    )
+     ''');
+
+    if (response1 == true) {
+      var ReadLastInsertion = await sqlDb.readData('''
+                    SELECT * FROM Sells ORDER BY id DESC LIMIT 1
+                  ''');
+      if (ReadLastInsertion != null) {
+        for (var i = 0; i < buy_lines.length; i++) {
+          var InsertSell_line = await sqlDb.insertData('''
+                    INSERT INTO Buy_lines(
+                      sell_id,
+                      product_id,
+                      quantity,
+                      price,
+                      amount,
+                      amount_after_discount,
+                      date,
+                      compagnie_id
+                    ) VALUES(
+                      '${ReadLastInsertion[0]["id"]}',
+                      '${buy_lines[i]["product_id"]}',
+                      '${buy_lines[i]["quantity"]}',
+                      '${buy_lines[i]["price"]}',
+                      '${buy_lines[i]["amount"]}',
+                       '${buy_lines[i]["amount_after_discount"]}',
+                      '${buy_lines[i]["date"]}',
+                      '${buy_lines[i]["compagnie_id"]}'
+                      )
+                  ''');
+          var selectProduct = await sqlDb.readData(
+              " SELECT * FROM Products WHERE id=${buy_lines[i]["product_id"]}");
+          var newQte = selectProduct[0]['quantity'] + buy_lines[i]["quantity"];
+          var restoreProduct = await sqlDb.updateData(
+              """  UPDATE Products SET quantity=$newQte WHERE id= ${selectProduct[0]['id']} """);
+        }
+        setState(() {
+          elements.clear();
+          sum = 0.0;
+          _buy_lineformKey.currentState?.reset();
+          _buysformKey.currentState?.reset();
+        });
+        Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const AchatHomePage()));
+      }
+    } else if (response1 == false) {
+      print(response1);
+    }
   }
 
   createBuys(Map<String, dynamic> achats) async {

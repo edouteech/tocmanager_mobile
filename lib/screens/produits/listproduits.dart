@@ -198,7 +198,7 @@ class _ProduitListPageState extends State<ProduitListPage> {
   }
 
   void _onDetails(int? product_id) async {
-        int compagnie_id = await getCompagnie_id();
+    int compagnie_id = await getCompagnie_id();
     ApiResponse response = await ReadProductbyId(compagnie_id, product_id!);
     print(response.data);
     // Navigator.of(context).pushReplacement(MaterialPageRoute(
@@ -220,6 +220,10 @@ class _ProduitListPageState extends State<ProduitListPage> {
       if (response.error == null) {
         if (response.statusCode == 200) {
           List<dynamic> data = response.data as List<dynamic>;
+          products = data.map((p) => Product.fromJson(p)).toList();
+          setState(() {
+            isLoading = false;
+          });
           for (var i = 0; i < data.length; i++) {
             var response1 = await sqlDb.insertData('''
                     INSERT INTO Products
@@ -250,10 +254,6 @@ class _ProduitListPageState extends State<ProduitListPage> {
                   )
                   ''');
           }
-          products = data.map((p) => Product.fromJson(p)).toList();
-          setState(() {
-            isLoading = false;
-          });
         }
       } else {
         if (response.statusCode == 403) {
@@ -368,7 +368,6 @@ class _ProduitListPageState extends State<ProduitListPage> {
       int? update_product_stock_min,
       int? update_product_stock_max,
       String? update_product_code) {
-    print(update_product_category_id);
     setState(() {
       category_id = update_product_category_id?.toString();
       name.text = update_product_name!;
@@ -699,8 +698,8 @@ class _ProduitListPageState extends State<ProduitListPage> {
                   UPDATE Products SET compagnie_id ="$compagnie_id", category_id='${categoryId.text}', name='${name.text}', quantity= '${quantity.text}', price_sell= '${price_sell.text}', price_buy ='${price_buy.text}', stock_min ='${stock_min.text}', stock_max ='${stock_max.text}', code='${code.text}', isSync=0 WHERE id="$product_id"
             ''');
       if (response == true) {
-        Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const AjouterProduitPage()));
+        Navigator.of(context).pushReplacement(MaterialPageRoute(
+            builder: (context) => const AjouterProduitPage()));
       } else {
         print("echec");
       }

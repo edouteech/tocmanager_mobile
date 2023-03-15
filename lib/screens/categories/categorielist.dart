@@ -98,6 +98,10 @@ class _CategoriesListState extends State<CategoriesList> {
       if (response.error == null) {
         if (response.statusCode == 200) {
           List<dynamic> data = response.data as List<dynamic>;
+          categories = data.map((p) => Category.fromJson(p)).toList();
+          setState(() {
+            isLoading = false;
+          });
           for (var i = 0; i < data.length; i++) {
             var response1 = await sqlDb.insertData('''
                     INSERT INTO Categories
@@ -117,7 +121,6 @@ class _CategoriesListState extends State<CategoriesList> {
                   ''');
 
             if (response1 == true) {
-             
               if (data[i]['parent'] != null) {
                 var response2 = await sqlDb.updateData(''' 
                 UPDATE Categories SET parent_name ="${data[i]['parent']['name']}", parent_id="${data[i]['parent_id']}" WHERE id="${data[i]['id']}"
@@ -132,12 +135,6 @@ class _CategoriesListState extends State<CategoriesList> {
               print("echec");
             }
           }
-
-          categories = data.map((p) => Category.fromJson(p)).toList();
-
-          setState(() {
-            isLoading = false;
-          });
         }
       } else {
         if (response.statusCode == 403) {

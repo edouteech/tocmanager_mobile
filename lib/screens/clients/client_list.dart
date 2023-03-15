@@ -103,6 +103,11 @@ class _ListClientState extends State<ListClient> {
       if (response.error == null) {
         if (response.statusCode == 200) {
           List<dynamic> data = response.data as List<dynamic>;
+          clients = data.map((p) => Clients.fromJson(p)).toList();
+          setState(() {
+            isLoading = false;
+          });
+          
           for (var i = 0; i < data.length; i++) {
             var email = data[i]['email'] != null ? '${data[i]['email']}' : null;
             var phone = data[i]['phone'] != null ? '${data[i]['phone']}' : null;
@@ -126,10 +131,6 @@ class _ListClientState extends State<ListClient> {
                   )
                   ''');
           }
-          clients = data.map((p) => Clients.fromJson(p)).toList();
-          setState(() {
-            isLoading = false;
-          });
         }
       } else {
         if (response.statusCode == 403) {
@@ -407,10 +408,7 @@ class _ListClientState extends State<ListClient> {
                 nature = "Entreprise";
               });
             }
-            // var email =
-            //     emailController.text.isEmpty ? null : emailController.text;
-            // var phone =
-            //     phoneController.text.isEmpty ? null : phoneController.text;
+           
 
             var response = await sqlDb.updateData('''
                   UPDATE Clients SET compagnie_id ="$compagnie_id", name="${nameController.text}", email="${emailController.text}", phone="${phoneController.text}", nature="$nature" WHERE id="$client_id"
@@ -439,7 +437,7 @@ class _ListClientState extends State<ListClient> {
           nature = "Entreprise";
         });
       }
-      
+
       var response = await sqlDb.insertData('''
         UPDATE Clients SET compagnie_id ="$compagnie_id", name="${nameController.text}", email="${emailController.text}", phone="${phoneController.text}", nature="$nature", isSync=0 WHERE id="$client_id"
       ''');
