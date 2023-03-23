@@ -1,11 +1,13 @@
 // ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, unused_local_variable, avoid_print, unused_field
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/services/user_service.dart';
 
+import '../../database/sqfdb.dart';
 import '../../models/Decaissements.dart';
 import '../../models/api_response.dart';
 import '../../services/buys_service.dart';
@@ -30,12 +32,37 @@ class _DecaissementPageState extends State<DecaissementPage> {
   bool isLoading = true;
   int? supplier_id;
   int? user_id;
+  bool? isConnected;
+  late ConnectivityResult _connectivityResult;
+  SqlDb sqlDb = SqlDb();
+  String? message;
 
   @override
   void initState() {
     readDecaissementsData();
+    initConnectivity();
     super.initState();
     readBuyData();
+  }
+
+  initConnectivity() async {
+    final ConnectivityResult result = await Connectivity().checkConnectivity();
+    setState(() {
+      _connectivityResult = result;
+    });
+    if (_connectivityResult == ConnectivityResult.none) {
+      // Si l'appareil n'est pas connecté à Internet.
+      setState(() {
+        isConnected = false;
+      });
+    } else {
+      // Si l'appareil est connecté à Internet.
+      setState(() {
+        isConnected = true;
+      });
+    }
+
+    return isConnected;
   }
 
   /* Fields Controller */
@@ -61,11 +88,17 @@ class _DecaissementPageState extends State<DecaissementPage> {
         floatingActionButton: reste != 0.0
             ? FloatingActionButton.extended(
                 label: Text("Reste : $reste"),
-                onPressed: () {
-                  dateController.text =
-                      DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
-                  _selectedPayment = "ESPECES";
-                  _showFormDialog(context);
+                onPressed: () async {
+                  dynamic isConnected = await initConnectivity();
+                  if (isConnected == false) {
+                    message = "Vous devez êtes connecté à internet !";
+                    sendMessage();
+                  } else {
+                    dateController.text = DateFormat('yyyy-MM-dd HH:mm:ss')
+                        .format(DateTime.now());
+                    _selectedPayment = "ESPECES";
+                    _showFormDialog(context);
+                  }
                 },
               )
             : null,
@@ -124,35 +157,82 @@ class _DecaissementPageState extends State<DecaissementPage> {
   }
 
   Future<void> readDecaissementsData() async {
-    int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await ReadDecaissements(compagnie_id, widget.buy_id);
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        List<dynamic> data = response.data as List<dynamic>;
-        decaissements = data.map((p) => Decaissements.fromJson(p)).toList();
-        setState(() {
-          isLoading = false;
-        });
+    dynamic isConnected = await initConnectivity();
+    if (isConnected == true) {
+      int compagnie_id = await getCompagnie_id();
+      ApiResponse response =
+          await ReadDecaissements(compagnie_id, widget.buy_id);
+      if (response.error == null) {
+        if (response.statusCode == 200) {
+          List<dynamic> data = response.data as List<dynamic>;
+          decaissements = data.map((p) => Decaissements.fromJson(p)).toList();
+          setState(() {
+            isLoading = false;
+          });
+        }
       }
-    } else {
-      if (response.statusCode == 403) {}
+    } else if (isConnected == false) {
+      setState(() {
+        isLoading = true;
+      });
+      List<dynamic> data = await sqlDb.readData(""" 
+        SELECT * FROM Decaissements WHERE sell_id=${widget.buy_id}
+    """);
+      decaissements = data.map((p) => Decaissements.fromJson(p)).toList();
+      setState(() {
+        isLoading = false;
+      });
     }
+  }
+
+  sendMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.red[900],
+        content: SizedBox(
+          width: double.infinity,
+          height: 20,
+          child: Center(
+            child: Text(
+              message!,
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        ),
+        duration: const Duration(milliseconds: 2000),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   List<dynamic> buys = [];
   void readBuyData() async {
-    int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await DetailsBuys(compagnie_id, widget.buy_id);
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        buys = response.data as List<dynamic>;
-        for (var i = 0; i < buys.length; i++) {
-          setState(() {
-            reste = double.parse(buys[i]['rest'].toString());
-            supplier_id = buys[i]['supplier_id'];
-            user_id = buys[i]['user_id'];
-          });
+    dynamic isConnected = await initConnectivity();
+    if (isConnected == true) {
+      int compagnie_id = await getCompagnie_id();
+      ApiResponse response = await DetailsBuys(compagnie_id, widget.buy_id);
+      if (response.error == null) {
+        if (response.statusCode == 200) {
+          buys = response.data as List<dynamic>;
+          for (var i = 0; i < buys.length; i++) {
+            setState(() {
+              reste = double.parse(buys[i]['rest'].toString());
+              supplier_id = buys[i]['supplier_id'];
+              user_id = buys[i]['user_id'];
+            });
+          }
         }
+      }
+    } else if (isConnected == false) {
+      buys = await sqlDb.readData(""" 
+        SELECT * FROM Buys WHERE id=${widget.buy_id}
+    """);
+      for (var i = 0; i < buys.length; i++) {
+        setState(() {
+          reste = double.parse(buys[i]['rest'].toString());
+          supplier_id = buys[i]['supplier_id'];
+          user_id = buys[i]['user_id'];
+        });
       }
     }
   }
@@ -367,43 +447,53 @@ class _DecaissementPageState extends State<DecaissementPage> {
     int compagnie_id = await getCompagnie_id();
     String? message;
     String color = "red";
-    ApiResponse response =
-        await DeleteDecaissement(compagnie_id, decaissement_id);
-    if (response.statusCode == 200) {
-      if (response.status == "success") {
-        Navigator.of(context).pushReplacement(MaterialPageRoute(
-            builder: (context) =>  DecaissementPage(
-                  buy_id: buy_id,
-                )));
+    dynamic isConnected = await initConnectivity();
+    if (isConnected == true) {
+      ApiResponse response =
+          await DeleteDecaissement(compagnie_id, decaissement_id);
 
-        message = "Supprimé avec succès";
+      if (response.statusCode == 200) {
+        if (response.status == "success") {
+          Navigator.of(context).pushReplacement(MaterialPageRoute(
+              builder: (context) => DecaissementPage(
+                    buy_id: buy_id,
+                  )));
+
+          message = "Supprimé avec succès";
+          setState(() {
+            sendMessage = true;
+            color = "green";
+          });
+        } else {
+          message = "La suppression a échouée";
+          setState(() {
+            sendMessage = true;
+          });
+        }
+      } else if (response.statusCode == 403) {
+        message = "Vous n'êtes pas autorisé à effectuer cette action";
         setState(() {
           sendMessage = true;
-          color = "green";
+        });
+      } else if (response.statusCode == 500) {
+        print(response.statusCode);
+        message = "La suppression a échouée !";
+        setState(() {
+          sendMessage = true;
         });
       } else {
-        message = "La suppression a échouée";
+        message = "La suppression a échouée !";
         setState(() {
           sendMessage = true;
         });
       }
-    } else if (response.statusCode == 403) {
-      message = "Vous n'êtes pas autorisé à effectuer cette action";
+    } else if (isConnected == false) {
       setState(() {
-        sendMessage = true;
-      });
-    } else if (response.statusCode == 500) {
-      print(response.statusCode);
-      message = "La suppression a échouée !";
-      setState(() {
-        sendMessage = true;
-      });
-    } else {
-      message = "La suppression a échouée !";
-      setState(() {
+        message = "Vous devez êtes connecté à internet !";
         sendMessage = true;
       });
     }
+
     if (sendMessage == true) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -414,7 +504,7 @@ class _DecaissementPageState extends State<DecaissementPage> {
             height: 20,
             child: Center(
               child: Text(
-                message,
+                message!,
                 style: const TextStyle(color: Colors.white),
               ),
             ),

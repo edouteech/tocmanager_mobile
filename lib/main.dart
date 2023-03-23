@@ -1,13 +1,15 @@
-import 'package:connectivity_plus/connectivity_plus.dart';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:responsive_framework/responsive_wrapper.dart';
+import 'package:responsive_framework/utils/scroll_behavior.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:tocmanager/database/sqfdb.dart';
 import 'package:tocmanager/services/user_service.dart';
-import 'package:tocmanager/widgets/widgets.dart';
 
 import 'screens/home/Onboarding_screen.dart';
 import 'screens/home_page.dart';
-
 // void main() async {
 //   // WidgetsFlutterBinding.ensureInitialized();
 //   // await Firebase.initializeApp();
@@ -16,9 +18,14 @@ import 'screens/home_page.dart';
 //   );
 // }
 
-void main() {
-  SqlDb.init();
+void main() async {
+  if (Platform.isWindows || Platform.isLinux) {
+    // Initialize FFI
+    sqfliteFfiInit();
+  }
   WidgetsFlutterBinding.ensureInitialized();
+  SqlDb.init();
+
   SystemChrome.setApplicationSwitcherDescription(
     const ApplicationSwitcherDescription(),
   );
@@ -34,12 +41,9 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   String? _isSignedIn;
-  bool? isConnected;
-  late ConnectivityResult _connectivityResult;
 
   @override
   void initState() {
-    initConnectivity();
     super.initState();
     _loadUserInfo();
   }
@@ -53,32 +57,12 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  initConnectivity() async {
-    final ConnectivityResult result = await Connectivity().checkConnectivity();
-    setState(() {
-      _connectivityResult = result;
-    });
-    if (_connectivityResult == ConnectivityResult.none) {
-      // Si l'appareil n'est pas connecté à Internet.
-      setState(() {
-        isConnected = false;
-      });
-    } else {
-      // Si l'appareil est connecté à Internet.
-      setState(() {
-        isConnected = true;
-      });
-    }
-
-    return isConnected;
-  }
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       // builder: (context, child) => ResponsiveWrapper.builder(
       //     BouncingScrollWrapper.builder(context, child!),
-      //     maxWidth: 1200,
+      //     // maxWidth: 1200,
       //     minWidth: 450,
       //     defaultScale: true,
       //     breakpoints: [
@@ -90,7 +74,7 @@ class _MyAppState extends State<MyApp> {
       //     ]),
       theme: ThemeData(
         fontFamily: 'Oswald',
-        primaryColor: Constants().primaryColor,
+        primaryColor: Colors.blue,
         scaffoldBackgroundColor: Colors.white,
         scrollbarTheme: ScrollbarThemeData(
           interactive: true,

@@ -15,14 +15,14 @@ Future<ApiResponse> ReadSuppliers(
     String token = await getToken();
 
     final response = await http.get(
-      Uri.parse('$suppliersURL?compagnie_id=$compagnie_id'),
+      Uri.parse('$suppliersURL?compagnie_id=$compagnie_id&is_paginated=0'),
       headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
     );
     switch (response.statusCode) {
       case 200:
         apiResponse.statusCode = response.statusCode;
         apiResponse.data = response.body;
-        apiResponse.data = jsonDecode(response.body)['data']['data'] as List;
+        apiResponse.data = jsonDecode(response.body)['data'] as List;
 
         break;
       case 422:
@@ -48,7 +48,6 @@ Future<ApiResponse> ReadSuppliers(
 //create suppliers
 Future<ApiResponse> CreateSuppliers(String compagnie_id, String name,
     String? email, String? phone, int nature) async {
-      
   ApiResponse apiResponse = ApiResponse();
 
   Dio dio = Dio();
@@ -59,9 +58,10 @@ Future<ApiResponse> CreateSuppliers(String compagnie_id, String name,
         'Authorization': 'Bearer $token'
       }),
       data: {"name": name, "email": email, "phone": phone, "nature": nature});
-      
+
   switch (response.statusCode) {
     case 200:
+      apiResponse.statusCode = response.statusCode;
       if (response.data['status'] == "success") {
         apiResponse.statusCode = response.statusCode;
         apiResponse.status = response.data['status'];
@@ -129,9 +129,6 @@ Future<ApiResponse> DeleteSuppliers(int compagnie_id, int supplier_id) async {
 
   return apiResponse;
 }
-
-
-
 
 Future<ApiResponse> UpdateSuppliers(String compagnie_id, String name,
     String? email, String? phone, int nature, int supplier_id) async {

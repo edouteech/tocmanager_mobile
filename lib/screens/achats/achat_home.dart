@@ -116,243 +116,239 @@ class _AchatHomePageState extends State<AchatHomePage> {
         ),
         body: isNotSuscribe == true
             ? const SuscribePage()
-            : isConnected == true
-                ? SizedBox(
-                    width: double.infinity,
-                    height: MediaQuery.of(context).size.height * 0.99,
-                    child: isLoading == true
-                        ? const Center(
-                            child: CircularProgressIndicator(),
-                          )
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: DataTable(
-                                  columns: const <DataColumn>[
-                                    DataColumn(
-                                      label: Expanded(
-                                        child: Text(
-                                          'Nom Fournisseur',
-                                          style: TextStyle(
-                                              fontStyle: FontStyle.italic),
-                                        ),
+            : isLoading == true
+                ? const Center(
+                    child: CircularProgressIndicator(),
+                  )
+                : isConnected == false
+                    ? SizedBox(
+                        width: double.infinity,
+                        height: MediaQuery.of(context).size.height * 0.97,
+                        child: SingleChildScrollView(
+                          child: PaginatedDataTable(
+                            rowsPerPage: 10,
+                            columns: const <DataColumn>[
+                              DataColumn(
+                                label: Text('Fournisseur'),
+                              ),
+                              DataColumn(
+                                label: Text('Montant'),
+                              ),
+                              DataColumn(
+                                label: Text('Reste'),
+                              ),
+                              DataColumn(
+                                label: Text('Date'),
+                              ),
+                              DataColumn(
+                                label: Text('Editer'),
+                              ),
+                              DataColumn(
+                                label: Text('Effacer'),
+                              ),
+                              DataColumn(
+                                label: Text('Détails'),
+                              ),
+                              DataColumn(
+                                label: Text('Décaissements'),
+                              ),
+                            ],
+                            source: DataTableRow(
+                              data: buyMapList,
+                              onDelete: deleteBuys,
+                              onDetails: details,
+                              onEdit: _edit,
+                              oncollection: collection,
+                            ),
+                          ),
+                        ),
+                      )
+                    : SizedBox(
+                        width: double.infinity,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: DataTable(
+                                columns: const <DataColumn>[
+                                  DataColumn(
+                                    label: Expanded(
+                                      child: Text(
+                                        'Nom Fournisseur',
+                                        style: TextStyle(
+                                            fontStyle: FontStyle.italic),
                                       ),
-                                    ),
-                                    DataColumn(
-                                      label: Expanded(
-                                        child: Text(
-                                          'Montant',
-                                          style: TextStyle(
-                                              fontStyle: FontStyle.italic),
-                                        ),
-                                      ),
-                                    ),
-                                    DataColumn(
-                                      label: Expanded(
-                                        child: Text(
-                                          'Reste',
-                                          style: TextStyle(
-                                              fontStyle: FontStyle.italic),
-                                        ),
-                                      ),
-                                    ),
-                                    DataColumn(
-                                      label: Expanded(
-                                        child: Text(
-                                          'Réduction',
-                                          style: TextStyle(
-                                              fontStyle: FontStyle.italic),
-                                        ),
-                                      ),
-                                    ),
-                                    DataColumn(
-                                      label: Expanded(
-                                        child: Text(
-                                          'Editer',
-                                          style: TextStyle(
-                                              fontStyle: FontStyle.italic),
-                                        ),
-                                      ),
-                                    ),
-                                    DataColumn(
-                                      label: Expanded(
-                                        child: Text(
-                                          'Supprimer',
-                                          style: TextStyle(
-                                              fontStyle: FontStyle.italic),
-                                        ),
-                                      ),
-                                    ),
-                                    DataColumn(
-                                      label: Expanded(
-                                        child: Text(
-                                          'Détails',
-                                          style: TextStyle(
-                                              fontStyle: FontStyle.italic),
-                                        ),
-                                      ),
-                                    ),
-                                    DataColumn(
-                                      label: Expanded(
-                                        child: Text(
-                                          'Décaissements',
-                                          style: TextStyle(
-                                              fontStyle: FontStyle.italic),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                  rows: List<DataRow>.generate(
-                                    buyMapList.length,
-                                    (int index) => DataRow(
-                                      cells: [
-                                        DataCell(Text(
-                                            "${buyMapList[index]['supplier']['name']}")),
-                                        DataCell(Text(
-                                            "${buyMapList[index]['amount']}")),
-                                        DataCell(Text(
-                                            "${buyMapList[index]['rest']}")),
-                                        DataCell(Text(
-                                            "${buyMapList[index]['discount']}")),
-                                        DataCell(Center(
-                                          child: IconButton(
-                                              icon: const Icon(
-                                                Icons.edit,
-                                                color: Colors.blue,
-                                              ),
-                                              onPressed: () async {
-                                                _edit(buyMapList[index]['id']);
-                                              }),
-                                        )),
-                                        DataCell(Center(
-                                          child: IconButton(
-                                              icon: const Icon(
-                                                Icons.delete,
-                                                color: Colors.red,
-                                              ),
-                                              onPressed: () {
-                                                deleteBuys(
-                                                    buyMapList[index]['id']);
-                                              }),
-                                        )),
-                                        DataCell(Center(
-                                          child: IconButton(
-                                              icon: const Icon(
-                                                Icons.info,
-                                                color: Colors.blue,
-                                              ),
-                                              onPressed: () {
-                                                details(
-                                                    buyMapList[index]['id']);
-                                              }),
-                                        )),
-                                        DataCell(Center(
-                                          child: IconButton(
-                                              icon: Icon(
-                                                Icons.attach_money_outlined,
-                                                color: Colors.green[700],
-                                              ),
-                                              onPressed: () async {
-                                                collection(
-                                                    buyMapList[index]['id']);
-                                              }),
-                                        ))
-                                      ],
                                     ),
                                   ),
-                                ),
-                              ),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Container(
-                                      color: Colors.white,
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          prev_page_url != null
-                                              ? TextButton(
-                                                  onPressed: () {
-                                                    setState(() {
-                                                      buyMapList.clear();
-                                                      page = page - 1;
-                                                    });
-
-                                                    readBuys(page);
-                                                  },
-                                                  child: const Text('Previous'),
-                                                )
-                                              : const SizedBox.shrink(),
-                                          Text(
-                                              '${buyMapList.length}/$totalPage'),
-                                          next_page_url != null
-                                              ? TextButton(
-                                                  onPressed: () {
-                                                    setState(() {
-                                                      buyMapList.clear();
-                                                      page = page + 1;
-                                                    });
-
-                                                    readBuys(page);
-                                                  },
-                                                  child: const Text('Next'),
-                                                )
-                                              : const SizedBox.shrink(),
-                                        ],
+                                  DataColumn(
+                                    label: Expanded(
+                                      child: Text(
+                                        'Montant',
+                                        style: TextStyle(
+                                            fontStyle: FontStyle.italic),
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    label: Expanded(
+                                      child: Text(
+                                        'Reste',
+                                        style: TextStyle(
+                                            fontStyle: FontStyle.italic),
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    label: Expanded(
+                                      child: Text(
+                                        'Réduction',
+                                        style: TextStyle(
+                                            fontStyle: FontStyle.italic),
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    label: Expanded(
+                                      child: Text(
+                                        'Editer',
+                                        style: TextStyle(
+                                            fontStyle: FontStyle.italic),
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    label: Expanded(
+                                      child: Text(
+                                        'Supprimer',
+                                        style: TextStyle(
+                                            fontStyle: FontStyle.italic),
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    label: Expanded(
+                                      child: Text(
+                                        'Détails',
+                                        style: TextStyle(
+                                            fontStyle: FontStyle.italic),
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    label: Expanded(
+                                      child: Text(
+                                        'Décaissements',
+                                        style: TextStyle(
+                                            fontStyle: FontStyle.italic),
                                       ),
                                     ),
                                   ),
                                 ],
-                              )
-                            ],
-                          ))
-                : SizedBox(
-                    width: double.infinity,
-                    child: SingleChildScrollView(
-                      child: PaginatedDataTable(
-                        rowsPerPage: 10,
-                        columns: <DataColumn>[
-                          DataColumn(
-                            label: const Text('Fournisseur'),
-                            onSort: (columnIndex, ascending) {
-                              print("$columnIndex $ascending");
-                            },
-                          ),
-                          const DataColumn(
-                            label: Text('Montant'),
-                          ),
-                          const DataColumn(
-                            label: Text('Reste'),
-                          ),
-                          const DataColumn(
-                            label: Text('Date'),
-                          ),
-                          const DataColumn(
-                            label: Text('Editer'),
-                          ),
-                          const DataColumn(
-                            label: Text('Effacer'),
-                          ),
-                          const DataColumn(
-                            label: Text('Détails'),
-                          ),
-                          const DataColumn(
-                            label: Text('Décaissements'),
-                          ),
-                        ],
-                        source: DataTableRow(
-                          data: buys,
-                          onDelete: deleteBuys,
-                          onDetails: details,
-                          onEdit: _edit,
-                          oncollection: collection,
+                                rows: List<DataRow>.generate(
+                                  buyMapList.length,
+                                  (int index) => DataRow(
+                                    cells: [
+                                      DataCell(Text(
+                                          "${buyMapList[index]['supplier']['name']}")),
+                                      DataCell(Text(
+                                          "${buyMapList[index]['amount']}")),
+                                      DataCell(
+                                          Text("${buyMapList[index]['rest']}")),
+                                      DataCell(Text(
+                                          "${buyMapList[index]['discount']}")),
+                                      DataCell(Center(
+                                        child: IconButton(
+                                            icon: const Icon(
+                                              Icons.edit,
+                                              color: Colors.blue,
+                                            ),
+                                            onPressed: () async {
+                                              _edit(buyMapList[index]['id']);
+                                            }),
+                                      )),
+                                      DataCell(Center(
+                                        child: IconButton(
+                                            icon: const Icon(
+                                              Icons.delete,
+                                              color: Colors.red,
+                                            ),
+                                            onPressed: () {
+                                              deleteBuys(
+                                                  buyMapList[index]['id']);
+                                            }),
+                                      )),
+                                      DataCell(Center(
+                                        child: IconButton(
+                                            icon: const Icon(
+                                              Icons.info,
+                                              color: Colors.blue,
+                                            ),
+                                            onPressed: () {
+                                              details(buyMapList[index]['id']);
+                                            }),
+                                      )),
+                                      DataCell(Center(
+                                        child: IconButton(
+                                            icon: Icon(
+                                              Icons.attach_money_outlined,
+                                              color: Colors.green[700],
+                                            ),
+                                            onPressed: () async {
+                                              collection(
+                                                  buyMapList[index]['id']);
+                                            }),
+                                      ))
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    color: Colors.white,
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        prev_page_url != null
+                                            ? TextButton(
+                                                onPressed: () {
+                                                  setState(() {
+                                                    buyMapList.clear();
+                                                    page = page - 1;
+                                                  });
+
+                                                  readBuys(page);
+                                                },
+                                                child: const Text('Previous'),
+                                              )
+                                            : const SizedBox.shrink(),
+                                        Text('${buyMapList.length}/$totalPage'),
+                                        next_page_url != null
+                                            ? TextButton(
+                                                onPressed: () {
+                                                  setState(() {
+                                                    buyMapList.clear();
+                                                    page = page + 1;
+                                                  });
+
+                                                  readBuys(page);
+                                                },
+                                                child: const Text('Next'),
+                                              )
+                                            : const SizedBox.shrink(),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          ],
                         ),
-                      ),
-                    ),
-                  ));
+                      ));
   }
 
   Widget MyDrawerList() {

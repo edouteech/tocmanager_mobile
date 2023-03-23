@@ -5,7 +5,6 @@ import 'package:dropdown_plus/dropdown_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:tocmanager/database/sqfdb.dart';
-import 'package:tocmanager/models/Suppliers.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/achats/line_achat.dart';
 import 'package:tocmanager/services/suppliers_services.dart';
@@ -254,7 +253,7 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
                                   border: OutlineInputBorder(
                                       borderRadius: BorderRadius.all(
                                           Radius.circular(10))),
-                                  labelText: "Nom du client",
+                                  labelText: "Nom du fournisseurs",
                                   labelStyle: TextStyle(
                                       fontSize: 13, color: Colors.black),
                                 ),
@@ -1104,6 +1103,23 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
           var restoreProduct = await sqlDb.updateData(
               """  UPDATE Products SET quantity=$newQte WHERE id= ${selectProduct[0]['id']} """);
         }
+        var InsertDecaissements = await sqlDb.insertData('''
+                    INSERT INTO Decaissements(
+                      amount,
+                      date_decaissement,
+                      supplier_id,
+                      supplier_name,
+                      payment_method,
+                      buy_id
+                    ) VALUES(
+                      '${double.parse(Amount_TTC_Controller.text)}',
+                      '${dateController.text.toString()}',
+                      '${supplier[0]['id']}',
+                      '${supplier[0]['name']}',
+                      '${_selectedPayment.toString()}',
+                      '${ReadLastInsertion[0]["id"]}',
+                      )
+                  ''');
         setState(() {
           elements.clear();
           sum = 0.0;
@@ -1133,17 +1149,23 @@ class _AjouterAchatPageState extends State<AjouterAchatPage> {
         Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const AchatHomePage()));
       } else if (response.status == "error") {
-        message = "L'achat a échoué. Veuillez reprendre";
+        Navigator.of(context).pop();
+
+        message = response.message;
         setState(() {
           _sendMessage = true;
         });
       }
     } else if (response.statusCode == 403) {
+      Navigator.of(context).pop();
+
       message = "Vous n'êtes pas autorisé à effectuer cette action";
       setState(() {
         _sendMessage = true;
       });
     } else if (response.statusCode == 500) {
+      Navigator.of(context).pop();
+
       message = "L'achat a échoué. Veuillez reprendre";
       setState(() {
         _sendMessage = true;

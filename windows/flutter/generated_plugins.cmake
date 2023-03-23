@@ -5,6 +5,7 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   connectivity_plus
   permission_handler_windows
+  sqlite3_flutter_libs
   url_launcher_windows
 )
 

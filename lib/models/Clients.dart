@@ -1,20 +1,20 @@
 // ignore_for_file: non_constant_identifier_names, file_names
 class Clients {
-  int id;
-  String name;
-  String email;
-  String phone;
-  String nature;
-  String created_at;
-  String updated_at;
+  int? id;
+  String? name;
+  String? email;
+  String? phone;
+  String? nature;
+  String? created_at;
+  String? updated_at;
   Clients({
-    required this.id,
-    required this.name,
-    required this.phone,
-    required this.email,
-    required this.nature,
-    required this.created_at,
-    required this.updated_at,
+    this.id,
+    this.name,
+    this.phone,
+    this.email,
+    this.nature,
+    this.created_at,
+    this.updated_at,
   });
 
   //function to convert json data to Clients model

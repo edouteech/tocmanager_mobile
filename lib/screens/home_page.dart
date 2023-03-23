@@ -292,7 +292,7 @@ class _HomePageState extends State<HomePage> {
                         Expanded(
                           child: MyCard(
                             title:
-                                'Chiffre d\'affaire (Total des transactions)',
+                                'Chiffre d\'affaire',
                             balance: chiffreAffaire,
                             color: const LinearGradient(
                               colors: [
@@ -310,7 +310,7 @@ class _HomePageState extends State<HomePage> {
                             width: 16), // add some spacing between the cards
                         Expanded(
                           child: MyCard(
-                            title: 'Encaissements (Total des encaissements)',
+                            title: 'Encaissements',
                             balance: encaissement,
                             color: const RadialGradient(
                               radius: 248.0, // rayon du cercle
@@ -330,7 +330,7 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         Expanded(
                           child: MyCard(
-                            title: 'Décaissements (Total des décaissements)',
+                            title: 'Décaissements',
                             balance: decaissement.toDouble(),
                             color: const LinearGradient(
                               begin: Alignment.bottomCenter, // début du dégradé
@@ -346,7 +346,7 @@ class _HomePageState extends State<HomePage> {
                             width: 16), // add some spacing between the cards
                         Expanded(
                           child: MyCard(
-                              title: 'Volume des ventes (Quantité de vente)',
+                              title: 'Volume des ventes',
                               balance: decaissement.toDouble(),
                               color: Colors.black),
                         ),
@@ -426,61 +426,61 @@ class _HomePageState extends State<HomePage> {
               String color = "red";
               Sync sync = Sync();
 
-              // var syncCategories = await sync.syncCategory();
-              // if (syncCategories == true) {
-              //   setState(() {
-              //     message = "Catégories synchronisés avec succès";
-              //     SyncFinish = true;
-              //     color = "green";
-              //   });
-              // } else {
-              //   setState(() {
-              //     SyncFinish = true;
-              //     message = "Echec de synchronisation des Catégories";
-              //   });
-              // }
+              var syncCategories = await sync.syncCategory();
+              if (syncCategories == true) {
+                setState(() {
+                  message = "Catégories synchronisés avec succès";
+                  SyncFinish = true;
+                  color = "green";
+                });
+              } else {
+                setState(() {
+                  SyncFinish = true;
+                  message = "Echec de synchronisation des Catégories";
+                });
+              }
 
-              // var syncProducts = await sync.syncProducts();
-              // if (syncProducts == true) {
-              //   setState(() {
-              //     message = "Produits synchronisés avec succès";
-              //     SyncFinish = true;
-              //     color = "green";
-              //   });
-              // } else {
-              //   setState(() {
-              //     SyncFinish = true;
-              //     message = "Echec de synchronisation des produits";
-              //   });
-              // }
+              var syncProducts = await sync.syncProducts();
+              if (syncProducts == true) {
+                setState(() {
+                  message = "Produits synchronisés avec succès";
+                  SyncFinish = true;
+                  color = "green";
+                });
+              } else {
+                setState(() {
+                  SyncFinish = true;
+                  message = "Echec de synchronisation des produits";
+                });
+              }
 
-              // var syncClients = await sync.synClients();
-              // if (syncClients == true) {
-              //   setState(() {
-              //     message = "Clients synchronisés avec succès";
-              //     SyncFinish = true;
-              //     color = "green";
-              //   });
-              // } else {
-              //   setState(() {
-              //     SyncFinish = true;
-              //     message = "Echec de synchronisation des Clients";
-              //   });
-              // }
+              var syncClients = await sync.synClients();
+              if (syncClients == true) {
+                setState(() {
+                  message = "Clients synchronisés avec succès";
+                  SyncFinish = true;
+                  color = "green";
+                });
+              } else {
+                setState(() {
+                  SyncFinish = true;
+                  message = "Echec de synchronisation des Clients";
+                });
+              }
 
-              // var syncSuppliers = await sync.syncSuppliers();
-              // if (syncSuppliers == true) {
-              //   setState(() {
-              //     message = "Fournisseurs synchronisés avec succès";
-              //     SyncFinish = true;
-              //     color = "green";
-              //   });
-              // } else {
-              //   setState(() {
-              //     SyncFinish = true;
-              //     message = "Echec de synchronisation des Fournisseurs";
-              //   });
-              // }
+              var syncSuppliers = await sync.syncSuppliers();
+              if (syncSuppliers == true) {
+                setState(() {
+                  message = "Fournisseurs synchronisés avec succès";
+                  SyncFinish = true;
+                  color = "green";
+                });
+              } else {
+                setState(() {
+                  SyncFinish = true;
+                  message = "Echec de synchronisation des Fournisseurs";
+                });
+              }
 
               var syncSells = await sync.syncSells();
               if (syncSells == true) {

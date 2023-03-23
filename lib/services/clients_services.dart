@@ -62,6 +62,7 @@ Future<ApiResponse> CreateClients(String compagnie_id, String name,
       data: {"name": name, "email": email, "phone": phone, "nature": nature});
   switch (response.statusCode) {
     case 200:
+      apiResponse.statusCode = response.statusCode;
       if (response.data['status'] == "success") {
         apiResponse.statusCode = response.statusCode;
         apiResponse.status = response.data['status'];

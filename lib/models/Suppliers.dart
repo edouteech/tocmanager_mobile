@@ -1,21 +1,21 @@
 // ignore_for_file: non_constant_identifier_names, file_names
 
 class Suppliers {
-  int id;
-  String name;
-  String email;
-  String phone;
-  String nature;
-  String created_at;
-  String updated_at;
+  int? id;
+  String? name;
+  String? email;
+  String? phone;
+  String? nature;
+  String? created_at;
+  String? updated_at;
   Suppliers(
-      {required this.id,
-      required this.name,
-      required this.email,
-      required this.phone,
-      required this.nature,
-      required this.created_at,
-      required this.updated_at});
+      { this.id,
+       this.name,
+       this.email,
+       this.phone,
+      this.nature,
+        this.created_at,
+       this.updated_at});
 
   factory Suppliers.fromJson(Map<String, dynamic> json) {
     return Suppliers(

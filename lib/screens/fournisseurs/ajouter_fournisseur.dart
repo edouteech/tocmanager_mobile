@@ -434,19 +434,45 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
   void _createSuppliers() async {
     dynamic nature;
     int compagnie_id = await getCompagnie_id();
+    bool sendMessage = false;
+    String? message;
+    String color = "red";
     dynamic isConnected = await initConnectivity();
     if (isConnected == true) {
-      print(supplier_nature);
       ApiResponse response = await CreateSuppliers(
           compagnie_id.toString(),
           nameController.text,
           emailController.text.isNotEmpty ? emailController.text : null,
           phoneController.text.isNotEmpty ? phoneController.text : null,
           int.parse(supplier_nature.toString()));
-      if (response.error == null) {
-        if (response.statusCode == 200) {
-          if (response.status == "error") {
-            print(response.message);
+
+      if (response.statusCode == 200) {
+        if (response.status == "error") {
+          Navigator.of(context).pop();
+          message = response.message;
+          setState(() {
+            sendMessage = true;
+          });
+        } else {
+          if (int.parse(supplier_nature.toString()) == 0) {
+            setState(() {
+              nature = "Particulier";
+            });
+          } else if (int.parse(supplier_nature.toString()) == 1) {
+            setState(() {
+              nature = "Entreprise";
+            });
+          }
+          var email =
+              emailController.text.isEmpty ? null : emailController.text;
+          var phone =
+              phoneController.text.isEmpty ? null : phoneController.text;
+          var response = await sqlDb.insertData('''
+                    INSERT INTO Suppliers(compagnie_id, name, email, phone, nature) VALUES('$compagnie_id', '${nameController.text}', '$email', '$phone', '$nature')
+                  ''');
+          if (response == true) {
+            Navigator.of(context).pushReplacement(MaterialPageRoute(
+                builder: (context) => const AjouterFournisseurPage()));
           } else {
             if (int.parse(supplier_nature.toString()) == 0) {
               setState(() {
@@ -462,41 +488,20 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
             var phone =
                 phoneController.text.isEmpty ? null : phoneController.text;
             var response = await sqlDb.insertData('''
-                    INSERT INTO Suppliers(compagnie_id, name, email, phone, nature) VALUES('$compagnie_id', '${nameController.text}', '$email', '$phone', '$nature')
-                  ''');
-            if (response == true) {
-              Navigator.of(context).pushReplacement(MaterialPageRoute(
-                  builder: (context) => const AjouterFournisseurPage()));
-            } else {
-              if (int.parse(supplier_nature.toString()) == 0) {
-                setState(() {
-                  nature = "Particulier";
-                });
-              } else if (int.parse(supplier_nature.toString()) == 1) {
-                setState(() {
-                  nature = "Entreprise";
-                });
-              }
-              var email =
-                  emailController.text.isEmpty ? null : emailController.text;
-              var phone =
-                  phoneController.text.isEmpty ? null : phoneController.text;
-              var response = await sqlDb.insertData('''
                     INSERT INTO Suppliers(compagnie_id, name, email, phone, nature,isSync) VALUES('$compagnie_id', '${nameController.text}', '$email', '$phone', '$nature', 0)
                   ''');
-              if (response == true) {
-                Navigator.of(context).pushReplacement(MaterialPageRoute(
-                    builder: (context) => const AjouterFournisseurPage()));
-              } else {
-                print("echec");
-              }
+            Navigator.of(context).pushReplacement(MaterialPageRoute(
+                builder: (context) => const AjouterFournisseurPage()));
+            if (response == true) {
+              print("success");
+            } else {
               print("echec");
             }
           }
         }
       }
     } else if (isConnected == false) {
-       if (int.parse(supplier_nature.toString()) == 0) {
+      if (int.parse(supplier_nature.toString()) == 0) {
         setState(() {
           nature = "Particulier";
         });
@@ -514,8 +519,33 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
         Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const AjouterClientPage()));
       } else {
-        print("echec");
+        Navigator.of(context).pop();
+        message = "Echec de la création";
+        setState(() {
+          sendMessage = true;
+        });
       }
+    }
+
+    if (sendMessage == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor:
+              color == "green" ? Colors.green[800] : Colors.red[800],
+          content: SizedBox(
+            width: double.infinity,
+            height: 20,
+            child: Center(
+              child: Text(
+                message!,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+          duration: const Duration(milliseconds: 3000),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 }

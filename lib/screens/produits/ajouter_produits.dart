@@ -590,6 +590,9 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
 
   //create products
   Future<void> createProducts() async {
+    bool sendMessage = false;
+    String? message;
+    String color = "red";
     dynamic isConnected = await initConnectivity();
     int compagnie_id = await getCompagnie_id();
     if (isConnected == true) {
@@ -603,12 +606,16 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
           stock_min.text,
           stock_max.text,
           code.text);
-      if (response.error == null) {
-        if (response.statusCode == 200) {
-          if (response.status == "error") {
-            print(response.message);
-          } else if (response.status == "success") {
-            var response1 = await sqlDb.insertData('''
+
+      if (response.statusCode == 200) {
+        if (response.status == "error") {
+          Navigator.of(context).pop();
+          message = response.message;
+          setState(() {
+            sendMessage = true;
+          });
+        } else if (response.status == "success") {
+          var response1 = await sqlDb.insertData('''
                     INSERT INTO Products(
                       category_id,
                       compagnie_id,
@@ -631,24 +638,20 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
                       '${code.text}'
                     )
                   ''');
-
-            if (response1 == true) {
-             
-              Navigator.of(context).pushReplacement(MaterialPageRoute(
-                  builder: (context) => const AjouterProduitPage()));
-            } else if (response1 == false) {
-              print("echec insertion");
-            }
+          Navigator.of(context).pushReplacement(MaterialPageRoute(
+              builder: (context) => const AjouterProduitPage()));
+          if (response1 == true) {
+            print("sucess insertion");
+          } else if (response1 == false) {
+            print("echec insertion");
           }
         }
+      } else if (response.statusCode == 403) {
+        setState(() {
+          isNotSuscribe = true;
+        });
       } else {
-        if (response.statusCode == 403) {
-          setState(() {
-            isNotSuscribe = true;
-          });
-        } else {
-          print(response.error);
-        }
+        print(response.error);
       }
     } else if (isConnected == false) {
       var response1 = await sqlDb.insertData('''
@@ -677,12 +680,36 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
                     )
                   ''');
       if (response1 == true) {
-        print("object");
         Navigator.of(context).pushReplacement(MaterialPageRoute(
             builder: (context) => const AjouterProduitPage()));
       } else if (response1 == false) {
-        print("echec insertion");
+        Navigator.of(context).pop();
+        message = "Echec de la création !";
+        setState(() {
+          sendMessage = true;
+        });
       }
+    }
+
+    if (sendMessage == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor:
+              color == "green" ? Colors.green[800] : Colors.red[800],
+          content: SizedBox(
+            width: double.infinity,
+            height: 20,
+            child: Center(
+              child: Text(
+                message!,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+          duration: const Duration(milliseconds: 3000),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 }

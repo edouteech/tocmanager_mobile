@@ -71,14 +71,13 @@ Future<ApiResponse> CreateCategories(
                 'compagnie_id': compagnie_id,
                 'name': name,
               });
-
     switch (response.statusCode) {
       case 200:
+        apiResponse.statusCode = response.statusCode;
         if (jsonDecode(response.body)['status'] == 'error') {
           apiResponse.message = jsonDecode(response.body)['message'];
           apiResponse.status = jsonDecode(response.body)['status'];
         } else {
-          apiResponse.statusCode = response.statusCode;
           apiResponse.data = jsonDecode(response.body);
           apiResponse.status = jsonDecode(response.body)['status'];
         }

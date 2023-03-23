@@ -80,9 +80,9 @@ Future<ApiResponse> CreateProducts(
     });
     switch (response.statusCode) {
       case 200:
+        apiResponse.statusCode = response.statusCode;
         if (jsonDecode(response.body)['status'] == 'error') {
           apiResponse.message = jsonDecode(response.body)['message'];
-          print(apiResponse.message);
           apiResponse.status = jsonDecode(response.body)['status'];
         } else {
           apiResponse.statusCode = response.statusCode;
@@ -261,7 +261,6 @@ Future<ApiResponse> ReadProductbyId(int compagnie_id, int? product_id) async {
 //   return apiResponse;
 // }
 
-
 Future<ApiResponse> UpdateProducts(
     int compagnie_id,
     String? category_id,
@@ -272,27 +271,28 @@ Future<ApiResponse> UpdateProducts(
     String stock_min,
     String stock_max,
     String code,
-    int product_id
-    ) async {
+    int product_id) async {
   ApiResponse apiResponse = ApiResponse();
 
   try {
     String token = await getToken();
 
-    final response = await http
-        .put(Uri.parse('$productsURL/$product_id?compagnie_id=$compagnie_id'), headers: {
-      'Accept': 'application/json',
-      'Authorization': 'Bearer $token'
-    }, body: {
-      'category_id': category_id.toString() == null ? null : category_id,
-      'name': name,
-      'quantity': quantity,
-      'price_sell': price_sell,
-      'price_buy': price_buy,
-      'stock_min': stock_min,
-      'stock_max': stock_max,
-      'code': code.toString() == null ? null : code
-    });
+    final response = await http.put(
+        Uri.parse('$productsURL/$product_id?compagnie_id=$compagnie_id'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token'
+        },
+        body: {
+          'category_id': category_id.toString() == null ? null : category_id,
+          'name': name,
+          'quantity': quantity,
+          'price_sell': price_sell,
+          'price_buy': price_buy,
+          'stock_min': stock_min,
+          'stock_max': stock_max,
+          'code': code.toString() == null ? null : code
+        });
     switch (response.statusCode) {
       case 200:
         if (jsonDecode(response.body)['status'] == 'error') {

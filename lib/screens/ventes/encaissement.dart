@@ -1,8 +1,10 @@
 // ignore_for_file: non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, depend_on_referenced_packages, unnecessary_string_interpolations, avoid_print, body_might_complete_normally_nullable, unnecessary_this, import_of_legacy_library_into_null_safe, unused_field, unused_local_variable
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:tocmanager/database/sqfdb.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 
 import '../../models/Encaissements.dart';
@@ -30,11 +32,36 @@ class _EncaissementPageState extends State<EncaissementPage> {
   int? client_id;
   int? user_id;
   bool isLoading = true;
+  bool? isConnected;
+  late ConnectivityResult _connectivityResult;
+  SqlDb sqlDb = SqlDb();
+  String? message;
   @override
   void initState() {
+    initConnectivity();
     super.initState();
     readEncaissements();
     readSellData();
+  }
+
+  initConnectivity() async {
+    final ConnectivityResult result = await Connectivity().checkConnectivity();
+    setState(() {
+      _connectivityResult = result;
+    });
+    if (_connectivityResult == ConnectivityResult.none) {
+      // Si l'appareil n'est pas connecté à Internet.
+      setState(() {
+        isConnected = false;
+      });
+    } else {
+      // Si l'appareil est connecté à Internet.
+      setState(() {
+        isConnected = true;
+      });
+    }
+
+    return isConnected;
   }
 
   /* Fields Controller */
@@ -58,11 +85,17 @@ class _EncaissementPageState extends State<EncaissementPage> {
         floatingActionButton: reste != 0.0
             ? FloatingActionButton.extended(
                 label: Text("Reste : $reste"),
-                onPressed: () {
-                  dateController.text =
-                      DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
-                  _selectedPayment = "ESPECES";
-                  _showFormDialog(context);
+                onPressed: () async {
+                  dynamic isConnected = await initConnectivity();
+                  if (isConnected == false) {
+                    message = "Vous devez êtes connecté à internet !";
+                    sendMessage();
+                  } else {
+                    dateController.text = DateFormat('yyyy-MM-dd HH:mm:ss')
+                        .format(DateTime.now());
+                    _selectedPayment = "ESPECES";
+                    _showFormDialog(context);
+                  }
                 },
               )
             : null,
@@ -111,9 +144,7 @@ class _EncaissementPageState extends State<EncaissementPage> {
                         ),
                       ],
                       source: EncaissementsDataTableRow(
-                        data: encaissements,
-                        onDelete: onDelete
-                      ),
+                          data: encaissements, onDelete: onDelete),
                     ),
                   ),
                 ),
@@ -121,36 +152,83 @@ class _EncaissementPageState extends State<EncaissementPage> {
   }
 
   Future<void> readEncaissements() async {
-    int compagnie_id = await getCompagnie_id();
-    ApiResponse response =
-        await ReadEncaissements(compagnie_id, widget.sell_id);
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        List<dynamic> data = response.data as List<dynamic>;
-        encaissements = data.map((p) => Encaissements.fromJson(p)).toList();
-        setState(() {
-          isLoading = false;
-        });
+    dynamic isConnected = await initConnectivity();
+    if (isConnected == true) {
+      int compagnie_id = await getCompagnie_id();
+      ApiResponse response =
+          await ReadEncaissements(compagnie_id, widget.sell_id);
+      if (response.error == null) {
+        if (response.statusCode == 200) {
+          List<dynamic> data = response.data as List<dynamic>;
+          encaissements = data.map((p) => Encaissements.fromJson(p)).toList();
+          setState(() {
+            isLoading = false;
+          });
+        }
       }
-    } else {
-      if (response.statusCode == 403) {}
+    } else if (isConnected == false) {
+      setState(() {
+        isLoading = true;
+      });
+      List<dynamic> data = await sqlDb.readData(""" 
+        SELECT * FROM Encaissements WHERE sell_id=${widget.sell_id}
+    """);
+      encaissements = data.map((p) => Encaissements.fromJson(p)).toList();
+      setState(() {
+        isLoading = false;
+      });
     }
+  }
+
+  sendMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.red[900],
+        content: SizedBox(
+          width: double.infinity,
+          height: 20,
+          child: Center(
+            child: Text(
+              message!,
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        ),
+        duration: const Duration(milliseconds: 2000),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   List<dynamic> sells = [];
   Future<void> readSellData() async {
-    int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await DetailsSells(compagnie_id, widget.sell_id);
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        sells = response.data as List<dynamic>;
-        for (var i = 0; i < sells.length; i++) {
-          setState(() {
-            reste = double.parse(sells[i]['rest'].toString());
-            client_id = sells[i]['client_id'];
-            user_id = sells[i]['user_id'];
-          });
+    dynamic isConnected = await initConnectivity();
+
+    if (isConnected == true) {
+      int compagnie_id = await getCompagnie_id();
+      ApiResponse response = await DetailsSells(compagnie_id, widget.sell_id);
+      if (response.error == null) {
+        if (response.statusCode == 200) {
+          sells = response.data as List<dynamic>;
+          for (var i = 0; i < sells.length; i++) {
+            setState(() {
+              reste = double.parse(sells[i]['rest'].toString());
+              client_id = sells[i]['client_id'];
+              user_id = sells[i]['user_id'];
+            });
+          }
         }
+      }
+    } else if (isConnected == false) {
+      sells = await sqlDb.readData(""" 
+        SELECT * FROM Sells WHERE id=${widget.sell_id}
+    """);
+      for (var i = 0; i < sells.length; i++) {
+        setState(() {
+          reste = double.parse(sells[i]['rest'].toString());
+          client_id = sells[i]['client_id'];
+          user_id = sells[i]['user_id'];
+        });
       }
     }
   }
@@ -184,7 +262,7 @@ class _EncaissementPageState extends State<EncaissementPage> {
                       "client_id": client_id,
                       "payment": _selectedPayment,
                       "date": dateController.text,
-                      "montant":double.parse(amountController.text)
+                      "montant": double.parse(amountController.text)
                     });
                     _createEncaissement(data);
                   }
@@ -256,7 +334,6 @@ class _EncaissementPageState extends State<EncaissementPage> {
                               TextStyle(fontSize: 13, color: Colors.black),
                         ),
                         format: format,
-                        
                         onShowPicker: (context, currentValue) async {
                           final date = await showDatePicker(
                               context: context,
@@ -333,7 +410,7 @@ class _EncaissementPageState extends State<EncaissementPage> {
           (Route<dynamic> route) => false,
         );
       } else if (response.status == "error") {
-         Navigator.of(context).pop();
+        Navigator.of(context).pop();
         errorMessage = response.message!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -360,49 +437,57 @@ class _EncaissementPageState extends State<EncaissementPage> {
     }
   }
 
-
-    void onDelete(int encaissement_id, int sell_id) async {
+  void onDelete(int encaissement_id, int sell_id) async {
     bool sendMessage = false;
     int compagnie_id = await getCompagnie_id();
     String? message;
     String color = "red";
-    ApiResponse response =
-        await DeleteEncaissement(compagnie_id, encaissement_id);
-    if (response.statusCode == 200) {
-      if (response.status == "success") {
-        Navigator.of(context).pushReplacement(MaterialPageRoute(
-            builder: (context) =>  EncaissementPage(
-                  sell_id: sell_id,
-                )));
+    dynamic isConnected = await initConnectivity();
+    if (isConnected == true) {
+      ApiResponse response =
+          await DeleteEncaissement(compagnie_id, encaissement_id);
+      if (response.statusCode == 200) {
+        if (response.status == "success") {
+          Navigator.of(context).pushReplacement(MaterialPageRoute(
+              builder: (context) => EncaissementPage(
+                    sell_id: sell_id,
+                  )));
 
-        message = "Supprimé avec succès";
+          message = "Supprimé avec succès";
+          setState(() {
+            sendMessage = true;
+            color = "green";
+          });
+        } else {
+          message = "La suppression a échouée";
+          setState(() {
+            sendMessage = true;
+          });
+        }
+      } else if (response.statusCode == 403) {
+        message = "Vous n'êtes pas autorisé à effectuer cette action";
         setState(() {
           sendMessage = true;
-          color = "green";
+        });
+      } else if (response.statusCode == 500) {
+        print(response.statusCode);
+        message = "La suppression a échouée !";
+        setState(() {
+          sendMessage = true;
         });
       } else {
-        message = "La suppression a échouée";
+        message = "La suppression a échouée !";
         setState(() {
           sendMessage = true;
         });
       }
-    } else if (response.statusCode == 403) {
-      message = "Vous n'êtes pas autorisé à effectuer cette action";
+    } else if (isConnected == false) {
       setState(() {
-        sendMessage = true;
-      });
-    } else if (response.statusCode == 500) {
-      print(response.statusCode);
-      message = "La suppression a échouée !";
-      setState(() {
-        sendMessage = true;
-      });
-    } else {
-      message = "La suppression a échouée !";
-      setState(() {
+        message = "Vous devez êtes connecté à internet !";
         sendMessage = true;
       });
     }
+
     if (sendMessage == true) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -413,7 +498,7 @@ class _EncaissementPageState extends State<EncaissementPage> {
             height: 20,
             child: Center(
               child: Text(
-                message,
+                message!,
                 style: const TextStyle(color: Colors.white),
               ),
             ),
@@ -428,7 +513,7 @@ class _EncaissementPageState extends State<EncaissementPage> {
 
 class EncaissementsDataTableRow extends DataTableSource {
   final List<dynamic> data;
-   final Function(int, int) onDelete;
+  final Function(int, int) onDelete;
   // final Function(int) onEdit;
 
   EncaissementsDataTableRow({required this.data, required this.onDelete});
@@ -462,7 +547,7 @@ class EncaissementsDataTableRow extends DataTableSource {
                 color: Colors.red,
               ),
               onPressed: () async {
-               onDelete(encaissement.id, encaissement.sell_id);
+                onDelete(encaissement.id, encaissement.sell_id);
               }),
         )),
       ],

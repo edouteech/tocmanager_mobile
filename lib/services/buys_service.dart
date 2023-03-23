@@ -9,10 +9,7 @@ import '../models/api_response.dart';
 import 'package:dio/dio.dart';
 
 //read buys
-Future<ApiResponse> ReadBuys(
-  int compagnie_id,
-  int page
-) async {
+Future<ApiResponse> ReadBuys(int compagnie_id, int page) async {
   ApiResponse apiResponse = ApiResponse();
   try {
     String token = await getToken();
@@ -27,10 +24,12 @@ Future<ApiResponse> ReadBuys(
         apiResponse.statusCode = response.statusCode;
         apiResponse.data = response.body;
         apiResponse.data = jsonDecode(response.body)['data']['data'] as List;
-         apiResponse.current_page =
+        apiResponse.current_page =
             jsonDecode(response.body)['data']['current_page'];
-        apiResponse.next_page_url = jsonDecode(response.body)['data']['next_page_url'];
-        apiResponse.prev_page_url = jsonDecode(response.body)['data']['prev_page_url'];
+        apiResponse.next_page_url =
+            jsonDecode(response.body)['data']['next_page_url'];
+        apiResponse.prev_page_url =
+            jsonDecode(response.body)['data']['prev_page_url'];
         apiResponse.totalPage = jsonDecode(response.body)['data']['total'];
 
         break;
@@ -73,6 +72,7 @@ Future<ApiResponse> CreateBuys(
 
   switch (response.statusCode) {
     case 200:
+      apiResponse.statusCode = response.statusCode;
       if (response.data['status'] == "success") {
         apiResponse.statusCode = response.statusCode;
         apiResponse.status = response.data['status'];
@@ -178,11 +178,8 @@ Future<ApiResponse> DetailsBuys(int compagnie_id, int buy_id) async {
 }
 
 //Update sells
-Future<ApiResponse> UpdateBuys(
-    Map<String, dynamic> achats, int buy_id) async {
+Future<ApiResponse> UpdateBuys(Map<String, dynamic> achats, int buy_id) async {
   dynamic body = json.encode(achats);
-
-
 
   ApiResponse apiResponse = ApiResponse();
 
@@ -221,4 +218,3 @@ Future<ApiResponse> UpdateBuys(
 
   return apiResponse;
 }
-

@@ -503,8 +503,6 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
   void createSells(Map<String, dynamic> ventes) async {
     bool _sendMessage = false;
     String? message;
-    dynamic isConnected = await initConnectivity();
-
     ApiResponse response = await CreateSells(ventes);
     if (response.statusCode == 200) {
       if (response.status == "success") {
@@ -518,22 +516,26 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
         Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const VenteHome()));
       } else {
+        Navigator.of(context).pop();
         message = response.message;
         setState(() {
           _sendMessage = true;
         });
       }
     } else if (response.statusCode == 403) {
+      Navigator.of(context).pop();
       message = "Vous n'êtes pas autorisé à effectuer cette action";
       setState(() {
         _sendMessage = true;
       });
     } else if (response.statusCode == 500) {
+      Navigator.of(context).pop();
       message = "La vente a échouée. Veuillez reprendre";
       setState(() {
         _sendMessage = true;
       });
     } else {
+      Navigator.of(context).pop();
       message = "La vente a échouée. Veuillez reprendre";
       setState(() {
         _sendMessage = true;
@@ -564,6 +566,8 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
   _localSave() async {
     int compagnie_id = await getCompagnie_id();
     int user_id = await getUsersId();
+    bool _sendMessage = false;
+    String? message;
 
     int? echeance;
     if (_echeancePayment != null) {
@@ -642,6 +646,23 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
           var newQte = selectProduct[0]['quantity'] - sell_lines[i]["quantity"];
           var restoreProduct = await sqlDb.updateData(
               """  UPDATE Products SET quantity=$newQte WHERE id= ${selectProduct[0]['id']} """);
+          var InsertEncaissemnts = await sqlDb.insertData('''
+                    INSERT INTO Encaissements(
+                      amount,
+                      date_encaissement,
+                      client_id,
+                      client_name,
+                      payment_method,
+                      buy_id
+                    ) VALUES(
+                      '${double.parse(Amount_TTC_Controller.text)}',
+                      '${dateController.text.toString()}',
+                      '${client[0]['id']}',
+                      '${client[0]['name']}',
+                      '${_selectedPayment.toString()}',
+                      '${ReadLastInsertion[0]["id"]}',
+                      )
+                  ''');
         }
         setState(() {
           elements.clear();
@@ -649,13 +670,36 @@ class _AjouterVentePageState extends State<AjouterVentePage> {
           _sell_lineFormkey.currentState?.reset();
           _sellsformKey.currentState?.reset();
           sell_lines = [];
-          
         });
         Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const VenteHome()));
       }
     } else if (response1 == false) {
-      print(response1);
+      Navigator.of(context).pop();
+      message = "La vente a échouée. Veuillez reprendre";
+      setState(() {
+        _sendMessage = true;
+      });
+    }
+
+    if (_sendMessage == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red[900],
+          content: SizedBox(
+            width: double.infinity,
+            height: 20,
+            child: Center(
+              child: Text(
+                message!,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+          duration: const Duration(milliseconds: 2000),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 

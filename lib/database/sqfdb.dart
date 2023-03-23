@@ -1,15 +1,59 @@
 // ignore_for_file: depend_on_referenced_packages, avoid_print
 
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
 
 class SqlDb {
   static Future<void> init() async {
     // Init ffi loader if needed.
-    sqfliteFfiInit();
-    var databaseFactory = databaseFactoryFfi;
-    var db = await databaseFactory.openDatabase('tocmanager.db');
+    // sqfliteFfiInit();
+    // var databaseFactory = databaseFactoryFfi;
+    // var db = await databaseFactory.openDatabase('tocmanager.db');
+
+    final directory =
+        await getApplicationDocumentsDirectory(); // obtenir le chemin d'accès au répertoire de documents
+    final dbPath = join(directory.path,
+        'tocmanager.db'); // créer un chemin pour la base de données
+    final db = await databaseFactoryFfi
+        .openDatabase(dbPath); // créer une base de données SQLite
+
     await createTables(db);
     db.close();
+  }
+
+  Future<bool> insertData(String sql) async {
+    final directory = await getApplicationDocumentsDirectory();
+    final dbPath = join(directory.path, 'tocmanager.db');
+    final db = await databaseFactoryFfi.openDatabase(dbPath);
+    try {
+      int id = await db.transaction((txn) async {
+        return await txn.rawInsert(sql);
+      });
+      print('New Insertion with id: $id');
+      return true;
+    } catch (e) {
+      print('Insertion error: $e');
+      return false;
+    } finally {
+      await db.close();
+    }
+  }
+
+  readData(String sql) async {
+    final directory = await getApplicationDocumentsDirectory();
+    final dbPath = join(directory.path, 'tocmanager.db');
+    final db = await databaseFactoryFfi.openDatabase(dbPath);
+
+    try {
+      List<Map<String, dynamic>> result = await db.rawQuery(sql);
+      return result;
+    } catch (e) {
+      print('Read error: $e');
+      return [];
+    } finally {
+      await db.close();
+    }
   }
 
   // static Future<void> deleteAllDatabaseFiles(String directoryPath) async {
@@ -28,51 +72,10 @@ class SqlDb {
   //   print('Tous les fichiers de base de données ont été supprimés.');
   // }
 
-  //  insertData() async {
-  //   // Init ffi loader if needed.
-  //   sqfliteFfiInit();
-  //   var databaseFactory = databaseFactoryFfi;
-  //   var db = await databaseFactory.openDatabase('tocmanager.db');
-
-  //   await db.execute(sql);
-
-  //   db.close();
-  // }
-
-  Future<bool> insertData(String sql) async {
-    var databaseFactory = databaseFactoryFfi;
-    var db = await databaseFactory.openDatabase('tocmanager.db');
-    try {
-      int id = await db.transaction((txn) async {
-        return await txn.rawInsert(sql);
-      });
-      print('New Insertion with id: $id');
-      return true;
-    } catch (e) {
-      print('Insertion error: $e');
-      return false;
-    } finally {
-      await db.close();
-    }
-  }
-
-  readData(String sql) async {
-    var databaseFactory = databaseFactoryFfi;
-    var db = await databaseFactory.openDatabase('tocmanager.db');
-    try {
-      List<Map<String, dynamic>> result = await db.rawQuery(sql);
-      return result;
-    } catch (e) {
-      print('Read error: $e');
-      return [];
-    } finally {
-      await db.close();
-    }
-  }
-
   Future<bool> deleteData(String sql) async {
-    var databaseFactory = databaseFactoryFfi;
-    var db = await databaseFactory.openDatabase('tocmanager.db');
+    final directory = await getApplicationDocumentsDirectory();
+    final dbPath = join(directory.path, 'tocmanager.db');
+    final db = await databaseFactoryFfi.openDatabase(dbPath);
     try {
       int rowsAffected = await db.transaction((txn) async {
         return await txn.rawDelete(sql);
@@ -93,8 +96,9 @@ class SqlDb {
   }
 
   Future<bool> updateData(String sql) async {
-    var databaseFactory = databaseFactoryFfi;
-    var db = await databaseFactory.openDatabase('tocmanager.db');
+    final directory = await getApplicationDocumentsDirectory();
+    final dbPath = join(directory.path, 'tocmanager.db');
+    final db = await databaseFactoryFfi.openDatabase(dbPath);
     try {
       int rowsAffected = await db.transaction((txn) async {
         return await txn.rawUpdate(sql);
@@ -115,8 +119,9 @@ class SqlDb {
   }
 
   static Future<void> mydeleteDatabase() async {
-    var databaseFactory = databaseFactoryFfi;
-    await databaseFactory.deleteDatabase('tocmanager.db');
+    final directory = await getApplicationDocumentsDirectory();
+    final dbPath = join(directory.path, 'tocmanager.db');
+    await databaseFactoryFfi.deleteDatabase(dbPath);
     print('Database deleted successfully.');
   }
 }
@@ -279,6 +284,53 @@ Future<void> createTables(db) async {
         FOREIGN KEY (buy_id) REFERENCES Buys(id),
         FOREIGN KEY (product_id) REFERENCES Products(id)
 )
+    ''');
+
+  //encaissement
+  await db.execute('''
+        CREATE TABLE IF NOT EXISTS Encaissements(
+          id INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
+          amount DOUBLE NOT NULL,
+          date_encaissement DATETIME NOT NULL,
+          client_id INT NOT NULL,
+          client_name TEXT NOT NULL,
+          payment_method TEXT NOT NULL,
+          sell_id INT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (sell_id) REFERENCES Sells (id) ON DELETE CASCADE
+    
+        )
+    ''');
+
+  //décaissement
+  await db.execute('''
+        CREATE TABLE IF NOT EXISTS Decaissements(
+          id INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
+          amount DOUBLE NOT NULL,
+          date_decaissement DATETIME NOT NULL,
+          supplier_id INT NOT NULL,
+          supplier_name TEXT NOT NULL,
+          payment_method TEXT NOT NULL,
+          buy_id INT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (buy_id) REFERENCES Buys (id)  ON DELETE CASCADE  
+        )
+    ''');
+
+
+    //database test
+  await db.execute('''
+        CREATE TABLE IF NOT EXISTS Database_error(
+          id INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
+          Type TEXT NOT NULL,
+          statut_code TEXT NOT NULL,
+          satatus TEXT NOT NULL,
+          message TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
     ''');
 
   print("DATABASE====TOCMANAGER==== SUCCESSFULLY");

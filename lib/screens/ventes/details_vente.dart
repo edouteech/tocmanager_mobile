@@ -1,5 +1,7 @@
 // ignore_for_file: non_constant_identifier_names
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:tocmanager/database/sqfdb.dart';
 import 'package:tocmanager/models/Sell_lines.dart';
 import 'package:tocmanager/screens/ventes/Venteprintpage.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
@@ -21,19 +23,44 @@ List<dynamic> sell_lines = [];
 
 class _DetailsVentesState extends State<DetailsVentes> {
   bool? isLoading;
+  bool? isConnected;
+  late ConnectivityResult _connectivityResult;
+  SqlDb sqlDb = SqlDb();
   @override
   void initState() {
     readsell();
     super.initState();
+    initConnectivity();
+  }
+
+  initConnectivity() async {
+    final ConnectivityResult result = await Connectivity().checkConnectivity();
+    setState(() {
+      _connectivityResult = result;
+    });
+    if (_connectivityResult == ConnectivityResult.none) {
+      // Si l'appareil n'est pas connecté à Internet.
+      setState(() {
+        isConnected = false;
+      });
+    } else {
+      // Si l'appareil est connecté à Internet.
+      setState(() {
+        isConnected = true;
+      });
+    }
+
+    return isConnected;
   }
 
   Future<void> readsell() async {
-    int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await DetailsSells(compagnie_id, widget.sell_id);
-    setState(() {
-      isLoading = true;
-    });
-    if (response.error == null) {
+    dynamic isConnected = await initConnectivity();
+    if (isConnected == true) {
+      int compagnie_id = await getCompagnie_id();
+      ApiResponse response = await DetailsSells(compagnie_id, widget.sell_id);
+      setState(() {
+        isLoading = true;
+      });
       if (response.statusCode == 200) {
         List<dynamic> data = response.data as List<dynamic>;
         List<dynamic> Selllines = data[0]["sell_lines"] as List<dynamic>;
@@ -42,12 +69,11 @@ class _DetailsVentesState extends State<DetailsVentes> {
           isLoading = false;
         });
       }
-    } else {
-      if (response.statusCode == 403) {
-        // setState(() {
-        //   isNotSuscribe = true;
-        // });
-      }
+    } else if (isConnected == false) {
+      List<dynamic> data = await sqlDb.readData(""" 
+        SELECT * FROM Sell_lines WHERE id=${widget.sell_id}
+    """);
+     sell_lines = data.map((p) => Sell_lines.fromJson(p)).toList();
     }
   }
 

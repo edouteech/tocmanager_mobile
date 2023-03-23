@@ -436,6 +436,9 @@ class _AjouterClientPageState extends State<AjouterClientPage> {
   }
 
   void _createClients() async {
+    bool sendMessage = false;
+    String? message;
+    String color = "red";
     dynamic nature;
     int compagnie_id = await getCompagnie_id();
     dynamic isConnected = await initConnectivity();
@@ -446,39 +449,47 @@ class _AjouterClientPageState extends State<AjouterClientPage> {
           emailController.text,
           phoneController.text,
           int.parse(client_nature.toString()));
-      if (response.error == null) {
-        if (response.statusCode == 200) {
-          if (response.status == "error") {
-            print(response.message);
-          } else {
-            if (int.parse(client_nature.toString()) == 0) {
-              setState(() {
-                nature = "Particulier";
-              });
-            } else if (int.parse(client_nature.toString()) == 1) {
-              setState(() {
-                nature = "Entreprise";
-              });
-            }
-            var email =
-                emailController.text.isEmpty ? null : emailController.text;
-            var phone =
-                phoneController.text.isEmpty ? null : phoneController.text;
 
-            var response = await sqlDb.insertData('''
+      if (response.statusCode == 200) {
+        if (response.status == "error") {
+          print('oeoe');
+          Navigator.of(context).pop();
+          message = response.message;
+          setState(() {
+            sendMessage = true;
+          });
+        } else {
+          if (int.parse(client_nature.toString()) == 0) {
+            setState(() {
+              nature = "Particulier";
+            });
+          } else if (int.parse(client_nature.toString()) == 1) {
+            setState(() {
+              nature = "Entreprise";
+            });
+          }
+          var email =
+              emailController.text.isEmpty ? null : emailController.text;
+          var phone =
+              phoneController.text.isEmpty ? null : phoneController.text;
+
+          var response = await sqlDb.insertData('''
                     INSERT INTO Clients(compagnie_id, name, email, phone, nature) VALUES('$compagnie_id', '${nameController.text}', '$email', '$phone', '$nature')
                   ''');
-            if (response == true) {
-              Navigator.of(context).pushReplacement(MaterialPageRoute(
-                  builder: (context) => const AjouterClientPage()));
-            } else {
-              print("echec");
-            }
+          Navigator.of(context).pushReplacement(MaterialPageRoute(
+              builder: (context) => const AjouterClientPage()));
+          if (response == true) {
+            print("success");
+          } else {
+            print("echec");
           }
         }
       } else {
         if (response.statusCode == 403) {
-          print(response.message);
+          message = response.message;
+          setState(() {
+            sendMessage = true;
+          });
         }
       }
     } else if (isConnected == false) {
@@ -500,8 +511,33 @@ class _AjouterClientPageState extends State<AjouterClientPage> {
         Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const AjouterClientPage()));
       } else {
-        print("echec");
+        Navigator.of(context).pop();
+        message = "Echec de la création";
+        setState(() {
+          sendMessage = true;
+        });
       }
+    }
+
+    if (sendMessage == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor:
+              color == "green" ? Colors.green[800] : Colors.red[800],
+          content: SizedBox(
+            width: double.infinity,
+            height: 20,
+            child: Center(
+              child: Text(
+                message!,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+          duration: const Duration(milliseconds: 3000),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 }

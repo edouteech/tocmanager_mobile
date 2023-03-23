@@ -8,7 +8,6 @@ class Encaissements {
   int user_id;
   String reference;
   String client_name;
-
   String payment_method;
   int sell_id;
   String created_at;

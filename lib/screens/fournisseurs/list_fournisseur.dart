@@ -1,4 +1,4 @@
-// ignore_for_file: avoid_print, unnecessary_this, no_leading_underscores_for_local_identifiers, use_build_context_synchronously, non_constant_identifier_names
+// ignore_for_file: avoid_print, unnecessary_this, no_leading_underscores_for_local_identifiers, use_build_context_synchronously, non_constant_identifier_names, unnecessary_null_comparison, unused_local_variable
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
@@ -35,19 +35,11 @@ class _ListFournisseurState extends State<ListFournisseur> {
   TextEditingController emailController = TextEditingController();
   TextEditingController phoneController = TextEditingController();
 
-//Read data into database
-  Future readData() async {
-    if (this.mounted) {
-      setState(() {});
-    }
-  }
-
   @override
   void initState() {
     readSuppliers();
     super.initState();
     checkSuscribe();
-    initConnectivity();
   }
 
   String? supplier_nature;
@@ -115,7 +107,6 @@ class _ListFournisseurState extends State<ListFournisseur> {
                       child: PaginatedDataTable(
                         rowsPerPage: 10,
                         columns: const [
-                          DataColumn(label: Center(child: Text("Date"))),
                           DataColumn(label: Center(child: Text("Nom"))),
                           DataColumn(label: Center(child: Text("Email"))),
                           DataColumn(label: Center(child: Text("Numéro"))),
@@ -135,9 +126,9 @@ class _ListFournisseurState extends State<ListFournisseur> {
           );
   }
 
-  void _detailsClient(int supplier_id) async {
+  void _detailsClient(int? supplier_id) async {
     int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await ReadOneSupplier(compagnie_id, supplier_id);
+    ApiResponse response = await ReadOneSupplier(compagnie_id, supplier_id!);
     print(response.data);
     // Navigator.of(context).pushReplacement(MaterialPageRoute(
     //     builder: (context) => CategorieDetails(
@@ -147,49 +138,68 @@ class _ListFournisseurState extends State<ListFournisseur> {
 
   Future<void> readSuppliers() async {
     dynamic isConnected = await initConnectivity();
-    int compagnie_id = await getCompagnie_id();
     if (isConnected == true) {
+       int compagnie_id = await getCompagnie_id();
       ApiResponse response = await ReadSuppliers(compagnie_id);
       setState(() {
         isLoading = true;
       });
-      if (response.error == null) {
-        if (response.statusCode == 200) {
-          List<dynamic> data = response.data as List<dynamic>;
-            suppliers = data.map((p) => Suppliers.fromJson(p)).toList();
-          setState(() {
-            isLoading = false;
-          });
-          for (var i = 0; i < data.length; i++) {
-            var email = data[i]['email'] != null ? '${data[i]['email']}' : null;
-            var phone = data[i]['phone'] != null ? '${data[i]['phone']}' : null;
-            var response = await sqlDb.insertData('''
-                    INSERT INTO Suppliers
-                    (id,
-                    compagnie_id,
-                    name,
-                    email,
-                    phone,
-                    nature,
-                  created_at,
-                  updated_at) VALUES('${data[i]['id']}',
-                   '${data[i]['compagnie_id']}',
-                  '${data[i]['name']}',
-                  '$email',
-                  '$phone',
-                  '${data[i]['nature']}',
-                  '${data[i]['created_at']}',
-                  '${data[i]['updated_at']}'
-                  )
-                  ''');
-          }
-        }
+      if (response.statusCode == 200) {
+        List<dynamic> data = response.data as List<dynamic>;
+        suppliers = data.map((p) => Suppliers.fromJson(p)).toList();
+        setState(() {
+          isLoading = false;
+        });
+        // var responseO = await sqlDb.insertData('''
+        //             INSERT INTO Database_error
+        //             (Type,
+        //               statut_code,
+        //             satatus,
+        //             message
+        //             ) VALUES(
+        //               'Suppliers',
+        //               '${response.statusCode}',
+        //               '${response.status}',
+        //               '${response.message}')''');
+
+        // for (var i = 0; i < data.length; i++) {
+        //   var email = data[i]['email'] != null ? '${data[i]['email']}' : null;
+        //   var phone = data[i]['phone'] != null ? '${data[i]['phone']}' : null;
+        //   var response1 = await sqlDb.insertData('''
+        //             INSERT INTO Suppliers
+        //             (id,
+        //             compagnie_id,
+        //             name,
+        //             email,
+        //             phone,
+        //             nature,
+        //           created_at,
+        //           updated_at) VALUES('${data[i]['id']}',
+        //            '${data[i]['compagnie_id']}',
+        //           '${data[i]['name']}',
+        //           '$email',
+        //           '$phone',
+        //           '${data[i]['nature']}',
+        //           '${data[i]['created_at']}',
+        //           '${data[i]['updated_at']}'
+        //           )
+        //           ''');
+        // }
       } else {
-        if (response.statusCode == 403) {
-          setState(() {
-            isNotSuscribe = true;
-          });
-        }
+        setState(() {
+          isLoading = false;
+        });
+        var responseO = await sqlDb.insertData('''
+                    INSERT INTO Database_error
+                    (Type,
+                      statut_code,
+                    satatus,
+                    message
+                    ) VALUES(
+                      'Suppliers',
+                      '${response.statusCode}',
+                      '${response.status}',
+                      '${response.message}')''');
       }
     } else if (isConnected == false) {
       setState(() {
@@ -204,7 +214,7 @@ class _ListFournisseurState extends State<ListFournisseur> {
     }
   }
 
-  void _deleteSupplier(int supplier_id) async {
+  void _deleteSupplier(int? supplier_id) async {
     bool sendMessage = false;
     int compagnie_id = await getCompagnie_id();
     String? message;
@@ -212,7 +222,7 @@ class _ListFournisseurState extends State<ListFournisseur> {
     dynamic isConnected = await initConnectivity();
 
     if (isConnected == true) {
-      ApiResponse response = await DeleteSuppliers(compagnie_id, supplier_id);
+      ApiResponse response = await DeleteSuppliers(compagnie_id, supplier_id!);
       if (response.statusCode == 200) {
         if (response.status == "success") {
           sqlDb.deleteData(''' 
@@ -422,7 +432,7 @@ class _ListFournisseurState extends State<ListFournisseur> {
                       ),
                     ),
 
-                    // Address of suppliers
+                    // Nature of suppliers
                     Container(
                         padding: const EdgeInsets.only(left: 20, right: 20),
                         margin: const EdgeInsets.only(top: 10),
@@ -476,7 +486,7 @@ class _ListFournisseurState extends State<ListFournisseur> {
           nameController.text,
           emailController.text,
           phoneController.text,
-          int.parse(supplier_id.toString()),
+          int.parse(supplier_nature.toString()),
           supplier_id);
       if (response.error == null) {
         if (response.statusCode == 200) {
@@ -536,9 +546,9 @@ class _ListFournisseurState extends State<ListFournisseur> {
 
 class DataTableRow extends DataTableSource {
   final List<dynamic> data;
-  final Function(int) onDelete;
-  final Function(int, String, String, String, String) onEdit;
-  final Function(int) onDetails;
+  final Function(int?) onDelete;
+  final Function(int?, String?, String?, String?, String?) onEdit;
+  final Function(int?) onDetails;
   DataTableRow(
       {required this.data,
       required this.onDelete,
@@ -551,8 +561,6 @@ class DataTableRow extends DataTableSource {
     return DataRow.byIndex(
       index: index,
       cells: <DataCell>[
-        DataCell(Text(DateFormat("dd-MM-yyyy H:mm:s")
-            .format(DateTime.parse(supplier.created_at)))),
         DataCell(Center(child: Text(supplier.name.toString()))),
         DataCell(
           Center(
@@ -578,7 +586,7 @@ class DataTableRow extends DataTableSource {
             ),
           ),
         ),
-        DataCell(Center(child: Text(supplier.nature))),
+        DataCell(Center(child: Text(supplier.nature.toString()))),
         DataCell(Center(
           child: IconButton(
               icon: const Icon(

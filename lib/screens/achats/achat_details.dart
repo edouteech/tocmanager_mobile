@@ -1,6 +1,8 @@
 // ignore_for_file: avoid_print, depend_on_referenced_packages, non_constant_identifier_names
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:tocmanager/database/sqfdb.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/achats/printachatpage.dart';
 import 'package:tocmanager/services/buys_service.dart';
@@ -23,34 +25,60 @@ List<dynamic> buy_lines = [];
 
 class _AchatDetailsState extends State<AchatDetails> {
   bool? isLoading;
+  bool? isConnected;
+  late ConnectivityResult _connectivityResult;
+  SqlDb sqlDb = SqlDb();
 
   @override
   void initState() {
     readBuy();
+    initConnectivity();
     super.initState();
   }
 
-  readBuy() async {
-    int compagnie_id = await getCompagnie_id();
-    ApiResponse response = await DetailsBuys(compagnie_id, widget.buy_id);
+  initConnectivity() async {
+    final ConnectivityResult result = await Connectivity().checkConnectivity();
     setState(() {
-      isLoading = true;
+      _connectivityResult = result;
     });
-    if (response.error == null) {
-      if (response.statusCode == 200) {
-        List<dynamic> data = response.data as List<dynamic>;
-        List<dynamic> Buylines = data[0]["buy_lines"] as List<dynamic>;
-        buy_lines = Buylines.map((p) => Buy_lines.fromJson(p)).toList();
-        setState(() {
-          isLoading = false;
-        });
-      }
+    if (_connectivityResult == ConnectivityResult.none) {
+      // Si l'appareil n'est pas connecté à Internet.
+      setState(() {
+        isConnected = false;
+      });
     } else {
-      if (response.statusCode == 403) {
-        // setState(() {
-        //   isNotSuscribe = true;
-        // });
+      // Si l'appareil est connecté à Internet.
+      setState(() {
+        isConnected = true;
+      });
+    }
+
+    return isConnected;
+  }
+
+  readBuy() async {
+    dynamic isConnected = await initConnectivity();
+    if (isConnected == true) {
+      int compagnie_id = await getCompagnie_id();
+      ApiResponse response = await DetailsBuys(compagnie_id, widget.buy_id);
+      setState(() {
+        isLoading = true;
+      });
+      if (response.error == null) {
+        if (response.statusCode == 200) {
+          List<dynamic> data = response.data as List<dynamic>;
+          List<dynamic> Buylines = data[0]["buy_lines"] as List<dynamic>;
+          buy_lines = Buylines.map((p) => Buy_lines.fromJson(p)).toList();
+          setState(() {
+            isLoading = false;
+          });
+        }
       }
+    } else if (isConnected == false) {
+      List<dynamic> data = await sqlDb.readData(""" 
+        SELECT * FROM Buy_lines WHERE id=${widget.buy_id}
+    """);
+      buy_lines = data.map((p) => Buy_lines.fromJson(p)).toList();
     }
   }
 

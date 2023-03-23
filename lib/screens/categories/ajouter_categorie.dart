@@ -116,7 +116,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
                 onPressed: () async {
                   // SqlDb.deleteAllDatabaseFiles(
                   //     '.dart_tool/sqflite_common_ffi/databases');
-                    // SqlDb.mydeleteDatabase();
+                      //  SqlDb.mydeleteDatabase();
                   _showFormDialog(context);
                 },
                 backgroundColor: Colors.blue,
@@ -409,6 +409,9 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
 
   //create catégories
   void _createCategories() async {
+    bool sendMessage = false;
+    String? message;
+    String color = "red";
     int compagnie_id = await getCompagnie_id();
 
     dynamic isConnected = await initConnectivity();
@@ -427,7 +430,11 @@ SELECT categories.*, parents.name as parent_name FROM categories join categories
           Navigator.of(context).pushReplacement(MaterialPageRoute(
               builder: (context) => const AjouterCategoriePage()));
         } else {
-          print("echec");
+          Navigator.of(context).pop();
+          message = "Echec de la création !";
+          setState(() {
+            sendMessage = true;
+          });
         }
       } else {
         //if parent_id is selected
@@ -438,47 +445,70 @@ SELECT categories.*, parents.name as parent_name FROM categories join categories
           Navigator.of(context).pushReplacement(MaterialPageRoute(
               builder: (context) => const AjouterCategoriePage()));
         } else {
-          print("echec");
+          Navigator.of(context).pop();
+          message = "Echec de la création !";
+          setState(() {
+            sendMessage = true;
+          });
         }
       }
     } else if (isConnected == true) {
       // is app is  connected
-
       ApiResponse response =
           await CreateCategories(compagnie_id.toString(), name.text, parent_id);
-
-      if (response.error == null) {
-        if (response.statusCode == 200) {
-          if (response.status == "error") {
-            String? message = response.message;
-          } else {
-            if (parent_id != null) {
-              var parent = await sqlDb.readData('''
-
-SELECT categories.*, parents.name as parent_name FROM categories join categories as parents on categories.parent_id = parents.id where categories.id = $parent_id        ''');
-              //if parent_id is not selected
-              var response = await sqlDb.insertData('''
-                    INSERT INTO Categories(name, parent_id, parent_name, compagnie_id) VALUES('${name.text}', '$parent_id', '${parent[0]['name']}', '$compagnie_id')
-                  ''');
-            } else {
-              //if parent_id is selected
-              var response = await sqlDb.insertData('''
-                    INSERT INTO Categories(name, compagnie_id) VALUES('${name.text}', '$compagnie_id')
-                  ''');
-            }
-            Navigator.of(context).pushReplacement(MaterialPageRoute(
-                builder: (context) => const AjouterCategoriePage()));
-          }
-        }
-      } else {
-        if (response.statusCode == 403) {
+      if (response.statusCode == 200) {
+        if (response.status == "error") {
+          Navigator.of(context).pop();
+          message = response.message;
           setState(() {
-            isNotSuscribe = true;
+            sendMessage = true;
           });
         } else {
-          print(response.error);
+          if (parent_id != null) {
+            var parent = await sqlDb.readData('''
+
+SELECT categories.*, parents.name as parent_name FROM categories join categories as parents on categories.parent_id = parents.id where categories.id = $parent_id        ''');
+            //if parent_id is not selected
+            var response = await sqlDb.insertData('''
+                    INSERT INTO Categories(name, parent_id, parent_name, compagnie_id) VALUES('${name.text}', '$parent_id', '${parent[0]['name']}', '$compagnie_id')
+                  ''');
+          } else {
+            //if parent_id is selected
+            var response = await sqlDb.insertData('''
+                    INSERT INTO Categories(name, compagnie_id) VALUES('${name.text}', '$compagnie_id')
+                  ''');
+          }
+          Navigator.of(context).pushReplacement(MaterialPageRoute(
+              builder: (context) => const AjouterCategoriePage()));
         }
+      } else if (response.statusCode == 403) {
+        setState(() {
+          isNotSuscribe = true;
+        });
+      } else {
+        print(response.error);
       }
+    }
+
+    if (sendMessage == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor:
+              color == "green" ? Colors.green[800] : Colors.red[800],
+          content: SizedBox(
+            width: double.infinity,
+            height: 20,
+            child: Center(
+              child: Text(
+                message!,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+          duration: const Duration(milliseconds: 3000),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 

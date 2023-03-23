@@ -94,24 +94,35 @@ class _ListClientState extends State<ListClient> {
 
   Future<void> readclient() async {
     dynamic isConnected = await initConnectivity();
-    int compagnie_id = await getCompagnie_id();
     if (isConnected == true) {
+      int compagnie_id = await getCompagnie_id();
       ApiResponse response = await ReadClients(compagnie_id);
       setState(() {
         isLoading = true;
       });
-      if (response.error == null) {
-        if (response.statusCode == 200) {
-          List<dynamic> data = response.data as List<dynamic>;
-          clients = data.map((p) => Clients.fromJson(p)).toList();
-          setState(() {
-            isLoading = false;
-          });
-          
-          for (var i = 0; i < data.length; i++) {
-            var email = data[i]['email'] != null ? '${data[i]['email']}' : null;
-            var phone = data[i]['phone'] != null ? '${data[i]['phone']}' : null;
-            var response = await sqlDb.insertData('''
+
+      if (response.statusCode == 200) {
+        List<dynamic> data = response.data as List<dynamic>;
+        clients = data.map((p) => Clients.fromJson(p)).toList();
+        setState(() {
+          isLoading = false;
+        });
+        // var responseO = await sqlDb.insertData('''
+        //             INSERT INTO Database_error
+        //             (Type,
+        //               statut_code,
+        //             satatus,
+        //             message
+        //             ) VALUES(
+        //               'Clients',
+        //               '${response.statusCode}',
+        //               '${response.status}',
+        //               '${response.message}')''');
+
+        for (var i = 0; i < data.length; i++) {
+          var email = data[i]['email'] != null ? '${data[i]['email']}' : null;
+          var phone = data[i]['phone'] != null ? '${data[i]['phone']}' : null;
+          var response1 = await sqlDb.insertData('''
                     INSERT INTO Clients
                     (id,
                     compagnie_id,
@@ -130,14 +141,22 @@ class _ListClientState extends State<ListClient> {
                   '${data[i]['updated_at']}'
                   )
                   ''');
-          }
         }
       } else {
-        if (response.statusCode == 403) {
-          setState(() {
-            isNotSuscribe = true;
-          });
-        }
+        setState(() {
+          isLoading = false;
+        });
+        var responseO = await sqlDb.insertData('''
+                    INSERT INTO Database_error
+                    (Type,
+                      statut_code,
+                    satatus,
+                    message
+                    ) VALUES(
+                      'Clients',
+                      '${response.statusCode}',
+                      '${response.status}',
+                      '${response.message}')''');
       }
     } else if (isConnected == false) {
       setState(() {
@@ -145,7 +164,6 @@ class _ListClientState extends State<ListClient> {
       });
       List<dynamic> data = await sqlDb.readData('''SELECT * FROM Clients ''');
       clients = data.map((p) => Clients.fromJson(p)).toList();
-
       setState(() {
         isLoading = false;
       });
@@ -171,6 +189,7 @@ class _ListClientState extends State<ListClient> {
                           DataColumn(label: Center(child: Text("Nom"))),
                           DataColumn(label: Center(child: Text("Email"))),
                           DataColumn(label: Center(child: Text("Numéro"))),
+                          DataColumn(label: Center(child: Text("Nature"))),
                           DataColumn(label: Center(child: Text("Editer"))),
                           DataColumn(label: Center(child: Text("Effacer"))),
                           DataColumn(label: Center(child: Text("Détails"))),
@@ -408,7 +427,6 @@ class _ListClientState extends State<ListClient> {
                 nature = "Entreprise";
               });
             }
-           
 
             var response = await sqlDb.updateData('''
                   UPDATE Clients SET compagnie_id ="$compagnie_id", name="${nameController.text}", email="${emailController.text}", phone="${phoneController.text}", nature="$nature" WHERE id="$client_id"
@@ -530,7 +548,7 @@ class _ListClientState extends State<ListClient> {
 
 class DataTableRow extends DataTableSource {
   final List<dynamic> data;
-  final Function(int) onDelete;
+  final Function(int?) onDelete;
   final Function(int?, String?, String?, String?, String?) onEdit;
   final Function(int?) onDetails;
   DataTableRow(
@@ -569,6 +587,7 @@ class DataTableRow extends DataTableSource {
             ),
           ),
         ),
+        DataCell(Center(child: Text(client.nature.toString()))),
         DataCell(Center(
           child: IconButton(
               icon: const Icon(
