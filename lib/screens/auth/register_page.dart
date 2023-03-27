@@ -78,10 +78,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              SizedBox(
-                                height: SizeConfig.screenHeight * 0.04,
-                              ),
-
+                           
                               //Username fields
                               Container(
                                   alignment: Alignment.center,
@@ -123,7 +120,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                   )),
 
                               SizedBox(
-                                height: getProportionateScreenHeight(10),
+                                height: getProportionateScreenHeight(8),
                               ),
 
                               //Email field
@@ -172,7 +169,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               ),
 
                               SizedBox(
-                                height: getProportionateScreenHeight(20),
+                                height: getProportionateScreenHeight(8),
                               ),
 
                               //Number field
@@ -231,7 +228,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               ),
 
                               SizedBox(
-                                height: getProportionateScreenHeight(20),
+                                height: getProportionateScreenHeight(8),
                               ),
 
                               //Password field
@@ -283,7 +280,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               ),
 
                               SizedBox(
-                                height: getProportionateScreenHeight(20),
+                                height: getProportionateScreenHeight(8),
                               ),
 
                               Container(
@@ -337,7 +334,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               ),
 
                               SizedBox(
-                                height: getProportionateScreenHeight(20),
+                                height: getProportionateScreenHeight(8),
                               ),
 
                               //compagnie field
@@ -385,7 +382,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               ),
 
                               SizedBox(
-                                height: getProportionateScreenHeight(20),
+                                height: getProportionateScreenHeight(15),
                               ),
                               GestureDetector(
                                 onTap: () {
@@ -419,9 +416,9 @@ class _RegisterPageState extends State<RegisterPage> {
                               ),
 
 
-                              SizedBox(
-                                height: SizeConfig.screenHeight * 0.03,
-                              ),
+                              // SizedBox(
+                              //   height: SizeConfig.screenHeight * 0.03,
+                              // ),
 
                               //Register link
                               Container(
