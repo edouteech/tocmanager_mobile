@@ -243,6 +243,7 @@ class _AjouterProduitPageState extends State<AjouterProduitPage> {
                         ),
                         IconButton(
                           onPressed: () async {
+                            SqlDb.mydeleteDatabase();
                             logout().then((value) => {
                                   Navigator.of(context).pushAndRemoveUntil(
                                       MaterialPageRoute(

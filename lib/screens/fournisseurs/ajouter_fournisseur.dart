@@ -222,6 +222,7 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
                         ),
                         IconButton(
                           onPressed: () async {
+                            SqlDb.mydeleteDatabase();
                             logout().then((value) => {
                                   Navigator.of(context).pushAndRemoveUntil(
                                       MaterialPageRoute(

@@ -433,6 +433,7 @@ class _AchatHomePageState extends State<AchatHomePage> {
                         ),
                         IconButton(
                           onPressed: () async {
+                            SqlDb.mydeleteDatabase();
                             logout().then((value) => {
                                   Navigator.of(context).pushAndRemoveUntil(
                                       MaterialPageRoute(
