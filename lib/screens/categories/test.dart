@@ -1,11 +1,9 @@
 // ignore_for_file: avoid_unnecessary_containers, non_constant_identifier_names, use_build_context_synchronously, constant_identifier_names, sized_box_for_whitespace, deprecated_member_use, unused_field, prefer_final_fields, avoid_print, unused_local_variable, prefer_collection_literals, unnecessary_this, unused_import
 import 'dart:convert';
-import 'dart:io';
-import 'package:connectivity_plus/connectivity_plus.dart';
+
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:intl/intl.dart';
-import 'package:tocmanager/database/sqfdb.dart';
 import 'package:tocmanager/screens/achats/achat_home.dart';
 import 'package:tocmanager/screens/categories/categorielist.dart';
 import 'package:tocmanager/screens/clients/ajouter_client.dart';
@@ -37,39 +35,12 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
   bool isNotSuscribe = false;
   String? message;
   bool? isLoading;
-  SqlDb sqlDb = SqlDb();
-  bool? isConnected;
-  late ConnectivityResult _connectivityResult;
 
   @override
   void initState() {
-    initConnectivity();
     checkSuscribe();
     super.initState();
     readCategories();
-  }
-
-  /* Dropdown items */
-  String? parent_id;
-
-  initConnectivity() async {
-    final ConnectivityResult result = await Connectivity().checkConnectivity();
-    setState(() {
-      _connectivityResult = result;
-    });
-    if (_connectivityResult == ConnectivityResult.none) {
-      // Si l'appareil n'est pas connecté à Internet.
-      setState(() {
-        isConnected = false;
-      });
-    } else {
-      // Si l'appareil est connecté à Internet.
-      setState(() {
-        isConnected = true;
-      });
-    }
-
-    return isConnected;
   }
 
   Future<void> checkSuscribe() async {
@@ -98,6 +69,9 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
 
   List<Map<String, dynamic>> categoryMapList = [];
 
+  /* Dropdown items */
+  String? parent_id;
+
   //Fields Controller
   TextEditingController name = TextEditingController();
 
@@ -113,10 +87,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
         floatingActionButton: isNotSuscribe == true
             ? null
             : FloatingActionButton(
-                onPressed: () async {
-                  // SqlDb.deleteAllDatabaseFiles(
-                  //     '.dart_tool/sqflite_common_ffi/databases');
-                  //  SqlDb.mydeleteDatabase();
+                onPressed: () {
                   _showFormDialog(context);
                 },
                 backgroundColor: Colors.blue,
@@ -233,8 +204,6 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
                         ),
                         IconButton(
                           onPressed: () async {
-                            SqlDb.mydeleteDatabase();
-
                             logout().then((value) => {
                                   Navigator.of(context).pushAndRemoveUntil(
                                       MaterialPageRoute(
@@ -282,149 +251,150 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
 
   _showFormDialog(BuildContext context) {
     return showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (param) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: SingleChildScrollView(
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 5),
-              width: double.infinity,
+        context: context,
+        barrierDismissible: true,
+        builder: (param) {
+          return AlertDialog(
+            actions: [
+              TextButton(
+                child: const Text(
+                  'Annuler',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                },
+              ),
+              TextButton(
+                  child: const Text('Valider',
+                      style: TextStyle(color: Colors.green)),
+                  onPressed: () async {
+                    if (_formKey.currentState!.validate()) {
+                      _createCategories();
+                    }
+                  }),
+            ],
+            title: const Center(child: Text('Ajouter Catégorie')),
+            content: SingleChildScrollView(
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: IconButton(
-                      color: Colors.red,
-                      icon: const Icon(Icons.close),
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 10.0),
-                  const Center(child: Text('Ajouter Catégorie')),
-                  const SizedBox(height: 10.0),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Nom de la catégorie',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value!.isEmpty) {
-                        return 'Veuillez saisir le nom de la catégorie';
-                      }
-                      return null;
-                    },
-                    onSaved: (value) {
-                      // TODO: sauvegarder la valeur
-                    },
-                  ),
-                  const SizedBox(height: 10.0),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            _createCategories();
-                          }
-                        },
-                        child: const Text(
-                          'Valider',
-                          style: TextStyle(color: Colors.green),
+                  Form(
+                    key: _formKey,
+                    //name categorie create
+                    child: Column(
+                      children: [
+                        Container(
+                          alignment: Alignment.center,
+                          margin: const EdgeInsets.only(
+                              left: 20, right: 20, top: 30),
+                          child: TextFormField(
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
+                            controller: name,
+                            cursorColor:
+                                const Color.fromARGB(255, 45, 157, 220),
+                            decoration: const InputDecoration(
+                              enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color.fromARGB(255, 45, 157, 220)),
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(10))),
+                              border: OutlineInputBorder(
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(10))),
+                              label: Text("Nom de la catégorie"),
+                              labelStyle:
+                                  TextStyle(fontSize: 13, color: Colors.black),
+                            ),
+                            validator: MultiValidator([
+                              RequiredValidator(
+                                  errorText: "Veuillez entrer une catégorie")
+                            ]),
+                          ),
                         ),
-                      ),
-                    ],
+                        Container(
+                            padding: const EdgeInsets.only(left: 20, right: 20),
+                            margin: const EdgeInsets.only(top: 10),
+                            child: DropdownFormField(
+                              decoration: const InputDecoration(
+                                enabledBorder: OutlineInputBorder(
+                                    borderSide: BorderSide(
+                                        color:
+                                            Color.fromARGB(255, 45, 157, 220)),
+                                    borderRadius:
+                                        BorderRadius.all(Radius.circular(10))),
+                                border: OutlineInputBorder(
+                                    borderRadius:
+                                        BorderRadius.all(Radius.circular(10))),
+                                label: Text("Categorie Parente"),
+                                labelStyle: TextStyle(
+                                    fontSize: 13, color: Colors.black),
+                              ),
+                              dropdownColor: Colors.white,
+                              findFn: (dynamic str) async => categoryMapList,
+                              selectedFn: (dynamic item1, dynamic item2) {
+                                if (item1 != null && item2 != null) {
+                                  return item1['id'] == item2['id'];
+                                }
+                                return false;
+                              },
+                              displayItemFn: (dynamic item) => Text(
+                                (item ?? {})['name'] ?? '',
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                              onSaved: (dynamic str) {
+                                print(str);
+                              },
+                              onChanged: (dynamic str) {
+                                setState(() {
+                                  parent_id = str['id'].toString();
+                                });
+                              },
+                              filterFn: (dynamic item, str) =>
+                                  item['name']
+                                      .toLowerCase()
+                                      .indexOf(str.toLowerCase()) >=
+                                  0,
+                              dropdownItemFn: (dynamic item,
+                                      int position,
+                                      bool focused,
+                                      bool selected,
+                                      Function() onTap) =>
+                                  ListTile(
+                                title: Text(item['name']),
+                                tileColor: focused
+                                    ? const Color.fromARGB(20, 0, 0, 0)
+                                    : Colors.transparent,
+                                onTap: onTap,
+                              ),
+                            )),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-          ),
-        );
-      },
-    );
+          );
+        });
   }
 
   //create catégories
   void _createCategories() async {
-    bool sendMessage = false;
-    String? message;
-    String color = "red";
     int compagnie_id = await getCompagnie_id();
+    ApiResponse response =
+        await CreateCategories(compagnie_id.toString(), name.text, parent_id);
 
-    dynamic isConnected = await initConnectivity();
-
-    if (isConnected == false) {
-      // is app is not connected
-      if (parent_id != null) {
-        var parent = await sqlDb.readData('''
-
-SELECT categories.*, parents.name as parent_name FROM categories join categories as parents on categories.parent_id = parents.id where categories.id = $parent_id        ''');
-        //if parent_id is not selected
-        var response = await sqlDb.insertData('''
-                    INSERT INTO Categories(name, parent_id, parent_name, compagnie_id, isSync) VALUES('${name.text}', '$parent_id', '${parent[0]['name']}', '$compagnie_id', 0)
-                  ''');
-        if (response = true) {
-          Navigator.of(context).pushReplacement(MaterialPageRoute(
-              builder: (context) => const AjouterCategoriePage()));
-        } else {
-          Navigator.of(context).pop();
-          message = "Echec de la création !";
-          setState(() {
-            sendMessage = true;
-          });
-        }
-      } else {
-        //if parent_id is selected
-        var response = await sqlDb.insertData('''
-                    INSERT INTO Categories(name, compagnie_id, isSync) VALUES('${name.text}', '$compagnie_id', 0)
-                  ''');
-        if (response = true) {
-          Navigator.of(context).pushReplacement(MaterialPageRoute(
-              builder: (context) => const AjouterCategoriePage()));
-        } else {
-          Navigator.of(context).pop();
-          message = "Echec de la création !";
-          setState(() {
-            sendMessage = true;
-          });
-        }
-      }
-    } else if (isConnected == true) {
-      // is app is  connected
-      ApiResponse response =
-          await CreateCategories(compagnie_id.toString(), name.text, parent_id);
+    if (response.error == null) {
       if (response.statusCode == 200) {
         if (response.status == "error") {
-          Navigator.of(context).pop();
-          message = response.message;
-          setState(() {
-            sendMessage = true;
-          });
+          String? message = response.message;
         } else {
-          if (parent_id != null) {
-            var parent = await sqlDb.readData('''
-
-SELECT categories.*, parents.name as parent_name FROM categories join categories as parents on categories.parent_id = parents.id where categories.id = $parent_id        ''');
-            //if parent_id is not selected
-            var response = await sqlDb.insertData('''
-                    INSERT INTO Categories(name, parent_id, parent_name, compagnie_id) VALUES('${name.text}', '$parent_id', '${parent[0]['name']}', '$compagnie_id')
-                  ''');
-          } else {
-            //if parent_id is selected
-            var response = await sqlDb.insertData('''
-                    INSERT INTO Categories(name, compagnie_id) VALUES('${name.text}', '$compagnie_id')
-                  ''');
-          }
           Navigator.of(context).pushReplacement(MaterialPageRoute(
               builder: (context) => const AjouterCategoriePage()));
         }
-      } else if (response.statusCode == 403) {
+      }
+    } else {
+      if (response.statusCode == 403) {
         setState(() {
           isNotSuscribe = true;
         });
@@ -432,50 +402,19 @@ SELECT categories.*, parents.name as parent_name FROM categories join categories
         print(response.error);
       }
     }
-
-    if (sendMessage == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor:
-              color == "green" ? Colors.green[800] : Colors.red[800],
-          content: SizedBox(
-            width: double.infinity,
-            height: 20,
-            child: Center(
-              child: Text(
-                message!,
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-          ),
-          duration: const Duration(milliseconds: 3000),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
   }
 
   //readCategories
   Future<void> readCategories() async {
-    dynamic isConnected = await initConnectivity();
     int compagnie_id = await getCompagnie_id();
-    if (isConnected == true) {
-      ApiResponse response = await ReadCategories(compagnie_id);
-      if (response.error == null) {
-        if (response.statusCode == 200) {
-          List<dynamic> data = response.data as List<dynamic>;
-          for (var category in data) {
-            var categoryMap = category as Map<String, dynamic>;
-            categoryMapList.add(categoryMap);
-          }
+    ApiResponse response = await ReadCategories(compagnie_id);
+    if (response.error == null) {
+      if (response.statusCode == 200) {
+        List<dynamic> data = response.data as List<dynamic>;
+        for (var category in data) {
+          var categoryMap = category as Map<String, dynamic>;
+          categoryMapList.add(categoryMap);
         }
-      }
-    } else if (isConnected == false) {
-      List<dynamic> data =
-          await sqlDb.readData('''SELECT * FROM Categories ''');
-      for (var category in data) {
-        var categoryMap = category as Map<String, dynamic>;
-        categoryMapList.add(categoryMap);
       }
     }
   }
@@ -490,5 +429,5 @@ enum DrawerSections {
   fournisseur,
   client,
   privacy_policy,
-  logout
+  logout,
 }
