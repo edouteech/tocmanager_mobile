@@ -358,6 +358,8 @@ class _ProduitListPageState extends State<ProduitListPage> {
     }
   }
 
+  
+
   _showFormDialog(
       int? update_product_id,
       int? update_product_category_id,
@@ -383,279 +385,337 @@ class _ProduitListPageState extends State<ProduitListPage> {
       code.text =
           (update_product_code != null) ? update_product_code.toString() : "";
     });
-
     return showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.8,
-            ),
-            child: AlertDialog(
-              actions: [
-                TextButton(
-                  child: const Text(
-                    'Annuler',
-                    style: TextStyle(color: Colors.red),
+      barrierDismissible: true,
+      builder: (param) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: SingleChildScrollView(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              width: double.infinity,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: IconButton(
+                      color: Colors.red,
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                    ),
                   ),
-                  onPressed: () async {
-                    Navigator.of(context).pop();
-                  },
-                ),
-                TextButton(
-                  child: const Text('Valider',
-                      style: TextStyle(color: Colors.green)),
-                  onPressed: () async {
-                    if (_formKey.currentState!.validate()) {
-                      updateProducts(update_product_id);
-                    }
-                  },
-                ),
-              ],
-              title: const Center(child: Text('Modifier Produit')),
-              content: SingleChildScrollView(
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      //Liste des catégories
-                      Container(
-                          padding: const EdgeInsets.only(left: 20, right: 20),
-                          margin: const EdgeInsets.only(top: 10),
-                          child: DropdownButtonFormField(
-                            autovalidateMode:
-                                AutovalidateMode.onUserInteraction,
-                            decoration: const InputDecoration(
-                              enabledBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                      color: Color.fromARGB(255, 45, 157, 220)),
-                                  borderRadius:
-                                      BorderRadius.all(Radius.circular(10))),
-                              border: OutlineInputBorder(
-                                  borderRadius:
-                                      BorderRadius.all(Radius.circular(10))),
-                              label: Text("Nom catégorie"),
-                              labelStyle:
-                                  TextStyle(fontSize: 13, color: Colors.black),
+                  const SizedBox(height: 10.0),
+                  const Center(child: Text('Modifier Produit')),
+                  const SizedBox(height: 20.0),
+                  Form(
+                      key: _formKey,
+                      child: Column(
+                        children: [
+                          //Liste des catégories
+                          Container(
+                              margin: const EdgeInsets.only(
+                                  left: 20, right: 20, top: 15),
+                              child: DropdownButtonFormField(
+                                autovalidateMode:
+                                    AutovalidateMode.onUserInteraction,
+                                decoration: const InputDecoration(
+                                  enabledBorder: OutlineInputBorder(
+                                      borderSide: BorderSide(
+                                          color: Color.fromARGB(
+                                              255, 45, 157, 220)),
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(10))),
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(10))),
+                                  label: Text("Nom catégorie"),
+                                  labelStyle: TextStyle(
+                                      fontSize: 13, color: Colors.black),
+                                ),
+                                dropdownColor: Colors.white,
+                                value: category_id,
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    category_id = newValue!;
+                                    categoryId.text = category_id!;
+                                  });
+                                },
+                                items: dropdownItems,
+                                // validator: (String? value) {
+                                //   if (value == null || value.isEmpty) {
+                                //     return 'Selectionner une catégorie';
+                                //   }
+                                //   return null;
+                                // },
+                              )),
+                          Container(
+                            alignment: Alignment.center,
+                            margin: const EdgeInsets.only(
+                                left: 20, right: 20, top: 30),
+                            child: TextFormField(
+                                autovalidateMode:
+                                    AutovalidateMode.onUserInteraction,
+                                controller: name,
+                                cursorColor:
+                                    const Color.fromARGB(255, 45, 157, 220),
+                                decoration: const InputDecoration(
+                                  enabledBorder: OutlineInputBorder(
+                                      borderSide: BorderSide(
+                                          color: Color.fromARGB(
+                                              255, 45, 157, 220)),
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(10))),
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(10))),
+                                  label: Text("Nom du produit"),
+                                  labelStyle: TextStyle(
+                                      fontSize: 13, color: Colors.black),
+                                ),
+                                validator: MultiValidator([
+                                  RequiredValidator(
+                                      errorText:
+                                          "Veuillez entrer le nom du produit")
+                                ])),
+                          ),
+                          Row(children: [
+                            //Quantité
+                            Expanded(
+                              child: Container(
+                                alignment: Alignment.center,
+                                margin: const EdgeInsets.only(
+                                    left: 20, right: 20, top: 15),
+                                child: TextFormField(
+                                  keyboardType: TextInputType.number,
+                                  autovalidateMode:
+                                      AutovalidateMode.onUserInteraction,
+                                  controller: quantity,
+                                  cursorColor:
+                                      const Color.fromARGB(255, 45, 157, 220),
+                                  decoration: const InputDecoration(
+                                    enabledBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                            color: Color.fromARGB(
+                                                255, 45, 157, 220)),
+                                        borderRadius: BorderRadius.all(
+                                            Radius.circular(10))),
+                                    border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.all(
+                                            Radius.circular(10))),
+                                    label: Text("Quantité"),
+                                    labelStyle: TextStyle(
+                                        fontSize: 13, color: Colors.black),
+                                  ),
+                                  validator: MultiValidator([
+                                    RequiredValidator(
+                                        errorText:
+                                            "Veuillez entrer une quantité")
+                                  ]),
+                                ),
+                              ),
                             ),
-                            dropdownColor: Colors.white,
-                            value: category_id,
-                            onChanged: (String? newValue) {
-                              setState(() {
-                                category_id = newValue!;
-                                categoryId.text = category_id!;
-                              });
-                            },
-                            items: dropdownItems,
-                            // validator: (String? value) {
-                            //   if (value == null || value.isEmpty) {
-                            //     return 'Selectionner une catégorie';
-                            //   }
-                            //   return null;
-                            // },
-                          )),
 
-                      //Nom du produit
-                      Container(
-                        alignment: Alignment.center,
-                        margin:
-                            const EdgeInsets.only(left: 20, right: 20, top: 30),
-                        child: TextFormField(
-                            autovalidateMode:
-                                AutovalidateMode.onUserInteraction,
-                            controller: name,
-                            cursorColor:
-                                const Color.fromARGB(255, 45, 157, 220),
-                            decoration: const InputDecoration(
-                              enabledBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                      color: Color.fromARGB(255, 45, 157, 220)),
-                                  borderRadius:
-                                      BorderRadius.all(Radius.circular(10))),
-                              border: OutlineInputBorder(
-                                  borderRadius:
-                                      BorderRadius.all(Radius.circular(10))),
-                              label: Text("Nom du produit"),
-                              labelStyle:
-                                  TextStyle(fontSize: 13, color: Colors.black),
+                            //Prix d'achat
+                            Expanded(
+                              child: Container(
+                                alignment: Alignment.center,
+                                margin:
+                                    const EdgeInsets.only(left: 20, right: 20, top: 15),
+                                child: TextFormField(
+                                  keyboardType: TextInputType.number,
+                                  controller: price_buy,
+                                  autovalidateMode:
+                                      AutovalidateMode.onUserInteraction,
+                                  cursorColor:
+                                      const Color.fromARGB(255, 45, 157, 220),
+                                  decoration: const InputDecoration(
+                                    enabledBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                            color: Color.fromARGB(
+                                                255, 45, 157, 220)),
+                                        borderRadius: BorderRadius.all(
+                                            Radius.circular(10))),
+                                    border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.all(
+                                            Radius.circular(10))),
+                                    label: Text("Prix achat"),
+                                    labelStyle: TextStyle(
+                                        fontSize: 13, color: Colors.black),
+                                  ),
+                                  validator: MultiValidator([
+                                    RequiredValidator(
+                                        errorText:
+                                            "Veuillez entrer un prix d'acchat")
+                                  ]),
+                                ),
+                              ),
                             ),
-                            validator: MultiValidator([
-                              RequiredValidator(
-                                  errorText:
-                                      "Veuillez entrer le nom du produit")
-                            ])),
-                      ),
-
-                      //Quantité
-                      Container(
-                        alignment: Alignment.center,
-                        margin:
-                            const EdgeInsets.only(left: 20, right: 20, top: 30),
-                        child: TextFormField(
-                          keyboardType: TextInputType.number,
-                          autovalidateMode: AutovalidateMode.onUserInteraction,
-                          controller: quantity,
-                          cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                          decoration: const InputDecoration(
-                            enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(
-                                    color: Color.fromARGB(255, 45, 157, 220)),
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(10))),
-                            border: OutlineInputBorder(
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(10))),
-                            label: Text("Quantité"),
-                            labelStyle:
-                                TextStyle(fontSize: 13, color: Colors.black),
-                          ),
-                          validator: MultiValidator([
-                            RequiredValidator(
-                                errorText: "Veuillez entrer une quantité")
                           ]),
-                        ),
-                      ),
+                          Row(children: [
+                            //Prix de vente
+                            Expanded(
+                              child: Container(
+                                alignment: Alignment.center,
+                                margin:
+                                    const EdgeInsets.only(left: 20, right: 20, top: 15),
+                                child: TextFormField(
+                                  keyboardType: TextInputType.number,
+                                  controller: price_sell,
+                                  cursorColor:
+                                      const Color.fromARGB(255, 45, 157, 220),
+                                  autovalidateMode:
+                                      AutovalidateMode.onUserInteraction,
+                                  decoration: const InputDecoration(
+                                    enabledBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                            color: Color.fromARGB(
+                                                255, 45, 157, 220)),
+                                        borderRadius: BorderRadius.all(
+                                            Radius.circular(10))),
+                                    border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.all(
+                                            Radius.circular(10))),
+                                    label: Text("Prix vente"),
+                                    labelStyle: TextStyle(
+                                        fontSize: 13, color: Colors.black),
+                                  ),
+                                  validator: MultiValidator([
+                                    RequiredValidator(
+                                        errorText:
+                                            "Veuillez entrer un prix de vente")
+                                  ]),
+                                ),
+                              ),
+                            ),
 
-                      //Prix d'achat
-                      Container(
-                        alignment: Alignment.center,
-                        margin:
-                            const EdgeInsets.only(left: 20, right: 20, top: 30),
-                        child: TextFormField(
-                          keyboardType: TextInputType.number,
-                          controller: price_buy,
-                          autovalidateMode: AutovalidateMode.onUserInteraction,
-                          cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                          decoration: const InputDecoration(
-                            enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(
-                                    color: Color.fromARGB(255, 45, 157, 220)),
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(10))),
-                            border: OutlineInputBorder(
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(10))),
-                            label: Text("Prix achat"),
-                            labelStyle:
-                                TextStyle(fontSize: 13, color: Colors.black),
-                          ),
-                          validator: MultiValidator([
-                            RequiredValidator(
-                                errorText: "Veuillez entrer un prix d'acchat")
+                           
+
+                            //stock minimal
+                            Expanded(
+                              child: Container(
+                                alignment: Alignment.center,
+                                margin: const EdgeInsets.only(
+                                    left: 20, right: 20, top: 15),
+                                child: TextFormField(
+                                  keyboardType: TextInputType.number,
+                                  controller: stock_min,
+                                  cursorColor:
+                                      const Color.fromARGB(255, 45, 157, 220),
+                                  autovalidateMode:
+                                      AutovalidateMode.onUserInteraction,
+                                  decoration: const InputDecoration(
+                                    enabledBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                            color: Color.fromARGB(
+                                                255, 45, 157, 220)),
+                                        borderRadius: BorderRadius.all(
+                                            Radius.circular(10))),
+                                    border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.all(
+                                            Radius.circular(10))),
+                                    label: Text("Stock minimal"),
+                                    labelStyle: TextStyle(
+                                        fontSize: 13, color: Colors.black),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ]),
-                        ),
-                      ),
+                          Row(
+                            children: [
+                              //stock maximal
+                              Expanded(
+                                child: Container(
+                                  alignment: Alignment.center,
+                                  margin: const EdgeInsets.only(
+                                      left: 20, right: 20, top: 15),
+                                  child: TextFormField(
+                                    keyboardType: TextInputType.number,
+                                    controller: stock_max,
+                                    cursorColor:
+                                        const Color.fromARGB(255, 45, 157, 220),
+                                    autovalidateMode:
+                                        AutovalidateMode.onUserInteraction,
+                                    decoration: const InputDecoration(
+                                      enabledBorder: OutlineInputBorder(
+                                          borderSide: BorderSide(
+                                              color: Color.fromARGB(
+                                                  255, 45, 157, 220)),
+                                          borderRadius: BorderRadius.all(
+                                              Radius.circular(10))),
+                                      border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.all(
+                                              Radius.circular(10))),
+                                      label: Text("Stock maximal"),
+                                      labelStyle: TextStyle(
+                                          fontSize: 13, color: Colors.black),
+                                    ),
+                                  ),
+                                ),
+                              ),
 
-                      //Prix de vente
-                      Container(
-                        alignment: Alignment.center,
-                        margin:
-                            const EdgeInsets.only(left: 20, right: 20, top: 30),
-                        child: TextFormField(
-                          keyboardType: TextInputType.number,
-                          controller: price_sell,
-                          cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                          autovalidateMode: AutovalidateMode.onUserInteraction,
-                          decoration: const InputDecoration(
-                            enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(
-                                    color: Color.fromARGB(255, 45, 157, 220)),
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(10))),
-                            border: OutlineInputBorder(
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(10))),
-                            label: Text("Prix vente"),
-                            labelStyle:
-                                TextStyle(fontSize: 13, color: Colors.black),
+                              //code
+                              Expanded(
+                                child: Container(
+                                  alignment: Alignment.center,
+                                  margin: const EdgeInsets.only(
+                                      left: 20, right: 20, top: 15),
+                                  child: TextFormField(
+                                    controller: code,
+                                    cursorColor:
+                                        const Color.fromARGB(255, 45, 157, 220),
+                                    decoration: const InputDecoration(
+                                      enabledBorder: OutlineInputBorder(
+                                          borderSide: BorderSide(
+                                              color: Color.fromARGB(
+                                                  255, 45, 157, 220)),
+                                          borderRadius: BorderRadius.all(
+                                              Radius.circular(10))),
+                                      border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.all(
+                                              Radius.circular(10))),
+                                      label: Text("Code"),
+                                      labelStyle: TextStyle(
+                                          fontSize: 13, color: Colors.black),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          validator: MultiValidator([
-                            RequiredValidator(
-                                errorText: "Veuillez entrer un prix de vente")
-                          ]),
-                        ),
-                      ),
-
-                      //stock minimal
-                      Container(
-                        alignment: Alignment.center,
-                        margin:
-                            const EdgeInsets.only(left: 20, right: 20, top: 30),
-                        child: TextFormField(
-                          keyboardType: TextInputType.number,
-                          controller: stock_min,
-                          cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                          autovalidateMode: AutovalidateMode.onUserInteraction,
-                          decoration: const InputDecoration(
-                            enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(
-                                    color: Color.fromARGB(255, 45, 157, 220)),
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(10))),
-                            border: OutlineInputBorder(
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(10))),
-                            label: Text("Stock minimal"),
-                            labelStyle:
-                                TextStyle(fontSize: 13, color: Colors.black),
-                          ),
-                        ),
-                      ),
-
-                      //stock maximal
-                      Container(
-                        alignment: Alignment.center,
-                        margin:
-                            const EdgeInsets.only(left: 20, right: 20, top: 30),
-                        child: TextFormField(
-                          keyboardType: TextInputType.number,
-                          controller: stock_max,
-                          cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                          autovalidateMode: AutovalidateMode.onUserInteraction,
-                          decoration: const InputDecoration(
-                            enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(
-                                    color: Color.fromARGB(255, 45, 157, 220)),
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(10))),
-                            border: OutlineInputBorder(
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(10))),
-                            label: Text("Stock maximal"),
-                            labelStyle:
-                                TextStyle(fontSize: 13, color: Colors.black),
+                        ],
+                      )),
+                  const SizedBox(height: 10.0),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 20, bottom: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            if (_formKey.currentState!.validate()) {
+                              updateProducts(update_product_id);
+                            }
+                          },
+                          child: const Text(
+                            'Valider',
+                            style: TextStyle(color: Colors.green),
                           ),
                         ),
-                      ),
-
-                      //code
-                      Container(
-                        alignment: Alignment.center,
-                        margin:
-                            const EdgeInsets.only(left: 20, right: 20, top: 30),
-                        child: TextFormField(
-                          controller: code,
-                          cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                          decoration: const InputDecoration(
-                            enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(
-                                    color: Color.fromARGB(255, 45, 157, 220)),
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(10))),
-                            border: OutlineInputBorder(
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(10))),
-                            label: Text("Code"),
-                            labelStyle:
-                                TextStyle(fontSize: 13, color: Colors.black),
-                          ),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ),
-            ));
+            ),
+          ),
+        );
       },
     );
   }

@@ -373,42 +373,39 @@ class _CategoriesListState extends State<CategoriesList> {
       name.text = update_category_name.toString();
     });
     return showDialog(
-        context: context,
-        barrierDismissible: true,
-        builder: (param) {
-          return AlertDialog(
-            actions: [
-              TextButton(
-                child: const Text(
-                  'Annuler',
-                  style: TextStyle(color: Colors.red),
-                ),
-                onPressed: () async {
-                  Navigator.of(context).pop();
-                },
-              ),
-              TextButton(
-                  child: const Text('Valider',
-                      style: TextStyle(color: Colors.green)),
-                  onPressed: () async {
-                    if (_formKey.currentState!.validate()) {
-                      _updateCategories(update_category_id);
-                    }
-                  }),
-            ],
-            title: const Center(child: Text('Ajouter Catégorie')),
-            content: SingleChildScrollView(
+      context: context,
+      barrierDismissible: true,
+      builder: (param) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: SingleChildScrollView(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              width: double.infinity,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: IconButton(
+                      color: Colors.red,
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 10.0),
+                  const Center(child: Text('Modifier Catégorie')),
+                  const SizedBox(height: 20.0),
                   Form(
-                    key: _formKey,
-                    //name categorie create
-                    child: Column(
-                      children: [
+                      key: _formKey,
+                      child: Column(children: [
                         Container(
                           alignment: Alignment.center,
-                          margin: const EdgeInsets.only(
-                              left: 20, right: 20, top: 30),
+                          margin: const EdgeInsets.only(left: 20, right: 20),
                           child: TextFormField(
                             autovalidateMode:
                                 AutovalidateMode.onUserInteraction,
@@ -434,11 +431,9 @@ class _CategoriesListState extends State<CategoriesList> {
                             ]),
                           ),
                         ),
-
-                        //Catégorie parente
                         Container(
-                            padding: const EdgeInsets.only(left: 20, right: 20),
-                            margin: const EdgeInsets.only(top: 10),
+                            margin: const EdgeInsets.only(
+                                left: 20, right: 20, top: 15),
                             child: DropdownButtonFormField(
                               isExpanded: true,
                               decoration: const InputDecoration(
@@ -464,14 +459,34 @@ class _CategoriesListState extends State<CategoriesList> {
                               },
                               items: dropdownItems,
                             )),
+                      ])),
+                  const SizedBox(height: 10.0),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 10, bottom: 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            if (_formKey.currentState!.validate()) {
+                              _updateCategories(update_category_id);
+                            }
+                          },
+                          child: const Text(
+                            'Valider',
+                            style: TextStyle(color: Colors.green),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ],
               ),
             ),
-          );
-        });
+          ),
+        );
+      },
+    );
   }
 }
 

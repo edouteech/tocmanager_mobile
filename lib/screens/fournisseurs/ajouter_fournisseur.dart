@@ -268,168 +268,155 @@ class _AjouterFournisseurPageState extends State<AjouterFournisseurPage> {
   //Formulaire
   _showFormDialog(BuildContext context) {
     return showDialog(
-        context: context,
-        barrierDismissible: true,
-        builder: (param) {
-          return AlertDialog(
-            actions: [
-              TextButton(
-                child: const Text(
-                  'Annuler',
-                  style: TextStyle(color: Colors.red),
-                ),
-                onPressed: () async {
-                  Navigator.of(context).pop();
-                },
-              ),
-              TextButton(
-                child: const Text('Valider',
-                    style: TextStyle(color: Colors.green)),
-                onPressed: () async {
-                  if (_formKey.currentState!.validate()) {
-                    _createSuppliers();
-                  }
-                },
-              ),
-            ],
-            title: const Center(child: Text('Ajouter Fournisseur')),
-            content: SingleChildScrollView(
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    //name of supplier
-                    Container(
-                      alignment: Alignment.center,
-                      margin:
-                          const EdgeInsets.only(left: 20, right: 20, top: 30),
-                      child: TextFormField(
-                          autovalidateMode: AutovalidateMode.onUserInteraction,
-                          controller: nameController,
-                          cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                          decoration: const InputDecoration(
-                            enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(
-                                    color: Color.fromARGB(255, 45, 157, 220)),
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(10))),
-                            border: OutlineInputBorder(
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(10))),
-                            label: Text("Nom"),
-                            labelStyle:
-                                TextStyle(fontSize: 13, color: Colors.black),
+      context: context,
+      barrierDismissible: true,
+      builder: (param) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: SingleChildScrollView(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              width: double.infinity,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: IconButton(
+                      color: Colors.red,
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 10.0),
+                  const Center(child: Text('Ajouter Fournisseur')),
+                  const SizedBox(height: 10.0),
+                  Form(
+                      key: _formKey,
+                      child: Column(children: [
+                        Container(
+                          alignment: Alignment.center,
+                          margin: const EdgeInsets.only(
+                            left: 20,
+                            right: 20,
                           ),
-                          validator: MultiValidator([
-                            RequiredValidator(
-                                errorText: "Veuillez entrer le nom")
-                          ])),
-                    ),
-
-                    //Email of suppliers
-                    Container(
-                      alignment: Alignment.center,
-                      margin:
-                          const EdgeInsets.only(left: 20, right: 20, top: 30),
-                      child: TextFormField(
-                        keyboardType: TextInputType.emailAddress,
-                        autovalidateMode: AutovalidateMode.onUserInteraction,
-                        controller: emailController,
-                        cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                        decoration: const InputDecoration(
-                          enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color.fromARGB(255, 45, 157, 220)),
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          border: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          label: Text("Email"),
-                          labelStyle:
-                              TextStyle(fontSize: 13, color: Colors.black),
+                          child: TextFormField(
+                              autovalidateMode:
+                                  AutovalidateMode.onUserInteraction,
+                              controller: nameController,
+                              cursorColor:
+                                  const Color.fromARGB(255, 45, 157, 220),
+                              decoration: const InputDecoration(
+                                enabledBorder: OutlineInputBorder(
+                                    borderSide: BorderSide(
+                                        color: Color.fromARGB(
+                                            255, 45, 157, 220)),
+                                    borderRadius: BorderRadius.all(
+                                        Radius.circular(10))),
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.all(
+                                        Radius.circular(10))),
+                                label: Text("Nom"),
+                                labelStyle: TextStyle(
+                                    fontSize: 13, color: Colors.black),
+                              ),
+                              validator: MultiValidator([
+                                RequiredValidator(
+                                    errorText: "Veuillez entrer le nom")
+                              ])),
                         ),
-                        validator: (val) {
-                          if (val == null || val.isEmpty) {
-                            // If the value is null or empty, return null to indicate no error
-                            return null;
-                          } else if (RegExp(
-                                  r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
-                              .hasMatch(val)) {
-                            return null;
-                          } else {
-                            return "Veuillez entrer un email valide";
-                          }
-                        },
-                      ),
-                    ),
-
-                    //Phone of suppliers
-                    Container(
-                      alignment: Alignment.center,
-                      margin:
-                          const EdgeInsets.only(left: 20, right: 20, top: 30),
-                      child: TextFormField(
-                        controller: phoneController,
-                        cursorColor: const Color.fromARGB(255, 45, 157, 220),
-                        decoration: const InputDecoration(
-                          enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color.fromARGB(255, 45, 157, 220)),
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          border: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10))),
-                          label: Text("Numéro"),
-                          labelStyle:
-                              TextStyle(fontSize: 13, color: Colors.black),
-                        ),
-                      ),
-                    ),
-
-                    // Address of suppliers
-                    Container(
-                        padding: const EdgeInsets.only(left: 20, right: 20),
-                        margin: const EdgeInsets.only(top: 10),
-                        child: DropdownButtonFormField(
-                          isExpanded: true,
-                          validator: (value) => value == null
-                              ? 'Sélectionner la nature du fournisseur'
-                              : null,
-                          decoration: const InputDecoration(
-                            enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(
-                                    color: Color.fromARGB(255, 45, 157, 220)),
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(10))),
-                            border: OutlineInputBorder(
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(10))),
-                            label: Text("Nature"),
-                            labelStyle:
-                                TextStyle(fontSize: 13, color: Colors.black),
+                        Container(
+                          alignment: Alignment.center,
+                          margin: const EdgeInsets.only(
+                              left: 20, right: 20, top: 15),
+                          child: TextFormField(
+                            controller: phoneController,
+                            cursorColor:
+                                const Color.fromARGB(255, 45, 157, 220),
+                            decoration: const InputDecoration(
+                              enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color:
+                                          Color.fromARGB(255, 45, 157, 220)),
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(10))),
+                              border: OutlineInputBorder(
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(10))),
+                              label: Text("Numéro"),
+                              labelStyle: TextStyle(
+                                  fontSize: 13, color: Colors.black),
+                            ),
                           ),
-                          dropdownColor: Colors.white,
-                          value: supplier_nature,
-                          onChanged: (value) {
-                            setState(() {
-                              supplier_nature = value as String?;
-                            });
+                        ),
+                        Container(
+                            margin: const EdgeInsets.only(
+                                left: 20, right: 20, top: 15),
+                            child: DropdownButtonFormField(
+                              isExpanded: true,
+                              validator: (value) => value == null
+                                  ? 'Sélectionner la nature du fournisseur'
+                                  : null,
+                              decoration: const InputDecoration(
+                                enabledBorder: OutlineInputBorder(
+                                    borderSide: BorderSide(
+                                        color: Color.fromARGB(
+                                            255, 45, 157, 220)),
+                                    borderRadius: BorderRadius.all(
+                                        Radius.circular(10))),
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.all(
+                                        Radius.circular(10))),
+                                label: Text("Nature"),
+                                labelStyle: TextStyle(
+                                    fontSize: 13, color: Colors.black),
+                              ),
+                              dropdownColor: Colors.white,
+                              value: supplier_nature,
+                              onChanged: (value) {
+                                setState(() {
+                                  supplier_nature = value as String?;
+                                });
+                              },
+                              items: SupplierNatureList.map((nature) {
+                                return DropdownMenuItem<String>(
+                                  value: nature["value"],
+                                  child: Text(nature["name"]),
+                                );
+                              }).toList(),
+                            )),
+                      ])),
+                  const SizedBox(height: 10.0),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 10, bottom: 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            if (_formKey.currentState!.validate()) {
+                              _createSuppliers();
+                            }
                           },
-                          items: SupplierNatureList.map((nature) {
-                            return DropdownMenuItem<String>(
-                              value: nature["value"],
-                              child: Text(nature["name"]),
-                            );
-                          }).toList(),
-                        )),
-                  ],
-                ),
+                          child: const Text(
+                            'Valider',
+                            style: TextStyle(color: Colors.green),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-          );
-        });
+          ),
+        );
+      },
+    );
   }
 
   void _createSuppliers() async {

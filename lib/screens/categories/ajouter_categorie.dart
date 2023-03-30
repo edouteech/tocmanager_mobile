@@ -291,7 +291,7 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
           ),
           child: SingleChildScrollView(
             child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 5),
               width: double.infinity,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -308,38 +308,114 @@ class _AjouterCategoriePageState extends State<AjouterCategoriePage> {
                   ),
                   const SizedBox(height: 10.0),
                   const Center(child: Text('Ajouter Catégorie')),
-                  const SizedBox(height: 10.0),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Nom de la catégorie',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value!.isEmpty) {
-                        return 'Veuillez saisir le nom de la catégorie';
-                      }
-                      return null;
-                    },
-                    onSaved: (value) {
-                      // TODO: sauvegarder la valeur
-                    },
-                  ),
-                  const SizedBox(height: 10.0),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            _createCategories();
-                          }
-                        },
-                        child: const Text(
-                          'Valider',
-                          style: TextStyle(color: Colors.green),
+                  const SizedBox(height: 20.0),
+                  Form(
+                      key: _formKey,
+                      child: Column(children: [
+                        Container(
+                          alignment: Alignment.center,
+                          margin: const EdgeInsets.only(left: 20, right: 20),
+                          child: TextFormField(
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
+                            controller: name,
+                            cursorColor:
+                                const Color.fromARGB(255, 45, 157, 220),
+                            decoration: const InputDecoration(
+                              enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color.fromARGB(255, 45, 157, 220)),
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(10))),
+                              border: OutlineInputBorder(
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(10))),
+                              label: Text("Nom de la catégorie"),
+                              labelStyle:
+                                  TextStyle(fontSize: 13, color: Colors.black),
+                            ),
+                            validator: MultiValidator([
+                              RequiredValidator(
+                                  errorText: "Veuillez entrer une catégorie")
+                            ]),
+                          ),
                         ),
-                      ),
-                    ],
+                        Container(
+                            margin: const EdgeInsets.only(
+                                left: 20, right: 20, top: 15),
+                            child: DropdownFormField(
+                              decoration: const InputDecoration(
+                                enabledBorder: OutlineInputBorder(
+                                    borderSide: BorderSide(
+                                        color:
+                                            Color.fromARGB(255, 45, 157, 220)),
+                                    borderRadius:
+                                        BorderRadius.all(Radius.circular(10))),
+                                border: OutlineInputBorder(
+                                    borderRadius:
+                                        BorderRadius.all(Radius.circular(10))),
+                                label: Text("Categorie Parente"),
+                                labelStyle: TextStyle(
+                                    fontSize: 13, color: Colors.black),
+                              ),
+                              dropdownColor: Colors.white,
+                              findFn: (dynamic str) async => categoryMapList,
+                              selectedFn: (dynamic item1, dynamic item2) {
+                                if (item1 != null && item2 != null) {
+                                  return item1['id'] == item2['id'];
+                                }
+                                return false;
+                              },
+                              displayItemFn: (dynamic item) => Text(
+                                (item ?? {})['name'] ?? '',
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                              onSaved: (dynamic str) {
+                                print(str);
+                              },
+                              onChanged: (dynamic str) {
+                                setState(() {
+                                  parent_id = str['id'].toString();
+                                });
+                              },
+                              filterFn: (dynamic item, str) =>
+                                  item['name']
+                                      .toLowerCase()
+                                      .indexOf(str.toLowerCase()) >=
+                                  0,
+                              dropdownItemFn: (dynamic item,
+                                      int position,
+                                      bool focused,
+                                      bool selected,
+                                      Function() onTap) =>
+                                  ListTile(
+                                title: Text(item['name']),
+                                tileColor: focused
+                                    ? const Color.fromARGB(20, 0, 0, 0)
+                                    : Colors.transparent,
+                                onTap: onTap,
+                              ),
+                            )),
+                      ])),
+                  const SizedBox(height: 10.0),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 10, bottom: 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            if (_formKey.currentState!.validate()) {
+                              _createCategories();
+                            }
+                          },
+                          child: const Text(
+                            'Valider',
+                            style: TextStyle(color: Colors.green),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

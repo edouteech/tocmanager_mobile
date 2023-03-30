@@ -268,9 +268,9 @@ Future<ApiResponse> UpdateProducts(
     String quantity,
     dynamic price_sell,
     dynamic price_buy,
-    String stock_min,
-    String stock_max,
-    String code,
+    String? stock_min,
+    String? stock_max,
+    String? code,
     int product_id) async {
   ApiResponse apiResponse = ApiResponse();
 
@@ -289,9 +289,10 @@ Future<ApiResponse> UpdateProducts(
           'quantity': quantity,
           'price_sell': price_sell,
           'price_buy': price_buy,
-          'stock_min': stock_min,
-          'stock_max': stock_max,
-          'code': code.toString() == null ? null : code
+          'stock_min': stock_min.toString(),
+          'stock_max': stock_max.toString(),
+          'code': code.toString() == null ? "null" : code,
+          "tax_group": ""
         });
     switch (response.statusCode) {
       case 200:
