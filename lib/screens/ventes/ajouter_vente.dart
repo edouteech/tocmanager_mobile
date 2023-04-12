@@ -8,7 +8,6 @@ import 'package:tocmanager/screens/ventes/line_vente.dart';
 import 'package:tocmanager/screens/ventes/vente_home.dart';
 import 'package:tocmanager/services/sells_services.dart';
 import 'package:tocmanager/services/user_service.dart';
-import '../../models/Clients.dart';
 import '../../models/api_response.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:intl/intl.dart';

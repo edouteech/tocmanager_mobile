@@ -331,10 +331,10 @@ class _PrintPageAchatState extends State<PrintPageAchat> {
                       ],
                     ),
                   )
-                : Center(
+                : const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: const <Widget>[
+                      children: <Widget>[
                         Text(
                           'Recherchez les appareils disponibles',
                           style: TextStyle(fontSize: 24, color: Colors.blue),

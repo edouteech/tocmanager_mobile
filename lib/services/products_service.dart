@@ -7,7 +7,6 @@ import 'package:tocmanager/models/api_response.dart';
 import 'package:tocmanager/services/constant.dart';
 import 'package:tocmanager/services/user_service.dart';
 import 'package:http/http.dart' as http;
-import 'package:dio/dio.dart';
 
 //read products
 Future<ApiResponse> ReadProducts(

@@ -1,8 +1,4 @@
 // ignore_for_file: use_build_context_synchronously, non_constant_identifier_names
-import 'dart:async';
-import 'dart:io';
-import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:tocmanager/models/api_response.dart';

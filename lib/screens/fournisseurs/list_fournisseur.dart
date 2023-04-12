@@ -3,7 +3,6 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:form_field_validator/form_field_validator.dart';
-import 'package:intl/intl.dart';
 import 'package:tocmanager/database/sqfdb.dart';
 import 'package:tocmanager/models/Suppliers.dart';
 import 'package:tocmanager/screens/fournisseurs/ajouter_fournisseur.dart';

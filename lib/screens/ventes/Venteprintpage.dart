@@ -319,10 +319,10 @@ class _VentePrintState extends State<VentePrint> {
                       ],
                     ),
                   )
-                : Center(
+                : const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: const <Widget>[
+                      children: <Widget>[
                         Text(
                           'Recherchez les appareils disponibles',
                           style: TextStyle(fontSize: 24, color: Colors.blue),
