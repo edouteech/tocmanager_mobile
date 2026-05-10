@@ -5,6 +5,7 @@ import '../models/product.dart';
 import '../providers/category_provider.dart';
 import '../providers/product_provider.dart';
 import '../theme/app_theme.dart';
+import 'product_detail_screen.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -42,6 +43,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: () => _showForm(context),
         icon: const Icon(Icons.add),
         label: const Text('Nouveau produit'),
@@ -240,7 +242,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
           label: SizedBox(width: 80, child: Center(child: Text('Alerte', style: h))),
         ),
         DataColumn(
-          label: SizedBox(width: 76, child: Center(child: Text('Actions', style: h))),
+          label: SizedBox(width: 110, child: Center(child: Text('Actions', style: h))),
         ),
       ],
       rows: products.asMap().entries.map((entry) {
@@ -460,6 +462,18 @@ class _ProductsScreenState extends State<ProductsScreen> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  _actionBtn(
+                    icon: Icons.visibility_outlined,
+                    color: AppColors.success,
+                    bg: AppColors.successLight,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProductDetailScreen(product: p),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
                   _actionBtn(
                     icon: Icons.edit_outlined,
                     color: AppColors.primary,

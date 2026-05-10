@@ -3,10 +3,13 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/category.dart';
 import '../models/product.dart';
+import '../models/approvisionnement.dart';
+import '../models/decaissement.dart';
+import '../models/vente.dart';
 
 class DatabaseHelper {
   static const _dbName = 'tocmanager.db';
-  static const _dbVersion = 1;
+  static const _dbVersion = 3;
 
   static DatabaseHelper? _instance;
   static Database? _database;
@@ -22,10 +25,23 @@ class DatabaseHelper {
       join(dbPath, _dbName),
       version: _dbVersion,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
   Future<void> _onCreate(Database db, int version) async {
+    await _createBaseSchema(db);
+    await _createV2Schema(db);
+    await _createV3Schema(db);
+    await _insertSampleData(db);
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) await _createV2Schema(db);
+    if (oldVersion < 3) await _createV3Schema(db);
+  }
+
+  Future<void> _createBaseSchema(Database db) async {
     await db.execute('''
       CREATE TABLE categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,7 +69,49 @@ class DatabaseHelper {
         FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
       )
     ''');
-    await _insertSampleData(db);
+  }
+
+  Future<void> _createV3Schema(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ventes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        quantity REAL NOT NULL,
+        unit_price REAL NOT NULL DEFAULT 0,
+        total REAL NOT NULL DEFAULT 0,
+        client_name TEXT,
+        date TEXT NOT NULL,
+        notes TEXT,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+      )
+    ''');
+  }
+
+  Future<void> _createV2Schema(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS approvisionnements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        quantity REAL NOT NULL,
+        unit_price REAL NOT NULL DEFAULT 0,
+        total REAL NOT NULL DEFAULT 0,
+        supplier TEXT,
+        date TEXT NOT NULL,
+        notes TEXT,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS decaissements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        description TEXT NOT NULL,
+        amount REAL NOT NULL DEFAULT 0,
+        category TEXT NOT NULL DEFAULT 'Divers',
+        date TEXT NOT NULL,
+        notes TEXT,
+        reference TEXT
+      )
+    ''');
   }
 
   Future<void> _insertSampleData(Database db) async {
@@ -200,6 +258,74 @@ class DatabaseHelper {
     return db.delete('products', where: 'id = ?', whereArgs: [id]);
   }
 
+  // --- Approvisionnements ---
+
+  Future<List<Approvisionnement>> getApprovisionnements({int? productId}) async {
+    final db = await database;
+    final maps = await db.query(
+      'approvisionnements',
+      where: productId != null ? 'product_id = ?' : null,
+      whereArgs: productId != null ? [productId] : null,
+      orderBy: 'date DESC',
+    );
+    return maps.map(Approvisionnement.fromMap).toList();
+  }
+
+  Future<int> insertApprovisionnement(Approvisionnement appro) async {
+    final db = await database;
+    final id = await db.insert('approvisionnements', appro.toMap());
+    await db.rawUpdate(
+      'UPDATE products SET quantity = quantity + ?, updated_at = ? WHERE id = ?',
+      [appro.quantity, DateTime.now().toIso8601String(), appro.productId],
+    );
+    return id;
+  }
+
+  Future<int> deleteApprovisionnement(Approvisionnement appro) async {
+    final db = await database;
+    final count = await db.delete(
+      'approvisionnements',
+      where: 'id = ?',
+      whereArgs: [appro.id],
+    );
+    await db.rawUpdate(
+      'UPDATE products SET quantity = MAX(0, quantity - ?), updated_at = ? WHERE id = ?',
+      [appro.quantity, DateTime.now().toIso8601String(), appro.productId],
+    );
+    return count;
+  }
+
+  // --- Decaissements ---
+
+  Future<List<Decaissement>> getDecaissements() async {
+    final db = await database;
+    final maps = await db.query('decaissements', orderBy: 'date DESC');
+    return maps.map(Decaissement.fromMap).toList();
+  }
+
+  Future<int> insertDecaissement(Decaissement dec) async {
+    final db = await database;
+    return db.insert('decaissements', dec.toMap());
+  }
+
+  Future<int> updateDecaissement(Decaissement dec) async {
+    final db = await database;
+    return db.update('decaissements', dec.toMap(),
+        where: 'id = ?', whereArgs: [dec.id]);
+  }
+
+  Future<int> deleteDecaissement(int id) async {
+    final db = await database;
+    return db.delete('decaissements', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<double> getTotalDecaissements() async {
+    final db = await database;
+    final result = await db.rawQuery(
+        'SELECT COALESCE(SUM(amount), 0) as total FROM decaissements');
+    return (result.first['total'] as num).toDouble();
+  }
+
   // --- Stats ---
 
   Future<Map<String, dynamic>> getStats() async {
@@ -222,6 +348,46 @@ class DatabaseHelper {
       'lowStockCount': lowStockCount,
       'stockValue': stockValue,
     };
+  }
+
+  // --- Ventes ---
+
+  Future<List<Vente>> getVentes({int? productId}) async {
+    final db = await database;
+    final maps = await db.query(
+      'ventes',
+      where: productId != null ? 'product_id = ?' : null,
+      whereArgs: productId != null ? [productId] : null,
+      orderBy: 'date DESC',
+    );
+    return maps.map(Vente.fromMap).toList();
+  }
+
+  Future<int> insertVente(Vente vente) async {
+    final db = await database;
+    final id = await db.insert('ventes', vente.toMap());
+    await db.rawUpdate(
+      'UPDATE products SET quantity = MAX(0, quantity - ?), updated_at = ? WHERE id = ?',
+      [vente.quantity, DateTime.now().toIso8601String(), vente.productId],
+    );
+    return id;
+  }
+
+  Future<int> deleteVente(Vente vente) async {
+    final db = await database;
+    final count = await db.delete('ventes', where: 'id = ?', whereArgs: [vente.id]);
+    await db.rawUpdate(
+      'UPDATE products SET quantity = quantity + ?, updated_at = ? WHERE id = ?',
+      [vente.quantity, DateTime.now().toIso8601String(), vente.productId],
+    );
+    return count;
+  }
+
+  Future<double> getTotalVentes() async {
+    final db = await database;
+    final result =
+        await db.rawQuery('SELECT COALESCE(SUM(total), 0) as total FROM ventes');
+    return (result.first['total'] as num).toDouble();
   }
 
   Future<List<Map<String, dynamic>>> getStockByCategory() async {

@@ -32,18 +32,27 @@ class AppDrawer extends StatelessWidget {
             child: Divider(color: AppColors.divider),
           ),
           _NavItem(
-            index: 3, icon: Icons.account_balance_wallet_outlined,
-            activeIcon: Icons.account_balance_wallet,
-            label: 'Trésorerie', current: currentIndex, onTap: onNav,
-            comingSoon: true,
+            index: 3, icon: Icons.arrow_downward_outlined,
+            activeIcon: Icons.arrow_downward,
+            label: 'Approvisionnements', current: currentIndex, onTap: onNav,
           ),
           _NavItem(
-            index: 4, icon: Icons.receipt_long_outlined, activeIcon: Icons.receipt_long,
+            index: 4, icon: Icons.arrow_upward_outlined,
+            activeIcon: Icons.arrow_upward,
+            label: 'Décaissements', current: currentIndex, onTap: onNav,
+          ),
+          _NavItem(
+            index: 5, icon: Icons.shopping_cart_outlined,
+            activeIcon: Icons.shopping_cart,
+            label: 'Ventes', current: currentIndex, onTap: onNav,
+          ),
+          _NavItem(
+            index: 6, icon: Icons.receipt_long_outlined, activeIcon: Icons.receipt_long,
             label: 'Factures', current: currentIndex, onTap: onNav,
             comingSoon: true,
           ),
           _NavItem(
-            index: 5, icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart,
+            index: 6, icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart,
             label: 'Rapports', current: currentIndex, onTap: onNav,
             comingSoon: true,
           ),
@@ -53,7 +62,7 @@ class AppDrawer extends StatelessWidget {
             child: Divider(color: AppColors.divider),
           ),
           _NavItem(
-            index: 6, icon: Icons.settings_outlined, activeIcon: Icons.settings,
+            index: 7, icon: Icons.settings_outlined, activeIcon: Icons.settings,
             label: 'Paramètres', current: currentIndex, onTap: onNav,
             comingSoon: true,
           ),

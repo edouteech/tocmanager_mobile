@@ -4,9 +4,15 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'theme/app_theme.dart';
 import 'providers/category_provider.dart';
 import 'providers/product_provider.dart';
+import 'providers/approvisionnement_provider.dart';
+import 'providers/decaissement_provider.dart';
+import 'providers/vente_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/categories_screen.dart';
 import 'screens/products_screen.dart';
+import 'screens/approvisionnement_screen.dart';
+import 'screens/decaissement_screen.dart';
+import 'screens/vente_screen.dart';
 import 'widgets/app_drawer.dart';
 
 void main() async {
@@ -24,6 +30,9 @@ class TocManagerApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => CategoryProvider()..load()),
         ChangeNotifierProvider(create: (_) => ProductProvider()..load()),
+        ChangeNotifierProvider(create: (_) => ApprovisionnementProvider()),
+        ChangeNotifierProvider(create: (_) => DecaissementProvider()..load()),
+        ChangeNotifierProvider(create: (_) => VenteProvider()),
       ],
       child: MaterialApp(
         title: 'TocManager',
@@ -53,10 +62,26 @@ class _MainShellState extends State<MainShell> {
   ];
 
   void _navigate(int index) {
-    if (index < _screens.length) {
+    // Pop the drawer first, then navigate
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    if (index == 3) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ApprovisionScreen()),
+      );
+    } else if (index == 4) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const DecaissementScreen()),
+      );
+    } else if (index == 5) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const VenteScreen()),
+      );
+    } else if (index < _screens.length) {
       setState(() => _currentIndex = index);
     }
-    Navigator.pop(context);
   }
 
   @override

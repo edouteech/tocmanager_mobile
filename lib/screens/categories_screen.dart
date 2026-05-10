@@ -4,6 +4,7 @@ import '../models/category.dart';
 import '../providers/category_provider.dart';
 import '../providers/product_provider.dart';
 import '../theme/app_theme.dart';
+import 'category_detail_screen.dart';
 
 class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({super.key});
@@ -56,6 +57,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: () => _showForm(context),
         icon: const Icon(Icons.add),
         label: const Text('Nouvelle catégorie'),
@@ -169,7 +171,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         ),
         DataColumn(
           label: SizedBox(
-            width: 76,
+            width: 110,
             child: Center(child: Text('Actions', style: h)),
           ),
         ),
@@ -275,6 +277,18 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  _actionBtn(
+                    icon: Icons.visibility_outlined,
+                    color: AppColors.success,
+                    bg: AppColors.successLight,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CategoryDetailScreen(category: cat),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
                   _actionBtn(
                     icon: Icons.edit_outlined,
                     color: AppColors.primary,
