@@ -1,42 +1,13 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" 
-    package="com.edoutech.tocmanager"  xmlns:tools="http://schemas.android.com/tools">
-        <!-- Request legacy Bluetooth permissions on older devices. -->
-    <uses-permission android:name="android.permission.INTERNET"/>
-
-    <!-- Request legacy Bluetooth permissions on older devices. -->
-    <uses-permission android:name="android.permission.BLUETOOTH"
-                    android:maxSdkVersion="30"/>
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"
-                    android:maxSdkVersion="30"/>
-
-    <!-- Needed only if your app looks for Bluetooth devices.
-        If your app doesn't use Bluetooth scan results to derive physical
-        location information, you can strongly assert that your app
-        doesn't derive physical location. -->
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"/>
-
-    <!-- Needed only if your app communicates with already-paired Bluetooth
-        devices. -->
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
-
-    <!-- Needed only if your app uses Bluetooth scan results to derive physical location. -->  
-
-
-    <uses-permission
-        android:name="android.permission.ACCESS_COARSE_LOCATION"
-        />
-        <uses-permission-sdk-23  tools:node="removeAll" />
-        <uses-permission android:name="android.permission.CAMERA" tools:node="remove" />
-
-   <application
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application
         android:label="tocmanager"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
-        
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
+            android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
@@ -60,4 +31,15 @@
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
+    <!-- Required to query activities that can process text, see:
+         https://developer.android.com/training/package-visibility and
+         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+
+         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+    </queries>
 </manifest>
