@@ -12,6 +12,8 @@ class Product {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  final String? imagePath;
+
   const Product({
     this.id,
     this.categoryId,
@@ -23,6 +25,7 @@ class Product {
     this.unit = 'pce',
     this.barcode,
     this.alertQuantity = 5,
+    this.imagePath,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -41,6 +44,7 @@ class Product {
         unit: map['unit'] as String? ?? 'pce',
         barcode: map['barcode'] as String?,
         alertQuantity: (map['alert_quantity'] as num?)?.toDouble() ?? 5,
+        imagePath: map['image_path'] as String?,
         createdAt: DateTime.parse(map['created_at'] as String),
         updatedAt: DateTime.parse(map['updated_at'] as String),
       );
@@ -56,6 +60,7 @@ class Product {
         'unit': unit,
         'barcode': barcode,
         'alert_quantity': alertQuantity,
+        'image_path': imagePath,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -71,6 +76,7 @@ class Product {
     String? unit,
     String? barcode,
     double? alertQuantity,
+    String? imagePath,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) =>
@@ -85,6 +91,7 @@ class Product {
         unit: unit ?? this.unit,
         barcode: barcode ?? this.barcode,
         alertQuantity: alertQuantity ?? this.alertQuantity,
+        imagePath: imagePath ?? this.imagePath,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );

@@ -27,19 +27,19 @@ class AppDrawer extends StatelessWidget {
             index: 2, icon: Icons.category_outlined, activeIcon: Icons.category,
             label: 'Catégories', current: currentIndex, onTap: onNav,
           ),
+          _NavItem(
+            index: 3, icon: Icons.people_outline, activeIcon: Icons.people,
+            label: 'Clients', current: currentIndex, onTap: onNav,
+            comingSoon: true,
+          ),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Divider(color: AppColors.divider),
           ),
           _NavItem(
-            index: 3, icon: Icons.arrow_downward_outlined,
+            index: 4, icon: Icons.arrow_downward_outlined,
             activeIcon: Icons.arrow_downward,
             label: 'Approvisionnements', current: currentIndex, onTap: onNav,
-          ),
-          _NavItem(
-            index: 4, icon: Icons.arrow_upward_outlined,
-            activeIcon: Icons.arrow_upward,
-            label: 'Décaissements', current: currentIndex, onTap: onNav,
           ),
           _NavItem(
             index: 5, icon: Icons.shopping_cart_outlined,
@@ -47,12 +47,17 @@ class AppDrawer extends StatelessWidget {
             label: 'Ventes', current: currentIndex, onTap: onNav,
           ),
           _NavItem(
-            index: 6, icon: Icons.receipt_long_outlined, activeIcon: Icons.receipt_long,
+            index: 6, icon: Icons.inventory_outlined, activeIcon: Icons.inventory,
+            label: 'Inventaire', current: currentIndex, onTap: onNav,
+            comingSoon: true,
+          ),
+          _NavItem(
+            index: 7, icon: Icons.receipt_long_outlined, activeIcon: Icons.receipt_long,
             label: 'Factures', current: currentIndex, onTap: onNav,
             comingSoon: true,
           ),
           _NavItem(
-            index: 6, icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart,
+            index: 8, icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart,
             label: 'Rapports', current: currentIndex, onTap: onNav,
             comingSoon: true,
           ),
@@ -62,7 +67,7 @@ class AppDrawer extends StatelessWidget {
             child: Divider(color: AppColors.divider),
           ),
           _NavItem(
-            index: 7, icon: Icons.settings_outlined, activeIcon: Icons.settings,
+            index: 9, icon: Icons.settings_outlined, activeIcon: Icons.settings,
             label: 'Paramètres', current: currentIndex, onTap: onNav,
             comingSoon: true,
           ),

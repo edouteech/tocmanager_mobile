@@ -521,8 +521,15 @@ class _VenteFormState extends State<_VenteForm> {
                     .map((p) => DropdownMenuItem<int?>(
                           value: p.id,
                           child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Expanded(child: Text(p.name)),
+                              Flexible(
+                                child: Text(
+                                  p.name,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
                               Text(
                                 'Stock: ${p.quantity.toStringAsFixed(0)}',
                                 style: const TextStyle(

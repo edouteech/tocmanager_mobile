@@ -5,13 +5,11 @@ import 'theme/app_theme.dart';
 import 'providers/category_provider.dart';
 import 'providers/product_provider.dart';
 import 'providers/approvisionnement_provider.dart';
-import 'providers/decaissement_provider.dart';
 import 'providers/vente_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/categories_screen.dart';
 import 'screens/products_screen.dart';
 import 'screens/approvisionnement_screen.dart';
-import 'screens/decaissement_screen.dart';
 import 'screens/vente_screen.dart';
 import 'widgets/app_drawer.dart';
 
@@ -31,7 +29,6 @@ class TocManagerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CategoryProvider()..load()),
         ChangeNotifierProvider(create: (_) => ProductProvider()..load()),
         ChangeNotifierProvider(create: (_) => ApprovisionnementProvider()),
-        ChangeNotifierProvider(create: (_) => DecaissementProvider()..load()),
         ChangeNotifierProvider(create: (_) => VenteProvider()),
       ],
       child: MaterialApp(
@@ -62,24 +59,18 @@ class _MainShellState extends State<MainShell> {
   ];
 
   void _navigate(int index) {
-    // Pop the drawer first, then navigate
     Navigator.of(context).popUntil((route) => route.isFirst);
-    if (index == 3) {
+    if (index == 4) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const ApprovisionScreen()),
-      );
-    } else if (index == 4) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const DecaissementScreen()),
       );
     } else if (index == 5) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const VenteScreen()),
       );
-    } else if (index < _screens.length) {
+    } else if (index < 3) {
       setState(() => _currentIndex = index);
     }
   }
@@ -111,79 +102,45 @@ class _MainShellState extends State<MainShell> {
         top: false,
         child: Row(
           children: [
-            _navItem(0, Icons.home_outlined, Icons.home, 'Accueil'),
-            _navItem(1, Icons.inventory_2_outlined, Icons.inventory_2, 'Produits'),
-            _navItem(2, Icons.category_outlined, Icons.category, 'Catégories'),
-            _menuButton(),
+            _bottomItem(Icons.arrow_downward_outlined, 'Appro', () => _navigate(4)),
+            _bottomItem(Icons.shopping_cart_outlined, 'Ventes', () => _navigate(5)),
+            _bottomItem(Icons.inventory_outlined, 'Inventaire', null),
+            _bottomItem(Icons.receipt_long_outlined, 'Facture', null),
+            _bottomItem(Icons.bar_chart_outlined, 'Rapport', null),
           ],
         ),
       ),
     );
   }
 
-  Widget _navItem(int index, IconData icon, IconData activeIcon, String label) {
-    final active = _currentIndex == index;
+  Widget _bottomItem(IconData icon, String label, VoidCallback? onTap) {
+    final disabled = onTap == null;
     return Expanded(
       child: InkWell(
-        onTap: () => setState(() => _currentIndex = index),
+        onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 10),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                child: Icon(
-                  active ? activeIcon : icon,
-                  key: ValueKey(active),
-                  color: active ? AppColors.primary : AppColors.textLight,
-                  size: 24,
-                ),
+              Icon(
+                icon,
+                color: disabled
+                    ? AppColors.textLight.withAlpha(80)
+                    : AppColors.textLight,
+                size: 22,
               ),
               const SizedBox(height: 3),
               Text(
                 label,
                 style: TextStyle(
-                  color: active ? AppColors.primary : AppColors.textLight,
-                  fontSize: 11,
-                  fontWeight: active ? FontWeight.w700 : FontWeight.normal,
+                  color: disabled
+                      ? AppColors.textLight.withAlpha(80)
+                      : AppColors.textLight,
+                  fontSize: 10,
                 ),
               ),
-              if (active)
-                Container(
-                  margin: const EdgeInsets.only(top: 4),
-                  width: 18,
-                  height: 3,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                )
-              else
-                const SizedBox(height: 7),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _menuButton() {
-    return Expanded(
-      child: InkWell(
-        onTap: () => _scaffoldKey.currentState?.openDrawer(),
-        child: const Padding(
-          padding: EdgeInsets.symmetric(vertical: 10),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.menu, color: AppColors.textLight, size: 24),
-              SizedBox(height: 3),
-              Text(
-                'Menu',
-                style: TextStyle(color: AppColors.textLight, fontSize: 11),
-              ),
-              SizedBox(height: 7),
+              const SizedBox(height: 7),
             ],
           ),
         ),

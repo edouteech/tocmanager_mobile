@@ -9,7 +9,7 @@ import '../models/vente.dart';
 
 class DatabaseHelper {
   static const _dbName = 'tocmanager.db';
-  static const _dbVersion = 3;
+  static const _dbVersion = 4;
 
   static DatabaseHelper? _instance;
   static Database? _database;
@@ -33,12 +33,18 @@ class DatabaseHelper {
     await _createBaseSchema(db);
     await _createV2Schema(db);
     await _createV3Schema(db);
+    await _createV4Schema(db);
     await _insertSampleData(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) await _createV2Schema(db);
     if (oldVersion < 3) await _createV3Schema(db);
+    if (oldVersion < 4) await _createV4Schema(db);
+  }
+
+  Future<void> _createV4Schema(Database db) async {
+    await db.execute('ALTER TABLE products ADD COLUMN image_path TEXT');
   }
 
   Future<void> _createBaseSchema(Database db) async {
