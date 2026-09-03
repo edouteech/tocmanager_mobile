@@ -1,14 +1,18 @@
+import '../widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../models/product.dart';
 import '../models/approvisionnement.dart';
 import '../models/vente.dart';
+import '../models/client.dart';
 import '../models/category.dart';
 import '../providers/category_provider.dart';
 import '../providers/approvisionnement_provider.dart';
 import '../providers/vente_provider.dart';
 import '../providers/product_provider.dart';
+import '../providers/client_provider.dart';
+import '../providers/supplier_provider.dart';
 import '../theme/app_theme.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -30,6 +34,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ApprovisionnementProvider>().load(productId: _product.id);
       context.read<VenteProvider>().load(productId: _product.id);
+      context.read<ClientProvider>().loadClients();
+      context.read<SupplierProvider>().loadSuppliers();
     });
   }
 
@@ -69,6 +75,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     _buildStockCard(catColor, formatter),
                     const SizedBox(height: 16),
                     _buildPriceCard(formatter),
+                    _buildSupplierCard(),
                     const SizedBox(height: 20),
                     _buildApproSection(formatter),
                     const SizedBox(height: 20),
@@ -281,7 +288,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Prix',
+            'Grilles Tarifaires',
             style: TextStyle(
               color: AppColors.textDark,
               fontWeight: FontWeight.w700,
@@ -293,7 +300,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             children: [
               Expanded(
                 child: _priceItem(
-                  label: 'Prix de vente',
+                  label: 'Prix Détail',
                   value: formatter.format(_product.price),
                   color: AppColors.primary,
                 ),
@@ -316,8 +323,99 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ),
             ],
           ),
+          if (_product.priceSemiWholesale > 0 || _product.priceWholesale > 0) ...[
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Divider(height: 1, color: AppColors.divider),
+            ),
+            Row(
+              children: [
+                if (_product.priceSemiWholesale > 0)
+                  Expanded(
+                    child: _priceItem(
+                      label: 'Prix Demi-Gros',
+                      value: formatter.format(_product.priceSemiWholesale),
+                      color: AppColors.purple,
+                      subText: _product.minQtySemiWholesale > 0
+                          ? 'Dès ${_product.minQtySemiWholesale.toStringAsFixed(0)} ${_product.unit}'
+                          : null,
+                    ),
+                  ),
+                if (_product.priceWholesale > 0)
+                  Expanded(
+                    child: _priceItem(
+                      label: 'Prix Grossiste',
+                      value: formatter.format(_product.priceWholesale),
+                      color: AppColors.success,
+                      subText: _product.minQtyWholesale > 0
+                          ? 'Dès ${_product.minQtyWholesale.toStringAsFixed(0)} ${_product.unit}'
+                          : null,
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildSupplierCard() {
+    if (_product.supplierId == null) return const SizedBox.shrink();
+
+    return Consumer<SupplierProvider>(
+      builder: (context, suppProvider, _) {
+        final supplier = suppProvider.suppliers
+            .where((s) => s.id == _product.supplierId)
+            .firstOrNull;
+
+        if (supplier == null) return const SizedBox.shrink();
+
+        return Container(
+          margin: const EdgeInsets.only(top: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primarySurface,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.business_outlined, color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Fournisseur : ${supplier.name}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                    if (supplier.phone != null && supplier.phone!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Tél : ${supplier.phone}',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textMedium),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -326,6 +424,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     required String value,
     required Color color,
     bool smallText = false,
+    String? subText,
   }) {
     return Column(
       children: [
@@ -342,6 +441,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         const SizedBox(height: 4),
         Text(label,
             style: const TextStyle(color: AppColors.textLight, fontSize: 11)),
+        if (subText != null) ...[
+          const SizedBox(height: 2),
+          Text(
+            subText,
+            style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600),
+          ),
+        ],
       ],
     );
   }
@@ -556,6 +662,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       rows: items.asMap().entries.map((entry) {
         final i = entry.key;
         final v = entry.value;
+        final item = v.items.where((it) => it.productId == widget.product.id).firstOrNull ?? (v.items.isNotEmpty ? v.items.first : null);
+        final qty = item?.quantity ?? 0.0;
+        final unitPrice = item?.unitPrice ?? 0.0;
+        final total = item?.total ?? v.totalAmount;
         return DataRow(
           color: WidgetStateProperty.all(
               i.isEven ? Colors.white : const Color(0xFFF8FBFF)),
@@ -565,8 +675,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     color: AppColors.textMedium, fontSize: 12))),
             DataCell(Center(
               child: Text(
-                v.quantity.toStringAsFixed(
-                    v.quantity.truncateToDouble() == v.quantity ? 0 : 1),
+                qty.toStringAsFixed(
+                    qty.truncateToDouble() == qty ? 0 : 1),
                 style: const TextStyle(
                     color: AppColors.textDark,
                     fontWeight: FontWeight.w600,
@@ -574,17 +684,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ),
             )),
             DataCell(Center(
-                child: Text(formatter.format(v.unitPrice),
+                child: Text(formatter.format(unitPrice),
                     style: const TextStyle(
                         color: AppColors.textMedium, fontSize: 12)))),
             DataCell(Center(
-              child: Text(formatter.format(v.total),
+              child: Text(formatter.format(total),
                   style: const TextStyle(
                       color: AppColors.success,
                       fontWeight: FontWeight.w700,
                       fontSize: 12)),
             )),
-            DataCell(Text(v.clientName ?? '—',
+            DataCell(Text(v.clientName ?? 'Non précisé',
                 style: const TextStyle(
                     color: AppColors.textMedium, fontSize: 12),
                 maxLines: 1,
@@ -729,6 +839,7 @@ class _ApproForm extends StatefulWidget {
 }
 
 class _ApproFormState extends State<_ApproForm> {
+  final _formKey = GlobalKey<FormState>();
   final _qtyCtrl = TextEditingController();
   final _priceCtrl = TextEditingController();
   final _supplierCtrl = TextEditingController();
@@ -761,7 +872,10 @@ class _ApproFormState extends State<_ApproForm> {
           EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
-        child: Column(
+        child: Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -785,9 +899,10 @@ class _ApproFormState extends State<_ApproForm> {
             ),
             const SizedBox(height: 16),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: TextField(
+                  child: TextFormField(
                     controller: _qtyCtrl,
                     keyboardType: TextInputType.number,
                     onChanged: (_) => setState(() {}),
@@ -795,11 +910,17 @@ class _ApproFormState extends State<_ApproForm> {
                       labelText: 'Quantité *',
                       suffixText: widget.product.unit,
                     ),
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) return 'Quantité obligatoire';
+                      final num = double.tryParse(val.trim());
+                      if (num == null || num <= 0) return 'Quantité invalide (> 0)';
+                      return null;
+                    },
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextField(
+                  child: TextFormField(
                     controller: _priceCtrl,
                     keyboardType: TextInputType.number,
                     onChanged: (_) => setState(() {}),
@@ -807,6 +928,13 @@ class _ApproFormState extends State<_ApproForm> {
                       labelText: 'Prix unitaire',
                       suffixText: 'FCFA',
                     ),
+                    validator: (val) {
+                      if (val != null && val.trim().isNotEmpty) {
+                        final num = double.tryParse(val.trim());
+                        if (num == null || num < 0) return 'Prix unitaire invalide';
+                      }
+                      return null;
+                    },
                   ),
                 ),
               ],
@@ -890,10 +1018,15 @@ class _ApproFormState extends State<_ApproForm> {
           ],
         ),
       ),
+    ),
     );
   }
 
   Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) {
+      AppToast.showError(context, 'Veuillez saisir une quantité valide.');
+      return;
+    }
     final qty = double.tryParse(_qtyCtrl.text);
     if (qty == null || qty <= 0) return;
     setState(() => _saving = true);
@@ -915,12 +1048,7 @@ class _ApproFormState extends State<_ApproForm> {
       if (mounted) Navigator.pop(context);
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Une erreur est survenue. Veuillez réessayer.'),
-            backgroundColor: AppColors.danger,
-          ),
-        );
+        AppToast.showError(context, 'Une erreur est survenue. Veuillez réessayer.');
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -941,8 +1069,10 @@ class _VenteFormInline extends StatefulWidget {
 }
 
 class _VenteFormInlineState extends State<_VenteFormInline> {
-  final _qtyCtrl = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _qtyCtrl = TextEditingController(text: '1');
   final _clientCtrl = TextEditingController();
+  final _clientFocusNode = FocusNode();
   final _notesCtrl = TextEditingController();
   late final _priceCtrl = TextEditingController(
       text: widget.product.price.toStringAsFixed(0));
@@ -954,6 +1084,7 @@ class _VenteFormInlineState extends State<_VenteFormInline> {
     _qtyCtrl.dispose();
     _priceCtrl.dispose();
     _clientCtrl.dispose();
+    _clientFocusNode.dispose();
     _notesCtrl.dispose();
     super.dispose();
   }
@@ -974,7 +1105,10 @@ class _VenteFormInlineState extends State<_VenteFormInline> {
           EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
-        child: Column(
+        child: Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1012,21 +1146,64 @@ class _VenteFormInlineState extends State<_VenteFormInline> {
             ),
             const SizedBox(height: 16),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _qtyCtrl,
-                    keyboardType: TextInputType.number,
-                    onChanged: (_) => setState(() {}),
-                    decoration: InputDecoration(
-                      labelText: 'Quantité *',
-                      suffixText: widget.product.unit,
-                    ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          final val = double.tryParse(_qtyCtrl.text.trim()) ?? 1;
+                          if (val > 1) {
+                            final newQty = val - 1;
+                            _qtyCtrl.text = newQty.toStringAsFixed(newQty.truncateToDouble() == newQty ? 0 : 1);
+                            setState(() {});
+                          }
+                        },
+                        icon: const Icon(Icons.remove_circle_outline, color: AppColors.primary),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32),
+                      ),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _qtyCtrl,
+                          textAlign: TextAlign.center,
+                          keyboardType: TextInputType.number,
+                          onChanged: (_) => setState(() {}),
+                          decoration: InputDecoration(
+                            labelText: 'Quantité *',
+                            suffixText: widget.product.unit,
+                          ),
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) return 'Quantité obligatoire';
+                            final num = double.tryParse(val.trim());
+                            if (num == null || num <= 0) return 'Quantité invalide (> 0)';
+                            if (num > widget.product.quantity) return 'Dépasse le stock disponible';
+                            return null;
+                          },
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          final val = double.tryParse(_qtyCtrl.text.trim()) ?? 0;
+                          final newQty = val + 1;
+                          if (newQty <= widget.product.quantity) {
+                            _qtyCtrl.text = newQty.toStringAsFixed(newQty.truncateToDouble() == newQty ? 0 : 1);
+                            setState(() {});
+                          } else {
+                            AppToast.showError(context, 'Stock insuffisant (${widget.product.quantity.toStringAsFixed(0)} dispo).');
+                          }
+                        },
+                        icon: const Icon(Icons.add_circle_outline, color: AppColors.primary),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextField(
+                  child: TextFormField(
                     controller: _priceCtrl,
                     keyboardType: TextInputType.number,
                     onChanged: (_) => setState(() {}),
@@ -1034,6 +1211,12 @@ class _VenteFormInlineState extends State<_VenteFormInline> {
                       labelText: 'Prix unitaire *',
                       suffixText: 'FCFA',
                     ),
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) return 'Prix unitaire obligatoire';
+                      final num = double.tryParse(val.trim());
+                      if (num == null || num < 0) return 'Prix unitaire invalide';
+                      return null;
+                    },
                   ),
                 ),
               ],
@@ -1050,12 +1233,101 @@ class _VenteFormInlineState extends State<_VenteFormInline> {
               ),
             ],
             const SizedBox(height: 12),
-            TextField(
-              controller: _clientCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Client',
-                hintText: 'Nom du client (optionnel)',
-              ),
+            Consumer<ClientProvider>(
+              builder: (context, clientProvider, child) {
+                return RawAutocomplete<Client>(
+                  textEditingController: _clientCtrl,
+                  focusNode: _clientFocusNode,
+                  displayStringForOption: (Client option) => option.name,
+                  optionsBuilder: (TextEditingValue textEditingValue) {
+                    final query = textEditingValue.text.trim().toLowerCase();
+                    if (query.isEmpty) {
+                      return clientProvider.clients;
+                    }
+                    return clientProvider.clients.where((Client client) {
+                      final nameMatch = client.name.toLowerCase().contains(query);
+                      final phoneMatch = client.phone != null && client.phone!.contains(query);
+                      return nameMatch || phoneMatch;
+                    });
+                  },
+                  onSelected: (Client selection) {
+                    _clientCtrl.text = selection.name;
+                    _clientCtrl.selection = TextSelection.fromPosition(
+                      TextPosition(offset: selection.name.length),
+                    );
+                  },
+                  fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                    return TextFormField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      decoration: InputDecoration(
+                        labelText: 'Client',
+                        hintText: 'Rechercher ou saisir un nom (vide = Non précisé)',
+                        prefixIcon: const Icon(Icons.person_outline, size: 20),
+                        suffixIcon: controller.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                onPressed: () {
+                                  controller.clear();
+                                  setState(() {});
+                                },
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: AppColors.primarySurface,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    );
+                  },
+                  optionsViewBuilder: (context, onSelected, options) {
+                    return Align(
+                      alignment: Alignment.topLeft,
+                      child: Material(
+                        elevation: 6,
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.white,
+                        child: Container(
+                          width: MediaQuery.of(context).size.width - 48,
+                          constraints: const BoxConstraints(maxHeight: 180),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.divider),
+                          ),
+                          child: ListView.separated(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            shrinkWrap: true,
+                            itemCount: options.length,
+                            separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.divider),
+                            itemBuilder: (context, index) {
+                              final Client option = options.elementAt(index);
+                              return ListTile(
+                                dense: true,
+                                leading: const CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor: AppColors.primarySurface,
+                                  child: Icon(Icons.person, size: 14, color: AppColors.primary),
+                                ),
+                                title: Text(
+                                  option.name,
+                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                ),
+                                subtitle: option.phone != null && option.phone!.isNotEmpty
+                                    ? Text(option.phone!, style: const TextStyle(fontSize: 11, color: AppColors.textLight))
+                                    : null,
+                                onTap: () => onSelected(option),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
             ),
             const SizedBox(height: 12),
             InkWell(
@@ -1119,45 +1391,83 @@ class _VenteFormInlineState extends State<_VenteFormInline> {
           ],
         ),
       ),
+    ),
     );
   }
 
   Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) {
+      AppToast.showError(context, 'Veuillez corriger la quantité ou le prix de vente.');
+      return;
+    }
     final qty = double.tryParse(_qtyCtrl.text);
     final price = double.tryParse(_priceCtrl.text);
     if (qty == null || qty <= 0 || price == null) return;
     if (qty > widget.product.quantity) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              'Stock insuffisant (disponible : ${widget.product.quantity.toStringAsFixed(0)} ${widget.product.unit})'),
-          backgroundColor: AppColors.danger,
-        ),
-      );
+      AppToast.showError(context, 'Stock insuffisant (${widget.product.quantity.toStringAsFixed(0)} ${widget.product.unit} disponible).');
       return;
     }
     setState(() => _saving = true);
     try {
+      final clientProvider = context.read<ClientProvider>();
+      final rawClientInput = _clientCtrl.text.trim();
+
+      int? clientId;
+      String clientName;
+
+      if (rawClientInput.isEmpty) {
+        clientName = 'Non précisé';
+        final existingDefault = clientProvider.clients.where(
+          (c) => c.name.trim().toLowerCase() == 'non précisé' || c.name.trim().toLowerCase() == 'non precise',
+        ).firstOrNull;
+
+        if (existingDefault != null) {
+          clientId = existingDefault.id;
+        } else {
+          clientId = await clientProvider.addClient(Client(
+            name: 'Non précisé',
+            notes: 'Client par défaut',
+          ));
+        }
+      } else {
+        final existingClient = clientProvider.clients.where(
+          (c) => c.name.trim().toLowerCase() == rawClientInput.toLowerCase(),
+        ).firstOrNull;
+
+        if (existingClient != null) {
+          clientId = existingClient.id;
+          clientName = existingClient.name;
+        } else {
+          clientName = rawClientInput;
+          clientId = await clientProvider.addClient(Client(
+            name: rawClientInput,
+          ));
+        }
+      }
+
       final vente = Vente(
-        productId: widget.product.id!,
-        quantity: qty,
-        unitPrice: price,
-        total: qty * price,
-        clientName:
-            _clientCtrl.text.trim().isEmpty ? null : _clientCtrl.text.trim(),
+        ticketNumber: '',
+        clientId: clientId,
+        clientName: clientName,
+        totalAmount: qty * price,
+        paidAmount: qty * price,
         date: _date,
         notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+        items: [
+          VenteItem(
+            productId: widget.product.id!,
+            productName: widget.product.name,
+            quantity: qty,
+            unitPrice: price,
+            total: qty * price,
+          ),
+        ],
       );
       await widget.onSave(vente);
       if (mounted) Navigator.pop(context);
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Une erreur est survenue. Veuillez réessayer.'),
-            backgroundColor: AppColors.danger,
-          ),
-        );
+        AppToast.showError(context, 'Une erreur est survenue. Veuillez réessayer.');
       }
     } finally {
       if (mounted) setState(() => _saving = false);

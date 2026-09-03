@@ -1,3 +1,5 @@
+import 'product_detail_screen.dart';
+import '../widgets/stock_alert_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -7,7 +9,9 @@ import '../database/database_helper.dart';
 import '../theme/app_theme.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final void Function(int, {String? statusFilter})? onNav;
+  final VoidCallback? onOpenDrawer;
+  const HomeScreen({super.key, this.onNav, this.onOpenDrawer});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -88,40 +92,67 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSliverAppBar() {
-    final lowStock = (_stats['lowStockCount'] ?? 0) > 0;
     return SliverAppBar(
       floating: true,
       backgroundColor: Colors.white,
       elevation: 0,
       scrolledUnderElevation: 1,
       shadowColor: AppColors.divider,
-      leading: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Image.asset('assets/icon.png'),
-      ),
-      title: Image.asset('assets/logo.png', height: 26),
-      actions: [
-        Stack(
-          alignment: Alignment.topRight,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.notifications_outlined, color: AppColors.textMedium),
-              onPressed: () {},
+      titleSpacing: 8,
+      automaticallyImplyLeading: false,
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.menu, color: AppColors.textDark),
+            onPressed: () => widget.onOpenDrawer?.call(),
+            tooltip: 'Menu principal',
+          ),
+          const SizedBox(width: 4),
+          InkWell(
+            onTap: () => widget.onOpenDrawer?.call(),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+              child: Image.asset('assets/logo.png', height: 26),
             ),
-            if (lowStock)
-              Positioned(
-                top: 10,
-                right: 10,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: AppColors.danger,
-                    shape: BoxShape.circle,
-                  ),
+          ),
+        ],
+      ),
+      actions: [
+        Consumer<ProductProvider>(
+          builder: (context, productProv, _) {
+            final alertCount = productProv.products.where((p) => p.isLowStock).length;
+            return Stack(
+              alignment: Alignment.topRight,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.notifications_outlined, color: AppColors.textMedium),
+                  onPressed: () => StockAlertModal.show(context),
                 ),
-              ),
-          ],
+                if (alertCount > 0)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: AppColors.danger,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        alertCount > 9 ? '9+' : '$alertCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
         const SizedBox(width: 4),
       ],
@@ -241,89 +272,107 @@ class _HomeScreenState extends State<HomeScreen> {
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
-      childAspectRatio: 1.55,
+      childAspectRatio: 1.38,
       children: items.map(_buildStatCard).toList(),
     );
   }
 
   Widget _buildStatCard(_StatData data) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: data.bgColor,
-              borderRadius: BorderRadius.circular(10),
+    return InkWell(
+      onTap: () {
+        if (widget.onNav != null) {
+          if (data.label == 'Produits') widget.onNav!(1);
+          if (data.label == 'Catégories') widget.onNav!(2);
+          if (data.label == 'Alertes stock') widget.onNav!(1, statusFilter: 'lowStock');
+        }
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: data.bgColor,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(data.icon, color: data.color, size: 18),
             ),
-            child: Icon(data.icon, color: data.color, size: 18),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                data.value,
-                style: TextStyle(
-                  color: AppColors.textDark,
-                  fontSize: data.smallText ? 12 : 22,
-                  fontWeight: FontWeight.w700,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  data.value,
+                  style: TextStyle(
+                    color: AppColors.textDark,
+                    fontSize: data.smallText ? 12 : 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              Text(
-                data.label,
-                style: const TextStyle(color: AppColors.textMedium, fontSize: 12),
-              ),
-            ],
-          ),
-        ],
+                Text(
+                  data.label,
+                  style: const TextStyle(color: AppColors.textMedium, fontSize: 12),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildAlertCard() {
     final count = _stats['lowStockCount'] ?? 0;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.dangerLight,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.danger.withAlpha(50)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.warning_amber_rounded, color: AppColors.danger, size: 28),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Alerte stock',
-                  style: TextStyle(
-                    color: AppColors.danger,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
+    return InkWell(
+      onTap: () {
+        if (widget.onNav != null) {
+          widget.onNav!(1, statusFilter: 'lowStock');
+        }
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.dangerLight,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.danger.withAlpha(50)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: AppColors.danger, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Alerte stock',
+                    style: TextStyle(
+                      color: AppColors.danger,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
                   ),
-                ),
-                Text(
-                  '$count produit${count > 1 ? 's' : ''} en stock faible ou rupture',
-                  style: const TextStyle(color: AppColors.textMedium, fontSize: 13),
-                ),
-              ],
+                  Text(
+                    '$count produit${count > 1 ? 's' : ''} en stock faible ou rupture',
+                    style: const TextStyle(color: AppColors.textMedium, fontSize: 13),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const Icon(Icons.chevron_right, color: AppColors.textLight),
-        ],
+            const Icon(Icons.chevron_right, color: AppColors.textLight),
+          ],
+        ),
       ),
     );
   }
@@ -438,7 +487,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 TextButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    if (widget.onNav != null) {
+                      widget.onNav!(1);
+                    }
+                  },
                   child: const Text('Voir tout', style: TextStyle(color: AppColors.primary)),
                 ),
               ],
@@ -458,7 +511,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       if (i > 0)
                         const Divider(height: 1, color: AppColors.divider, indent: 60),
-                      ListTile(
+                      Material(
+                        color: Colors.transparent,
+                        child: ListTile(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ProductDetailScreen(product: product),
+                              ),
+                            ).then((_) => _loadData());
+                          },
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 4,
                         ),
@@ -504,6 +567,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             fontSize: 13,
                           ),
                         ),
+                      ),
                       ),
                     ],
                   );

@@ -18,9 +18,11 @@ class ProductProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> add(Product product) async {
-    await DatabaseHelper.instance.insertProduct(product);
+  Future<Product> add(Product product) async {
+    final id = await DatabaseHelper.instance.insertProduct(product);
+    final newProduct = product.copyWith(id: id);
     await load();
+    return newProduct;
   }
 
   Future<void> update(Product product) async {

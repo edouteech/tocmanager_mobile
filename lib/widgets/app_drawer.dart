@@ -30,7 +30,10 @@ class AppDrawer extends StatelessWidget {
           _NavItem(
             index: 3, icon: Icons.people_outline, activeIcon: Icons.people,
             label: 'Clients', current: currentIndex, onTap: onNav,
-            comingSoon: true,
+          ),
+          _NavItem(
+            index: 7, icon: Icons.business_outlined, activeIcon: Icons.business,
+            label: 'Fournisseurs', current: currentIndex, onTap: onNav,
           ),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -47,19 +50,13 @@ class AppDrawer extends StatelessWidget {
             label: 'Ventes', current: currentIndex, onTap: onNav,
           ),
           _NavItem(
-            index: 6, icon: Icons.inventory_outlined, activeIcon: Icons.inventory,
-            label: 'Inventaire', current: currentIndex, onTap: onNav,
-            comingSoon: true,
+            index: 6, icon: Icons.account_balance_wallet_outlined,
+            activeIcon: Icons.account_balance_wallet,
+            label: 'Décaissements', current: currentIndex, onTap: onNav,
           ),
           _NavItem(
-            index: 7, icon: Icons.receipt_long_outlined, activeIcon: Icons.receipt_long,
-            label: 'Factures', current: currentIndex, onTap: onNav,
-            comingSoon: true,
-          ),
-          _NavItem(
-            index: 8, icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart,
-            label: 'Rapports', current: currentIndex, onTap: onNav,
-            comingSoon: true,
+            index: 9, icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart,
+            label: 'Rapports & Analytique', current: currentIndex, onTap: onNav,
           ),
           const Spacer(),
           const Padding(
@@ -67,9 +64,8 @@ class AppDrawer extends StatelessWidget {
             child: Divider(color: AppColors.divider),
           ),
           _NavItem(
-            index: 9, icon: Icons.settings_outlined, activeIcon: Icons.settings,
+            index: 10, icon: Icons.settings_outlined, activeIcon: Icons.settings,
             label: 'Paramètres', current: currentIndex, onTap: onNav,
-            comingSoon: true,
           ),
           const Padding(
             padding: EdgeInsets.only(bottom: 24, top: 8),
@@ -145,7 +141,6 @@ class _NavItem extends StatelessWidget {
   final String label;
   final int current;
   final void Function(int) onTap;
-  final bool comingSoon;
 
   const _NavItem({
     required this.index,
@@ -154,7 +149,6 @@ class _NavItem extends StatelessWidget {
     required this.label,
     required this.current,
     required this.onTap,
-    this.comingSoon = false,
   });
 
   @override
@@ -167,7 +161,7 @@ class _NavItem extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: comingSoon ? null : () => onTap(index),
+          onTap: () { Navigator.pop(context); onTap(index); },
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
@@ -188,22 +182,6 @@ class _NavItem extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (comingSoon)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppColors.warningLight,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text(
-                      'Bientôt',
-                      style: TextStyle(
-                        color: AppColors.warning,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
               ],
             ),
           ),

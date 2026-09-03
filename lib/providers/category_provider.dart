@@ -17,9 +17,10 @@ class CategoryProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> add(Category category) async {
-    await DatabaseHelper.instance.insertCategory(category);
+  Future<int> add(Category category) async {
+    final id = await DatabaseHelper.instance.insertCategory(category);
     await load();
+    return id;
   }
 
   Future<void> update(Category category) async {

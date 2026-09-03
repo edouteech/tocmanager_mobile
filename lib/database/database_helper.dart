@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:intl/intl.dart';
 import '../models/category.dart';
 import '../models/product.dart';
 import '../models/approvisionnement.dart';
 import '../models/decaissement.dart';
 import '../models/vente.dart';
+import '../models/client.dart';
+import '../models/supplier.dart';
 
 class DatabaseHelper {
   static const _dbName = 'tocmanager.db';
-  static const _dbVersion = 4;
+  static const _dbVersion = 10;
 
   static DatabaseHelper? _instance;
   static Database? _database;
@@ -17,7 +20,11 @@ class DatabaseHelper {
   DatabaseHelper._();
   static DatabaseHelper get instance => _instance ??= DatabaseHelper._();
 
-  Future<Database> get database async => _database ??= await _init();
+  Future<Database> get database async {
+    final db = _database ??= await _init();
+    await _ensureAllTablesExist(db);
+    return db;
+  }
 
   Future<Database> _init() async {
     final dbPath = await getDatabasesPath();
@@ -26,30 +33,215 @@ class DatabaseHelper {
       version: _dbVersion,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
+      onOpen: (db) async {
+        await _ensureAllTablesExist(db);
+      },
     );
+  }
+
+  Future<void> _ensureAllTablesExist(Database db) async {
+    await _createV2Schema(db);
+    await _createV3Schema(db);
+    try {
+      await _createV4Schema(db);
+    } catch (_) {}
+    await _createV5Schema(db);
+    await _createV6Schema(db);
+    await _createV7Schema(db);
+    await _createV8Schema(db);
+    await _createV9Schema(db);
   }
 
   Future<void> _onCreate(Database db, int version) async {
     await _createBaseSchema(db);
-    await _createV2Schema(db);
-    await _createV3Schema(db);
-    await _createV4Schema(db);
+    await _ensureAllTablesExist(db);
     await _insertSampleData(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) await _createV2Schema(db);
     if (oldVersion < 3) await _createV3Schema(db);
-    if (oldVersion < 4) await _createV4Schema(db);
+    if (oldVersion < 4) {
+      try {
+        await _createV4Schema(db);
+      } catch (_) {}
+    }
+    if (oldVersion < 5) await _createV5Schema(db);
+    if (oldVersion < 6) await _createV6Schema(db);
+    if (oldVersion < 7) await _createV7Schema(db);
+    if (oldVersion < 8) await _createV8Schema(db);
+    if (oldVersion < 9) await _createV9Schema(db);
+    if (oldVersion < 10) await _createV10Schema(db);
+  }
+
+
+  Future<void> _createV10Schema(Database db) async {
+    try {
+      final tableInfo = await db.rawQuery('PRAGMA table_info(products)');
+      final hasImagePath = tableInfo.any((col) => col['name'] == 'image_path');
+      if (!hasImagePath) {
+        await db.execute('ALTER TABLE products ADD COLUMN image_path TEXT');
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _createV9Schema(Database db) async {
+    try {
+      // No schema changes for version 9 yet. This placeholder ensures the upgrade path works.
+    } catch (_) {}
+  }
+
+  Future<void> _createV8Schema(Database db) async {
+    try {
+      final tableInfo = await db.rawQuery('PRAGMA table_info(products)');
+      final hasSupplierId = tableInfo.any((col) => col['name'] == 'supplier_id');
+      if (!hasSupplierId) {
+        await db.execute('ALTER TABLE products ADD COLUMN supplier_id INTEGER');
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _createV7Schema(Database db) async {
+    try {
+      final tableInfo = await db.rawQuery('PRAGMA table_info(approvisionnements)');
+      final hasSupplierId = tableInfo.any((col) => col['name'] == 'supplier_id');
+      if (!hasSupplierId) {
+        await db.execute('ALTER TABLE approvisionnements ADD COLUMN supplier_id INTEGER');
+      }
+      final hasPaidAmount = tableInfo.any((col) => col['name'] == 'paid_amount');
+      if (!hasPaidAmount) {
+        await db.execute('ALTER TABLE approvisionnements ADD COLUMN paid_amount REAL DEFAULT 0');
+        await db.execute('UPDATE approvisionnements SET paid_amount = total WHERE paid_amount = 0 OR paid_amount IS NULL');
+      }
+    } catch (_) {}
   }
 
   Future<void> _createV4Schema(Database db) async {
-    await db.execute('ALTER TABLE products ADD COLUMN image_path TEXT');
+    try {
+      final tableInfo = await db.rawQuery('PRAGMA table_info(products)');
+      final hasImagePath = tableInfo.any((col) => col['name'] == 'image_path');
+      if (!hasImagePath) {
+        await db.execute('ALTER TABLE products ADD COLUMN image_path TEXT');
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _createV5Schema(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS clients (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        phone TEXT,
+        email TEXT,
+        address TEXT,
+        balance REAL NOT NULL DEFAULT 0,
+        client_type TEXT DEFAULT 'detail',
+        notes TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS suppliers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        contact_person TEXT,
+        phone TEXT,
+        email TEXT,
+        address TEXT,
+        balance REAL NOT NULL DEFAULT 0,
+        notes TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> _createV6Schema(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS vente_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        vente_id INTEGER NOT NULL,
+        product_id INTEGER NOT NULL,
+        product_name TEXT NOT NULL,
+        quantity REAL NOT NULL,
+        unit_price REAL NOT NULL,
+        total REAL NOT NULL,
+        FOREIGN KEY (vente_id) REFERENCES ventes(id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL
+      )
+    ''');
+
+    // Check if old `ventes` table contains `product_id` column and migrate
+    final tableInfo = await db.rawQuery('PRAGMA table_info(ventes)');
+    final hasOldProductIdCol = tableInfo.any((col) => col['name'] == 'product_id');
+
+    if (hasOldProductIdCol) {
+      await db.execute('ALTER TABLE ventes RENAME TO ventes_old');
+      await _createV6VentesTable(db);
+
+      final oldVentes = await db.query('ventes_old');
+      for (final old in oldVentes) {
+        final id = old['id'] as int;
+        final productId = old['product_id'] as int;
+        final qty = (old['quantity'] as num).toDouble();
+        final unitPrice = (old['unit_price'] as num).toDouble();
+        final total = (old['total'] as num).toDouble();
+        final clientName = old['client_name'] as String?;
+        final date = old['date'] as String;
+        final notes = old['notes'] as String?;
+
+        // Get product name
+        final prodRes = await db.query('products', columns: ['name'], where: 'id = ?', whereArgs: [productId]);
+        final productName = prodRes.isNotEmpty ? prodRes.first['name'] as String : 'Produit #$productId';
+
+        final ticketNum = 'VNT-${id.toString().padLeft(5, '0')}';
+
+        await db.insert('ventes', {
+          'id': id,
+          'ticket_number': ticketNum,
+          'client_id': null,
+          'client_name': clientName,
+          'total_amount': total,
+          'paid_amount': total,
+          'payment_method': 'Espèces',
+          'date': date,
+          'notes': notes,
+        });
+
+        await db.insert('vente_items', {
+          'vente_id': id,
+          'product_id': productId,
+          'product_name': productName,
+          'quantity': qty,
+          'unit_price': unitPrice,
+          'total': total,
+        });
+      }
+      await db.execute('DROP TABLE ventes_old');
+    } else {
+      await _createV6VentesTable(db);
+    }
+  }
+
+  Future<void> _createV6VentesTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ventes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_number TEXT NOT NULL,
+        client_id INTEGER,
+        client_name TEXT,
+        total_amount REAL NOT NULL DEFAULT 0,
+        paid_amount REAL NOT NULL DEFAULT 0,
+        payment_method TEXT NOT NULL DEFAULT 'Espèces',
+        date TEXT NOT NULL,
+        notes TEXT,
+        FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL
+      )
+    ''');
   }
 
   Future<void> _createBaseSchema(Database db) async {
     await db.execute('''
-      CREATE TABLE categories (
+      CREATE TABLE IF NOT EXISTS categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         description TEXT,
@@ -59,12 +251,17 @@ class DatabaseHelper {
       )
     ''');
     await db.execute('''
-      CREATE TABLE products (
+      CREATE TABLE IF NOT EXISTS products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         category_id INTEGER,
+        supplier_id INTEGER,
         name TEXT NOT NULL,
         description TEXT,
         price REAL NOT NULL DEFAULT 0,
+        price_semi_wholesale REAL DEFAULT 0,
+        price_wholesale REAL DEFAULT 0,
+        min_qty_semi_wholesale REAL DEFAULT 0,
+        min_qty_wholesale REAL DEFAULT 0,
         cost_price REAL NOT NULL DEFAULT 0,
         quantity REAL NOT NULL DEFAULT 0,
         unit TEXT NOT NULL DEFAULT 'pce',
@@ -72,25 +269,14 @@ class DatabaseHelper {
         alert_quantity REAL DEFAULT 5,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+        FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
+        FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE SET NULL
       )
     ''');
   }
 
   Future<void> _createV3Schema(Database db) async {
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS ventes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        product_id INTEGER NOT NULL,
-        quantity REAL NOT NULL,
-        unit_price REAL NOT NULL DEFAULT 0,
-        total REAL NOT NULL DEFAULT 0,
-        client_name TEXT,
-        date TEXT NOT NULL,
-        notes TEXT,
-        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
-      )
-    ''');
+    // Legacy placeholder
   }
 
   Future<void> _createV2Schema(Database db) async {
@@ -123,111 +309,213 @@ class DatabaseHelper {
   Future<void> _insertSampleData(Database db) async {
     final now = DateTime.now().toIso8601String();
 
-    final catId1 = await db.insert('categories', {
-      'name': 'Électronique',
-      'description': 'Appareils et accessoires électroniques',
-      'color': const Color(0xFF29ABE2).toARGB32(),
-      'icon': Icons.phone_android.codePoint,
-      'created_at': now,
-    });
+    final catCount = Sqflite.firstIntValue(
+      await db.rawQuery('SELECT COUNT(*) FROM categories'),
+    );
+    if (catCount == 0) {
+      await db.insert('categories', {
+        'name': 'Vêtements Homme',
+        'description': 'Chemises, pantalons, T-shirts et costumes',
+        'color': Colors.indigo.toARGB32(),
+        'icon': Icons.checkroom.codePoint,
+        'created_at': now,
+      });
+      await db.insert('categories', {
+        'name': 'Vêtements Femme',
+        'description': 'Robes, jupes, ensembles et hauts',
+        'color': Colors.pink.toARGB32(),
+        'icon': Icons.checkroom.codePoint,
+        'created_at': now,
+      });
+      await db.insert('categories', {
+        'name': 'Chaussures',
+        'description': 'Mocassins, talons, baskets et sandales',
+        'color': Colors.amber.toARGB32(),
+        'icon': Icons.style.codePoint,
+        'created_at': now,
+      });
+      await db.insert('categories', {
+        'name': 'Accessoires & Maroquinerie',
+        'description': 'Sacs à main, ceintures et bijoux',
+        'color': Colors.teal.toARGB32(),
+        'icon': Icons.shopping_bag.codePoint,
+        'created_at': now,
+      });
 
-    final catId2 = await db.insert('categories', {
-      'name': 'Alimentaire',
-      'description': 'Produits alimentaires et boissons',
-      'color': const Color(0xFF27AE60).toARGB32(),
-      'icon': Icons.restaurant.codePoint,
-      'created_at': now,
-    });
+      await db.insert('products', {
+        'category_id': 1,
+        'name': 'Chemise Homme Slim Fit L',
+        'description': 'Chemise en coton manches longues',
+        'price': 15000,
+        'cost_price': 10000,
+        'quantity': 15,
+        'unit': 'pce',
+        'barcode': '600111222333',
+        'alert_quantity': 3,
+        'created_at': now,
+        'updated_at': now,
+      });
+      await db.insert('products', {
+        'category_id': 2,
+        'name': 'Robe de Soirée Élégante M',
+        'description': 'Robe fluide imprimée chic',
+        'price': 25000,
+        'cost_price': 16000,
+        'quantity': 8,
+        'unit': 'pce',
+        'barcode': '600444555666',
+        'alert_quantity': 2,
+        'created_at': now,
+        'updated_at': now,
+      });
+      await db.insert('products', {
+        'category_id': 1,
+        'name': 'Jean Denim Classic T42',
+        'description': 'Jean droit coupe classique',
+        'price': 12500,
+        'cost_price': 8000,
+        'quantity': 20,
+        'unit': 'pce',
+        'barcode': '600777888999',
+        'alert_quantity': 5,
+        'created_at': now,
+        'updated_at': now,
+      });
+      await db.insert('products', {
+        'category_id': 3,
+        'name': 'Mocassins Cuir Noir T43',
+        'description': 'Chaussures de ville en cuir souple',
+        'price': 30000,
+        'cost_price': 20000,
+        'quantity': 4,
+        'unit': 'pce',
+        'barcode': '600123987456',
+        'alert_quantity': 2,
+        'created_at': now,
+        'updated_at': now,
+      });
+      await db.insert('products', {
+        'category_id': 4,
+        'name': 'Sac à Main Cuir Chic',
+        'description': 'Sac à main avec bandoulière amovible',
+        'price': 18000,
+        'cost_price': 11000,
+        'quantity': 6,
+        'unit': 'pce',
+        'barcode': null,
+        'alert_quantity': 2,
+        'created_at': now,
+        'updated_at': now,
+      });
+    }
 
-    final catId3 = await db.insert('categories', {
-      'name': 'Fournitures',
-      'description': 'Fournitures de bureau et papeterie',
-      'color': const Color(0xFFF39C12).toARGB32(),
-      'icon': Icons.business_center.codePoint,
-      'created_at': now,
-    });
+    final clientCount = Sqflite.firstIntValue(
+      await db.rawQuery('SELECT COUNT(*) FROM clients'),
+    );
+    if (clientCount == 0) {
+      await db.insert('clients', {
+        'name': 'Kouassi Jean',
+        'phone': '+225 0707070707',
+        'email': 'kouassi@gmail.com',
+        'address': 'Abidjan, Cocody',
+        'balance': 15000,
+        'notes': 'Client fidèle',
+        'created_at': now,
+      });
+      await db.insert('clients', {
+        'name': 'Soro Mariam',
+        'phone': '+225 0505050505',
+        'email': 'soro.m@yahoo.fr',
+        'address': 'Abidjan, Marcory',
+        'balance': 0,
+        'notes': 'Paiement toujours comptant',
+        'created_at': now,
+      });
+    }
 
-    await db.insert('products', {
-      'category_id': catId1,
-      'name': 'Smartphone X12',
-      'description': 'Téléphone intelligent dernière génération',
-      'price': 250000,
-      'cost_price': 200000,
-      'quantity': 15,
-      'unit': 'pce',
-      'alert_quantity': 3,
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    await db.insert('products', {
-      'category_id': catId1,
-      'name': 'Écouteurs Pro',
-      'description': 'Écouteurs sans fil avec réduction de bruit',
-      'price': 35000,
-      'cost_price': 25000,
-      'quantity': 2,
-      'unit': 'pce',
-      'alert_quantity': 5,
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    await db.insert('products', {
-      'category_id': catId2,
-      'name': 'Farine de blé',
-      'description': 'Farine de blé type 55',
-      'price': 800,
-      'cost_price': 600,
-      'quantity': 50,
-      'unit': 'kg',
-      'alert_quantity': 10,
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    await db.insert('products', {
-      'category_id': catId2,
-      'name': 'Huile végétale',
-      'price': 1500,
-      'cost_price': 1100,
-      'quantity': 4,
-      'unit': 'L',
-      'alert_quantity': 10,
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    await db.insert('products', {
-      'category_id': catId3,
-      'name': 'Ramette A4 80g',
-      'price': 3500,
-      'cost_price': 2800,
-      'quantity': 4,
-      'unit': 'ramette',
-      'alert_quantity': 5,
-      'created_at': now,
-      'updated_at': now,
-    });
+    final supplierCount = Sqflite.firstIntValue(
+      await db.rawQuery('SELECT COUNT(*) FROM suppliers'),
+    );
+    if (supplierCount == 0) {
+      await db.insert('suppliers', {
+        'name': 'Élégance Mode Gros',
+        'contact_person': 'M. Touré',
+        'phone': '+225 2720202020',
+        'email': 'contact@elegancemode.ci',
+        'address': 'Abidjan, Adjamé',
+        'balance': 50000,
+        'notes': 'Fournisseur principal prêt-à-porter',
+        'created_at': now,
+      });
+    }
   }
 
-  // --- Categories CRUD ---
+  // --- STATS ---
+  Future<Map<String, dynamic>> getStats() async {
+    final db = await database;
+    final productCount = Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM products'),
+        ) ??
+        0;
 
+    final categoryCount = Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM categories'),
+        ) ??
+        0;
+
+    final lowStockCount = Sqflite.firstIntValue(
+          await db.rawQuery(
+            'SELECT COUNT(*) FROM products WHERE quantity <= alert_quantity',
+          ),
+        ) ??
+        0;
+
+    final stockValueRes = await db.rawQuery(
+      'SELECT SUM(price * quantity) as total FROM products',
+    );
+    final stockValue =
+        (stockValueRes.first['total'] as num?)?.toDouble() ?? 0.0;
+
+    return {
+      'productCount': productCount,
+      'categoryCount': categoryCount,
+      'stockValue': stockValue,
+      'lowStockCount': lowStockCount,
+    };
+  }
+
+  Future<List<Map<String, dynamic>>> getStockByCategory() async {
+    final db = await database;
+    final res = await db.rawQuery('''
+      SELECT
+        c.name as name,
+        c.color as color,
+        COUNT(p.id) as count,
+        COALESCE(SUM(p.price * p.quantity), 0) as value
+      FROM categories c
+      LEFT JOIN products p ON p.category_id = c.id
+      GROUP BY c.id
+      ORDER BY value DESC
+    ''');
+    return res;
+  }
+
+  // --- CATEGORIES ---
   Future<List<Category>> getCategories() async {
     final db = await database;
     final maps = await db.query('categories', orderBy: 'name ASC');
-    return maps.map(Category.fromMap).toList();
+    return maps.map((m) => Category.fromMap(m)).toList();
   }
 
-  Future<int> insertCategory(Category category) async {
+  Future<int> insertCategory(Category cat) async {
     final db = await database;
-    return db.insert('categories', category.toMap());
+    return db.insert('categories', cat.toMap());
   }
 
-  Future<int> updateCategory(Category category) async {
+  Future<int> updateCategory(Category cat) async {
     final db = await database;
-    return db.update('categories', category.toMap(),
-        where: 'id = ?', whereArgs: [category.id]);
+    return db.update('categories', cat.toMap(),
+        where: 'id = ?', whereArgs: [cat.id]);
   }
 
   Future<int> deleteCategory(int id) async {
@@ -235,28 +523,44 @@ class DatabaseHelper {
     return db.delete('categories', where: 'id = ?', whereArgs: [id]);
   }
 
-  // --- Products CRUD ---
-
-  Future<List<Product>> getProducts({int? categoryId}) async {
+  // --- PRODUCTS ---
+  Future<List<Product>> getProducts({int? categoryId, String? search}) async {
     final db = await database;
-    final maps = await db.query(
-      'products',
-      where: categoryId != null ? 'category_id = ?' : null,
-      whereArgs: categoryId != null ? [categoryId] : null,
-      orderBy: 'updated_at DESC',
-    );
-    return maps.map(Product.fromMap).toList();
+    String? where;
+    List<dynamic>? whereArgs;
+
+    if (categoryId != null && search != null && search.isNotEmpty) {
+      where = 'category_id = ? AND name LIKE ?';
+      whereArgs = [categoryId, '%$search%'];
+    } else if (categoryId != null) {
+      where = 'category_id = ?';
+      whereArgs = [categoryId];
+    } else if (search != null && search.isNotEmpty) {
+      where = 'name LIKE ? OR barcode LIKE ?';
+      whereArgs = ['%$search%', '%$search%'];
+    }
+
+    final maps = await db.query('products',
+        where: where, whereArgs: whereArgs, orderBy: 'name ASC');
+    return maps.map((m) => Product.fromMap(m)).toList();
   }
 
-  Future<int> insertProduct(Product product) async {
+  Future<Product?> getProductById(int id) async {
     final db = await database;
-    return db.insert('products', product.toMap());
+    final maps = await db.query('products', where: 'id = ?', whereArgs: [id]);
+    if (maps.isEmpty) return null;
+    return Product.fromMap(maps.first);
   }
 
-  Future<int> updateProduct(Product product) async {
+  Future<int> insertProduct(Product p) async {
     final db = await database;
-    return db.update('products', product.toMap(),
-        where: 'id = ?', whereArgs: [product.id]);
+    return db.insert('products', p.toMap());
+  }
+
+  Future<int> updateProduct(Product p) async {
+    final db = await database;
+    return db
+        .update('products', p.toMap(), where: 'id = ?', whereArgs: [p.id]);
   }
 
   Future<int> deleteProduct(int id) async {
@@ -264,8 +568,7 @@ class DatabaseHelper {
     return db.delete('products', where: 'id = ?', whereArgs: [id]);
   }
 
-  // --- Approvisionnements ---
-
+  // --- APPROVISIONNEMENTS ---
   Future<List<Approvisionnement>> getApprovisionnements({int? productId}) async {
     final db = await database;
     final maps = await db.query(
@@ -274,50 +577,48 @@ class DatabaseHelper {
       whereArgs: productId != null ? [productId] : null,
       orderBy: 'date DESC',
     );
-    return maps.map(Approvisionnement.fromMap).toList();
+    return maps.map((m) => Approvisionnement.fromMap(m)).toList();
   }
 
-  Future<int> insertApprovisionnement(Approvisionnement appro) async {
+  Future<int> insertApprovisionnement(Approvisionnement a) async {
     final db = await database;
-    final id = await db.insert('approvisionnements', appro.toMap());
-    await db.rawUpdate(
-      'UPDATE products SET quantity = quantity + ?, updated_at = ? WHERE id = ?',
-      [appro.quantity, DateTime.now().toIso8601String(), appro.productId],
-    );
-    return id;
+    return db.transaction((txn) async {
+      final id = await txn.insert('approvisionnements', a.toMap());
+      await txn.rawUpdate(
+        'UPDATE products SET quantity = quantity + ?, updated_at = ? WHERE id = ?',
+        [a.quantity, DateTime.now().toIso8601String(), a.productId],
+      );
+      return id;
+    });
   }
 
-  Future<int> deleteApprovisionnement(Approvisionnement appro) async {
+  Future<int> deleteApprovisionnement(Approvisionnement a) async {
     final db = await database;
-    final count = await db.delete(
-      'approvisionnements',
-      where: 'id = ?',
-      whereArgs: [appro.id],
-    );
-    await db.rawUpdate(
-      'UPDATE products SET quantity = MAX(0, quantity - ?), updated_at = ? WHERE id = ?',
-      [appro.quantity, DateTime.now().toIso8601String(), appro.productId],
-    );
-    return count;
+    return db.transaction((txn) async {
+      await txn.rawUpdate(
+        'UPDATE products SET quantity = max(0, quantity - ?), updated_at = ? WHERE id = ?',
+        [a.quantity, DateTime.now().toIso8601String(), a.productId],
+      );
+      return txn.delete('approvisionnements', where: 'id = ?', whereArgs: [a.id]);
+    });
   }
 
-  // --- Decaissements ---
-
+  // --- DECAISSEMENTS ---
   Future<List<Decaissement>> getDecaissements() async {
     final db = await database;
     final maps = await db.query('decaissements', orderBy: 'date DESC');
-    return maps.map(Decaissement.fromMap).toList();
+    return maps.map((m) => Decaissement.fromMap(m)).toList();
   }
 
-  Future<int> insertDecaissement(Decaissement dec) async {
+  Future<int> insertDecaissement(Decaissement d) async {
     final db = await database;
-    return db.insert('decaissements', dec.toMap());
+    return db.insert('decaissements', d.toMap());
   }
 
-  Future<int> updateDecaissement(Decaissement dec) async {
+  Future<int> updateDecaissement(Decaissement d) async {
     final db = await database;
-    return db.update('decaissements', dec.toMap(),
-        where: 'id = ?', whereArgs: [dec.id]);
+    return db.update('decaissements', d.toMap(),
+        where: 'id = ?', whereArgs: [d.id]);
   }
 
   Future<int> deleteDecaissement(int id) async {
@@ -325,87 +626,241 @@ class DatabaseHelper {
     return db.delete('decaissements', where: 'id = ?', whereArgs: [id]);
   }
 
-  Future<double> getTotalDecaissements() async {
-    final db = await database;
-    final result = await db.rawQuery(
-        'SELECT COALESCE(SUM(amount), 0) as total FROM decaissements');
-    return (result.first['total'] as num).toDouble();
-  }
-
-  // --- Stats ---
-
-  Future<Map<String, dynamic>> getStats() async {
-    final db = await database;
-    final productCount =
-        Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM products')) ?? 0;
-    final categoryCount =
-        Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM categories')) ?? 0;
-    final lowStockCount = Sqflite.firstIntValue(await db.rawQuery(
-            'SELECT COUNT(*) FROM products WHERE quantity <= alert_quantity')) ??
-        0;
-    final stockValueResult = await db
-        .rawQuery('SELECT SUM(quantity * cost_price) as total FROM products');
-    final stockValue =
-        (stockValueResult.first['total'] as num?)?.toDouble() ?? 0.0;
-
-    return {
-      'productCount': productCount,
-      'categoryCount': categoryCount,
-      'lowStockCount': lowStockCount,
-      'stockValue': stockValue,
-    };
-  }
-
-  // --- Ventes ---
-
+  // --- VENTES (TICKETS & MULTI-ARTICLES) ---
   Future<List<Vente>> getVentes({int? productId}) async {
     final db = await database;
-    final maps = await db.query(
-      'ventes',
-      where: productId != null ? 'product_id = ?' : null,
-      whereArgs: productId != null ? [productId] : null,
-      orderBy: 'date DESC',
-    );
-    return maps.map(Vente.fromMap).toList();
+    await _createV6Schema(db);
+    final maps = await db.query('ventes', orderBy: 'date DESC');
+    final List<Vente> result = [];
+
+    for (final map in maps) {
+      final venteId = map['id'] as int;
+      final itemMaps = await db.query('vente_items', where: 'vente_id = ?', whereArgs: [venteId]);
+      final items = itemMaps.map((m) => VenteItem.fromMap(m)).toList();
+
+      if (productId != null) {
+        final matches = items.any((it) => it.productId == productId);
+        if (!matches) continue;
+      }
+
+      result.add(Vente.fromMap(map, items: items));
+    }
+    return result;
   }
 
-  Future<int> insertVente(Vente vente) async {
+  Future<int> insertVente(Vente v) async {
     final db = await database;
-    final id = await db.insert('ventes', vente.toMap());
-    await db.rawUpdate(
-      'UPDATE products SET quantity = MAX(0, quantity - ?), updated_at = ? WHERE id = ?',
-      [vente.quantity, DateTime.now().toIso8601String(), vente.productId],
-    );
-    return id;
+    return db.transaction((txn) async {
+      final now = DateTime.now();
+      final countRes = Sqflite.firstIntValue(await txn.rawQuery('SELECT COUNT(*) FROM ventes')) ?? 0;
+      final ticketNum = v.ticketNumber.isNotEmpty
+          ? v.ticketNumber
+          : 'VNT-${DateFormat('yyyyMMdd').format(now)}-${(countRes + 1).toString().padLeft(4, '0')}';
+
+      final venteMap = v.toMap();
+      venteMap['ticket_number'] = ticketNum;
+
+      final venteId = await txn.insert('ventes', venteMap);
+
+      for (final item in v.items) {
+        await txn.insert('vente_items', item.toMap(venteIdParam: venteId));
+        await txn.rawUpdate(
+          'UPDATE products SET quantity = max(0, quantity - ?), updated_at = ? WHERE id = ?',
+          [item.quantity, now.toIso8601String(), item.productId],
+        );
+      }
+
+      if (v.clientId != null) {
+        final diff = v.totalAmount - v.paidAmount;
+        await txn.rawUpdate(
+          'UPDATE clients SET balance = balance + ? WHERE id = ?',
+          [diff, v.clientId],
+        );
+      }
+
+      return venteId;
+    });
   }
 
-  Future<int> deleteVente(Vente vente) async {
+  Future<void> updateVentePaidAmount(int venteId, double newPaidAmount) async {
     final db = await database;
-    final count = await db.delete('ventes', where: 'id = ?', whereArgs: [vente.id]);
-    await db.rawUpdate(
-      'UPDATE products SET quantity = quantity + ?, updated_at = ? WHERE id = ?',
-      [vente.quantity, DateTime.now().toIso8601String(), vente.productId],
-    );
-    return count;
+    await db.transaction((txn) async {
+      await txn.rawUpdate(
+        'UPDATE ventes SET paid_amount = ? WHERE id = ?',
+        [newPaidAmount, venteId],
+      );
+    });
   }
 
-  Future<double> getTotalVentes() async {
+  Future<int> deleteVente(Vente v) async {
     final db = await database;
-    final result =
-        await db.rawQuery('SELECT COALESCE(SUM(total), 0) as total FROM ventes');
-    return (result.first['total'] as num).toDouble();
+    return db.transaction((txn) async {
+      final now = DateTime.now().toIso8601String();
+
+      final itemMaps = await txn.query('vente_items', where: 'vente_id = ?', whereArgs: [v.id]);
+      final items = itemMaps.map((m) => VenteItem.fromMap(m)).toList();
+
+      for (final item in items) {
+        await txn.rawUpdate(
+          'UPDATE products SET quantity = quantity + ?, updated_at = ? WHERE id = ?',
+          [item.quantity, now, item.productId],
+        );
+      }
+
+      await txn.delete('vente_items', where: 'vente_id = ?', whereArgs: [v.id]);
+      final deletedCount = await txn.delete('ventes', where: 'id = ?', whereArgs: [v.id]);
+
+      if (v.clientId != null) {
+        final sumRes = await txn.rawQuery(
+          'SELECT COALESCE(SUM(total_amount - paid_amount), 0) as total_debt FROM ventes WHERE client_id = ? AND paid_amount < total_amount',
+          [v.clientId],
+        );
+        final newBalance = (sumRes.first['total_debt'] as num?)?.toDouble() ?? 0.0;
+        await txn.rawUpdate(
+          'UPDATE clients SET balance = ? WHERE id = ?',
+          [newBalance, v.clientId],
+        );
+      }
+
+      return deletedCount;
+    });
   }
 
-  Future<List<Map<String, dynamic>>> getStockByCategory() async {
+  // --- CLIENTS ---
+  Future<List<Client>> getClients() async {
     final db = await database;
-    return db.rawQuery('''
-      SELECT c.name, c.color,
-             COUNT(p.id) as count,
-             COALESCE(SUM(p.quantity * p.cost_price), 0) as value
-      FROM categories c
-      LEFT JOIN products p ON p.category_id = c.id
-      GROUP BY c.id
-      ORDER BY value DESC
-    ''');
+    await _createV5Schema(db);
+    final maps = await db.query('clients', orderBy: 'name ASC');
+    return maps.map((m) => Client.fromMap(m)).toList();
+  }
+
+  Future<int> insertClient(Client client) async {
+    final db = await database;
+    return db.insert('clients', client.toMap());
+  }
+
+  Future<int> updateClient(Client client) async {
+    final db = await database;
+    return db.update('clients', client.toMap(), where: 'id = ?', whereArgs: [client.id]);
+  }
+
+  Future<int> deleteClient(int id) async {
+    final db = await database;
+    return db.delete('clients', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> recordClientPayment(int clientId, double amount) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      // 1. Fetch all unpaid credit sales for this client (FIFO order: oldest sales first)
+      final salesMaps = await txn.query(
+        'ventes',
+        where: 'client_id = ? AND paid_amount < total_amount',
+        whereArgs: [clientId],
+        orderBy: 'date ASC',
+      );
+
+      double remainingPayment = amount;
+
+      for (final map in salesMaps) {
+        if (remainingPayment <= 0) break;
+        final id = map['id'] as int;
+        final total = (map['total_amount'] as num).toDouble();
+        final paid = (map['paid_amount'] as num).toDouble();
+        final debt = total - paid;
+
+        if (debt > 0) {
+          final allocated = remainingPayment >= debt ? debt : remainingPayment;
+          final newPaid = paid + allocated;
+          await txn.update(
+            'ventes',
+            {'paid_amount': newPaid},
+            where: 'id = ?',
+            whereArgs: [id],
+          );
+          remainingPayment -= allocated;
+        }
+      }
+
+      // 2. Recalculate client's total balance from unpaid sales
+      final sumRes = await txn.rawQuery(
+        'SELECT COALESCE(SUM(total_amount - paid_amount), 0) as total_debt FROM ventes WHERE client_id = ? AND paid_amount < total_amount',
+        [clientId],
+      );
+      final newBalance = (sumRes.first['total_debt'] as num?)?.toDouble() ?? 0.0;
+
+      await txn.rawUpdate(
+        'UPDATE clients SET balance = ? WHERE id = ?',
+        [newBalance, clientId],
+      );
+    });
+  }
+
+  // --- SUPPLIERS ---
+  Future<List<Supplier>> getSuppliers() async {
+    final db = await database;
+    await _createV5Schema(db);
+    final maps = await db.query('suppliers', orderBy: 'name ASC');
+    return maps.map((m) => Supplier.fromMap(m)).toList();
+  }
+
+  Future<int> insertSupplier(Supplier supplier) async {
+    final db = await database;
+    return db.insert('suppliers', supplier.toMap());
+  }
+
+  Future<int> updateSupplier(Supplier supplier) async {
+    final db = await database;
+    return db.update('suppliers', supplier.toMap(), where: 'id = ?', whereArgs: [supplier.id]);
+  }
+
+  Future<int> deleteSupplier(int id) async {
+    final db = await database;
+    return db.delete('suppliers', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> recordSupplierPayment(int supplierId, double amount) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      final appMaps = await txn.query(
+        'approvisionnements',
+        where: 'supplier_id = ? AND paid_amount < total',
+        whereArgs: [supplierId],
+        orderBy: 'date ASC',
+      );
+
+      double remainingPayment = amount;
+
+      for (final map in appMaps) {
+        if (remainingPayment <= 0) break;
+        final id = map['id'] as int;
+        final total = (map['total'] as num).toDouble();
+        final paid = map['paid_amount'] != null ? (map['paid_amount'] as num).toDouble() : total;
+        final debt = total - paid;
+
+        if (debt > 0) {
+          final allocated = remainingPayment >= debt ? debt : remainingPayment;
+          final newPaid = paid + allocated;
+          await txn.update(
+            'approvisionnements',
+            {'paid_amount': newPaid},
+            where: 'id = ?',
+            whereArgs: [id],
+          );
+          remainingPayment -= allocated;
+        }
+      }
+
+      final sumRes = await txn.rawQuery(
+        'SELECT COALESCE(SUM(total - paid_amount), 0) as total_debt FROM approvisionnements WHERE supplier_id = ? AND paid_amount < total',
+        [supplierId],
+      );
+      final newBalance = (sumRes.first['total_debt'] as num?)?.toDouble() ?? 0.0;
+
+      await txn.rawUpdate(
+        'UPDATE suppliers SET balance = ? WHERE id = ?',
+        [newBalance, supplierId],
+      );
+    });
   }
 }

@@ -5,6 +5,7 @@ import '../models/category.dart';
 import '../models/product.dart';
 import '../providers/product_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/category_icon_helper.dart';
 
 class CategoryDetailScreen extends StatelessWidget {
   final Category category;
@@ -83,7 +84,7 @@ class CategoryDetailScreen extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      IconData(category.icon, fontFamily: 'MaterialIcons'),
+                      CategoryIconHelper.getIcon(category.icon),
                       color: Colors.white,
                       size: 32,
                     ),

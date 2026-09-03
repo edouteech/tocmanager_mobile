@@ -1,9 +1,13 @@
+import '../widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../models/approvisionnement.dart';
 import '../providers/approvisionnement_provider.dart';
 import '../providers/product_provider.dart';
+import '../providers/supplier_provider.dart';
+import '../providers/settings_provider.dart';
+import '../services/approvisionnement_export_service.dart';
 import '../theme/app_theme.dart';
 
 class ApprovisionScreen extends StatefulWidget {
@@ -14,14 +18,65 @@ class ApprovisionScreen extends StatefulWidget {
 }
 
 class _ApprovisionScreenState extends State<ApprovisionScreen> {
+  String _search = '';
   int? _filterProductId;
+  String _filterPeriod = 'all'; // 'all', 'today', 'yesterday', 'month', 'credit'
+  String _sortBy = 'recent'; // 'recent', 'total_desc'
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ApprovisionnementProvider>().load();
+      context.read<SupplierProvider>().loadSuppliers();
     });
+  }
+
+  List<Approvisionnement> _getFilteredItems(List<Approvisionnement> allItems) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    final filtered = allItems.where((a) {
+      if (_filterProductId != null && a.productId != _filterProductId) return false;
+
+      final aDate = DateTime(a.date.year, a.date.month, a.date.day);
+
+      if (_filterPeriod == 'today') {
+        if (!aDate.isAtSameMomentAs(today)) return false;
+      } else if (_filterPeriod == 'yesterday') {
+        if (!aDate.isAtSameMomentAs(yesterday)) return false;
+      } else if (_filterPeriod == 'month') {
+        if (a.date.year != now.year || a.date.month != now.month) return false;
+      } else if (_filterPeriod == 'credit') {
+        if (!a.isCredit) return false;
+      }
+
+      if (_search.isNotEmpty) {
+        final q = _search.toLowerCase();
+        final matchSupp = (a.supplier ?? '').toLowerCase().contains(q);
+        final matchNotes = (a.notes ?? '').toLowerCase().contains(q);
+        if (!matchSupp && !matchNotes) return false;
+      }
+
+      return true;
+    }).toList();
+
+    if (_sortBy == 'total_desc') {
+      filtered.sort((a, b) => b.total.compareTo(a.total));
+    } else if (_sortBy == 'recent') {
+      filtered.sort((a, b) => b.date.compareTo(a.date));
+    }
+
+    return filtered;
+  }
+
+  String _getPeriodLabel() {
+    if (_filterPeriod == 'today') return 'Aujourd\'hui';
+    if (_filterPeriod == 'yesterday') return 'Hier';
+    if (_filterPeriod == 'month') return 'Ce mois-ci';
+    if (_filterPeriod == 'credit') return 'Approvisionnements à crédit';
+    return 'Toutes les périodes';
   }
 
   @override
@@ -32,25 +87,190 @@ class _ApprovisionScreenState extends State<ApprovisionScreen> {
       decimalDigits: 0,
     );
 
+    final isLargeScreen = MediaQuery.of(context).size.width >= 600;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Approvisionnements'),
+        title: const Text('Approvisionnements', style: TextStyle(fontWeight: FontWeight.w700)),
         backgroundColor: Colors.white,
+        foregroundColor: AppColors.textDark,
+        elevation: 0,
+        actions: [
+          PopupMenuButton<String>(
+            tooltip: 'Exporter le registre',
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primarySurface,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.ios_share_outlined, color: AppColors.primary, size: 20),
+            ),
+            onSelected: (val) {
+              final settings = context.read<SettingsProvider>().settings;
+              final products = context.read<ProductProvider>().products;
+              final items = _getFilteredItems(context.read<ApprovisionnementProvider>().items);
+              final periodName = _getPeriodLabel();
+              if (val == 'excel') {
+                ApprovisionnementExportService.exportApprovisionnementsExcel(context, items, products, periodName);
+              } else if (val == 'pdf') {
+                ApprovisionnementExportService.exportApprovisionnementsPdfReport(context, items, products, periodName, settings);
+              }
+            },
+            itemBuilder: (ctx) => [
+              const PopupMenuItem(
+                value: 'excel',
+                child: Row(
+                  children: [
+                    Icon(Icons.table_chart_outlined, size: 18, color: AppColors.success),
+                    SizedBox(width: 8),
+                    Text('Exporter Excel (.xlsx)'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'pdf',
+                child: Row(
+                  children: [
+                    Icon(Icons.picture_as_pdf_outlined, size: 18, color: AppColors.danger),
+                    SizedBox(width: 8),
+                    Text('Rapport PDF (A4)'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          IconButton(
+            onPressed: () => _showForm(context),
+            icon: const Icon(Icons.add, color: AppColors.primary),
+            tooltip: 'Nouvel approvisionnement',
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: Column(
         children: [
           _buildSummary(formatter),
+          _buildSearchAndSortBar(),
+          _buildPeriodFilterRow(),
           _buildProductFilter(),
-          Expanded(child: _buildTableView(formatter)),
+          Expanded(child: _buildAdaptiveBody(formatter, isLargeScreen: isLargeScreen)),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: null,
         onPressed: () => _showForm(context),
+        backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add),
-        label: const Text('Approvisionner'),
+        label: const Text('Nouvel réapprovisionnement'),
       ),
+    );
+  }
+
+  Widget _buildSearchAndSortBar() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              onChanged: (v) => setState(() => _search = v),
+              decoration: InputDecoration(
+                hintText: 'Rechercher (fournisseur, note)...',
+                prefixIcon: const Icon(Icons.search, color: AppColors.textLight, size: 20),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                filled: true,
+                fillColor: AppColors.background,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          PopupMenuButton<String>(
+            icon: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.sort_outlined, color: AppColors.primary, size: 20),
+            ),
+            tooltip: 'Trier les approvisionnements',
+            onSelected: (val) => setState(() => _sortBy = val),
+            itemBuilder: (ctx) => [
+              const PopupMenuItem(
+                value: 'recent',
+                child: Row(
+                  children: [
+                    Icon(Icons.access_time, size: 16, color: AppColors.textMedium),
+                    SizedBox(width: 8),
+                    Text('Plus récents'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'total_desc',
+                child: Row(
+                  children: [
+                    Icon(Icons.arrow_downward, size: 16, color: AppColors.primary),
+                    SizedBox(width: 8),
+                    Text('Total le plus élevé'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPeriodFilterRow() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _periodChip('Toutes', 'all'),
+            const SizedBox(width: 6),
+            _periodChip('Aujourd\'hui', 'today'),
+            const SizedBox(width: 6),
+            _periodChip('Hier', 'yesterday'),
+            const SizedBox(width: 6),
+            _periodChip('Ce mois-ci', 'month'),
+            const SizedBox(width: 6),
+            _periodChip('À crédit', 'credit'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _periodChip(String label, String type) {
+    final selected = _filterPeriod == type;
+    return ChoiceChip(
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          color: selected ? Colors.white : AppColors.textDark,
+        ),
+      ),
+      selected: selected,
+      selectedColor: AppColors.primary,
+      backgroundColor: AppColors.background,
+      side: BorderSide(color: selected ? AppColors.primary : AppColors.divider),
+      onSelected: (val) {
+        if (val) setState(() => _filterPeriod = type);
+      },
     );
   }
 
@@ -187,7 +407,7 @@ class _ApprovisionScreenState extends State<ApprovisionScreen> {
     );
   }
 
-  Widget _buildTableView(NumberFormat formatter) {
+  Widget _buildAdaptiveBody(NumberFormat formatter, {required bool isLargeScreen}) {
     return Consumer2<ApprovisionnementProvider, ProductProvider>(
       builder: (context, approProvider, productProvider, _) {
         if (approProvider.loading) {
@@ -196,7 +416,7 @@ class _ApprovisionScreenState extends State<ApprovisionScreen> {
           );
         }
 
-        final items = approProvider.items;
+        final items = _getFilteredItems(approProvider.items);
 
         if (items.isEmpty) {
           return Center(
@@ -234,6 +454,10 @@ class _ApprovisionScreenState extends State<ApprovisionScreen> {
           );
         }
 
+        if (!isLargeScreen) {
+          return _buildMobileListView(formatter, items, productProvider, approProvider);
+        }
+
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
           child: Container(
@@ -253,13 +477,292 @@ class _ApprovisionScreenState extends State<ApprovisionScreen> {
               borderRadius: BorderRadius.circular(16),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                child: _buildDataTable(
-                    items, productProvider, approProvider, formatter),
+                child: _buildDataTable(items, productProvider, approProvider, formatter),
               ),
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildMobileListView(
+    NumberFormat formatter,
+    List<Approvisionnement> items,
+    ProductProvider productProvider,
+    ApprovisionnementProvider approProvider,
+  ) {
+    final dateFormat = DateFormat('dd/MM/yyyy HH:mm', 'fr_FR');
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 100),
+      itemCount: items.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 8),
+      itemBuilder: (ctx, i) {
+        final a = items[i];
+        final prod = productProvider.products.where((p) => p.id == a.productId).firstOrNull;
+        final prodName = prod?.name ?? 'Produit #${a.productId}';
+
+        return Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: const BorderSide(color: AppColors.divider),
+          ),
+          color: Colors.white,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => _showApprovisionnementDetail(context, a, prodName, approProvider, formatter),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: a.isCredit ? AppColors.danger.withAlpha(20) : AppColors.success.withAlpha(20),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: a.isCredit ? AppColors.danger.withAlpha(50) : AppColors.success.withAlpha(50)),
+                        ),
+                        child: Text(
+                          a.isCredit ? 'À crédit (Reste: ${formatter.format(a.remainingAmount)})' : 'Payé Cash',
+                          style: TextStyle(
+                            color: a.isCredit ? AppColors.danger : AppColors.success,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        dateFormat.format(a.date),
+                        style: const TextStyle(fontSize: 11, color: AppColors.textLight),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    prodName,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.inventory_2_outlined, size: 14, color: AppColors.textMedium),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Qté : ${a.quantity} ${prod?.unit ?? 'unités'} × ${formatter.format(a.unitPrice)}',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textMedium),
+                      ),
+                    ],
+                  ),
+                  if (a.supplier != null && a.supplier!.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.business_outlined, size: 14, color: AppColors.textMedium),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            'Fournisseur : ${a.supplier}',
+                            style: const TextStyle(fontSize: 12, color: AppColors.textMedium),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  const Divider(height: 1, thickness: 0.5),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Total Achat :',
+                        style: TextStyle(fontSize: 12, color: AppColors.textMedium, fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        formatter.format(a.total),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showApprovisionnementDetail(
+    BuildContext context,
+    Approvisionnement a,
+    String prodName,
+    ApprovisionnementProvider approProvider,
+    NumberFormat formatter,
+  ) {
+    final dateFormat = DateFormat('dd/MM/yyyy à HH:mm', 'fr_FR');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.divider,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: a.isCredit ? AppColors.danger.withAlpha(20) : AppColors.success.withAlpha(20),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    a.isCredit ? 'À Crédit' : 'Réglé Cash',
+                    style: TextStyle(color: a.isCredit ? AppColors.danger : AppColors.success, fontWeight: FontWeight.w700, fontSize: 12),
+                  ),
+                ),
+                Text(dateFormat.format(a.date), style: const TextStyle(fontSize: 12, color: AppColors.textLight)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(prodName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textDark)),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Quantité :', style: TextStyle(color: AppColors.textMedium, fontSize: 12)),
+                      Text('${a.quantity}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                    ],
+                  ),
+                  const Divider(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Prix d\'achat unitaire :', style: TextStyle(color: AppColors.textMedium, fontSize: 12)),
+                      Text(formatter.format(a.unitPrice), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                    ],
+                  ),
+                  const Divider(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Total Achats :', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                      Text(formatter.format(a.total), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.primary)),
+                    ],
+                  ),
+                  if (a.supplier != null && a.supplier!.isNotEmpty) ...[
+                    const Divider(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Fournisseur :', style: TextStyle(color: AppColors.textMedium, fontSize: 12)),
+                        Text(a.supplier!, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                      ],
+                    ),
+                  ],
+                  if (a.isCredit) ...[
+                    const Divider(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Montant Réglé :', style: TextStyle(color: AppColors.textMedium, fontSize: 12)),
+                        Text(formatter.format(a.paidAmount), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.success)),
+                      ],
+                    ),
+                    const Divider(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Reste Dû :', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.danger)),
+                        Text(formatter.format(a.remainingAmount), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.danger)),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _confirmDelete(context, a, approProvider, context.read<ProductProvider>());
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.danger,
+                      side: const BorderSide(color: AppColors.danger),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    label: const Text('Supprimer'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _showForm(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    icon: const Icon(Icons.edit, size: 18),
+                    label: const Text('Modifier'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -450,18 +953,24 @@ class _ApprovisionForm extends StatefulWidget {
 }
 
 class _ApprovisionFormState extends State<_ApprovisionForm> {
+  final _formKey = GlobalKey<FormState>();
   final _qtyCtrl = TextEditingController();
   final _priceCtrl = TextEditingController();
+  final _paidCtrl = TextEditingController();
   final _supplierCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
+
   int? _productId;
+  int? _supplierId;
   DateTime _date = DateTime.now();
+  bool _isFullPayment = true;
   bool _saving = false;
 
   @override
   void dispose() {
     _qtyCtrl.dispose();
     _priceCtrl.dispose();
+    _paidCtrl.dispose();
     _supplierCtrl.dispose();
     _notesCtrl.dispose();
     super.dispose();
@@ -473,6 +982,13 @@ class _ApprovisionFormState extends State<_ApprovisionForm> {
     return qty * price;
   }
 
+  double get _paidAmount {
+    if (_isFullPayment) return _total;
+    return double.tryParse(_paidCtrl.text.trim()) ?? 0;
+  }
+
+  double get _remaining => (_total - _paidAmount).clamp(0, double.infinity);
+
   @override
   Widget build(BuildContext context) {
     final formatter = NumberFormat.currency(
@@ -482,183 +998,319 @@ class _ApprovisionFormState extends State<_ApprovisionForm> {
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Nouvel approvisionnement',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textDark,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Nouvel approvisionnement',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textDark,
+                      ),
                     ),
                   ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, color: AppColors.textMedium),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Consumer<ProductProvider>(
+                builder: (_, provider, _) => DropdownButtonFormField<int?>(
+                  initialValue: _productId,
+                  decoration: InputDecoration(
+                    labelText: 'Produit *',
+                    filled: true,
+                    fillColor: AppColors.primarySurface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  items: provider.products
+                      .map((p) => DropdownMenuItem<int?>(
+                            value: p.id,
+                            child: Text(p.name),
+                          ))
+                      .toList(),
+                  onChanged: (v) => setState(() => _productId = v),
+                  validator: (v) => v == null ? 'Veuillez choisir un produit' : null,
                 ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: AppColors.textMedium),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _qtyCtrl,
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) => setState(() {}),
+                      decoration: const InputDecoration(labelText: 'Quantité *'),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) return 'Quantité obligatoire';
+                        final num = double.tryParse(val.trim());
+                        if (num == null || num <= 0) return 'Quantité invalide (> 0)';
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _priceCtrl,
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) => setState(() {}),
+                      decoration: const InputDecoration(
+                        labelText: 'Prix unitaire d\'achat',
+                        suffixText: 'F',
+                      ),
+                      validator: (val) {
+                        if (val != null && val.trim().isNotEmpty) {
+                          final num = double.tryParse(val.trim());
+                          if (num == null || num < 0) return 'Prix unitaire invalide';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              if (_total > 0) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySurface,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Total Achat :', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                      Text(formatter.format(_total), style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 16)),
+                    ],
+                  ),
                 ),
               ],
-            ),
-            const SizedBox(height: 16),
-            Consumer<ProductProvider>(
-              builder: (_, provider, _) => DropdownButtonFormField<int?>(
-                initialValue: _productId,
-                decoration: InputDecoration(
-                  labelText: 'Produit *',
-                  filled: true,
-                  fillColor: AppColors.primarySurface,
-                  border: OutlineInputBorder(
+              const SizedBox(height: 14),
+
+              // Supplier Selector
+              Consumer<SupplierProvider>(
+                builder: (_, supplierProv, _) {
+                  final suppliers = supplierProv.suppliers;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      DropdownButtonFormField<int?>(
+                        initialValue: _supplierId,
+                        decoration: InputDecoration(
+                          labelText: 'Sélectionner un Fournisseur',
+                          filled: true,
+                          fillColor: AppColors.background,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.divider),
+                          ),
+                        ),
+                        items: [
+                          const DropdownMenuItem<int?>(value: null, child: Text('Aucun / Saisie libre')),
+                          ...suppliers.map((s) => DropdownMenuItem<int?>(
+                                value: s.id,
+                                child: Text(s.name),
+                              )),
+                        ],
+                        onChanged: (val) {
+                          setState(() {
+                            _supplierId = val;
+                            if (val != null) {
+                              final s = suppliers.firstWhere((item) => item.id == val);
+                              _supplierCtrl.text = s.name;
+                            }
+                          });
+                        },
+                      ),
+                      if (_supplierId == null) ...[
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _supplierCtrl,
+                          decoration: const InputDecoration(
+                            labelText: 'Nom du Fournisseur (Saisie libre)',
+                            hintText: 'Ex: Nestlé CI',
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 14),
+
+              // Payment Status Toggle
+              const Text('Règlement Fournisseur', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Expanded(
+                    child: ChoiceChip(
+                      label: const Center(child: Text('Payé Cash')),
+                      selected: _isFullPayment,
+                      selectedColor: AppColors.success,
+                      backgroundColor: AppColors.background,
+                      labelStyle: TextStyle(color: _isFullPayment ? Colors.white : AppColors.textDark, fontWeight: FontWeight.w700),
+                      onSelected: (val) {
+                        if (val) setState(() => _isFullPayment = true);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ChoiceChip(
+                      label: const Center(child: Text('Règlement partiel / Crédit')),
+                      selected: !_isFullPayment,
+                      selectedColor: AppColors.danger,
+                      backgroundColor: AppColors.background,
+                      labelStyle: TextStyle(color: !_isFullPayment ? Colors.white : AppColors.textDark, fontWeight: FontWeight.w700),
+                      onSelected: (val) {
+                        if (val) setState(() => _isFullPayment = false);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              if (!_isFullPayment) ...[
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _paidCtrl,
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    labelText: 'Montant Acompte Versé (FCFA)',
+                    suffixText: 'F',
+                  ),
+                ),
+                if (_remaining > 0) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Reliquat restant dû (Crédit Fournisseur) : ${formatter.format(_remaining)}',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.danger),
+                  ),
+                ],
+              ],
+              const SizedBox(height: 14),
+
+              // Date Picker
+              InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _date,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) setState(() => _date = picked);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySurface,
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calendar_today_outlined,
+                          color: AppColors.primary, size: 18),
+                      const SizedBox(width: 10),
+                      Text(
+                        DateFormat('dd/MM/yyyy', 'fr_FR').format(_date),
+                        style: const TextStyle(
+                            color: AppColors.textDark, fontSize: 14),
+                      ),
+                    ],
                   ),
                 ),
-                items: provider.products
-                    .map((p) => DropdownMenuItem<int?>(
-                          value: p.id,
-                          child: Text(p.name),
-                        ))
-                    .toList(),
-                onChanged: (v) => setState(() => _productId = v),
               ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _qtyCtrl,
-                    keyboardType: TextInputType.number,
-                    onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(labelText: 'Quantité *'),
-                  ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _notesCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Notes',
+                  hintText: 'Remarques optionnelles',
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _priceCtrl,
-                    keyboardType: TextInputType.number,
-                    onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(
-                      labelText: 'Prix unitaire',
-                      suffixText: 'FCFA',
-                    ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _saving ? null : _save,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    backgroundColor: AppColors.primary,
                   ),
+                  child: _saving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text('Enregistrer l\'approvisionnement', style: TextStyle(fontWeight: FontWeight.w700)),
                 ),
-              ],
-            ),
-            if (_total > 0) ...[
+              ),
               const SizedBox(height: 8),
-              Text(
-                'Total : ${formatter.format(_total)}',
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                ),
-              ),
             ],
-            const SizedBox(height: 12),
-            TextField(
-              controller: _supplierCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Fournisseur',
-                hintText: 'Nom du fournisseur',
-              ),
-            ),
-            const SizedBox(height: 12),
-            InkWell(
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: _date,
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime.now(),
-                );
-                if (picked != null) setState(() => _date = picked);
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                decoration: BoxDecoration(
-                  color: AppColors.primarySurface,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.calendar_today_outlined,
-                        color: AppColors.primary, size: 18),
-                    const SizedBox(width: 10),
-                    Text(
-                      DateFormat('dd/MM/yyyy', 'fr_FR').format(_date),
-                      style: const TextStyle(
-                          color: AppColors.textDark, fontSize: 14),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _notesCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Notes',
-                hintText: 'Remarques optionnelles',
-              ),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 28),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _saving ? null : _save,
-                child: _saving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2),
-                      )
-                    : const Text('Enregistrer'),
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
+          ),
         ),
       ),
     );
   }
 
   Future<void> _save() async {
+    if (_productId == null) {
+      AppToast.showError(context, 'Veuillez sélectionner un produit à approvisionner.');
+      return;
+    }
+    if (!_formKey.currentState!.validate()) {
+      AppToast.showError(context, 'Veuillez vérifier vos saisies.');
+      return;
+    }
     final qty = double.tryParse(_qtyCtrl.text);
     if (qty == null || qty <= 0 || _productId == null) return;
     setState(() => _saving = true);
     try {
       final price = double.tryParse(_priceCtrl.text) ?? 0;
+      final total = qty * price;
+      final paid = _isFullPayment ? total : (double.tryParse(_paidCtrl.text.trim()) ?? 0);
+
       final appro = Approvisionnement(
         productId: _productId!,
         quantity: qty,
         unitPrice: price,
-        total: qty * price,
+        total: total,
+        supplierId: _supplierId,
         supplier: _supplierCtrl.text.trim().isEmpty
             ? null
             : _supplierCtrl.text.trim(),
+        paidAmount: paid,
         date: _date,
         notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
       );
       await widget.onSave(appro);
+      if (!mounted) return;
+      await context.read<SupplierProvider>().loadSuppliers();
       if (mounted) Navigator.pop(context);
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Une erreur est survenue. Veuillez réessayer.'),
-            backgroundColor: AppColors.danger,
-          ),
-        );
+        AppToast.showError(context, 'Une erreur est survenue. Veuillez réessayer.');
       }
     } finally {
       if (mounted) setState(() => _saving = false);

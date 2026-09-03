@@ -1,9 +1,14 @@
 class Product {
   final int? id;
   final int? categoryId;
+  final int? supplierId;
   final String name;
   final String? description;
-  final double price;
+  final double price; // Prix Détail
+  final double priceSemiWholesale; // Prix Demi-Gros
+  final double priceWholesale; // Prix Gros
+  final double minQtySemiWholesale; // Quantité minimale Demi-Gros
+  final double minQtyWholesale; // Quantité minimale Gros
   final double costPrice;
   final double quantity;
   final String unit;
@@ -17,9 +22,14 @@ class Product {
   const Product({
     this.id,
     this.categoryId,
+    this.supplierId,
     required this.name,
     this.description,
     required this.price,
+    this.priceSemiWholesale = 0,
+    this.priceWholesale = 0,
+    this.minQtySemiWholesale = 0,
+    this.minQtyWholesale = 0,
     this.costPrice = 0,
     required this.quantity,
     this.unit = 'pce',
@@ -36,9 +46,14 @@ class Product {
   factory Product.fromMap(Map<String, dynamic> map) => Product(
         id: map['id'] as int?,
         categoryId: map['category_id'] as int?,
+        supplierId: map['supplier_id'] as int?,
         name: map['name'] as String,
         description: map['description'] as String?,
         price: (map['price'] as num).toDouble(),
+        priceSemiWholesale: (map['price_semi_wholesale'] as num?)?.toDouble() ?? 0,
+        priceWholesale: (map['price_wholesale'] as num?)?.toDouble() ?? 0,
+        minQtySemiWholesale: (map['min_qty_semi_wholesale'] as num?)?.toDouble() ?? 0,
+        minQtyWholesale: (map['min_qty_wholesale'] as num?)?.toDouble() ?? 0,
         costPrice: (map['cost_price'] as num).toDouble(),
         quantity: (map['quantity'] as num).toDouble(),
         unit: map['unit'] as String? ?? 'pce',
@@ -52,9 +67,14 @@ class Product {
   Map<String, dynamic> toMap() => {
         if (id != null) 'id': id,
         'category_id': categoryId,
+        'supplier_id': supplierId,
         'name': name,
         'description': description,
         'price': price,
+        'price_semi_wholesale': priceSemiWholesale,
+        'price_wholesale': priceWholesale,
+        'min_qty_semi_wholesale': minQtySemiWholesale,
+        'min_qty_wholesale': minQtyWholesale,
         'cost_price': costPrice,
         'quantity': quantity,
         'unit': unit,
@@ -68,9 +88,14 @@ class Product {
   Product copyWith({
     int? id,
     int? categoryId,
+    int? supplierId,
     String? name,
     String? description,
     double? price,
+    double? priceSemiWholesale,
+    double? priceWholesale,
+    double? minQtySemiWholesale,
+    double? minQtyWholesale,
     double? costPrice,
     double? quantity,
     String? unit,
@@ -83,9 +108,14 @@ class Product {
       Product(
         id: id ?? this.id,
         categoryId: categoryId ?? this.categoryId,
+        supplierId: supplierId ?? this.supplierId,
         name: name ?? this.name,
         description: description ?? this.description,
         price: price ?? this.price,
+        priceSemiWholesale: priceSemiWholesale ?? this.priceSemiWholesale,
+        priceWholesale: priceWholesale ?? this.priceWholesale,
+        minQtySemiWholesale: minQtySemiWholesale ?? this.minQtySemiWholesale,
+        minQtyWholesale: minQtyWholesale ?? this.minQtyWholesale,
         costPrice: costPrice ?? this.costPrice,
         quantity: quantity ?? this.quantity,
         unit: unit ?? this.unit,

@@ -1,3 +1,5 @@
+import 'providers/settings_provider.dart';
+import 'screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -6,11 +8,18 @@ import 'providers/category_provider.dart';
 import 'providers/product_provider.dart';
 import 'providers/approvisionnement_provider.dart';
 import 'providers/vente_provider.dart';
+import 'providers/decaissement_provider.dart';
+import 'providers/client_provider.dart';
+import 'providers/supplier_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/categories_screen.dart';
 import 'screens/products_screen.dart';
 import 'screens/approvisionnement_screen.dart';
 import 'screens/vente_screen.dart';
+import 'screens/decaissement_screen.dart';
+import 'screens/clients_screen.dart';
+import 'screens/suppliers_screen.dart';
+import 'screens/reports_screen.dart';
 import 'widgets/app_drawer.dart';
 
 void main() async {
@@ -30,6 +39,10 @@ class TocManagerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProductProvider()..load()),
         ChangeNotifierProvider(create: (_) => ApprovisionnementProvider()),
         ChangeNotifierProvider(create: (_) => VenteProvider()),
+        ChangeNotifierProvider(create: (_) => DecaissementProvider()..load()),
+        ChangeNotifierProvider(create: (_) => ClientProvider()..loadClients()),
+        ChangeNotifierProvider(create: (_) => SupplierProvider()..loadSuppliers()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()..loadSettings()),
       ],
       child: MaterialApp(
         title: 'TocManager',
@@ -52,15 +65,18 @@ class _MainShellState extends State<MainShell> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   int _currentIndex = 0;
 
-  final _screens = const [
-    HomeScreen(),
-    ProductsScreen(),
-    CategoriesScreen(),
-  ];
-
-  void _navigate(int index) {
-    Navigator.of(context).popUntil((route) => route.isFirst);
-    if (index == 4) {
+  void _navigate(int index, {String? statusFilter}) {
+    if (index == 3) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ClientsScreen()),
+      );
+    } else if (index == 7) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const SuppliersScreen()),
+      );
+    } else if (index == 4) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const ApprovisionScreen()),
@@ -70,16 +86,48 @@ class _MainShellState extends State<MainShell> {
         context,
         MaterialPageRoute(builder: (_) => const VenteScreen()),
       );
+    } else if (index == 6) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const DecaissementScreen()),
+      );
+    } else if (index == 9) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ReportsScreen()),
+      );
+    } else if (index == 10) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const SettingsScreen()),
+      );
     } else if (index < 3) {
       setState(() => _currentIndex = index);
+      if (index == 1 && statusFilter != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProductsScreen(initialStatusFilter: statusFilter),
+          ),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final screens = [
+      HomeScreen(
+        onNav: _navigate,
+        onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
+      ),
+      ProductsScreen(onBackToHome: () => _navigate(0)),
+      CategoriesScreen(onBackToHome: () => _navigate(0)),
+    ];
+
     return Scaffold(
       key: _scaffoldKey,
-      body: IndexedStack(index: _currentIndex, children: _screens),
+      body: IndexedStack(index: _currentIndex, children: screens),
       drawer: AppDrawer(currentIndex: _currentIndex, onNav: _navigate),
       bottomNavigationBar: _buildBottomNav(),
     );
@@ -104,9 +152,9 @@ class _MainShellState extends State<MainShell> {
           children: [
             _bottomItem(Icons.arrow_downward_outlined, 'Appro', () => _navigate(4)),
             _bottomItem(Icons.shopping_cart_outlined, 'Ventes', () => _navigate(5)),
-            _bottomItem(Icons.inventory_outlined, 'Inventaire', null),
-            _bottomItem(Icons.receipt_long_outlined, 'Facture', null),
-            _bottomItem(Icons.bar_chart_outlined, 'Rapport', null),
+            _bottomItem(Icons.account_balance_wallet_outlined, 'Dépenses', () => _navigate(6)),
+            _bottomItem(Icons.people_outline, 'Clients', () => _navigate(3)),
+            _bottomItem(Icons.bar_chart_outlined, 'Rapport', () => _navigate(9)),
           ],
         ),
       ),

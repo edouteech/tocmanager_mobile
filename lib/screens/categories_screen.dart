@@ -1,13 +1,16 @@
+import '../widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/category.dart';
 import '../providers/category_provider.dart';
 import '../providers/product_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/category_icon_helper.dart';
 import 'category_detail_screen.dart';
 
 class CategoriesScreen extends StatefulWidget {
-  const CategoriesScreen({super.key});
+  final VoidCallback? onBackToHome;
+  const CategoriesScreen({super.key, this.onBackToHome});
 
   @override
   State<CategoriesScreen> createState() => _CategoriesScreenState();
@@ -42,84 +45,267 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     Icons.sports_soccer,
   ];
 
+  String _sortBy = 'name_asc'; // 'name_asc', 'products_desc'
+  String _filterType = 'all'; // 'all', 'with_products', 'empty'
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Catégories'),
+        title: const Text('Catégories', style: TextStyle(fontWeight: FontWeight.w700)),
+        elevation: 0,
         backgroundColor: Colors.white,
-      ),
-      body: Column(
-        children: [
-          _buildSearchBar(),
-          Expanded(child: _buildTableView()),
+        foregroundColor: AppColors.textDark,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.textDark),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              widget.onBackToHome?.call();
+            }
+          },
+          tooltip: 'Retour',
+        ),
+        actions: [
+          IconButton(
+            onPressed: () => _showForm(context),
+            icon: const Icon(Icons.add, color: AppColors.primary),
+            tooltip: 'Nouvelle catégorie',
+          ),
+          const SizedBox(width: 4),
         ],
+      ),
+      body: Consumer2<CategoryProvider, ProductProvider>(
+        builder: (context, catProvider, ppProvider, _) {
+          if (catProvider.loading) {
+            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+          }
+
+          final rawCats = catProvider.categories.where(
+            (c) => c.name.toLowerCase().contains(_search.toLowerCase()),
+          ).toList();
+
+          final cats = rawCats.where((c) {
+            final pCount = ppProvider.products.where((p) => p.categoryId == c.id).length;
+            if (_filterType == 'with_products') return pCount > 0;
+            if (_filterType == 'empty') return pCount == 0;
+            return true;
+          }).toList();
+
+          if (_sortBy == 'products_desc') {
+            cats.sort((a, b) {
+              final cntA = ppProvider.products.where((p) => p.categoryId == a.id).length;
+              final cntB = ppProvider.products.where((p) => p.categoryId == b.id).length;
+              return cntB.compareTo(cntA);
+            });
+          } else if (_sortBy == 'name_asc') {
+            cats.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+          }
+
+          return Column(
+            children: [
+              _buildStatsBar(catProvider, ppProvider),
+              _buildSearchAndSortBar(),
+              _buildFilterChipsRow(catProvider, ppProvider),
+              Expanded(
+                child: cats.isEmpty
+                    ? _buildEmpty()
+                    : SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.divider),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withAlpha(5),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: _buildDataTable(cats, catProvider, ppProvider),
+                            ),
+                          ),
+                        ),
+                      ),
+              ),
+            ],
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: null,
         onPressed: () => _showForm(context),
+        backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add),
         label: const Text('Nouvelle catégorie'),
       ),
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildStatsBar(CategoryProvider catProvider, ProductProvider ppProvider) {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      child: TextField(
-        onChanged: (v) => setState(() => _search = v),
-        decoration: const InputDecoration(
-          hintText: 'Rechercher une catégorie...',
-          prefixIcon: Icon(Icons.search, color: AppColors.textLight, size: 20),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primarySurface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.primary.withAlpha(40)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Total Catégories', style: TextStyle(fontSize: 11, color: AppColors.textMedium)),
+                  const SizedBox(height: 2),
+                  Text('${catProvider.categories.length}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.successLight,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.success.withAlpha(50)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Produits Catégorisés', style: TextStyle(fontSize: 11, color: AppColors.textMedium)),
+                  const SizedBox(height: 2),
+                  Text('${ppProvider.products.where((p) => p.categoryId != null).length}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.success)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchAndSortBar() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              onChanged: (v) => setState(() => _search = v),
+              decoration: InputDecoration(
+                hintText: 'Rechercher une catégorie...',
+                prefixIcon: const Icon(Icons.search, color: AppColors.textLight, size: 20),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                filled: true,
+                fillColor: AppColors.background,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          PopupMenuButton<String>(
+            icon: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.sort_outlined, color: AppColors.primary, size: 20),
+            ),
+            tooltip: 'Trier les catégories',
+            onSelected: (val) => setState(() => _sortBy = val),
+            itemBuilder: (ctx) => [
+              const PopupMenuItem(
+                value: 'name_asc',
+                child: Row(
+                  children: [
+                    Icon(Icons.sort_by_alpha, size: 16, color: AppColors.primary),
+                    SizedBox(width: 8),
+                    Text('Nom (A - Z)'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'products_desc',
+                child: Row(
+                  children: [
+                    Icon(Icons.inventory_2_outlined, size: 16, color: AppColors.success),
+                    SizedBox(width: 8),
+                    Text('Plus de produits ⬇'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChipsRow(CategoryProvider catProvider, ProductProvider ppProvider) {
+    final withProductsCount = catProvider.categories.where((c) {
+      return ppProvider.products.any((p) => p.categoryId == c.id);
+    }).length;
+    final emptyCount = catProvider.categories.length - withProductsCount;
+
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _filterChip('Toutes (${catProvider.categories.length})', 'all'),
+            const SizedBox(width: 6),
+            _filterChip('Avec produits ($withProductsCount)', 'with_products', isSuccess: true),
+            const SizedBox(width: 6),
+            _filterChip('Vides ($emptyCount)', 'empty'),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildTableView() {
-    return Consumer2<CategoryProvider, ProductProvider>(
-      builder: (context, catProvider, ppProvider, _) {
-        if (catProvider.loading) {
-          return const Center(
-            child: CircularProgressIndicator(color: AppColors.primary),
-          );
-        }
+  Widget _filterChip(String label, String type, {bool isSuccess = false}) {
+    final selected = _filterType == type;
+    final activeColor = isSuccess ? AppColors.success : AppColors.primary;
 
-        final cats = catProvider.categories
-            .where(
-              (c) => c.name.toLowerCase().contains(_search.toLowerCase()),
-            )
-            .toList();
-
-        if (cats.isEmpty) return _buildEmpty();
-
-        return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.divider),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(5),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: _buildDataTable(cats, catProvider, ppProvider),
-              ),
-            ),
-          ),
-        );
+    return ChoiceChip(
+      label: Text(
+        label,
+        style: TextStyle(
+          color: selected ? Colors.white : AppColors.textDark,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          fontSize: 12,
+        ),
+      ),
+      selected: selected,
+      selectedColor: activeColor,
+      backgroundColor: AppColors.background,
+      side: BorderSide(
+        color: selected ? activeColor : AppColors.divider,
+      ),
+      onSelected: (val) {
+        if (val) setState(() => _filterType = type);
       },
     );
   }
@@ -202,7 +388,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  IconData(cat.icon, fontFamily: 'MaterialIcons'),
+                  CategoryIconHelper.getIcon(cat.icon),
                   color: color,
                   size: 18,
                 ),
@@ -442,6 +628,7 @@ class _CategoryForm extends StatefulWidget {
 }
 
 class _CategoryFormState extends State<_CategoryForm> {
+  final _formKey = GlobalKey<FormState>();
   late final _nameCtrl =
       TextEditingController(text: widget.category?.name ?? '');
   late final _descCtrl =
@@ -465,10 +652,12 @@ class _CategoryFormState extends State<_CategoryForm> {
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
             Row(
               children: [
                 Expanded(
@@ -488,12 +677,21 @@ class _CategoryFormState extends State<_CategoryForm> {
               ],
             ),
             const SizedBox(height: 16),
-            TextField(
+            TextFormField(
               controller: _nameCtrl,
               decoration: const InputDecoration(
-                labelText: 'Nom *',
+                labelText: 'Nom de la catégorie *',
                 hintText: 'Ex: Électronique',
               ),
+              validator: (val) {
+                if (val == null || val.trim().isEmpty) {
+                  return 'Le nom de la catégorie est obligatoire';
+                }
+                if (val.trim().length < 2) {
+                  return 'Le nom doit contenir au moins 2 caractères';
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 12),
             TextField(
@@ -613,10 +811,15 @@ class _CategoryFormState extends State<_CategoryForm> {
           ],
         ),
       ),
+    ),
     );
   }
 
   Future<void> _save() async {
+    if (_formKey.currentState != null && !_formKey.currentState!.validate()) {
+      AppToast.showError(context, 'Veuillez saisir un nom de catégorie valide.');
+      return;
+    }
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) return;
     setState(() => _saving = true);
