@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -14,6 +15,7 @@ class StoreSettings {
   final String address;
   final String receiptFooter;
   final String currency;
+  final bool enableAverageCostPrice;
 
   const StoreSettings({
     this.name = 'TOC Manager',
@@ -22,6 +24,7 @@ class StoreSettings {
     this.address = '',
     this.receiptFooter = 'Merci de votre confiance !',
     this.currency = 'FCFA',
+    this.enableAverageCostPrice = false,
   });
 
   StoreSettings copyWith({
@@ -31,6 +34,7 @@ class StoreSettings {
     String? address,
     String? receiptFooter,
     String? currency,
+    bool? enableAverageCostPrice,
   }) {
     return StoreSettings(
       name: name ?? this.name,
@@ -39,6 +43,7 @@ class StoreSettings {
       address: address ?? this.address,
       receiptFooter: receiptFooter ?? this.receiptFooter,
       currency: currency ?? this.currency,
+      enableAverageCostPrice: enableAverageCostPrice ?? this.enableAverageCostPrice,
     );
   }
 }
@@ -79,6 +84,7 @@ class SettingsProvider extends ChangeNotifier {
         address: map['store_address'] ?? '',
         receiptFooter: map['store_footer']?.isNotEmpty == true ? map['store_footer']! : 'Merci de votre confiance !',
         currency: map['store_currency']?.isNotEmpty == true ? map['store_currency']! : 'FCFA',
+        enableAverageCostPrice: map['enable_average_cost_price'] == '1',
       );
     } catch (_) {
     } finally {
@@ -107,6 +113,7 @@ class SettingsProvider extends ChangeNotifier {
         'store_address': newSettings.address,
         'store_footer': newSettings.receiptFooter,
         'store_currency': newSettings.currency,
+        'enable_average_cost_price': newSettings.enableAverageCostPrice ? '1' : '0',
       };
 
       for (final e in entries.entries) {
@@ -116,11 +123,49 @@ class SettingsProvider extends ChangeNotifier {
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
       }
+      await DatabaseHelper.instance.recalculateAllProductsAverageCostPrice();
     } catch (_) {}
+  }
+
+  /// Crée une sauvegarde automatique de secours avant toute opération critique
+  /// (ex: vidage des données) dans le répertoire 'backups' et retourne son chemin absolu.
+  Future<String?> createSafetyBackup() async {
+    try {
+      await DatabaseHelper.instance.checkpoint();
+
+      final dbPath = await getDatabasesPath();
+      final path = p.join(dbPath, 'tocmanager.db');
+      final file = File(path);
+
+      if (!await file.exists()) return null;
+
+      final appDocDir = await getApplicationDocumentsDirectory();
+      final backupDir = Directory(p.join(appDocDir.path, 'backups'));
+      if (!await backupDir.exists()) {
+        await backupDir.create(recursive: true);
+      }
+
+      final now = DateTime.now();
+      final dateStr =
+          '${now.year.toString().padLeft(4, '0')}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
+      final backupPath = p.join(backupDir.path, 'tocmanager_auto_backup_$dateStr.db');
+
+      await file.copy(backupPath);
+      return backupPath;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Vide l'ensemble des données d'activité tout en préservant les paramètres
+  Future<void> clearBusinessData() async {
+    await DatabaseHelper.instance.clearAllBusinessData();
   }
 
   Future<String?> exportDatabaseBackup() async {
     try {
+      await DatabaseHelper.instance.checkpoint();
+
       final dbPath = await getDatabasesPath();
       final path = p.join(dbPath, 'tocmanager.db');
       final file = File(path);
@@ -148,30 +193,61 @@ class SettingsProvider extends ChangeNotifier {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.any,
+        withData: true,
       );
 
-      if (result == null || result.files.single.path == null) return false;
+      if (result == null || result.files.isEmpty) return false;
 
-      final selectedPath = result.files.single.path!;
-      final selectedFile = File(selectedPath);
+      final picked = result.files.single;
+      Uint8List? fileBytes = picked.bytes;
+      if (fileBytes == null && picked.path != null) {
+        final f = File(picked.path!);
+        if (await f.exists()) {
+          fileBytes = await f.readAsBytes();
+        }
+      }
 
-      if (!await selectedFile.exists()) return false;
+      if (fileBytes == null || fileBytes.length < 16) return false;
+
+      // Validation de l'en-tête SQLite standard : "SQLite format 3\000"
+      const sqliteHeader = [
+        0x53, 0x51, 0x4c, 0x69, 0x74, 0x65, 0x20, 0x66,
+        0x6f, 0x72, 0x6d, 0x61, 0x74, 0x20, 0x33, 0x00
+      ];
+      for (var i = 0; i < 16; i++) {
+        if (fileBytes[i] != sqliteHeader[i]) {
+          return false;
+        }
+      }
 
       final dbPath = await getDatabasesPath();
       final targetPath = p.join(dbPath, 'tocmanager.db');
 
-      // Close current db connection if open
-      final db = await DatabaseHelper.instance.database;
-      if (db.isOpen) {
-        await db.close();
+      // 1. Fermeture propre de la base active et libération de l'instance
+      await DatabaseHelper.instance.closeDatabase();
+
+      // 2. Nettoyage des journaux WAL et SHM pour éviter toute corruption
+      final walFile = File('$targetPath-wal');
+      if (await walFile.exists()) {
+        try {
+          await walFile.delete();
+        } catch (_) {}
+      }
+      final shmFile = File('$targetPath-shm');
+      if (await shmFile.exists()) {
+        try {
+          await shmFile.delete();
+        } catch (_) {}
       }
 
-      await selectedFile.copy(targetPath);
+      // 3. Écriture du nouveau fichier SQLite
+      final targetFile = File(targetPath);
+      await targetFile.writeAsBytes(fileBytes);
 
-      // Re-open fresh database connection
+      // 4. Réouverture de la connexion avec migration automatique si nécessaire
       await DatabaseHelper.instance.database;
 
-      // Reload settings & notify
+      // 5. Rechargement des paramètres
       await loadSettings();
       return true;
     } catch (e) {

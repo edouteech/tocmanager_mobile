@@ -6,6 +6,7 @@ class VenteItem {
   final double quantity;
   final double unitPrice;
   final double total;
+  final double? costPrice;
 
   const VenteItem({
     this.id,
@@ -15,6 +16,7 @@ class VenteItem {
     required this.quantity,
     required this.unitPrice,
     required this.total,
+    this.costPrice,
   });
 
   factory VenteItem.fromMap(Map<String, dynamic> map) {
@@ -26,6 +28,7 @@ class VenteItem {
       quantity: (map['quantity'] as num).toDouble(),
       unitPrice: (map['unit_price'] as num).toDouble(),
       total: (map['total'] as num).toDouble(),
+      costPrice: map['cost_price'] != null ? (map['cost_price'] as num).toDouble() : null,
     );
   }
 
@@ -38,6 +41,7 @@ class VenteItem {
       'quantity': quantity,
       'unit_price': unitPrice,
       'total': total,
+      if (costPrice != null) 'cost_price': costPrice,
     };
   }
 
@@ -49,6 +53,7 @@ class VenteItem {
     double? quantity,
     double? unitPrice,
     double? total,
+    double? costPrice,
   }) {
     return VenteItem(
       id: id ?? this.id,
@@ -58,6 +63,7 @@ class VenteItem {
       quantity: quantity ?? this.quantity,
       unitPrice: unitPrice ?? this.unitPrice,
       total: total ?? (quantity != null || unitPrice != null ? (quantity ?? this.quantity) * (unitPrice ?? this.unitPrice) : this.total),
+      costPrice: costPrice ?? this.costPrice,
     );
   }
 }
@@ -68,6 +74,7 @@ class Vente {
   final int? clientId;
   final String? clientName;
   final double totalAmount;
+  final double discountAmount;
   final double paidAmount;
   final String paymentMethod;
   final DateTime date;
@@ -80,6 +87,7 @@ class Vente {
     this.clientId,
     this.clientName,
     required this.totalAmount,
+    this.discountAmount = 0.0,
     this.paidAmount = 0,
     this.paymentMethod = 'Espèces',
     required this.date,
@@ -90,6 +98,9 @@ class Vente {
   bool get isPaid => paidAmount >= totalAmount;
   bool get isCredit => paidAmount < totalAmount;
   double get remainingAmount => isCredit ? totalAmount - paidAmount : 0.0;
+  double get subtotalAmount => items.isNotEmpty
+      ? items.fold(0.0, (sum, item) => sum + item.total)
+      : (totalAmount + discountAmount);
 
   factory Vente.fromMap(Map<String, dynamic> map, {List<VenteItem> items = const []}) {
     return Vente(
@@ -98,6 +109,7 @@ class Vente {
       clientId: map['client_id'] as int?,
       clientName: map['client_name'] as String?,
       totalAmount: (map['total_amount'] as num?)?.toDouble() ?? (map['total'] as num?)?.toDouble() ?? 0.0,
+      discountAmount: (map['discount_amount'] as num?)?.toDouble() ?? 0.0,
       paidAmount: (map['paid_amount'] as num?)?.toDouble() ?? (map['total_amount'] as num?)?.toDouble() ?? (map['total'] as num?)?.toDouble() ?? 0.0,
       paymentMethod: map['payment_method'] as String? ?? 'Espèces',
       date: DateTime.parse(map['date'] as String),
@@ -113,10 +125,39 @@ class Vente {
       'client_id': clientId,
       'client_name': clientName,
       'total_amount': totalAmount,
+      'discount_amount': discountAmount,
       'paid_amount': paidAmount,
       'payment_method': paymentMethod,
       'date': date.toIso8601String(),
       'notes': notes,
     };
+  }
+
+  Vente copyWith({
+    int? id,
+    String? ticketNumber,
+    int? clientId,
+    String? clientName,
+    double? totalAmount,
+    double? discountAmount,
+    double? paidAmount,
+    String? paymentMethod,
+    DateTime? date,
+    String? notes,
+    List<VenteItem>? items,
+  }) {
+    return Vente(
+      id: id ?? this.id,
+      ticketNumber: ticketNumber ?? this.ticketNumber,
+      clientId: clientId ?? this.clientId,
+      clientName: clientName ?? this.clientName,
+      totalAmount: totalAmount ?? this.totalAmount,
+      discountAmount: discountAmount ?? this.discountAmount,
+      paidAmount: paidAmount ?? this.paidAmount,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      date: date ?? this.date,
+      notes: notes ?? this.notes,
+      items: items ?? this.items,
+    );
   }
 }

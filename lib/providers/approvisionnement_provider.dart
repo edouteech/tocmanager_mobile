@@ -25,6 +25,11 @@ class ApprovisionnementProvider extends ChangeNotifier {
     await load();
   }
 
+  Future<void> update(Approvisionnement oldAppro, Approvisionnement newAppro) async {
+    await DatabaseHelper.instance.updateApprovisionnement(oldAppro, newAppro);
+    await load();
+  }
+
   Future<void> delete(Approvisionnement appro) async {
     await DatabaseHelper.instance.deleteApprovisionnement(appro);
     await load();

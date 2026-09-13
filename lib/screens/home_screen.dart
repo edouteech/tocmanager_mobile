@@ -46,11 +46,16 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  /// Permet un rechargement externe lors de la navigation
+  void reload() {
+    _loadData();
+  }
+
   @override
   Widget build(BuildContext context) {
     final formatter = NumberFormat.currency(
       locale: 'fr_FR',
-      symbol: 'FCFA',
+      symbol: 'F',
       decimalDigits: 0,
     );
 
@@ -188,7 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$greeting ! 👋',
+                  '$greeting !',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -234,6 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildStatsGrid(NumberFormat formatter) {
     final stockValue = (_stats['stockValue'] ?? 0.0) as double;
+    final stockCost = (_stats['stockCost'] ?? 0.0) as double;
     final items = [
       _StatData(
         label: 'Produits',
@@ -250,8 +256,9 @@ class _HomeScreenState extends State<HomeScreen> {
         bgColor: AppColors.successLight,
       ),
       _StatData(
-        label: 'Valeur stock',
+        label: 'Valeur stock (vente)',
         value: formatter.format(stockValue),
+        subValue: 'Coût : ${formatter.format(stockCost)}',
         icon: Icons.show_chart,
         color: AppColors.purple,
         bgColor: AppColors.purpleLight,
@@ -281,14 +288,14 @@ class _HomeScreenState extends State<HomeScreen> {
     return InkWell(
       onTap: () {
         if (widget.onNav != null) {
-          if (data.label == 'Produits') widget.onNav!(1);
+          if (data.label == 'Produits' || data.label.startsWith('Valeur stock')) widget.onNav!(1);
           if (data.label == 'Catégories') widget.onNav!(2);
           if (data.label == 'Alertes stock') widget.onNav!(1, statusFilter: 'lowStock');
         }
       },
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -299,7 +306,7 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
                 color: data.bgColor,
                 borderRadius: BorderRadius.circular(10),
@@ -313,15 +320,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   data.value,
                   style: TextStyle(
                     color: AppColors.textDark,
-                    fontSize: data.smallText ? 12 : 22,
+                    fontSize: data.smallText ? 12 : 20,
                     fontWeight: FontWeight.w700,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (data.subValue != null)
+                  Text(
+                    data.subValue!,
+                    style: const TextStyle(
+                      color: AppColors.textMedium,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 Text(
                   data.label,
-                  style: const TextStyle(color: AppColors.textMedium, fontSize: 12),
+                  style: const TextStyle(color: AppColors.textLight, fontSize: 11),
                 ),
               ],
             ),
@@ -584,6 +602,7 @@ class _HomeScreenState extends State<HomeScreen> {
 class _StatData {
   final String label;
   final String value;
+  final String? subValue;
   final IconData icon;
   final Color color;
   final Color bgColor;
@@ -592,6 +611,7 @@ class _StatData {
   const _StatData({
     required this.label,
     required this.value,
+    this.subValue,
     required this.icon,
     required this.color,
     required this.bgColor,

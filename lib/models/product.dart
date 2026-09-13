@@ -10,6 +10,7 @@ class Product {
   final double minQtySemiWholesale; // Quantité minimale Demi-Gros
   final double minQtyWholesale; // Quantité minimale Gros
   final double costPrice;
+  final double? averageCostPrice; // Prix Moyen Pondéré (PUMP) — calculé auto, ne remplace pas costPrice
   final double quantity;
   final String unit;
   final String? barcode;
@@ -31,6 +32,7 @@ class Product {
     this.minQtySemiWholesale = 0,
     this.minQtyWholesale = 0,
     this.costPrice = 0,
+    this.averageCostPrice,
     required this.quantity,
     this.unit = 'pce',
     this.barcode,
@@ -41,7 +43,20 @@ class Product {
   });
 
   bool get isLowStock => quantity <= alertQuantity;
-  double get stockValue => quantity * costPrice;
+  double get stockCost => quantity * costPrice;
+  double get stockSaleValue => quantity * price;
+  double get stockPotentialMargin => stockSaleValue - stockCost;
+  double get stockValue => stockSaleValue; // Alias for backward compatibility
+
+  /// Retourne le prix de coût effectif selon l'état de la feature PUMP.
+  /// Si [featureEnabled] est true et [averageCostPrice] est non-null et > 0,
+  /// retourne [averageCostPrice]. Sinon retourne [costPrice].
+  double effectiveCostPrice(bool featureEnabled) {
+    if (featureEnabled && averageCostPrice != null && averageCostPrice! > 0) {
+      return averageCostPrice!;
+    }
+    return costPrice;
+  }
 
   factory Product.fromMap(Map<String, dynamic> map) => Product(
         id: map['id'] as int?,
@@ -55,6 +70,7 @@ class Product {
         minQtySemiWholesale: (map['min_qty_semi_wholesale'] as num?)?.toDouble() ?? 0,
         minQtyWholesale: (map['min_qty_wholesale'] as num?)?.toDouble() ?? 0,
         costPrice: (map['cost_price'] as num).toDouble(),
+        averageCostPrice: (map['average_cost_price'] as num?)?.toDouble(),
         quantity: (map['quantity'] as num).toDouble(),
         unit: map['unit'] as String? ?? 'pce',
         barcode: map['barcode'] as String?,
@@ -76,6 +92,7 @@ class Product {
         'min_qty_semi_wholesale': minQtySemiWholesale,
         'min_qty_wholesale': minQtyWholesale,
         'cost_price': costPrice,
+        'average_cost_price': averageCostPrice,
         'quantity': quantity,
         'unit': unit,
         'barcode': barcode,
@@ -97,6 +114,7 @@ class Product {
     double? minQtySemiWholesale,
     double? minQtyWholesale,
     double? costPrice,
+    double? averageCostPrice,
     double? quantity,
     String? unit,
     String? barcode,
@@ -117,6 +135,7 @@ class Product {
         minQtySemiWholesale: minQtySemiWholesale ?? this.minQtySemiWholesale,
         minQtyWholesale: minQtyWholesale ?? this.minQtyWholesale,
         costPrice: costPrice ?? this.costPrice,
+        averageCostPrice: averageCostPrice ?? this.averageCostPrice,
         quantity: quantity ?? this.quantity,
         unit: unit ?? this.unit,
         barcode: barcode ?? this.barcode,

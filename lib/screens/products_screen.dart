@@ -7,7 +7,8 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:image_cropper/image_cropper.dart';
+import 'dart:ui' as ui;
+import 'package:croppy/croppy.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -19,6 +20,7 @@ import '../models/category.dart'; // used in export helpers
 import '../providers/category_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/supplier_provider.dart';
+import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/category_icon_helper.dart';
 import 'product_detail_screen.dart';
@@ -286,7 +288,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
         final total = provider.products.length;
         final rupture = provider.products.where((p) => p.quantity == 0).length;
         final lowStock = provider.products.where((p) => p.isLowStock && p.quantity > 0).length;
-        final totalValue = provider.products.fold<double>(0, (sum, p) => sum + (p.quantity * p.price));
+        final totalSaleValue = provider.products.fold<double>(0, (sum, p) => sum + p.stockSaleValue);
+        final totalCostValue = provider.products.fold<double>(0, (sum, p) => sum + p.stockCost);
 
         return Container(
           color: Colors.white,
@@ -324,30 +327,83 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.successLight,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.success.withAlpha(40)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.account_balance_wallet_outlined, size: 18, color: AppColors.success),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Valeur totale du stock :',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textDark),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.primary.withAlpha(40)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.shopping_bag_outlined, size: 14, color: AppColors.primary),
+                              SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  'Coût stock (achat)',
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textMedium),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            formatter.format(totalCostValue),
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.primary),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
-                    const Spacer(),
-                    Text(
-                      formatter.format(totalValue),
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.success),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.successLight,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.success.withAlpha(40)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.account_balance_wallet_outlined, size: 14, color: AppColors.success),
+                              SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  'Valeur stock (vente)',
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textMedium),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            formatter.format(totalSaleValue),
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.success),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -1095,7 +1151,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       if (p.quantity > 0) ...[
                         const SizedBox(height: 3),
                         Text(
-                          'Valeur stock: ${formatter.format(p.quantity * p.price)}',
+                          'Valeur : ${formatter.format(p.stockSaleValue)} • Coût : ${formatter.format(p.stockCost)}',
                           style: const TextStyle(fontSize: 10, color: AppColors.textLight, fontWeight: FontWeight.w500),
                         ),
                       ],
@@ -1341,9 +1397,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
       sheet.appendRow([
         'ID', "Nom", 'Catégorie', "Prix d'achat (F)", 'Prix de vente (F)',
-        'Quantité', 'Stock min.', 'Valorisation (F)', 'Statut', 'Créé le',
+        'Quantité', 'Stock min.', 'Coût stock (F)', 'Valeur vente (F)', 'Statut', 'Créé le',
       ].map(xl.TextCellValue.new).toList());
 
+      final featureEnabled = context.read<SettingsProvider>().settings.enableAverageCostPrice;
       final dateFmt = DateFormat('dd/MM/yyyy');
       for (final p in products) {
         final cat = categories.where((c) => c.id == p.categoryId).firstOrNull;
@@ -1352,15 +1409,17 @@ class _ProductsScreenState extends State<ProductsScreen> {
             : p.isLowStock
                 ? 'Stock faible'
                 : 'En stock';
+        final effectiveCost = p.effectiveCostPrice(featureEnabled);
         sheet.appendRow([
           xl.IntCellValue(p.id ?? 0),
           xl.TextCellValue(p.name),
           xl.TextCellValue(cat?.name ?? ''),
-          xl.DoubleCellValue(p.costPrice),
+          xl.DoubleCellValue(effectiveCost),
           xl.DoubleCellValue(p.price),
           xl.DoubleCellValue(p.quantity),
           xl.DoubleCellValue(p.alertQuantity),
-          xl.DoubleCellValue(p.stockValue),
+          xl.DoubleCellValue(p.quantity * effectiveCost),
+          xl.DoubleCellValue(p.stockSaleValue),
           xl.TextCellValue(status),
           xl.TextCellValue(dateFmt.format(p.createdAt)),
         ]);
@@ -1388,6 +1447,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
   Future<void> _exportPdf(
       BuildContext context, List<Product> products, List<Category> categories) async {
     try {
+      final featureEnabled = context.read<SettingsProvider>().settings.enableAverageCostPrice;
       final fontRegular = await PdfGoogleFonts.robotoRegular();
       final fontBold = await PdfGoogleFonts.robotoBold();
       final doc = pw.Document();
@@ -1400,13 +1460,15 @@ class _ProductsScreenState extends State<ProductsScreen> {
             : p.isLowStock
                 ? 'Faible'
                 : 'OK';
+        final effectiveCost = p.effectiveCostPrice(featureEnabled);
         return [
           p.name,
           cat?.name ?? '—',
-          '${numFmt.format(p.costPrice)} F',
+          '${numFmt.format(effectiveCost)} F',
           '${numFmt.format(p.price)} F',
           p.quantity.toStringAsFixed(0),
-          '${numFmt.format(p.stockValue)} F',
+          '${numFmt.format(p.quantity * effectiveCost)} F',
+          '${numFmt.format(p.stockSaleValue)} F',
           status,
         ];
       }).toList();
@@ -1430,7 +1492,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
         ),
         build: (ctx) => [
           pw.TableHelper.fromTextArray(
-            headers: ['Nom', 'Catégorie', "P. achat", 'P. vente', 'Qté', 'Valorisation', 'Statut'],
+            headers: ['Nom', 'Catégorie', "P. achat", 'P. vente', 'Qté', 'Coût stock', 'Valeur vente', 'Statut'],
             data: tableData,
             headerStyle: pw.TextStyle(font: fontBold, fontSize: 9),
             cellStyle: pw.TextStyle(font: fontRegular, fontSize: 8),
@@ -1439,13 +1501,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
             oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
             border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
             columnWidths: const {
-              0: pw.FlexColumnWidth(2.5),
-              1: pw.FlexColumnWidth(1.5),
-              2: pw.FlexColumnWidth(1.3),
-              3: pw.FlexColumnWidth(1.3),
-              4: pw.FlexColumnWidth(0.8),
-              5: pw.FlexColumnWidth(1.5),
-              6: pw.FlexColumnWidth(1.0),
+              0: pw.FlexColumnWidth(2.2),
+              1: pw.FlexColumnWidth(1.4),
+              2: pw.FlexColumnWidth(1.1),
+              3: pw.FlexColumnWidth(1.1),
+              4: pw.FlexColumnWidth(0.7),
+              5: pw.FlexColumnWidth(1.3),
+              6: pw.FlexColumnWidth(1.3),
+              7: pw.FlexColumnWidth(0.9),
             },
           ),
         ],
@@ -1489,25 +1552,137 @@ class _ProductsScreenState extends State<ProductsScreen> {
       }
 
       double parseNum(List<xl.Data?> row, int col) {
-        if (row.length <= col) return 0;
+        if (col < 0 || row.length <= col) return 0;
         final v = row[col]?.value;
         if (v is xl.IntCellValue) return v.value.toDouble();
         if (v is xl.DoubleCellValue) return v.value;
-        return double.tryParse(v?.toString() ?? '') ?? 0;
+        final s = v?.toString().replaceAll(' ', '').replaceAll(',', '.') ?? '';
+        return double.tryParse(s) ?? 0;
+      }
+
+      int colName = -1;
+      int colCat = -1;
+      int colCost = -1;
+      int colPrice = -1;
+      int colQty = -1;
+      int colAlert = -1;
+      int colTotalCost = -1;
+      int colTotalPrice = -1;
+
+      // Détection automatique des colonnes selon la ligne d'en-tête
+      if (sheet.rows.isNotEmpty) {
+        final header = sheet.rows[0];
+        for (var c = 0; c < header.length; c++) {
+          final title = header[c]?.value?.toString().toLowerCase().trim() ?? '';
+          if (title.isEmpty) continue;
+
+          // Détecter si la colonne représente un montant/valeur cumulé (total)
+          final isTotalColumn = title.contains('coût stock') ||
+              title.contains('cout stock') ||
+              title.contains('valeur stock') ||
+              title.contains('valeur vente') ||
+              title.contains('prix total') ||
+              title.contains('coût total') ||
+              title.contains('cout total') ||
+              title.contains('montant total') ||
+              title.contains('valeur totale') ||
+              title.contains('valeur total') ||
+              title.contains('total ht') ||
+              title.contains('total ttc');
+
+          if (isTotalColumn) {
+            if (title.contains('coût') || title.contains('cout') || title.contains('achat')) {
+              colTotalCost = c;
+            } else if (title.contains('vente') || title.contains('prix') || title.contains('valeur')) {
+              colTotalPrice = c;
+            }
+            continue; // Ne pas associer les colonnes de totaux aux prix unitaires ou à la quantité
+          }
+
+          if (title.contains('nom') ||
+              title.contains('désignation') ||
+              title.contains('designation') ||
+              title.contains('produit') ||
+              title == 'libellé' ||
+              title == 'libelle' ||
+              title == 'name' ||
+              title == 'article') {
+            colName = c;
+          } else if (title.contains('catégorie') || title.contains('categorie') || title == 'cat') {
+            colCat = c;
+          } else if (title.contains('min') ||
+              title.contains('alerte') ||
+              title.contains('seuil')) {
+            colAlert = c;
+          } else if (title.contains('achat') ||
+              (title.contains('coût') && !title.contains('stock')) ||
+              (title.contains('cout') && !title.contains('stock')) ||
+              title.contains('revient') ||
+              title == 'p.u. achat' ||
+              title == 'pu achat') {
+            colCost = c;
+          } else if (title.contains('vente') ||
+              title.contains('prix') ||
+              title == 'p.u.' ||
+              title == 'pu' ||
+              title == 'prix unitaire') {
+            colPrice = c;
+          } else if (title.contains('quantité') ||
+              title.contains('quantite') ||
+              title.contains('stock') ||
+              title == 'qte' ||
+              title == 'qty') {
+            colQty = c;
+          }
+        }
+      }
+
+      // Repli sur les positions par défaut si l'en-tête n'a pas permis de trouver la colonne nom
+      if (colName < 0) {
+        colName = 1;
+        colCat = 2;
+        colCost = 3;
+        colPrice = 4;
+        colQty = 5;
+        colAlert = 6;
       }
 
       final toImport = <Map<String, dynamic>>[];
       for (var i = 1; i < sheet.rows.length; i++) {
         final row = sheet.rows[i];
-        final name = (row.length > 1 ? row[1]?.value?.toString() : null)?.trim() ?? '';
+        final name = (colName >= 0 && row.length > colName ? row[colName]?.value?.toString() : null)?.trim() ?? '';
         if (name.isEmpty) continue;
+
+        double qty = parseNum(row, colQty);
+        double costPrice = parseNum(row, colCost);
+        double price = parseNum(row, colPrice);
+        double alertQty = parseNum(row, colAlert);
+
+        // Si le prix d'achat unitaire n'a pas été trouvé mais qu'un coût total est fourni
+        if (costPrice == 0 && colTotalCost >= 0 && qty > 0) {
+          final totalCost = parseNum(row, colTotalCost);
+          if (totalCost > 0) {
+            costPrice = totalCost / qty;
+          }
+        }
+
+        // Si le prix de vente unitaire n'a pas été trouvé mais qu'un prix/valeur total de vente est fourni
+        if (price == 0 && colTotalPrice >= 0 && qty > 0) {
+          final totalPrice = parseNum(row, colTotalPrice);
+          if (totalPrice > 0) {
+            price = totalPrice / qty;
+          }
+        }
+
         toImport.add({
           'name': name,
-          'category': row.length > 2 ? (row[2]?.value?.toString() ?? '') : '',
-          'costPrice': parseNum(row, 3),
-          'price': parseNum(row, 4),
-          'quantity': parseNum(row, 5),
-          'alertQuantity': parseNum(row, 6),
+          'category': (colCat >= 0 && row.length > colCat)
+              ? (row[colCat]?.value?.toString().trim() ?? '')
+              : '',
+          'costPrice': costPrice,
+          'price': price,
+          'quantity': qty,
+          'alertQuantity': alertQty,
         });
       }
 
@@ -1570,10 +1745,21 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         const Icon(Icons.chevron_right, size: 16, color: AppColors.textLight),
                         const SizedBox(width: 4),
                         Expanded(
-                          child: Text(r['name'] as String,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w600, fontSize: 13),
-                              overflow: TextOverflow.ellipsis),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(r['name'] as String,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600, fontSize: 13),
+                                  overflow: TextOverflow.ellipsis),
+                              if ((r['category'] as String).isNotEmpty)
+                                Text(
+                                  r['category'] as String,
+                                  style: const TextStyle(
+                                      fontSize: 11, color: AppColors.textMedium),
+                                ),
+                            ],
+                          ),
                         ),
                         Text(
                           'Qté: ${(r['quantity'] as double).toStringAsFixed(0)}',
@@ -1630,16 +1816,52 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final catProvider = context.read<CategoryProvider>();
     final now = DateTime.now();
     int imported = 0;
+    int newCatsCreated = 0;
+
+    // Palette de couleurs pour les nouvelles catégories créées automatiquement
+    const palette = [
+      Color(0xFF29ABE2),
+      Color(0xFF27AE60),
+      Color(0xFFF39C12),
+      Color(0xFFE74C3C),
+      Color(0xFF8E44AD),
+      Color(0xFF1ABC9C),
+      Color(0xFF2C3E50),
+      Color(0xFFE67E22),
+    ];
+
+    // Cache local des catégories existantes (clé en minuscules -> id)
+    final Map<String, int> catMap = {};
+    for (final c in catProvider.categories) {
+      if (c.id != null) {
+        catMap[c.name.toLowerCase().trim()] = c.id!;
+      }
+    }
 
     for (final row in rows) {
       int? catId;
-      final catName = (row['category'] as String).toLowerCase().trim();
-      if (catName.isNotEmpty) {
-        catId = catProvider.categories
-            .where((c) => c.name.toLowerCase() == catName)
-            .firstOrNull
-            ?.id;
+      final rawCatName = (row['category'] as String).trim();
+
+      if (rawCatName.isNotEmpty) {
+        final catKey = rawCatName.toLowerCase();
+        if (catMap.containsKey(catKey)) {
+          catId = catMap[catKey];
+        } else {
+          // La catégorie n'existe pas encore : on la crée automatiquement
+          final color = palette[newCatsCreated % palette.length];
+          final newCat = Category(
+            name: rawCatName,
+            color: color.toARGB32(),
+            icon: Icons.category.codePoint,
+            createdAt: DateTime.now(),
+          );
+          final newId = await catProvider.add(newCat);
+          catMap[catKey] = newId;
+          catId = newId;
+          newCatsCreated++;
+        }
       }
+
       await productProvider.add(Product(
         name: row['name'] as String,
         categoryId: catId,
@@ -1656,11 +1878,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
     }
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(
-            '$imported produit${imported > 1 ? 's' : ''} importé${imported > 1 ? 's' : ''} avec succès.'),
-        backgroundColor: AppColors.success,
-      ));
+      final msg = newCatsCreated > 0
+          ? '$imported produit${imported > 1 ? 's' : ''} importé${imported > 1 ? 's' : ''} ($newCatsCreated nouvelle${newCatsCreated > 1 ? 's' : ''} catégorie${newCatsCreated > 1 ? 's' : ''} créée${newCatsCreated > 1 ? 's' : ''}).'
+          : '$imported produit${imported > 1 ? 's' : ''} importé${imported > 1 ? 's' : ''} avec succès.';
+      AppToast.showSuccess(context, msg);
     }
   }
 
@@ -2413,6 +2634,8 @@ class _ProductFormModalState extends State<ProductFormModal> {
         minQtySemiWholesale: double.tryParse(_minQtySemiWholesaleCtrl.text) ?? 0,
         minQtyWholesale: double.tryParse(_minQtyWholesaleCtrl.text) ?? 0,
         costPrice: double.tryParse(_costCtrl.text) ?? 0,
+        averageCostPrice: widget.product?.averageCostPrice,
+        barcode: widget.product?.barcode,
         quantity: double.tryParse(_qtyCtrl.text) ?? 0,
         unit: 'pce',
         alertQuantity: double.tryParse(_alertCtrl.text) ?? 5,
@@ -2469,30 +2692,21 @@ class _ImageProcessorSheetState extends State<_ImageProcessorSheet> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () async {
-                  final cropped = await ImageCropper().cropImage(
-                    sourcePath: widget.sourcePath,
-                    aspectRatioPresets: [
-                      CropAspectRatioPreset.square,
-                      CropAspectRatioPreset.original,
-                      CropAspectRatioPreset.ratio3x2,
-                      CropAspectRatioPreset.ratio4x3,
-                      CropAspectRatioPreset.ratio16x9,
-                    ],
-                    uiSettings: [
-                      AndroidUiSettings(
-                        toolbarTitle: 'Recadrer l\'image',
-                        toolbarColor: AppColors.primary,
-                        toolbarWidgetColor: Colors.white,
-                        initAspectRatio: CropAspectRatioPreset.original,
-                        lockAspectRatio: false,
-                      ),
-                      IOSUiSettings(
-                        title: 'Recadrer l\'image',
-                      ),
-                    ],
+                  final result = await showMaterialImageCropper(
+                    context,
+                    imageProvider: FileImage(File(widget.sourcePath)),
                   );
-                  final path = cropped?.path ?? widget.sourcePath;
-                  final bytes = await File(path).readAsBytes();
+                  Uint8List bytes;
+                  if (result != null) {
+                    final byteData = await result.uiImage.toByteData(
+                      format: ui.ImageByteFormat.png,
+                    );
+                    bytes = byteData != null
+                        ? byteData.buffer.asUint8List()
+                        : await File(widget.sourcePath).readAsBytes();
+                  } else {
+                    bytes = await File(widget.sourcePath).readAsBytes();
+                  }
                   widget.onConfirm(bytes);
                   if (context.mounted) Navigator.pop(context);
                 },

@@ -63,53 +63,64 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
+  final _homeKey = GlobalKey();
   int _currentIndex = 0;
 
-  void _navigate(int index, {String? statusFilter}) {
+  Future<void> _navigate(int index, {String? statusFilter}) async {
     if (index == 3) {
-      Navigator.push(
+      await Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const ClientsScreen()),
       );
+      (_homeKey.currentState as dynamic)?.reload();
     } else if (index == 7) {
-      Navigator.push(
+      await Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const SuppliersScreen()),
       );
+      (_homeKey.currentState as dynamic)?.reload();
     } else if (index == 4) {
-      Navigator.push(
+      await Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const ApprovisionScreen()),
       );
+      (_homeKey.currentState as dynamic)?.reload();
     } else if (index == 5) {
-      Navigator.push(
+      await Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const VenteScreen()),
       );
+      (_homeKey.currentState as dynamic)?.reload();
     } else if (index == 6) {
-      Navigator.push(
+      await Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const DecaissementScreen()),
       );
+      (_homeKey.currentState as dynamic)?.reload();
     } else if (index == 9) {
-      Navigator.push(
+      await Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const ReportsScreen()),
       );
+      (_homeKey.currentState as dynamic)?.reload();
     } else if (index == 10) {
-      Navigator.push(
+      await Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const SettingsScreen()),
       );
+      (_homeKey.currentState as dynamic)?.reload();
     } else if (index < 3) {
       setState(() => _currentIndex = index);
-      if (index == 1 && statusFilter != null) {
-        Navigator.push(
+      if (index == 0) {
+        (_homeKey.currentState as dynamic)?.reload();
+      } else if (index == 1 && statusFilter != null) {
+        await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => ProductsScreen(initialStatusFilter: statusFilter),
           ),
         );
+        (_homeKey.currentState as dynamic)?.reload();
       }
     }
   }
@@ -118,6 +129,7 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final screens = [
       HomeScreen(
+        key: _homeKey,
         onNav: _navigate,
         onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
       ),

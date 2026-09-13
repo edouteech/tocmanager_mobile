@@ -818,8 +818,10 @@ class _VenteScreenState extends State<VenteScreen> {
         onSave: (vente) async {
           final venteProvider = context.read<VenteProvider>();
           final productProvider = context.read<ProductProvider>();
+          final clientProvider = context.read<ClientProvider>();
           await venteProvider.add(vente);
           await productProvider.load();
+          await clientProvider.loadClients();
         },
       ),
     );
@@ -947,6 +949,30 @@ void showVenteDetailsModal(BuildContext context, Vente vente) {
           ),
           const SizedBox(height: 12),
           const Divider(color: AppColors.divider),
+          if (vente.discountAmount > 0) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Sous-total brut', style: TextStyle(fontSize: 12, color: AppColors.textMedium)),
+                Text(
+                  formatter.format(vente.subtotalAmount),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textDark),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Remise / Réduction', style: TextStyle(fontSize: 12, color: AppColors.danger)),
+                Text(
+                  '- ${formatter.format(vente.discountAmount)}',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.danger),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+          ],
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1056,12 +1082,16 @@ void _confirmDeleteVenteModal(
         ),
         ElevatedButton(
           onPressed: () async {
+            final clientProvider = context.read<ClientProvider>();
             Navigator.pop(dialogCtx);
             if (parentContext != null && parentContext.mounted) {
               Navigator.pop(parentContext);
             }
             await venteProvider.delete(vente);
-            if (context.mounted) await productProvider.load();
+            if (context.mounted) {
+              await productProvider.load();
+              await clientProvider.loadClients();
+            }
           },
           style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
           child: const Text('Annuler la vente'),
@@ -1093,6 +1123,10 @@ class _VenteFormState extends State<_VenteForm> {
   final _priceCtrl = TextEditingController();
   String? _itemError;
 
+  // Discount controls
+  final _discountCtrl = TextEditingController();
+  String _discountType = 'amount'; // 'amount' (FCFA) or 'percent' (%)
+
   // Client controls
   final _clientCtrl = TextEditingController();
   final _clientFocusNode = FocusNode();
@@ -1119,6 +1153,7 @@ class _VenteFormState extends State<_VenteForm> {
     _productFocusNode.dispose();
     _qtyCtrl.dispose();
     _priceCtrl.dispose();
+    _discountCtrl.dispose();
     _clientCtrl.dispose();
     _clientFocusNode.dispose();
     _paidCtrl.dispose();
@@ -1126,8 +1161,24 @@ class _VenteFormState extends State<_VenteForm> {
     super.dispose();
   }
 
-  double get _totalAmount {
+  double get _subtotalAmount {
     return _saleItems.fold(0.0, (sum, item) => sum + item.total);
+  }
+
+  double get _computedDiscountAmount {
+    final raw = double.tryParse(_discountCtrl.text.trim()) ?? 0.0;
+    if (raw <= 0 || _subtotalAmount <= 0) return 0.0;
+    if (_discountType == 'percent') {
+      final pct = raw.clamp(0.0, 100.0);
+      return (_subtotalAmount * pct / 100.0).roundToDouble();
+    } else {
+      return raw.clamp(0.0, _subtotalAmount);
+    }
+  }
+
+  double get _totalAmount {
+    final net = _subtotalAmount - _computedDiscountAmount;
+    return net > 0 ? net : 0.0;
   }
 
   double _resolveUnitPrice(Product product, {double? quantityOverride, Client? clientOverride}) {
@@ -1309,12 +1360,15 @@ class _VenteFormState extends State<_VenteForm> {
         total: newQty * price,
       );
     } else {
+      final featureEnabled =
+          context.read<SettingsProvider>().settings.enableAverageCostPrice;
       _saleItems.add(VenteItem(
         productId: product.id!,
         productName: product.name,
         quantity: qty,
         unitPrice: price,
         total: qty * price,
+        costPrice: product.effectiveCostPrice(featureEnabled),
       ));
     }
 
@@ -1898,6 +1952,205 @@ class _VenteFormState extends State<_VenteForm> {
                     },
                   ),
                 ),
+              if (_saleItems.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.divider),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Subtotal line
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Sous-total brut',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textMedium,
+                            ),
+                          ),
+                          Text(
+                            formatter.format(_subtotalAmount),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      // Discount line & input
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.discount_outlined, size: 18, color: AppColors.primary),
+                          const SizedBox(width: 6),
+                          const Text(
+                            'Réduction',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                          const Spacer(),
+                          // Toggle FCFA / %
+                          Container(
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.divider),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                GestureDetector(
+                                  onTap: () {
+                                    if (_discountType != 'amount') {
+                                      setState(() {
+                                        _discountType = 'amount';
+                                        _syncPaidAmount();
+                                      });
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: _discountType == 'amount' ? AppColors.primary : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(7),
+                                    ),
+                                    child: Text(
+                                      'F',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: _discountType == 'amount' ? Colors.white : AppColors.textMedium,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () {
+                                    if (_discountType != 'percent') {
+                                      setState(() {
+                                        _discountType = 'percent';
+                                        _syncPaidAmount();
+                                      });
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: _discountType == 'percent' ? AppColors.primary : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(7),
+                                    ),
+                                    child: Text(
+                                      '%',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: _discountType == 'percent' ? Colors.white : AppColors.textMedium,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Discount input field
+                          SizedBox(
+                            width: 95,
+                            height: 36,
+                            child: TextFormField(
+                              controller: _discountCtrl,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              textAlign: TextAlign.right,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              decoration: InputDecoration(
+                                hintText: '0',
+                                suffixText: _discountType == 'percent' ? '%' : 'F',
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                filled: true,
+                                fillColor: AppColors.background,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: AppColors.divider),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: AppColors.divider),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: AppColors.primary),
+                                ),
+                              ),
+                              onChanged: (_) {
+                                setState(() {
+                                  _syncPaidAmount();
+                                });
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_computedDiscountAmount > 0) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Text(
+                              _discountType == 'percent'
+                                  ? 'Remise : - ${_discountCtrl.text.trim()}% (- ${formatter.format(_computedDiscountAmount)})'
+                                  : 'Remise : - ${formatter.format(_computedDiscountAmount)}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.danger,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      const Divider(height: 1, color: AppColors.divider),
+                      const SizedBox(height: 8),
+                      // Net total line
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Total Net à payer',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                          Text(
+                            formatter.format(_totalAmount),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.success,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
 
               // --- Client section (Autocomplete) ---
@@ -2355,6 +2608,7 @@ class _VenteFormState extends State<_VenteForm> {
         clientId: clientId,
         clientName: clientName,
         totalAmount: _totalAmount,
+        discountAmount: _computedDiscountAmount,
         paidAmount: paidVal,
         paymentMethod: _paymentMethod,
         date: _date,

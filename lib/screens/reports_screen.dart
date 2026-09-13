@@ -13,6 +13,7 @@ import 'dart:io';
 import '../providers/product_provider.dart';
 import '../providers/vente_provider.dart';
 import '../providers/decaissement_provider.dart';
+import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../models/vente.dart';
 import '../models/decaissement.dart';
@@ -69,11 +70,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
           final double totalExpenses = filteredDecaissements.fold(0.0, (sum, d) => sum + d.amount);
 
           // Cost price calculation for margin
+          final featureEnabled = context.watch<SettingsProvider>().settings.enableAverageCostPrice;
           double cogs = 0.0;
           for (final v in filteredVentes) {
             for (final item in v.items) {
               final p = productProv.products.where((p) => p.id == item.productId).firstOrNull;
-              cogs += (p?.costPrice ?? 0) * item.quantity;
+              final itemCost = item.costPrice;
+              final unitCost = (itemCost != null && itemCost > 0)
+                  ? itemCost
+                  : (p?.effectiveCostPrice(featureEnabled) ?? 0.0);
+              cogs += unitCost * item.quantity;
             }
           }
 

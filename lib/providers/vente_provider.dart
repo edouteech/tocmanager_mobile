@@ -35,7 +35,12 @@ class VenteProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addToCart(Product product, {double quantity = 1.0, double? customUnitPrice}) {
+  void addToCart(
+    Product product, {
+    double quantity = 1.0,
+    double? customUnitPrice,
+    bool featureEnabled = false,
+  }) {
     final unitPrice = customUnitPrice ?? product.price;
     final existingIdx = _cartItems.indexWhere((it) => it.productId == product.id);
 
@@ -54,6 +59,7 @@ class VenteProvider extends ChangeNotifier {
         quantity: quantity,
         unitPrice: unitPrice,
         total: quantity * unitPrice,
+        costPrice: product.effectiveCostPrice(featureEnabled),
       ));
     }
     notifyListeners();

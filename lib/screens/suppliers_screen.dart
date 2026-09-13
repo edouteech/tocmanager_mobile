@@ -1,3 +1,5 @@
+import 'package:file_picker/file_picker.dart';
+import 'package:excel/excel.dart' as xl;
 import '../widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -8,7 +10,6 @@ import '../providers/approvisionnement_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/supplier_payment_pdf_service.dart';
 import '../services/supplier_export_service.dart';
-import '../database/database_helper.dart';
 import '../theme/app_theme.dart';
 
 class SuppliersScreen extends StatefulWidget {
@@ -64,6 +65,8 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                 SupplierExportService.exportSuppliersExcel(context, suppliers, filterLabel);
               } else if (val == 'pdf') {
                 SupplierExportService.exportSuppliersPdfReport(context, suppliers, filterLabel, settings);
+              } else if (val == 'import') {
+                _importExcel(context);
               }
             },
             itemBuilder: (ctx) => [
@@ -84,6 +87,17 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                     Icon(Icons.picture_as_pdf_outlined, size: 18, color: AppColors.danger),
                     SizedBox(width: 8),
                     Text('Rapport PDF (A4)'),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'import',
+                child: Row(
+                  children: [
+                    Icon(Icons.upload_file_outlined, size: 18, color: AppColors.primary),
+                    SizedBox(width: 8),
+                    Text('Importer des fournisseurs'),
                   ],
                 ),
               ),
@@ -606,9 +620,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                           return;
                         }
 
-                        await DatabaseHelper.instance.recordSupplierPayment(supplier.id!, paid);
-                        if (!context.mounted) return;
-                        await context.read<SupplierProvider>().loadSuppliers();
+                        await context.read<SupplierProvider>().recordSupplierPayment(supplier.id!, paid);
                         if (!context.mounted) return;
                         await context.read<ApprovisionnementProvider>().load();
 
@@ -707,6 +719,34 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
   }
 
   void _confirmDeleteSupplier(BuildContext context, Supplier supplier, SupplierProvider provider) {
+    if (supplier.balance > 0) {
+      final formatter = NumberFormat.currency(locale: 'fr_FR', symbol: 'F', decimalDigits: 0);
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 24),
+              SizedBox(width: 8),
+              Text('Suppression impossible', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            ],
+          ),
+          content: Text(
+            'Le fournisseur "${supplier.name}" a un reste dû de ${formatter.format(supplier.balance)}.\n\nVeuillez d\'abord solder ce règlement avant de supprimer ce fournisseur.',
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              child: const Text('Compris'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -726,6 +766,264 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _importExcel(BuildContext context) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['xlsx'],
+      withData: true,
+    );
+    if (result == null || result.files.single.bytes == null) return;
+
+    try {
+      final excel = xl.Excel.decodeBytes(result.files.single.bytes!);
+      final sheetName = excel.tables.keys.first;
+      final sheet = excel.tables[sheetName]!;
+
+      if (sheet.rows.length < 2) {
+        if (context.mounted) {
+          AppToast.showError(context, 'Fichier vide ou sans données.');
+        }
+        return;
+      }
+
+      double parseNum(List<xl.Data?> row, int col) {
+        if (col < 0 || row.length <= col) return 0;
+        final v = row[col]?.value;
+        if (v is xl.IntCellValue) return v.value.toDouble();
+        if (v is xl.DoubleCellValue) return v.value;
+        final s = v?.toString().replaceAll(' ', '').replaceAll(',', '.') ?? '';
+        return double.tryParse(s) ?? 0;
+      }
+
+      int colName = 0;
+      int colContact = -1;
+      int colPhone = 1;
+      int colEmail = -1;
+      int colAddress = -1;
+      int colBalance = -1;
+
+      // Détection automatique des colonnes par les en-têtes
+      if (sheet.rows.isNotEmpty) {
+        final header = sheet.rows[0];
+        for (var c = 0; c < header.length; c++) {
+          final title = header[c]?.value?.toString().toLowerCase().trim() ?? '';
+          if (title.contains('société') || title.contains('societe') || title.contains('fournisseur') || title.contains('nom')) {
+            colName = c;
+          } else if (title.contains('contact') || title.contains('interlocuteur') || title.contains('responsable')) {
+            colContact = c;
+          } else if (title.contains('tél') || title.contains('tel') || title.contains('phone')) {
+            colPhone = c;
+          } else if (title.contains('email') || title.contains('mail')) {
+            colEmail = c;
+          } else if (title.contains('adresse') || title.contains('ville') || title.contains('lieu')) {
+            colAddress = c;
+          } else if (title.contains('solde') || title.contains('dette') || title.contains('balance')) {
+            colBalance = c;
+          }
+        }
+      }
+
+      final toImport = <Map<String, dynamic>>[];
+      for (var i = 1; i < sheet.rows.length; i++) {
+        final row = sheet.rows[i];
+        final name = (row.length > colName ? row[colName]?.value?.toString() : null)?.trim() ?? '';
+        if (name.isEmpty) continue;
+
+        final contact = (colContact >= 0 && row.length > colContact)
+            ? row[colContact]?.value?.toString().trim()
+            : null;
+        final phone = (colPhone >= 0 && row.length > colPhone)
+            ? row[colPhone]?.value?.toString().trim()
+            : null;
+        final email = (colEmail >= 0 && row.length > colEmail)
+            ? row[colEmail]?.value?.toString().trim()
+            : null;
+        final address = (colAddress >= 0 && row.length > colAddress)
+            ? row[colAddress]?.value?.toString().trim()
+            : null;
+        final balance = colBalance >= 0 ? parseNum(row, colBalance) : 0.0;
+
+        toImport.add({
+          'name': name,
+          'contactPerson': contact?.isNotEmpty == true ? contact : null,
+          'phone': phone?.isNotEmpty == true ? phone : null,
+          'email': email?.isNotEmpty == true ? email : null,
+          'address': address?.isNotEmpty == true ? address : null,
+          'balance': balance,
+        });
+      }
+
+      if (toImport.isEmpty) {
+        if (context.mounted) {
+          AppToast.showError(context, 'Aucun fournisseur valide trouvé dans le fichier.');
+        }
+        return;
+      }
+
+      if (!context.mounted) return;
+      _showImportPreview(context, toImport);
+    } catch (e) {
+      if (context.mounted) {
+        AppToast.showError(context, 'Erreur de lecture du fichier Excel: $e');
+      }
+    }
+  }
+
+  void _showImportPreview(BuildContext context, List<Map<String, dynamic>> rows) {
+    final supplierProvider = context.read<SupplierProvider>();
+    final existingNames = {
+      for (final s in supplierProvider.suppliers) s.name.toLowerCase().trim()
+    };
+
+    final newCount = rows.where((r) => !existingNames.contains((r['name'] as String).toLowerCase().trim())).length;
+    final alreadyExistCount = rows.length - newCount;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        final preview = rows.take(4).toList();
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  const Icon(Icons.upload_file_outlined, color: AppColors.primary),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Importer ${rows.length} fournisseur${rows.length > 1 ? 's' : ''}',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                ]),
+                const SizedBox(height: 6),
+                Text(
+                  '$newCount nouveau${newCount > 1 ? 'x' : ''} fournisseur${newCount > 1 ? 's' : ''} à créer'
+                  '${alreadyExistCount > 0 ? ' ($alreadyExistCount déjà existant${alreadyExistCount > 1 ? 's' : ''} ignoré${alreadyExistCount > 1 ? 's' : ''})' : ''}.',
+                  style: const TextStyle(color: AppColors.textMedium, fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                const Divider(height: 1),
+                ...preview.map((r) {
+                  final isDuplicate = existingNames.contains((r['name'] as String).toLowerCase().trim());
+                  final phone = r['phone'] as String?;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(children: [
+                      Icon(
+                        isDuplicate ? Icons.info_outline : Icons.check_circle_outline,
+                        size: 18,
+                        color: isDuplicate ? AppColors.warning : AppColors.success,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              r['name'] as String,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                color: isDuplicate ? AppColors.textMedium : AppColors.textDark,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (phone != null)
+                              Text(
+                                phone,
+                                style: const TextStyle(fontSize: 11, color: AppColors.textLight),
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (isDuplicate)
+                        const Text(
+                          'Déjà existant',
+                          style: TextStyle(fontSize: 11, color: AppColors.warning),
+                        ),
+                    ]),
+                  );
+                }),
+                if (rows.length > 4) ...[
+                  Text(
+                    '… et ${rows.length - 4} autre${rows.length - 4 > 1 ? 's' : ''}',
+                    style: const TextStyle(color: AppColors.textLight, fontSize: 11),
+                  ),
+                  const SizedBox(height: 4),
+                ],
+                const Divider(height: 1),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      await _confirmImport(context, rows);
+                    },
+                    child: const Text("Confirmer l'importation"),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Annuler'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmImport(
+    BuildContext context,
+    List<Map<String, dynamic>> rows,
+  ) async {
+    final supplierProvider = context.read<SupplierProvider>();
+    final existingNames = {
+      for (final s in supplierProvider.suppliers) s.name.toLowerCase().trim()
+    };
+
+    int createdCount = 0;
+    for (final r in rows) {
+      final key = (r['name'] as String).toLowerCase().trim();
+      if (existingNames.contains(key)) continue;
+
+      final newSupplier = Supplier(
+        name: (r['name'] as String).trim(),
+        contactPerson: r['contactPerson'] as String?,
+        phone: r['phone'] as String?,
+        email: r['email'] as String?,
+        address: r['address'] as String?,
+        balance: (r['balance'] as double?) ?? 0.0,
+      );
+
+      await supplierProvider.addSupplier(newSupplier);
+      existingNames.add(key);
+      createdCount++;
+    }
+
+    if (context.mounted) {
+      AppToast.showSuccess(
+        context,
+        createdCount > 0
+            ? '$createdCount fournisseur${createdCount > 1 ? 's' : ''} importé${createdCount > 1 ? 's' : ''} avec succès.'
+            : 'Aucun nouveau fournisseur à importer (tous déjà existants).',
+      );
+    }
   }
 
   void _showSupplierForm(BuildContext context, {Supplier? supplier}) {

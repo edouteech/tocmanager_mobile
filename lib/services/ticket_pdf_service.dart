@@ -117,6 +117,25 @@ class TicketPdfService {
               pw.Divider(thickness: 0.5),
               pw.SizedBox(height: 4),
 
+              if (vente.discountAmount > 0) ...[
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('Sous-total brut :', style: const pw.TextStyle(fontSize: 8)),
+                    pw.Text(formatter.format(vente.subtotalAmount), style: const pw.TextStyle(fontSize: 8)),
+                  ],
+                ),
+                pw.SizedBox(height: 2),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('Remise / Réduction :', style: const pw.TextStyle(fontSize: 8)),
+                    pw.Text('- ${formatter.format(vente.discountAmount)}', style: const pw.TextStyle(fontSize: 8)),
+                  ],
+                ),
+                pw.SizedBox(height: 2),
+              ],
+
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [

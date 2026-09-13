@@ -748,7 +748,7 @@ class _ApprovisionScreenState extends State<ApprovisionScreen> {
                   child: ElevatedButton.icon(
                     onPressed: () {
                       Navigator.pop(ctx);
-                      _showForm(context);
+                      _showForm(context, approvisionnement: a);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
@@ -803,7 +803,7 @@ class _ApprovisionScreenState extends State<ApprovisionScreen> {
           numeric: true,
         ),
         DataColumn(label: SizedBox(width: 110, child: Text('Fournisseur', style: h))),
-        const DataColumn(label: SizedBox(width: 40)),
+        const DataColumn(label: SizedBox(width: 70)),
       ],
       rows: items.asMap().entries.map((entry) {
         final i = entry.key;
@@ -864,23 +864,46 @@ class _ApprovisionScreenState extends State<ApprovisionScreen> {
               overflow: TextOverflow.ellipsis,
             )),
             DataCell(
-              InkWell(
-                onTap: () =>
-                    _confirmDelete(context, a, approProvider, productProvider),
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: AppColors.dangerLight,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  InkWell(
+                    onTap: () => _showForm(context, approvisionnement: a),
                     borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.edit_outlined,
+                        color: AppColors.primary,
+                        size: 14,
+                      ),
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.delete_outline,
-                    color: AppColors.danger,
-                    size: 14,
+                  const SizedBox(width: 6),
+                  InkWell(
+                    onTap: () =>
+                        _confirmDelete(context, a, approProvider, productProvider),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: AppColors.dangerLight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.delete_outline,
+                        color: AppColors.danger,
+                        size: 14,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ],
@@ -909,9 +932,13 @@ class _ApprovisionScreenState extends State<ApprovisionScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
+              final supplierProvider = context.read<SupplierProvider>();
               Navigator.pop(ctx);
               await approProvider.delete(appro);
-              if (context.mounted) await productProvider.load();
+              if (context.mounted) {
+                await productProvider.load();
+                await supplierProvider.loadSuppliers();
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
             child: const Text('Supprimer'),
@@ -921,7 +948,7 @@ class _ApprovisionScreenState extends State<ApprovisionScreen> {
     );
   }
 
-  void _showForm(BuildContext context) {
+  void _showForm(BuildContext context, {Approvisionnement? approvisionnement}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -930,11 +957,18 @@ class _ApprovisionScreenState extends State<ApprovisionScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => _ApprovisionForm(
-        onSave: (appro) async {
+        approvisionnement: approvisionnement,
+        onSave: (newAppro) async {
           final approProvider = context.read<ApprovisionnementProvider>();
           final productProvider = context.read<ProductProvider>();
-          await approProvider.add(appro);
+          final supplierProvider = context.read<SupplierProvider>();
+          if (approvisionnement != null) {
+            await approProvider.update(approvisionnement, newAppro);
+          } else {
+            await approProvider.add(newAppro);
+          }
           await productProvider.load();
+          await supplierProvider.loadSuppliers();
         },
       ),
     );
@@ -944,9 +978,13 @@ class _ApprovisionScreenState extends State<ApprovisionScreen> {
 // ---------------------------------------------------------------------------
 
 class _ApprovisionForm extends StatefulWidget {
+  final Approvisionnement? approvisionnement;
   final Future<void> Function(Approvisionnement) onSave;
 
-  const _ApprovisionForm({required this.onSave});
+  const _ApprovisionForm({
+    this.approvisionnement,
+    required this.onSave,
+  });
 
   @override
   State<_ApprovisionForm> createState() => _ApprovisionFormState();
@@ -965,6 +1003,29 @@ class _ApprovisionFormState extends State<_ApprovisionForm> {
   DateTime _date = DateTime.now();
   bool _isFullPayment = true;
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final a = widget.approvisionnement;
+    if (a != null) {
+      _productId = a.productId;
+      _supplierId = a.supplierId;
+      _qtyCtrl.text = a.quantity % 1 == 0
+          ? a.quantity.toInt().toString()
+          : a.quantity.toString();
+      _priceCtrl.text = a.unitPrice % 1 == 0
+          ? a.unitPrice.toInt().toString()
+          : a.unitPrice.toString();
+      _supplierCtrl.text = a.supplier ?? '';
+      _notesCtrl.text = a.notes ?? '';
+      _date = a.date;
+      _isFullPayment = a.paidAmount >= a.total;
+      _paidCtrl.text = a.paidAmount % 1 == 0
+          ? a.paidAmount.toInt().toString()
+          : a.paidAmount.toString();
+    }
+  }
 
   @override
   void dispose() {
@@ -1006,10 +1067,12 @@ class _ApprovisionFormState extends State<_ApprovisionForm> {
             children: [
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Nouvel approvisionnement',
-                      style: TextStyle(
+                      widget.approvisionnement != null
+                          ? 'Modifier l\'approvisionnement'
+                          : 'Nouvel approvisionnement',
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textDark,
@@ -1024,26 +1087,29 @@ class _ApprovisionFormState extends State<_ApprovisionForm> {
               ),
               const SizedBox(height: 16),
               Consumer<ProductProvider>(
-                builder: (_, provider, _) => DropdownButtonFormField<int?>(
-                  initialValue: _productId,
-                  decoration: InputDecoration(
-                    labelText: 'Produit *',
-                    filled: true,
-                    fillColor: AppColors.primarySurface,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                builder: (_, provider, _) {
+                  final validProductId = provider.products.any((p) => p.id == _productId) ? _productId : null;
+                  return DropdownButtonFormField<int?>(
+                    initialValue: validProductId,
+                    decoration: InputDecoration(
+                      labelText: 'Produit *',
+                      filled: true,
+                      fillColor: AppColors.primarySurface,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
-                  ),
-                  items: provider.products
-                      .map((p) => DropdownMenuItem<int?>(
-                            value: p.id,
-                            child: Text(p.name),
-                          ))
-                      .toList(),
-                  onChanged: (v) => setState(() => _productId = v),
-                  validator: (v) => v == null ? 'Veuillez choisir un produit' : null,
-                ),
+                    items: provider.products
+                        .map((p) => DropdownMenuItem<int?>(
+                              value: p.id,
+                              child: Text(p.name),
+                            ))
+                        .toList(),
+                    onChanged: (v) => setState(() => _productId = v),
+                    validator: (v) => v == null ? 'Veuillez choisir un produit' : null,
+                  );
+                },
               ),
               const SizedBox(height: 12),
               Row(
@@ -1107,11 +1173,12 @@ class _ApprovisionFormState extends State<_ApprovisionForm> {
               Consumer<SupplierProvider>(
                 builder: (_, supplierProv, _) {
                   final suppliers = supplierProv.suppliers;
+                  final validSupplierId = suppliers.any((s) => s.id == _supplierId) ? _supplierId : null;
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       DropdownButtonFormField<int?>(
-                        initialValue: _supplierId,
+                        initialValue: validSupplierId,
                         decoration: InputDecoration(
                           labelText: 'Sélectionner un Fournisseur',
                           filled: true,
@@ -1263,7 +1330,12 @@ class _ApprovisionFormState extends State<_ApprovisionForm> {
                           child: CircularProgressIndicator(
                               color: Colors.white, strokeWidth: 2),
                         )
-                      : const Text('Enregistrer l\'approvisionnement', style: TextStyle(fontWeight: FontWeight.w700)),
+                      : Text(
+                          widget.approvisionnement != null
+                              ? 'Enregistrer les modifications'
+                              : 'Enregistrer l\'approvisionnement',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
                 ),
               ),
               const SizedBox(height: 8),
@@ -1292,6 +1364,7 @@ class _ApprovisionFormState extends State<_ApprovisionForm> {
       final paid = _isFullPayment ? total : (double.tryParse(_paidCtrl.text.trim()) ?? 0);
 
       final appro = Approvisionnement(
+        id: widget.approvisionnement?.id,
         productId: _productId!,
         quantity: qty,
         unitPrice: price,

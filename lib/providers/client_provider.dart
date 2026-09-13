@@ -44,10 +44,8 @@ class ClientProvider extends ChangeNotifier {
   }
 
   Future<void> recordPayment(int clientId, double paymentAmount) async {
-    final client = _clients.firstWhere((c) => c.id == clientId);
-    final newBalance = client.balance - paymentAmount;
-    final updated = client.copyWith(balance: newBalance);
-    await updateClient(updated);
+    await DatabaseHelper.instance.recordClientPayment(clientId, paymentAmount);
+    await loadClients();
   }
 
   Future<void> recordPaymentForVente({
@@ -59,9 +57,8 @@ class ClientProvider extends ChangeNotifier {
       final newVentePaid = vente.paidAmount + paymentAmount;
       await DatabaseHelper.instance.updateVentePaidAmount(vente.id!, newVentePaid);
     }
-    final newBalance = client.balance - paymentAmount;
-    final updated = client.copyWith(balance: newBalance);
-    await updateClient(updated);
+    await DatabaseHelper.instance.recordClientPayment(client.id!, 0);
+    await loadClients();
   }
 
   Future<void> recordGlobalPaymentAllocated({
@@ -69,25 +66,8 @@ class ClientProvider extends ChangeNotifier {
     required double paymentAmount,
     required List<Vente> debtSales,
   }) async {
-    double remainingPayment = paymentAmount;
-    // FIFO allocation: sort by date ascending (oldest first)
-    final sortedSales = List<Vente>.from(debtSales)..sort((a, b) => a.date.compareTo(b.date));
-
-    for (final v in sortedSales) {
-      if (remainingPayment <= 0) break;
-      final remainingOnTicket = v.remainingAmount;
-      if (remainingOnTicket <= 0) continue;
-
-      final alloc = remainingPayment > remainingOnTicket ? remainingOnTicket : remainingPayment;
-      if (v.id != null) {
-        await DatabaseHelper.instance.updateVentePaidAmount(v.id!, v.paidAmount + alloc);
-      }
-      remainingPayment -= alloc;
-    }
-
-    final newBalance = client.balance - paymentAmount;
-    final updated = client.copyWith(balance: newBalance);
-    await updateClient(updated);
+    await DatabaseHelper.instance.recordClientPayment(client.id!, paymentAmount);
+    await loadClients();
   }
 
   Future<void> recordAvoirRefund({

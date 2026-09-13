@@ -39,4 +39,9 @@ class SupplierProvider extends ChangeNotifier {
     _suppliers.removeWhere((s) => s.id == id);
     notifyListeners();
   }
+
+  Future<void> recordSupplierPayment(int supplierId, double amount) async {
+    await DatabaseHelper.instance.recordSupplierPayment(supplierId, amount);
+    await loadSuppliers();
+  }
 }

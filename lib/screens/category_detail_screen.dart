@@ -6,6 +6,7 @@ import '../models/product.dart';
 import '../providers/product_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/category_icon_helper.dart';
+import 'product_detail_screen.dart';
 
 class CategoryDetailScreen extends StatelessWidget {
   final Category category;
@@ -28,8 +29,10 @@ class CategoryDetailScreen extends StatelessWidget {
           final products = productProvider.products
               .where((p) => p.categoryId == category.id)
               .toList();
-          final stockValue =
-              products.fold(0.0, (sum, p) => sum + p.stockValue);
+          final stockSaleValue =
+              products.fold(0.0, (sum, p) => sum + p.stockSaleValue);
+          final stockCost =
+              products.fold(0.0, (sum, p) => sum + p.stockCost);
           final lowStockCount = products.where((p) => p.isLowStock).length;
 
           return CustomScrollView(
@@ -39,9 +42,9 @@ class CategoryDetailScreen extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    _buildInfoCard(color, formatter, stockValue, products.length, lowStockCount),
+                    _buildInfoCard(color, formatter, stockCost, stockSaleValue, products.length, lowStockCount),
                     const SizedBox(height: 20),
-                    _buildProductsSection(products, formatter, color),
+                    _buildProductsSection(context, products, formatter, color),
                   ]),
                 ),
               ),
@@ -117,13 +120,14 @@ class CategoryDetailScreen extends StatelessWidget {
   Widget _buildInfoCard(
     Color color,
     NumberFormat formatter,
-    double stockValue,
+    double stockCost,
+    double stockSaleValue,
     int productCount,
     int lowStockCount,
   ) {
     return Container(
       margin: const EdgeInsets.only(top: 16),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -139,10 +143,18 @@ class CategoryDetailScreen extends StatelessWidget {
           ),
           _divider(),
           _statItem(
-            label: 'Valeur stock',
-            value: formatter.format(stockValue),
-            icon: Icons.show_chart,
-            color: AppColors.purple,
+            label: 'Coût stock',
+            value: formatter.format(stockCost),
+            icon: Icons.shopping_bag_outlined,
+            color: AppColors.primary,
+            smallText: true,
+          ),
+          _divider(),
+          _statItem(
+            label: 'Valeur vente',
+            value: formatter.format(stockSaleValue),
+            icon: Icons.account_balance_wallet_outlined,
+            color: AppColors.success,
             smallText: true,
           ),
           _divider(),
@@ -193,20 +205,35 @@ class CategoryDetailScreen extends StatelessWidget {
   }
 
   Widget _buildProductsSection(
+    BuildContext context,
     List<Product> products,
     NumberFormat formatter,
     Color catColor,
   ) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Produits',
-          style: TextStyle(
-            color: AppColors.textDark,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Produits',
+              style: TextStyle(
+                color: AppColors.textDark,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            Text(
+              '${products.length} référence${products.length > 1 ? 's' : ''}',
+              style: const TextStyle(
+                color: AppColors.textLight,
+                fontSize: 13,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         if (products.isEmpty)
@@ -224,6 +251,80 @@ class CategoryDetailScreen extends StatelessWidget {
               ),
             ),
           )
+        else if (isMobile)
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: products.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final p = products[index];
+              final stockColor = p.isLowStock ? AppColors.danger : AppColors.success;
+              return Material(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProductDetailScreen(product: p),
+                      ),
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: catColor.withAlpha(20),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(Icons.inventory_2_outlined, color: catColor, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                p.name,
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textDark),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                formatter.format(p.price),
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.primary),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: stockColor.withAlpha(25),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${p.quantity.toStringAsFixed(p.quantity.truncateToDouble() == p.quantity ? 0 : 1)} ${p.unit}',
+                            style: TextStyle(color: stockColor, fontWeight: FontWeight.w700, fontSize: 12),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.chevron_right, color: AppColors.textLight, size: 20),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          )
         else
           Container(
             decoration: BoxDecoration(
@@ -235,7 +336,7 @@ class CategoryDetailScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                child: _buildProductTable(products, formatter, catColor),
+                child: _buildProductTable(context, products, formatter, catColor),
               ),
             ),
           ),
@@ -244,6 +345,7 @@ class CategoryDetailScreen extends StatelessWidget {
   }
 
   Widget _buildProductTable(
+    BuildContext context,
     List<Product> products,
     NumberFormat formatter,
     Color catColor,
@@ -255,6 +357,7 @@ class CategoryDetailScreen extends StatelessWidget {
     );
 
     return DataTable(
+      showCheckboxColumn: false,
       headingRowHeight: 40,
       dataRowMinHeight: 56,
       dataRowMaxHeight: 56,
@@ -285,6 +388,14 @@ class CategoryDetailScreen extends StatelessWidget {
         final stockColor = p.isLowStock ? AppColors.danger : AppColors.success;
 
         return DataRow(
+          onSelectChanged: (_) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProductDetailScreen(product: p),
+              ),
+            );
+          },
           color: WidgetStateProperty.all(
             i.isEven ? Colors.white : const Color(0xFFF8FBFF),
           ),

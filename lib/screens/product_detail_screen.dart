@@ -13,7 +13,9 @@ import '../providers/vente_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/client_provider.dart';
 import '../providers/supplier_provider.dart';
+import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
+import 'products_screen.dart' show ProductFormModal;
 
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
@@ -46,6 +48,57 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         .where((p) => p.id == _product.id)
         .firstOrNull;
     if (updated != null && mounted) setState(() => _product = updated);
+  }
+
+  Future<void> _editProduct() async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => ProductFormModal(
+        product: _product,
+        onSave: (p) async {
+          await context.read<ProductProvider>().update(p);
+          await _refreshProduct();
+          if (mounted) {
+            AppToast.showSuccess(context, 'Produit mis à jour avec succès');
+          }
+        },
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteProduct() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Supprimer le produit', style: TextStyle(fontWeight: FontWeight.w700)),
+        content: Text('Voulez-vous vraiment supprimer "${_product.name}" ? Cette action est irréversible.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      if (!mounted) return;
+      await context.read<ProductProvider>().delete(_product.id!);
+      if (!mounted) return;
+      AppToast.showSuccess(context, 'Produit supprimé avec succès');
+      Navigator.pop(context);
+    }
   }
 
   @override
@@ -130,6 +183,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         icon: const Icon(Icons.arrow_back, color: Colors.white),
         onPressed: () => Navigator.pop(context),
       ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.edit_outlined, color: Colors.white),
+          tooltip: 'Modifier',
+          onPressed: _editProduct,
+        ),
+        IconButton(
+          icon: const Icon(Icons.delete_outline, color: Colors.white),
+          tooltip: 'Supprimer',
+          onPressed: _confirmDeleteProduct,
+        ),
+      ],
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: BoxDecoration(
@@ -262,10 +327,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               minHeight: 10,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Valeur : ${formatter.format(_product.stockValue)}',
-            style: const TextStyle(color: AppColors.textMedium, fontSize: 12),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Coût total : ${formatter.format(_product.stockCost)}',
+                style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              Text(
+                'Valeur vente : ${formatter.format(_product.stockSaleValue)}',
+                style: const TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ],
           ),
         ],
       ),
@@ -273,9 +347,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Widget _buildPriceCard(NumberFormat formatter) {
-    final margin = _product.price - _product.costPrice;
+    final settings = context.watch<SettingsProvider>().settings;
+    final featureEnabled = settings.enableAverageCostPrice;
+    final hasAverageCost = featureEnabled &&
+        _product.averageCostPrice != null &&
+        _product.averageCostPrice! > 0;
+    final effectiveCost = _product.effectiveCostPrice(featureEnabled);
+
+    final margin = _product.price - effectiveCost;
     final marginPct =
-        _product.costPrice > 0 ? (margin / _product.costPrice * 100) : 0.0;
+        effectiveCost > 0 ? (margin / effectiveCost * 100) : 0.0;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -306,11 +387,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
               ),
               Expanded(
-                child: _priceItem(
-                  label: "Prix d'achat",
-                  value: formatter.format(_product.costPrice),
-                  color: AppColors.textMedium,
-                ),
+                child: hasAverageCost
+                    ? _priceItem(
+                        label: 'Prix Moyen',
+                        value: formatter.format(_product.averageCostPrice!),
+                        color: AppColors.textMedium,
+                        subText: 'Init: ${formatter.format(_product.costPrice)}',
+                        subTextColor: AppColors.textLight,
+                      )
+                    : _priceItem(
+                        label: "Prix d'achat",
+                        value: formatter.format(_product.costPrice),
+                        color: AppColors.textMedium,
+                      ),
               ),
               Expanded(
                 child: _priceItem(
@@ -425,6 +514,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     required Color color,
     bool smallText = false,
     String? subText,
+    Color? subTextColor,
   }) {
     return Column(
       children: [
@@ -445,7 +535,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           const SizedBox(height: 2),
           Text(
             subText,
-            style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: subTextColor ?? color,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ],
@@ -579,7 +675,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           numeric: true,
         ),
         DataColumn(label: SizedBox(width: 110, child: Text('Fournisseur', style: h))),
-        const DataColumn(label: SizedBox(width: 40)),
+        const DataColumn(label: SizedBox(width: 70)),
       ],
       rows: items.asMap().entries.map((entry) {
         final i = entry.key;
@@ -617,11 +713,35 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     color: AppColors.textMedium, fontSize: 12),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis)),
-            DataCell(_deleteBtn(() =>
-                _confirmDeleteAppro(context, a, provider))),
+            DataCell(
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _editBtn(() => _showApproForm(context, approvisionnement: a)),
+                  const SizedBox(width: 6),
+                  _deleteBtn(() => _confirmDeleteAppro(context, a, provider)),
+                ],
+              ),
+            ),
           ],
         );
       }).toList(),
+    );
+  }
+
+  Widget _editBtn(VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+            color: AppColors.primaryLight,
+            borderRadius: BorderRadius.circular(8)),
+        child: const Icon(Icons.edit_outlined,
+            color: AppColors.primary, size: 14),
+      ),
     );
   }
 
@@ -787,8 +907,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  void _showApproForm(BuildContext context) {
+  void _showApproForm(BuildContext context, {Approvisionnement? approvisionnement}) {
     final approProvider = context.read<ApprovisionnementProvider>();
+    final supplierProvider = context.read<SupplierProvider>();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -798,9 +919,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ),
       builder: (ctx) => _ApproForm(
         product: _product,
+        approvisionnement: approvisionnement,
         onSave: (appro) async {
-          await approProvider.add(appro);
+          if (approvisionnement != null) {
+            await approProvider.update(approvisionnement, appro);
+          } else {
+            await approProvider.add(appro);
+          }
           await _refreshProduct();
+          await supplierProvider.loadSuppliers();
         },
       ),
     );
@@ -808,6 +935,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   void _showVenteForm(BuildContext context) {
     final venteProvider = context.read<VenteProvider>();
+    final clientProvider = context.read<ClientProvider>();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -820,6 +948,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         onSave: (vente) async {
           await venteProvider.add(vente);
           await _refreshProduct();
+          await clientProvider.loadClients();
         },
       ),
     );
@@ -830,9 +959,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
 class _ApproForm extends StatefulWidget {
   final Product product;
+  final Approvisionnement? approvisionnement;
   final Future<void> Function(Approvisionnement) onSave;
 
-  const _ApproForm({required this.product, required this.onSave});
+  const _ApproForm({
+    required this.product,
+    this.approvisionnement,
+    required this.onSave,
+  });
 
   @override
   State<_ApproForm> createState() => _ApproFormState();
@@ -846,6 +980,23 @@ class _ApproFormState extends State<_ApproForm> {
   final _notesCtrl = TextEditingController();
   DateTime _date = DateTime.now();
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final a = widget.approvisionnement;
+    if (a != null) {
+      _qtyCtrl.text = a.quantity % 1 == 0
+          ? a.quantity.toInt().toString()
+          : a.quantity.toString();
+      _priceCtrl.text = a.unitPrice % 1 == 0
+          ? a.unitPrice.toInt().toString()
+          : a.unitPrice.toString();
+      _supplierCtrl.text = a.supplier ?? '';
+      _notesCtrl.text = a.notes ?? '';
+      _date = a.date;
+    }
+  }
 
   @override
   void dispose() {
@@ -876,149 +1027,156 @@ class _ApproFormState extends State<_ApproForm> {
           key: _formKey,
           autovalidateMode: AutovalidateMode.onUserInteraction,
           child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Approvisionner — ${widget.product.name}',
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: AppColors.textMedium),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _qtyCtrl,
-                    keyboardType: TextInputType.number,
-                    onChanged: (_) => setState(() {}),
-                    decoration: InputDecoration(
-                      labelText: 'Quantité *',
-                      suffixText: widget.product.unit,
-                    ),
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) return 'Quantité obligatoire';
-                      final num = double.tryParse(val.trim());
-                      if (num == null || num <= 0) return 'Quantité invalide (> 0)';
-                      return null;
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextFormField(
-                    controller: _priceCtrl,
-                    keyboardType: TextInputType.number,
-                    onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(
-                      labelText: 'Prix unitaire',
-                      suffixText: 'FCFA',
-                    ),
-                    validator: (val) {
-                      if (val != null && val.trim().isNotEmpty) {
-                        final num = double.tryParse(val.trim());
-                        if (num == null || num < 0) return 'Prix unitaire invalide';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-              ],
-            ),
-            if (_total > 0) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Total : ${formatter.format(_total)}',
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                ),
-              ),
-            ],
-            const SizedBox(height: 12),
-            TextField(
-              controller: _supplierCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Fournisseur',
-                hintText: 'Nom du fournisseur',
-              ),
-            ),
-            const SizedBox(height: 12),
-            InkWell(
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: _date,
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime.now(),
-                );
-                if (picked != null) setState(() => _date = picked);
-              },
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                decoration: BoxDecoration(
-                  color: AppColors.primarySurface,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.calendar_today_outlined,
-                        color: AppColors.primary, size: 18),
-                    const SizedBox(width: 10),
-                    Text(
-                      DateFormat('dd/MM/yyyy', 'fr_FR').format(_date),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.approvisionnement != null
+                          ? 'Modifier approvisionnement — ${widget.product.name}'
+                          : 'Approvisionner — ${widget.product.name}',
                       style: const TextStyle(
-                          color: AppColors.textDark, fontSize: 14),
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textDark,
+                      ),
                     ),
-                  ],
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, color: AppColors.textMedium),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _qtyCtrl,
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) => setState(() {}),
+                      decoration: InputDecoration(
+                        labelText: 'Quantité *',
+                        suffixText: widget.product.unit,
+                      ),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) return 'Quantité obligatoire';
+                        final num = double.tryParse(val.trim());
+                        if (num == null || num <= 0) return 'Quantité invalide (> 0)';
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _priceCtrl,
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) => setState(() {}),
+                      decoration: const InputDecoration(
+                        labelText: 'Prix unitaire',
+                        suffixText: 'FCFA',
+                      ),
+                      validator: (val) {
+                        if (val != null && val.trim().isNotEmpty) {
+                          final num = double.tryParse(val.trim());
+                          if (num == null || num < 0) return 'Prix unitaire invalide';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              if (_total > 0) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Total : ${formatter.format(_total)}',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              TextField(
+                controller: _supplierCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Fournisseur',
+                  hintText: 'Nom du fournisseur',
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _notesCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Notes',
-                hintText: 'Remarques optionnelles',
+              const SizedBox(height: 12),
+              InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _date,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) setState(() => _date = picked);
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySurface,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calendar_today_outlined,
+                          color: AppColors.primary, size: 18),
+                      const SizedBox(width: 10),
+                      Text(
+                        DateFormat('dd/MM/yyyy', 'fr_FR').format(_date),
+                        style: const TextStyle(
+                            color: AppColors.textDark, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 28),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _saving ? null : _save,
-                child: _saving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2),
-                      )
-                    : const Text('Enregistrer'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _notesCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Notes',
+                  hintText: 'Remarques optionnelles',
+                ),
+                maxLines: 2,
               ),
-            ),
-            const SizedBox(height: 8),
-          ],
+              const SizedBox(height: 28),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _saving ? null : _save,
+                  child: _saving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2),
+                        )
+                      : Text(
+                          widget.approvisionnement != null
+                              ? 'Enregistrer les modifications'
+                              : 'Enregistrer',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 
@@ -1033,6 +1191,7 @@ class _ApproFormState extends State<_ApproForm> {
     try {
       final price = double.tryParse(_priceCtrl.text) ?? 0;
       final appro = Approvisionnement(
+        id: widget.approvisionnement?.id,
         productId: widget.product.id!,
         quantity: qty,
         unitPrice: price,

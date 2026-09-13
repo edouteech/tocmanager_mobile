@@ -1,9 +1,13 @@
+import 'package:file_picker/file_picker.dart';
+import 'package:excel/excel.dart' as xl;
 import '../widgets/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/category.dart';
 import '../providers/category_provider.dart';
 import '../providers/product_provider.dart';
+import '../providers/settings_provider.dart';
+import '../services/category_export_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/category_icon_helper.dart';
 import 'category_detail_screen.dart';
@@ -69,6 +73,63 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           tooltip: 'Retour',
         ),
         actions: [
+          PopupMenuButton<String>(
+            tooltip: 'Options (Export / Import)',
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primarySurface,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.ios_share_outlined, color: AppColors.primary, size: 20),
+            ),
+            onSelected: (val) {
+              final catProv = context.read<CategoryProvider>();
+              final prodProv = context.read<ProductProvider>();
+              final settings = context.read<SettingsProvider>().settings;
+              if (val == 'excel') {
+                CategoryExportService.exportCategoriesExcel(context, catProv.categories, prodProv.products);
+              } else if (val == 'pdf') {
+                CategoryExportService.exportCategoriesPdfReport(context, catProv.categories, prodProv.products, settings);
+              } else if (val == 'import') {
+                _importExcel(context);
+              }
+            },
+            itemBuilder: (ctx) => [
+              const PopupMenuItem(
+                value: 'excel',
+                child: Row(
+                  children: [
+                    Icon(Icons.table_chart_outlined, size: 18, color: AppColors.success),
+                    SizedBox(width: 8),
+                    Text('Exporter Excel (.xlsx)'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'pdf',
+                child: Row(
+                  children: [
+                    Icon(Icons.picture_as_pdf_outlined, size: 18, color: AppColors.danger),
+                    SizedBox(width: 8),
+                    Text('Rapport PDF (A4)'),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'import',
+                child: Row(
+                  children: [
+                    Icon(Icons.upload_file_outlined, size: 18, color: AppColors.primary),
+                    SizedBox(width: 8),
+                    Text('Importer des catégories'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 6),
           IconButton(
             onPressed: () => _showForm(context),
             icon: const Icon(Icons.add, color: AppColors.primary),
@@ -250,7 +311,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                   children: [
                     Icon(Icons.inventory_2_outlined, size: 16, color: AppColors.success),
                     SizedBox(width: 8),
-                    Text('Plus de produits ⬇'),
+                    Text('Plus de produits'),
                   ],
                 ),
               ),
@@ -573,6 +634,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           ElevatedButton(
             onPressed: () async {
               await provider.delete(cat.id!);
+              if (context.mounted) {
+                await context.read<ProductProvider>().load();
+              }
               if (ctx.mounted) Navigator.pop(ctx);
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
@@ -581,6 +645,221 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _importExcel(BuildContext context) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['xlsx'],
+      withData: true,
+    );
+    if (result == null || result.files.single.bytes == null) return;
+
+    try {
+      final excel = xl.Excel.decodeBytes(result.files.single.bytes!);
+      final sheetName = excel.tables.keys.first;
+      final sheet = excel.tables[sheetName]!;
+
+      if (sheet.rows.length < 2) {
+        if (context.mounted) {
+          AppToast.showError(context, 'Fichier vide ou sans données.');
+        }
+        return;
+      }
+
+      int colName = 0;
+      int colDesc = 1;
+
+      // Détection automatique des colonnes par les en-têtes
+      if (sheet.rows.isNotEmpty) {
+        final header = sheet.rows[0];
+        for (var c = 0; c < header.length; c++) {
+          final title = header[c]?.value?.toString().toLowerCase().trim() ?? '';
+          if (title.contains('nom') ||
+              title.contains('catégorie') ||
+              title.contains('categorie') ||
+              title.contains('libellé') ||
+              title == 'titre') {
+            colName = c;
+          } else if (title.contains('desc')) {
+            colDesc = c;
+          }
+        }
+      }
+
+      final toImport = <Map<String, String>>[];
+      for (var i = 1; i < sheet.rows.length; i++) {
+        final row = sheet.rows[i];
+        final name = (row.length > colName ? row[colName]?.value?.toString() : null)?.trim() ?? '';
+        if (name.isEmpty) continue;
+        final desc = (colDesc >= 0 && row.length > colDesc)
+            ? (row[colDesc]?.value?.toString().trim() ?? '')
+            : '';
+        toImport.add({
+          'name': name,
+          'description': desc,
+        });
+      }
+
+      if (toImport.isEmpty) {
+        if (context.mounted) {
+          AppToast.showError(context, 'Aucune catégorie valide trouvée.');
+        }
+        return;
+      }
+
+      if (!context.mounted) return;
+      _showImportPreview(context, toImport);
+    } catch (e) {
+      if (context.mounted) {
+        AppToast.showError(context, 'Erreur de lecture du fichier Excel: $e');
+      }
+    }
+  }
+
+  void _showImportPreview(BuildContext context, List<Map<String, String>> rows) {
+    final catProvider = context.read<CategoryProvider>();
+    final existingNames = {
+      for (final c in catProvider.categories) c.name.toLowerCase().trim()
+    };
+
+    final newCount = rows.where((r) => !existingNames.contains(r['name']!.toLowerCase().trim())).length;
+    final alreadyExistCount = rows.length - newCount;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        final preview = rows.take(4).toList();
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  const Icon(Icons.upload_file_outlined, color: AppColors.primary),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Importer ${rows.length} catégorie${rows.length > 1 ? 's' : ''}',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                ]),
+                const SizedBox(height: 6),
+                Text(
+                  '$newCount nouvelle${newCount > 1 ? 's' : ''} catégorie${newCount > 1 ? 's' : ''} à créer'
+                  '${alreadyExistCount > 0 ? ' ($alreadyExistCount déjà existante${alreadyExistCount > 1 ? 's' : ''} ignorée${alreadyExistCount > 1 ? 's' : ''})' : ''}.',
+                  style: const TextStyle(color: AppColors.textMedium, fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                const Divider(height: 1),
+                ...preview.map((r) {
+                  final isDuplicate = existingNames.contains(r['name']!.toLowerCase().trim());
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(children: [
+                      Icon(
+                        isDuplicate ? Icons.info_outline : Icons.check_circle_outline,
+                        size: 18,
+                        color: isDuplicate ? AppColors.warning : AppColors.success,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          r['name']!,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: isDuplicate ? AppColors.textMedium : AppColors.textDark,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (isDuplicate)
+                        const Text(
+                          'Déjà existante',
+                          style: TextStyle(fontSize: 11, color: AppColors.warning),
+                        ),
+                    ]),
+                  );
+                }),
+                if (rows.length > 4) ...[
+                  Text(
+                    '… et ${rows.length - 4} autre${rows.length - 4 > 1 ? 's' : ''}',
+                    style: const TextStyle(color: AppColors.textLight, fontSize: 11),
+                  ),
+                  const SizedBox(height: 4),
+                ],
+                const Divider(height: 1),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      await _confirmImport(context, rows);
+                    },
+                    child: const Text("Confirmer l'importation"),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Annuler'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmImport(
+    BuildContext context,
+    List<Map<String, String>> rows,
+  ) async {
+    final catProvider = context.read<CategoryProvider>();
+    final existingNames = {
+      for (final c in catProvider.categories) c.name.toLowerCase().trim()
+    };
+
+    int createdCount = 0;
+    for (final r in rows) {
+      final key = r['name']!.toLowerCase().trim();
+      if (existingNames.contains(key)) continue;
+
+      final color = _palette[createdCount % _palette.length];
+      final newCat = Category(
+        name: r['name']!.trim(),
+        description: r['description']?.isNotEmpty == true ? r['description'] : null,
+        color: color.toARGB32(),
+        icon: Icons.category.codePoint,
+        createdAt: DateTime.now(),
+      );
+
+      await catProvider.add(newCat);
+      existingNames.add(key);
+      createdCount++;
+    }
+
+    if (context.mounted) {
+      AppToast.showSuccess(
+        context,
+        createdCount > 0
+            ? '$createdCount catégorie${createdCount > 1 ? 's' : ''} importée${createdCount > 1 ? 's' : ''} avec succès.'
+            : 'Aucune nouvelle catégorie à importer (toutes déjà existantes).',
+      );
+      await context.read<ProductProvider>().load();
+    }
   }
 
   void _showForm(BuildContext context, {Category? category}) {

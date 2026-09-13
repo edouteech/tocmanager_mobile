@@ -12,7 +12,7 @@ import '../models/supplier.dart';
 
 class DatabaseHelper {
   static const _dbName = 'tocmanager.db';
-  static const _dbVersion = 10;
+  static const _dbVersion = 12;
 
   static DatabaseHelper? _instance;
   static Database? _database;
@@ -24,6 +24,47 @@ class DatabaseHelper {
     final db = _database ??= await _init();
     await _ensureAllTablesExist(db);
     return db;
+  }
+
+  /// Ferme proprement la base et réinitialise l'instance pour permettre réouverture/restauration
+  Future<void> closeDatabase() async {
+    if (_database != null) {
+      if (_database!.isOpen) {
+        await _database!.close();
+      }
+      _database = null;
+    }
+  }
+
+  /// Force l'écriture des journaux WAL sur le fichier principal SQLite
+  Future<void> checkpoint() async {
+    try {
+      final db = await database;
+      await db.rawQuery('PRAGMA wal_checkpoint(FULL)');
+    } catch (_) {}
+  }
+
+  /// Vide toutes les données métier d'activité tout en préservant intacte la table settings
+  Future<void> clearAllBusinessData() async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.execute('PRAGMA foreign_keys = OFF');
+      await txn.delete('vente_items');
+      await txn.delete('ventes');
+      await txn.delete('approvisionnements');
+      await txn.delete('decaissements');
+      await txn.delete('products');
+      await txn.delete('categories');
+      await txn.delete('clients');
+      await txn.delete('suppliers');
+      try {
+        await txn.delete(
+          'sqlite_sequence',
+          where: "name IN ('vente_items', 'ventes', 'approvisionnements', 'decaissements', 'products', 'categories', 'clients', 'suppliers')",
+        );
+      } catch (_) {}
+      await txn.execute('PRAGMA foreign_keys = ON');
+    });
   }
 
   Future<Database> _init() async {
@@ -50,6 +91,9 @@ class DatabaseHelper {
     await _createV7Schema(db);
     await _createV8Schema(db);
     await _createV9Schema(db);
+    await _createV10Schema(db);
+    await _createV11Schema(db);
+    await _createV12Schema(db);
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -72,6 +116,28 @@ class DatabaseHelper {
     if (oldVersion < 8) await _createV8Schema(db);
     if (oldVersion < 9) await _createV9Schema(db);
     if (oldVersion < 10) await _createV10Schema(db);
+    if (oldVersion < 11) await _createV11Schema(db);
+    if (oldVersion < 12) await _createV12Schema(db);
+  }
+
+  Future<void> _createV12Schema(Database db) async {
+    try {
+      final tableInfo = await db.rawQuery('PRAGMA table_info(products)');
+      final hasAvgCostPrice = tableInfo.any((col) => col['name'] == 'average_cost_price');
+      if (!hasAvgCostPrice) {
+        await db.execute('ALTER TABLE products ADD COLUMN average_cost_price REAL');
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _createV11Schema(Database db) async {
+    try {
+      final tableInfo = await db.rawQuery('PRAGMA table_info(ventes)');
+      final hasDiscountAmount = tableInfo.any((col) => col['name'] == 'discount_amount');
+      if (!hasDiscountAmount) {
+        await db.execute('ALTER TABLE ventes ADD COLUMN discount_amount REAL DEFAULT 0');
+      }
+    } catch (_) {}
   }
 
 
@@ -165,10 +231,17 @@ class DatabaseHelper {
         quantity REAL NOT NULL,
         unit_price REAL NOT NULL,
         total REAL NOT NULL,
+        cost_price REAL DEFAULT 0,
         FOREIGN KEY (vente_id) REFERENCES ventes(id) ON DELETE CASCADE,
         FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL
       )
     ''');
+
+    final itemTableInfo = await db.rawQuery('PRAGMA table_info(vente_items)');
+    final hasCostPrice = itemTableInfo.any((col) => col['name'] == 'cost_price');
+    if (!hasCostPrice) {
+      await db.execute('ALTER TABLE vente_items ADD COLUMN cost_price REAL DEFAULT 0');
+    }
 
     // Check if old `ventes` table contains `product_id` column and migrate
     final tableInfo = await db.rawQuery('PRAGMA table_info(ventes)');
@@ -230,6 +303,7 @@ class DatabaseHelper {
         client_id INTEGER,
         client_name TEXT,
         total_amount REAL NOT NULL DEFAULT 0,
+        discount_amount REAL NOT NULL DEFAULT 0,
         paid_amount REAL NOT NULL DEFAULT 0,
         payment_method TEXT NOT NULL DEFAULT 'Espèces',
         date TEXT NOT NULL,
@@ -263,6 +337,7 @@ class DatabaseHelper {
         min_qty_semi_wholesale REAL DEFAULT 0,
         min_qty_wholesale REAL DEFAULT 0,
         cost_price REAL NOT NULL DEFAULT 0,
+        average_cost_price REAL,
         quantity REAL NOT NULL DEFAULT 0,
         unit TEXT NOT NULL DEFAULT 'pce',
         barcode TEXT,
@@ -470,16 +545,29 @@ class DatabaseHelper {
         ) ??
         0;
 
-    final stockValueRes = await db.rawQuery(
-      'SELECT SUM(price * quantity) as total FROM products',
+    final settingRows = await db.query(
+      'settings',
+      where: 'key = ?',
+      whereArgs: ['enable_average_cost_price'],
     );
+    final isPumpEnabled =
+        settingRows.isNotEmpty && settingRows.first['value'] == '1';
+
+    final costQuery = isPumpEnabled
+        ? 'SELECT SUM(price * quantity) as total_val, SUM(COALESCE(CASE WHEN average_cost_price IS NOT NULL AND average_cost_price > 0 THEN average_cost_price ELSE cost_price END, cost_price) * quantity) as total_cost FROM products'
+        : 'SELECT SUM(price * quantity) as total_val, SUM(cost_price * quantity) as total_cost FROM products';
+
+    final stockValueRes = await db.rawQuery(costQuery);
     final stockValue =
-        (stockValueRes.first['total'] as num?)?.toDouble() ?? 0.0;
+        (stockValueRes.first['total_val'] as num?)?.toDouble() ?? 0.0;
+    final stockCost =
+        (stockValueRes.first['total_cost'] as num?)?.toDouble() ?? 0.0;
 
     return {
       'productCount': productCount,
       'categoryCount': categoryCount,
       'stockValue': stockValue,
+      'stockCost': stockCost,
       'lowStockCount': lowStockCount,
     };
   }
@@ -520,7 +608,10 @@ class DatabaseHelper {
 
   Future<int> deleteCategory(int id) async {
     final db = await database;
-    return db.delete('categories', where: 'id = ?', whereArgs: [id]);
+    return db.transaction((txn) async {
+      await txn.rawUpdate('UPDATE products SET category_id = NULL WHERE category_id = ?', [id]);
+      return txn.delete('categories', where: 'id = ?', whereArgs: [id]);
+    });
   }
 
   // --- PRODUCTS ---
@@ -554,13 +645,33 @@ class DatabaseHelper {
 
   Future<int> insertProduct(Product p) async {
     final db = await database;
-    return db.insert('products', p.toMap());
+    return db.transaction((txn) async {
+      final id = await txn.insert('products', p.toMap());
+      await _recalculateAverageCostPrice(txn, id);
+      return id;
+    });
   }
 
   Future<int> updateProduct(Product p) async {
     final db = await database;
-    return db
-        .update('products', p.toMap(), where: 'id = ?', whereArgs: [p.id]);
+    return db.transaction((txn) async {
+      final res = await txn.update('products', p.toMap(), where: 'id = ?', whereArgs: [p.id]);
+      if (p.id != null) {
+        await _recalculateAverageCostPrice(txn, p.id!);
+      }
+      return res;
+    });
+  }
+
+  Future<void> recalculateAllProductsAverageCostPrice() async {
+    final db = await database;
+    await db.transaction((txn) async {
+      final products = await txn.query('products', columns: ['id']);
+      for (final p in products) {
+        final id = p['id'] as int;
+        await _recalculateAverageCostPrice(txn, id);
+      }
+    });
   }
 
   Future<int> deleteProduct(int id) async {
@@ -588,6 +699,11 @@ class DatabaseHelper {
         'UPDATE products SET quantity = quantity + ?, updated_at = ? WHERE id = ?',
         [a.quantity, DateTime.now().toIso8601String(), a.productId],
       );
+      // Recalcul PUMP si feature activée
+      await _recalculateAverageCostPrice(txn, a.productId);
+      if (a.supplierId != null) {
+        await _updateSupplierBalance(txn, a.supplierId!);
+      }
       return id;
     });
   }
@@ -599,9 +715,175 @@ class DatabaseHelper {
         'UPDATE products SET quantity = max(0, quantity - ?), updated_at = ? WHERE id = ?',
         [a.quantity, DateTime.now().toIso8601String(), a.productId],
       );
-      return txn.delete('approvisionnements', where: 'id = ?', whereArgs: [a.id]);
+      final result = await txn.delete('approvisionnements', where: 'id = ?', whereArgs: [a.id]);
+      // Recalcul PUMP après suppression (peut remettre à NULL si plus d'appros)
+      await _recalculateAverageCostPrice(txn, a.productId);
+      if (a.supplierId != null) {
+        await _updateSupplierBalance(txn, a.supplierId!);
+      }
+      return result;
     });
   }
+
+  Future<int> updateApprovisionnement(Approvisionnement oldAppro, Approvisionnement newAppro) async {
+    final db = await database;
+    return db.transaction((txn) async {
+      final now = DateTime.now().toIso8601String();
+      if (oldAppro.productId == newAppro.productId) {
+        final delta = newAppro.quantity - oldAppro.quantity;
+        if (delta != 0) {
+          await txn.rawUpdate(
+            'UPDATE products SET quantity = max(0, quantity + ?), updated_at = ? WHERE id = ?',
+            [delta, now, newAppro.productId],
+          );
+        }
+        // Recalcul PUMP sur l'unique produit affecté
+        await _recalculateAverageCostPrice(txn, newAppro.productId);
+      } else {
+        // Produit changé : on annule sur l'ancien, on applique sur le nouveau
+        await txn.rawUpdate(
+          'UPDATE products SET quantity = max(0, quantity - ?), updated_at = ? WHERE id = ?',
+          [oldAppro.quantity, now, oldAppro.productId],
+        );
+        await txn.rawUpdate(
+          'UPDATE products SET quantity = quantity + ?, updated_at = ? WHERE id = ?',
+          [newAppro.quantity, now, newAppro.productId],
+        );
+        // Recalcul PUMP sur les deux produits affectés
+        await _recalculateAverageCostPrice(txn, oldAppro.productId);
+        await _recalculateAverageCostPrice(txn, newAppro.productId);
+      }
+      final res = await txn.update(
+        'approvisionnements',
+        newAppro.toMap(),
+        where: 'id = ?',
+        whereArgs: [newAppro.id],
+      );
+
+      final suppliersToUpdate = {oldAppro.supplierId, newAppro.supplierId}.whereType<int>();
+      for (final sId in suppliersToUpdate) {
+        await _updateSupplierBalance(txn, sId);
+      }
+      return res;
+    });
+  }
+
+  Future<void> _updateSupplierBalance(DatabaseExecutor txn, int supplierId) async {
+    final sumRes = await txn.rawQuery(
+      'SELECT COALESCE(SUM(total - paid_amount), 0) as total_debt FROM approvisionnements WHERE supplier_id = ? AND paid_amount < total',
+      [supplierId],
+    );
+    final newBalance = (sumRes.first['total_debt'] as num?)?.toDouble() ?? 0.0;
+    await txn.rawUpdate(
+      'UPDATE suppliers SET balance = ? WHERE id = ?',
+      [newBalance, supplierId],
+    );
+  }
+
+  /// Recalcule le Prix Unitaire Moyen Pondéré (PUMP) pour un produit donné,
+  /// en prenant en compte le stock initial (prix d'achat initial + quantité initiale)
+  /// ET l'ensemble des approvisionnements enregistrés en base.
+  /// Écrit le résultat dans `average_cost_price` (champ dédié, ne touche pas à `cost_price`).
+  /// Si la feature est désactivée, ou s'il n'existe aucun approvisionnement,
+  /// remet `average_cost_price` à NULL pour revenir au comportement par défaut.
+  Future<void> _recalculateAverageCostPrice(
+    DatabaseExecutor txn,
+    int productId,
+  ) async {
+    try {
+      // Vérifie si la feature PUMP est activée dans les paramètres
+      final settingRows = await txn.query(
+        'settings',
+        where: 'key = ?',
+        whereArgs: ['enable_average_cost_price'],
+      );
+      final isEnabled =
+          settingRows.isNotEmpty && settingRows.first['value'] == '1';
+
+      if (!isEnabled) {
+        // Feature désactivée : s'assurer que le champ reste à NULL
+        await txn.rawUpdate(
+          'UPDATE products SET average_cost_price = NULL, updated_at = ? WHERE id = ?',
+          [DateTime.now().toIso8601String(), productId],
+        );
+        return;
+      }
+
+      // 1. Récupérer le produit (prix d'achat initial et quantité en stock actuelle)
+      final prodRes = await txn.query(
+        'products',
+        columns: ['cost_price', 'quantity'],
+        where: 'id = ?',
+        whereArgs: [productId],
+      );
+
+      if (prodRes.isEmpty) return;
+
+      final initialCostPrice = (prodRes.first['cost_price'] as num?)?.toDouble() ?? 0.0;
+      final currentQty = (prodRes.first['quantity'] as num?)?.toDouble() ?? 0.0;
+
+      // 2. Somme de la quantité vendue pour ce produit
+      final soldRes = await txn.rawQuery(
+        '''
+        SELECT COALESCE(SUM(quantity), 0) AS total_sold_qty
+        FROM vente_items
+        WHERE product_id = ?
+        ''',
+        [productId],
+      );
+      final totalSoldQty = (soldRes.first['total_sold_qty'] as num?)?.toDouble() ?? 0.0;
+
+      // 3. Somme des approvisionnements (quantité et coût total)
+      final approRes = await txn.rawQuery(
+        '''
+        SELECT
+          COALESCE(SUM(quantity * unit_price), 0) AS total_appro_cost,
+          COALESCE(SUM(quantity), 0)             AS total_appro_qty
+        FROM approvisionnements
+        WHERE product_id = ? AND quantity > 0
+        ''',
+        [productId],
+      );
+
+      final totalApproCost = (approRes.first['total_appro_cost'] as num?)?.toDouble() ?? 0.0;
+      final totalApproQty  = (approRes.first['total_appro_qty']  as num?)?.toDouble() ?? 0.0;
+
+      // S'il n'y a aucun approvisionnement, average_cost_price reste NULL (reviens à cost_price)
+      if (totalApproQty <= 0) {
+        await txn.rawUpdate(
+          'UPDATE products SET average_cost_price = NULL, updated_at = ? WHERE id = ?',
+          [DateTime.now().toIso8601String(), productId],
+        );
+        return;
+      }
+
+      // Quantité initiale au moment de la création du produit
+      // (Stock actuel + Quantité vendue - Quantité approvisionnée)
+      final calculatedInitialQty = currentQty + totalSoldQty - totalApproQty;
+      final initialQty = calculatedInitialQty > 0 ? calculatedInitialQty : 0.0;
+
+      final totalCost = (initialQty * initialCostPrice) + totalApproCost;
+      final totalQty = initialQty + totalApproQty;
+
+      if (totalQty <= 0) {
+        await txn.rawUpdate(
+          'UPDATE products SET average_cost_price = NULL, updated_at = ? WHERE id = ?',
+          [DateTime.now().toIso8601String(), productId],
+        );
+        return;
+      }
+
+      final pump = totalCost / totalQty;
+
+      await txn.rawUpdate(
+        'UPDATE products SET average_cost_price = ?, updated_at = ? WHERE id = ?',
+        [pump, DateTime.now().toIso8601String(), productId],
+      );
+    } catch (_) {
+      // On ne laisse pas un échec du recalcul bloquer la transaction principale
+    }
+  }
+
 
   // --- DECAISSEMENTS ---
   Future<List<Decaissement>> getDecaissements() async {
