@@ -5,6 +5,7 @@ import '../database/database_helper.dart';
 class ApprovisionnementProvider extends ChangeNotifier {
   List<Approvisionnement> _items = [];
   bool _loading = false;
+  int? _activeProductId;
 
   List<Approvisionnement> get items => _items;
   bool get loading => _loading;
@@ -13,6 +14,7 @@ class ApprovisionnementProvider extends ChangeNotifier {
       _items.fold(0.0, (sum, a) => sum + a.total);
 
   Future<void> load({int? productId}) async {
+    _activeProductId = productId;
     _loading = true;
     notifyListeners();
     _items = await DatabaseHelper.instance.getApprovisionnements(productId: productId);
@@ -22,16 +24,16 @@ class ApprovisionnementProvider extends ChangeNotifier {
 
   Future<void> add(Approvisionnement appro) async {
     await DatabaseHelper.instance.insertApprovisionnement(appro);
-    await load();
+    await load(productId: _activeProductId);
   }
 
   Future<void> update(Approvisionnement oldAppro, Approvisionnement newAppro) async {
     await DatabaseHelper.instance.updateApprovisionnement(oldAppro, newAppro);
-    await load();
+    await load(productId: _activeProductId);
   }
 
   Future<void> delete(Approvisionnement appro) async {
     await DatabaseHelper.instance.deleteApprovisionnement(appro);
-    await load();
+    await load(productId: _activeProductId);
   }
 }

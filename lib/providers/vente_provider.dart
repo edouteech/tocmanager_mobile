@@ -6,6 +6,7 @@ import '../database/database_helper.dart';
 class VenteProvider extends ChangeNotifier {
   List<Vente> _items = [];
   bool _loading = false;
+  int? _activeProductId;
 
   // Cart state for active sale session
   final List<VenteItem> _cartItems = [];
@@ -28,6 +29,7 @@ class VenteProvider extends ChangeNotifier {
   }
 
   Future<void> load({int? productId}) async {
+    _activeProductId = productId;
     _loading = true;
     notifyListeners();
     _items = await DatabaseHelper.instance.getVentes(productId: productId);
@@ -95,11 +97,11 @@ class VenteProvider extends ChangeNotifier {
   Future<void> add(Vente vente) async {
     await DatabaseHelper.instance.insertVente(vente);
     clearCart();
-    await load();
+    await load(productId: _activeProductId);
   }
 
   Future<void> delete(Vente vente) async {
     await DatabaseHelper.instance.deleteVente(vente);
-    await load();
+    await load(productId: _activeProductId);
   }
 }
