@@ -123,7 +123,6 @@ class SettingsProvider extends ChangeNotifier {
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
       }
-      await DatabaseHelper.instance.recalculateAllProductsAverageCostPrice();
     } catch (_) {}
   }
 

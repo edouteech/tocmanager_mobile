@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../models/category.dart';
 import '../models/product.dart';
 import '../providers/product_provider.dart';
+import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/category_icon_helper.dart';
 import 'product_detail_screen.dart';
@@ -29,10 +30,12 @@ class CategoryDetailScreen extends StatelessWidget {
           final products = productProvider.products
               .where((p) => p.categoryId == category.id)
               .toList();
+          final settings = context.watch<SettingsProvider>().settings;
+          final featureEnabled = settings.enableAverageCostPrice;
           final stockSaleValue =
               products.fold(0.0, (sum, p) => sum + p.stockSaleValue);
           final stockCost =
-              products.fold(0.0, (sum, p) => sum + p.stockCost);
+              products.fold(0.0, (sum, p) => sum + p.stockCostWithFeature(featureEnabled));
           final lowStockCount = products.where((p) => p.isLowStock).length;
 
           return CustomScrollView(

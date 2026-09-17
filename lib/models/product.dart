@@ -17,8 +17,10 @@ class Product {
   final double alertQuantity;
   final DateTime createdAt;
   final DateTime updatedAt;
-
   final String? imagePath;
+
+  final double approQuantity;
+  final double approTotalCost;
 
   const Product({
     this.id,
@@ -40,19 +42,34 @@ class Product {
     this.imagePath,
     required this.createdAt,
     required this.updatedAt,
+    this.approQuantity = 0,
+    this.approTotalCost = 0,
   });
 
   bool get isLowStock => quantity <= alertQuantity;
-  double get stockCost => quantity * costPrice;
+
+  /// Le coût du stock = (stock initial restant * prix d'achat fixe) + total de chaque approvisionnement.
+  double get stockCost {
+    if (quantity <= 0) return 0;
+    if (approQuantity <= 0) return quantity * costPrice;
+    if (quantity >= approQuantity) {
+      return (quantity - approQuantity) * costPrice + approTotalCost;
+    } else {
+      return approTotalCost * (quantity / approQuantity);
+    }
+  }
+
   double get stockSaleValue => quantity * price;
   double get stockPotentialMargin => stockSaleValue - stockCost;
   double get stockValue => stockSaleValue; // Alias for backward compatibility
 
-  /// Retourne le prix de coût effectif selon l'état de la feature PUMP.
-  /// Si [featureEnabled] est true et [averageCostPrice] est non-null et > 0,
-  /// retourne [averageCostPrice]. Sinon retourne [costPrice].
-  double effectiveCostPrice(bool featureEnabled) {
-    if (featureEnabled && averageCostPrice != null && averageCostPrice! > 0) {
+  double stockCostWithFeature(bool featureEnabled) => stockCost;
+  double stockPotentialMarginWithFeature(bool featureEnabled) => stockPotentialMargin;
+  
+  /// Retourne le prix moyen unitaire s'il existe pour le calcul des marges et des ventes,
+  /// sinon retourne le prix d'achat fixe.
+  double effectiveCostPrice([bool featureEnabled = true]) {
+    if (averageCostPrice != null && averageCostPrice! > 0) {
       return averageCostPrice!;
     }
     return costPrice;
@@ -78,6 +95,8 @@ class Product {
         imagePath: map['image_path'] as String?,
         createdAt: DateTime.parse(map['created_at'] as String),
         updatedAt: DateTime.parse(map['updated_at'] as String),
+        approQuantity: (map['appro_quantity'] as num?)?.toDouble() ?? 0,
+        approTotalCost: (map['appro_total_cost'] as num?)?.toDouble() ?? 0,
       );
 
   Map<String, dynamic> toMap() => {

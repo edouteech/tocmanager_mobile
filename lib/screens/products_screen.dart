@@ -288,8 +288,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
         final total = provider.products.length;
         final rupture = provider.products.where((p) => p.quantity == 0).length;
         final lowStock = provider.products.where((p) => p.isLowStock && p.quantity > 0).length;
+        final settings = context.watch<SettingsProvider>().settings;
+        final featureEnabled = settings.enableAverageCostPrice;
         final totalSaleValue = provider.products.fold<double>(0, (sum, p) => sum + p.stockSaleValue);
-        final totalCostValue = provider.products.fold<double>(0, (sum, p) => sum + p.stockCost);
+        final totalCostValue = provider.products.fold<double>(0, (sum, p) => sum + p.stockCostWithFeature(featureEnabled));
 
         return Container(
           color: Colors.white,
@@ -1052,6 +1054,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
           return const Center(child: CircularProgressIndicator(color: AppColors.primary));
         }
 
+        final settings = context.watch<SettingsProvider>().settings;
+        final featureEnabled = settings.enableAverageCostPrice;
         final products = _getFilteredProducts(productProvider);
 
         if (products.isEmpty) return _buildEmptyProductsView();
@@ -1151,7 +1155,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       if (p.quantity > 0) ...[
                         const SizedBox(height: 3),
                         Text(
-                          'Valeur : ${formatter.format(p.stockSaleValue)} • Coût : ${formatter.format(p.stockCost)}',
+                          'Valeur : ${formatter.format(p.stockSaleValue)} • Coût : ${formatter.format(p.stockCostWithFeature(featureEnabled))}',
                           style: const TextStyle(fontSize: 10, color: AppColors.textLight, fontWeight: FontWeight.w500),
                         ),
                       ],

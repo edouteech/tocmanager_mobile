@@ -545,17 +545,25 @@ class DatabaseHelper {
         ) ??
         0;
 
-    final settingRows = await db.query(
-      'settings',
-      where: 'key = ?',
-      whereArgs: ['enable_average_cost_price'],
-    );
-    final isPumpEnabled =
-        settingRows.isNotEmpty && settingRows.first['value'] == '1';
-
-    final costQuery = isPumpEnabled
-        ? 'SELECT SUM(price * quantity) as total_val, SUM(COALESCE(CASE WHEN average_cost_price IS NOT NULL AND average_cost_price > 0 THEN average_cost_price ELSE cost_price END, cost_price) * quantity) as total_cost FROM products'
-        : 'SELECT SUM(price * quantity) as total_val, SUM(cost_price * quantity) as total_cost FROM products';
+    final costQuery = '''
+      SELECT 
+        SUM(p.price * p.quantity) as total_val,
+        SUM(
+          CASE 
+            WHEN p.quantity <= 0 THEN 0
+            WHEN COALESCE(appros.appro_qty, 0) <= 0 THEN p.quantity * p.cost_price
+            WHEN p.quantity >= appros.appro_qty THEN (p.quantity - appros.appro_qty) * p.cost_price + appros.appro_cost
+            ELSE appros.appro_cost * (p.quantity / appros.appro_qty)
+          END
+        ) as total_cost
+      FROM products p
+      LEFT JOIN (
+        SELECT product_id, SUM(quantity) as appro_qty, SUM(quantity * unit_price) as appro_cost
+        FROM approvisionnements
+        WHERE quantity > 0
+        GROUP BY product_id
+      ) appros ON appros.product_id = p.id
+    ''';
 
     final stockValueRes = await db.rawQuery(costQuery);
     final stockValue =
@@ -617,61 +625,72 @@ class DatabaseHelper {
   // --- PRODUCTS ---
   Future<List<Product>> getProducts({int? categoryId, String? search}) async {
     final db = await database;
-    String? where;
-    List<dynamic>? whereArgs;
+    String sql = '''
+      SELECT 
+        p.*,
+        COALESCE(appros.appro_qty, 0) AS appro_quantity,
+        COALESCE(appros.appro_cost, 0) AS appro_total_cost
+      FROM products p
+      LEFT JOIN (
+        SELECT product_id, SUM(quantity) as appro_qty, SUM(quantity * unit_price) as appro_cost
+        FROM approvisionnements
+        WHERE quantity > 0
+        GROUP BY product_id
+      ) appros ON appros.product_id = p.id
+    ''';
+
+    List<String> conditions = [];
+    List<dynamic> args = [];
 
     if (categoryId != null && search != null && search.isNotEmpty) {
-      where = 'category_id = ? AND name LIKE ?';
-      whereArgs = [categoryId, '%$search%'];
+      conditions.add('p.category_id = ? AND (p.name LIKE ? OR p.barcode LIKE ?)');
+      args.addAll([categoryId, '%$search%', '%$search%']);
     } else if (categoryId != null) {
-      where = 'category_id = ?';
-      whereArgs = [categoryId];
+      conditions.add('p.category_id = ?');
+      args.add(categoryId);
     } else if (search != null && search.isNotEmpty) {
-      where = 'name LIKE ? OR barcode LIKE ?';
-      whereArgs = ['%$search%', '%$search%'];
+      conditions.add('(p.name LIKE ? OR p.barcode LIKE ?)');
+      args.addAll(['%$search%', '%$search%']);
     }
 
-    final maps = await db.query('products',
-        where: where, whereArgs: whereArgs, orderBy: 'name ASC');
+    if (conditions.isNotEmpty) {
+      sql += ' WHERE ${conditions.join(' AND ')}';
+    }
+    sql += ' ORDER BY p.name ASC';
+
+    final maps = await db.rawQuery(sql, args);
     return maps.map((m) => Product.fromMap(m)).toList();
   }
 
   Future<Product?> getProductById(int id) async {
     final db = await database;
-    final maps = await db.query('products', where: 'id = ?', whereArgs: [id]);
+    final sql = '''
+      SELECT 
+        p.*,
+        COALESCE(appros.appro_qty, 0) AS appro_quantity,
+        COALESCE(appros.appro_cost, 0) AS appro_total_cost
+      FROM products p
+      LEFT JOIN (
+        SELECT product_id, SUM(quantity) as appro_qty, SUM(quantity * unit_price) as appro_cost
+        FROM approvisionnements
+        WHERE quantity > 0
+        GROUP BY product_id
+      ) appros ON appros.product_id = p.id
+      WHERE p.id = ?
+    ''';
+    final maps = await db.rawQuery(sql, [id]);
     if (maps.isEmpty) return null;
     return Product.fromMap(maps.first);
   }
 
   Future<int> insertProduct(Product p) async {
     final db = await database;
-    return db.transaction((txn) async {
-      final id = await txn.insert('products', p.toMap());
-      await _recalculateAverageCostPrice(txn, id);
-      return id;
-    });
+    return db.insert('products', p.toMap());
   }
 
   Future<int> updateProduct(Product p) async {
     final db = await database;
-    return db.transaction((txn) async {
-      final res = await txn.update('products', p.toMap(), where: 'id = ?', whereArgs: [p.id]);
-      if (p.id != null) {
-        await _recalculateAverageCostPrice(txn, p.id!);
-      }
-      return res;
-    });
-  }
-
-  Future<void> recalculateAllProductsAverageCostPrice() async {
-    final db = await database;
-    await db.transaction((txn) async {
-      final products = await txn.query('products', columns: ['id']);
-      for (final p in products) {
-        final id = p['id'] as int;
-        await _recalculateAverageCostPrice(txn, id);
-      }
-    });
+    return db.update('products', p.toMap(), where: 'id = ?', whereArgs: [p.id]);
   }
 
   Future<int> deleteProduct(int id) async {
@@ -699,8 +718,7 @@ class DatabaseHelper {
         'UPDATE products SET quantity = quantity + ?, updated_at = ? WHERE id = ?',
         [a.quantity, DateTime.now().toIso8601String(), a.productId],
       );
-      // Recalcul PUMP si feature activée
-      await _recalculateAverageCostPrice(txn, a.productId);
+      await _updateInformativeAverageCostPrice(txn, a.productId);
       if (a.supplierId != null) {
         await _updateSupplierBalance(txn, a.supplierId!);
       }
@@ -716,8 +734,7 @@ class DatabaseHelper {
         [a.quantity, DateTime.now().toIso8601String(), a.productId],
       );
       final result = await txn.delete('approvisionnements', where: 'id = ?', whereArgs: [a.id]);
-      // Recalcul PUMP après suppression (peut remettre à NULL si plus d'appros)
-      await _recalculateAverageCostPrice(txn, a.productId);
+      await _updateInformativeAverageCostPrice(txn, a.productId);
       if (a.supplierId != null) {
         await _updateSupplierBalance(txn, a.supplierId!);
       }
@@ -737,8 +754,7 @@ class DatabaseHelper {
             [delta, now, newAppro.productId],
           );
         }
-        // Recalcul PUMP sur l'unique produit affecté
-        await _recalculateAverageCostPrice(txn, newAppro.productId);
+        await _updateInformativeAverageCostPrice(txn, newAppro.productId);
       } else {
         // Produit changé : on annule sur l'ancien, on applique sur le nouveau
         await txn.rawUpdate(
@@ -749,9 +765,8 @@ class DatabaseHelper {
           'UPDATE products SET quantity = quantity + ?, updated_at = ? WHERE id = ?',
           [newAppro.quantity, now, newAppro.productId],
         );
-        // Recalcul PUMP sur les deux produits affectés
-        await _recalculateAverageCostPrice(txn, oldAppro.productId);
-        await _recalculateAverageCostPrice(txn, newAppro.productId);
+        await _updateInformativeAverageCostPrice(txn, oldAppro.productId);
+        await _updateInformativeAverageCostPrice(txn, newAppro.productId);
       }
       final res = await txn.update(
         'approvisionnements',
@@ -780,49 +795,44 @@ class DatabaseHelper {
     );
   }
 
-  /// Recalcule le Prix Unitaire Moyen Pondéré (PUMP) pour un produit donné,
-  /// en prenant en compte le stock initial (prix d'achat initial + quantité initiale)
-  /// ET l'ensemble des approvisionnements enregistrés en base.
-  /// Écrit le résultat dans `average_cost_price` (champ dédié, ne touche pas à `cost_price`).
-  /// Si la feature est désactivée, ou s'il n'existe aucun approvisionnement,
-  /// remet `average_cost_price` à NULL pour revenir au comportement par défaut.
-  Future<void> _recalculateAverageCostPrice(
+  /// Calcule et met à jour uniquement l'indicateur statistique `average_cost_price` sur la fiche produit.
+  /// Ne touche JAMAIS au `cost_price` fixe ni au calcul du coût de stock.
+  Future<void> _updateInformativeAverageCostPrice(
     DatabaseExecutor txn,
     int productId,
   ) async {
     try {
-      // Vérifie si la feature PUMP est activée dans les paramètres
-      final settingRows = await txn.query(
-        'settings',
-        where: 'key = ?',
-        whereArgs: ['enable_average_cost_price'],
-      );
-      final isEnabled =
-          settingRows.isNotEmpty && settingRows.first['value'] == '1';
-
-      if (!isEnabled) {
-        // Feature désactivée : s'assurer que le champ reste à NULL
-        await txn.rawUpdate(
-          'UPDATE products SET average_cost_price = NULL, updated_at = ? WHERE id = ?',
-          [DateTime.now().toIso8601String(), productId],
-        );
-        return;
-      }
-
-      // 1. Récupérer le produit (prix d'achat initial et quantité en stock actuelle)
       final prodRes = await txn.query(
         'products',
         columns: ['cost_price', 'quantity'],
         where: 'id = ?',
         whereArgs: [productId],
       );
-
       if (prodRes.isEmpty) return;
 
-      final initialCostPrice = (prodRes.first['cost_price'] as num?)?.toDouble() ?? 0.0;
+      final costPrice = (prodRes.first['cost_price'] as num?)?.toDouble() ?? 0.0;
       final currentQty = (prodRes.first['quantity'] as num?)?.toDouble() ?? 0.0;
 
-      // 2. Somme de la quantité vendue pour ce produit
+      final appros = await txn.rawQuery(
+        '''
+        SELECT COALESCE(SUM(quantity), 0) as total_qty, COALESCE(SUM(quantity * unit_price), 0) as total_cost
+        FROM approvisionnements
+        WHERE product_id = ? AND quantity > 0
+        ''',
+        [productId],
+      );
+
+      final totalApproQty = (appros.first['total_qty'] as num?)?.toDouble() ?? 0.0;
+      final totalApproCost = (appros.first['total_cost'] as num?)?.toDouble() ?? 0.0;
+
+      if (totalApproQty <= 0) {
+        await txn.rawUpdate(
+          'UPDATE products SET average_cost_price = NULL WHERE id = ?',
+          [productId],
+        );
+        return;
+      }
+
       final soldRes = await txn.rawQuery(
         '''
         SELECT COALESCE(SUM(quantity), 0) AS total_sold_qty
@@ -833,56 +843,22 @@ class DatabaseHelper {
       );
       final totalSoldQty = (soldRes.first['total_sold_qty'] as num?)?.toDouble() ?? 0.0;
 
-      // 3. Somme des approvisionnements (quantité et coût total)
-      final approRes = await txn.rawQuery(
-        '''
-        SELECT
-          COALESCE(SUM(quantity * unit_price), 0) AS total_appro_cost,
-          COALESCE(SUM(quantity), 0)             AS total_appro_qty
-        FROM approvisionnements
-        WHERE product_id = ? AND quantity > 0
-        ''',
-        [productId],
-      );
-
-      final totalApproCost = (approRes.first['total_appro_cost'] as num?)?.toDouble() ?? 0.0;
-      final totalApproQty  = (approRes.first['total_appro_qty']  as num?)?.toDouble() ?? 0.0;
-
-      // S'il n'y a aucun approvisionnement, average_cost_price reste NULL (reviens à cost_price)
-      if (totalApproQty <= 0) {
-        await txn.rawUpdate(
-          'UPDATE products SET average_cost_price = NULL, updated_at = ? WHERE id = ?',
-          [DateTime.now().toIso8601String(), productId],
-        );
-        return;
-      }
-
-      // Quantité initiale au moment de la création du produit
-      // (Stock actuel + Quantité vendue - Quantité approvisionnée)
       final calculatedInitialQty = currentQty + totalSoldQty - totalApproQty;
       final initialQty = calculatedInitialQty > 0 ? calculatedInitialQty : 0.0;
 
-      final totalCost = (initialQty * initialCostPrice) + totalApproCost;
+      final totalCost = (initialQty * costPrice) + totalApproCost;
       final totalQty = initialQty + totalApproQty;
 
-      if (totalQty <= 0) {
-        await txn.rawUpdate(
-          'UPDATE products SET average_cost_price = NULL, updated_at = ? WHERE id = ?',
-          [DateTime.now().toIso8601String(), productId],
-        );
-        return;
-      }
-
-      final pump = totalCost / totalQty;
+      final pump = totalQty > 0 ? (totalCost / totalQty) : null;
 
       await txn.rawUpdate(
-        'UPDATE products SET average_cost_price = ?, updated_at = ? WHERE id = ?',
-        [pump, DateTime.now().toIso8601String(), productId],
+        'UPDATE products SET average_cost_price = ? WHERE id = ?',
+        [pump, productId],
       );
-    } catch (_) {
-      // On ne laisse pas un échec du recalcul bloquer la transaction principale
-    }
+    } catch (_) {}
   }
+
+
 
 
   // --- DECAISSEMENTS ---
