@@ -8,6 +8,8 @@ import 'package:intl/intl.dart';
 import '../models/vente.dart';
 import '../models/client.dart';
 import '../models/product.dart';
+import '../models/date_filter_period.dart';
+import '../widgets/period_filter_modal.dart';
 import '../providers/vente_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/client_provider.dart';
@@ -24,7 +26,8 @@ class VenteScreen extends StatefulWidget {
 class _VenteScreenState extends State<VenteScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _searchQuery = '';
-  String _filterType = 'all'; // 'all', 'today', 'yesterday', 'month', 'credit'
+  DateFilterPeriod _dateFilter = DateFilterPeriod.all();
+  bool _onlyCredit = false;
   String _sortBy = 'recent'; // 'recent', 'amount_desc', 'client_asc'
 
   @override
@@ -43,22 +46,9 @@ class _VenteScreenState extends State<VenteScreen> {
   }
 
   List<Vente> _getFilteredVentes(List<Vente> allVentes) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-
     final filtered = allVentes.where((v) {
-      final vDate = DateTime(v.date.year, v.date.month, v.date.day);
-
-      if (_filterType == 'today') {
-        if (!vDate.isAtSameMomentAs(today)) return false;
-      } else if (_filterType == 'yesterday') {
-        if (!vDate.isAtSameMomentAs(yesterday)) return false;
-      } else if (_filterType == 'month') {
-        if (v.date.year != now.year || v.date.month != now.month) return false;
-      } else if (_filterType == 'credit') {
-        if (!v.isCredit) return false;
-      }
+      if (_onlyCredit && !v.isCredit) return false;
+      if (!_dateFilter.matches(v.date)) return false;
 
       if (_searchQuery.isNotEmpty) {
         final q = _searchQuery.toLowerCase();
@@ -83,11 +73,13 @@ class _VenteScreenState extends State<VenteScreen> {
   }
 
   String _getPeriodLabel() {
-    if (_filterType == 'today') return 'Aujourd\'hui';
-    if (_filterType == 'yesterday') return 'Hier';
-    if (_filterType == 'month') return 'Ce mois-ci';
-    if (_filterType == 'credit') return 'Ventes à crédit';
-    return 'Toutes les périodes';
+    if (_onlyCredit) {
+      if (_dateFilter.preset == PeriodPreset.all) {
+        return 'Ventes à crédit';
+      }
+      return 'Ventes à crédit - ${_dateFilter.label}';
+    }
+    return _dateFilter.label;
   }
 
   @override
@@ -210,22 +202,36 @@ class _VenteScreenState extends State<VenteScreen> {
   Widget _buildSummaryCards(NumberFormat formatter) {
     return Consumer<VenteProvider>(
       builder: (context, provider, _) {
-        final totalVentes = provider.items.length;
-        final totalAmount = provider.totalSalesAmount;
-        final todayAmount = provider.todaySalesAmount;
+        final filteredVentes = _getFilteredVentes(provider.items);
+        final totalFilteredAmount =
+            filteredVentes.fold(0.0, (sum, v) => sum + v.totalAmount);
+        final isFiltered = _dateFilter.preset != PeriodPreset.all ||
+            _onlyCredit ||
+            _searchQuery.isNotEmpty;
 
         return Container(
           color: Colors.white,
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           child: Row(
             children: [
-              _summaryChip('Total ventes', '$totalVentes', AppColors.primary),
+              _summaryChip(
+                isFiltered ? 'Ventes (filtre)' : 'Total ventes',
+                '${filteredVentes.length}',
+                AppColors.primary,
+              ),
               const SizedBox(width: 8),
               _summaryChip(
-                  'Aujourd\'hui', formatter.format(todayAmount), AppColors.success),
+                'Aujourd\'hui',
+                formatter.format(provider.todaySalesAmount),
+                AppColors.success,
+              ),
               const SizedBox(width: 8),
               _summaryChip(
-                  'Chiffre d\'aff.', formatter.format(totalAmount), AppColors.purple),
+                isFiltered ? 'CA (filtre)' : 'Chiffre d\'aff.',
+                formatter.format(
+                    isFiltered ? totalFilteredAmount : provider.totalSalesAmount),
+                AppColors.purple,
+              ),
             ],
           ),
         );
@@ -357,6 +363,11 @@ class _VenteScreenState extends State<VenteScreen> {
   }
 
   Widget _buildFilterChipsRow() {
+    final isCustomActive = _dateFilter.preset != PeriodPreset.all &&
+        _dateFilter.preset != PeriodPreset.today &&
+        _dateFilter.preset != PeriodPreset.thisWeek &&
+        _dateFilter.preset != PeriodPreset.thisMonth;
+
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -364,45 +375,116 @@ class _VenteScreenState extends State<VenteScreen> {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            _filterChip('Toutes', 'all'),
+            _filterChip(
+              'Toutes',
+              _dateFilter.preset == PeriodPreset.all && !_onlyCredit,
+              onTap: () {
+                setState(() {
+                  _dateFilter = DateFilterPeriod.all();
+                  _onlyCredit = false;
+                });
+              },
+            ),
             const SizedBox(width: 6),
-            _filterChip('Aujourd\'hui', 'today'),
+            _filterChip(
+              'Aujourd\'hui',
+              _dateFilter.preset == PeriodPreset.today && !_onlyCredit,
+              onTap: () {
+                setState(() {
+                  _dateFilter = DateFilterPeriod.today();
+                  _onlyCredit = false;
+                });
+              },
+            ),
             const SizedBox(width: 6),
-            _filterChip('Hier', 'yesterday'),
+            _filterChip(
+              'Cette semaine',
+              _dateFilter.preset == PeriodPreset.thisWeek && !_onlyCredit,
+              onTap: () {
+                setState(() {
+                  _dateFilter = DateFilterPeriod.thisWeek();
+                  _onlyCredit = false;
+                });
+              },
+            ),
             const SizedBox(width: 6),
-            _filterChip('Ce mois-ci', 'month'),
+            _filterChip(
+              'Ce mois-ci',
+              _dateFilter.preset == PeriodPreset.thisMonth && !_onlyCredit,
+              onTap: () {
+                setState(() {
+                  _dateFilter = DateFilterPeriod.thisMonth();
+                  _onlyCredit = false;
+                });
+              },
+            ),
             const SizedBox(width: 6),
-            _filterChip('À crédit', 'credit'),
+            _filterChip(
+              'À crédit',
+              _onlyCredit,
+              onTap: () {
+                setState(() {
+                  _onlyCredit = !_onlyCredit;
+                });
+              },
+            ),
+            const SizedBox(width: 6),
+            ActionChip(
+              avatar: Icon(
+                isCustomActive ? Icons.event_available : Icons.date_range,
+                size: 16,
+                color: isCustomActive ? Colors.white : AppColors.primary,
+              ),
+              label: Text(
+                isCustomActive ? _dateFilter.shortLabel : 'Période...',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isCustomActive ? FontWeight.w700 : FontWeight.w600,
+                  color: isCustomActive ? Colors.white : AppColors.primaryDark,
+                ),
+              ),
+              backgroundColor:
+                  isCustomActive ? AppColors.primary : AppColors.primarySurface,
+              side: BorderSide(
+                color: isCustomActive
+                    ? AppColors.primary
+                    : AppColors.primary.withAlpha(50),
+              ),
+              onPressed: () async {
+                final selected = await PeriodFilterModal.show(
+                  context,
+                  current: _dateFilter,
+                );
+                if (selected != null) {
+                  setState(() {
+                    _dateFilter = selected;
+                  });
+                }
+              },
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _filterChip(String label, String type) {
-    final selected = _filterType == type;
+  Widget _filterChip(String label, bool isSelected, {required VoidCallback onTap}) {
     return ChoiceChip(
       label: Text(
         label,
         style: TextStyle(
           fontSize: 12,
-          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-          color: selected ? Colors.white : AppColors.textDark,
+          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+          color: isSelected ? Colors.white : AppColors.textDark,
         ),
       ),
-      selected: selected,
+      selected: isSelected,
       selectedColor: AppColors.primary,
       backgroundColor: AppColors.background,
       side: BorderSide(
-        color: selected ? AppColors.primary : AppColors.divider,
+        color: isSelected ? AppColors.primary : AppColors.divider,
       ),
-      onSelected: (val) {
-        if (val) {
-          setState(() {
-            _filterType = type;
-          });
-        }
-      },
+      onSelected: (_) => onTap(),
     );
   }
 
@@ -752,6 +834,21 @@ class _VenteScreenState extends State<VenteScreen> {
               Row(
                 children: [
                   InkWell(
+                    onTap: () => _showForm(context, initialVente: v),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.edit_outlined,
+                          color: AppColors.primary, size: 14),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  InkWell(
                     onTap: () {
                       final settings = context.read<SettingsProvider>().settings;
                       TicketPdfService.shareTicketPdf(context, v, settings);
@@ -806,7 +903,7 @@ class _VenteScreenState extends State<VenteScreen> {
     _confirmDeleteVenteModal(context, vente, venteProvider, productProvider);
   }
 
-  void _showForm(BuildContext context) {
+  void _showForm(BuildContext context, {Vente? initialVente}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -815,11 +912,16 @@ class _VenteScreenState extends State<VenteScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => _VenteForm(
+        initialVente: initialVente,
         onSave: (vente) async {
           final venteProvider = context.read<VenteProvider>();
           final productProvider = context.read<ProductProvider>();
           final clientProvider = context.read<ClientProvider>();
-          await venteProvider.add(vente);
+          if (initialVente != null) {
+            await venteProvider.update(vente);
+          } else {
+            await venteProvider.add(vente);
+          }
           await productProvider.load();
           await clientProvider.loadClients();
         },
@@ -828,7 +930,7 @@ class _VenteScreenState extends State<VenteScreen> {
   }
 }
 
-void showVenteDetailsModal(BuildContext context, Vente vente) {
+void showVenteDetailsModal(BuildContext context, Vente initialVente) {
   final formatter =
       NumberFormat.currency(locale: 'fr_FR', symbol: 'F', decimalDigits: 0);
   final dateFormat = DateFormat('dd/MM/yyyy HH:mm', 'fr_FR');
@@ -840,11 +942,18 @@ void showVenteDetailsModal(BuildContext context, Vente vente) {
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
-    builder: (ctx) => Container(
-      padding: const EdgeInsets.all(24),
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.8,
-      ),
+    builder: (ctx) => Consumer<VenteProvider>(
+      builder: (modalCtx, venteProvider, _) {
+        final vente = venteProvider.items.firstWhere(
+          (v) => v.id == initialVente.id,
+          orElse: () => initialVente,
+        );
+
+        return Container(
+          padding: const EdgeInsets.all(24),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1019,8 +1128,36 @@ void showVenteDetailsModal(BuildContext context, Vente vente) {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    final settings = context.read<SettingsProvider>().settings;
-                    TicketPdfService.shareTicketPdf(context, vente, settings);
+                    showModalBottomSheet(
+                      context: modalCtx,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.white,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                      ),
+                      builder: (_) => _VenteForm(
+                        initialVente: vente,
+                        onSave: (updated) async {
+                          final vp = modalCtx.read<VenteProvider>();
+                          final pp = modalCtx.read<ProductProvider>();
+                          final cp = modalCtx.read<ClientProvider>();
+                          await vp.update(updated);
+                          await pp.load();
+                          await cp.loadClients();
+                        },
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: const Text('Modifier'),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    final settings = modalCtx.read<SettingsProvider>().settings;
+                    TicketPdfService.shareTicketPdf(modalCtx, vente, settings);
                   },
                   icon: const Icon(Icons.share_outlined, size: 16),
                   label: const Text('Partager'),
@@ -1030,8 +1167,8 @@ void showVenteDetailsModal(BuildContext context, Vente vente) {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    final settings = context.read<SettingsProvider>().settings;
-                    TicketPdfService.downloadTicketPdf(context, vente, settings);
+                    final settings = modalCtx.read<SettingsProvider>().settings;
+                    TicketPdfService.downloadTicketPdf(modalCtx, vente, settings);
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
                   icon: const Icon(Icons.download_outlined, size: 16),
@@ -1044,8 +1181,8 @@ void showVenteDetailsModal(BuildContext context, Vente vente) {
                   _confirmDeleteVenteModal(
                     context,
                     vente,
-                    context.read<VenteProvider>(),
-                    context.read<ProductProvider>(),
+                    modalCtx.read<VenteProvider>(),
+                    modalCtx.read<ProductProvider>(),
                     parentContext: ctx,
                   );
                 },
@@ -1056,6 +1193,8 @@ void showVenteDetailsModal(BuildContext context, Vente vente) {
           ),
         ],
       ),
+    );
+      },
     ),
   );
 }
@@ -1105,8 +1244,9 @@ void _confirmDeleteVenteModal(
 
 class _VenteForm extends StatefulWidget {
   final Future<void> Function(Vente) onSave;
+  final Vente? initialVente;
 
-  const _VenteForm({required this.onSave});
+  const _VenteForm({required this.onSave, this.initialVente});
 
   @override
   State<_VenteForm> createState() => _VenteFormState();
@@ -1144,7 +1284,22 @@ class _VenteFormState extends State<_VenteForm> {
   @override
   void initState() {
     super.initState();
-    _paidCtrl.text = '0';
+    if (widget.initialVente != null) {
+      final v = widget.initialVente!;
+      _saleItems.addAll(v.items);
+      _clientCtrl.text = v.clientName ?? '';
+      _paymentMethod = v.paymentMethod;
+      _paidCtrl.text = v.paidAmount.toStringAsFixed(0);
+      _isCustomPaid = true;
+      _notesCtrl.text = v.notes ?? '';
+      _date = v.date;
+      if (v.discountAmount > 0) {
+        _discountCtrl.text = v.discountAmount.toStringAsFixed(0);
+        _discountType = 'amount';
+      }
+    } else {
+      _paidCtrl.text = '0';
+    }
   }
 
   @override
@@ -1341,7 +1496,11 @@ class _VenteFormState extends State<_VenteForm> {
         .where((it) => it.productId == product!.id)
         .fold(0.0, (sum, it) => sum + it.quantity);
 
-    final availableStock = product.quantity - existingQtyInDraft;
+    final initialQtyInThisSale = widget.initialVente?.items
+        .where((it) => it.productId == product!.id)
+        .fold(0.0, (sum, it) => sum + it.quantity) ?? 0.0;
+
+    final availableStock = product.quantity + initialQtyInThisSale - existingQtyInDraft;
     if (qty > availableStock) {
       final stockStr = availableStock.toStringAsFixed(
           availableStock.truncateToDouble() == availableStock ? 0 : 1);
@@ -1396,7 +1555,11 @@ class _VenteFormState extends State<_VenteForm> {
         .where((entry) => entry.key != index && entry.value.productId == item.productId)
         .fold(0.0, (sum, entry) => sum + entry.value.quantity);
 
-    final available = product.quantity - otherDraftQty;
+    final initialQtyInThisSale = widget.initialVente?.items
+        .where((it) => it.productId == item.productId)
+        .fold(0.0, (sum, it) => sum + it.quantity) ?? 0.0;
+
+    final available = product.quantity + initialQtyInThisSale - otherDraftQty;
     final newQty = item.quantity + 1;
 
     if (newQty > available) {
@@ -1458,9 +1621,11 @@ class _VenteFormState extends State<_VenteForm> {
               // --- Header ---
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Nouvelle vente',
+                      widget.initialVente != null
+                          ? 'Modifier la vente (${widget.initialVente!.ticketNumber})'
+                          : 'Nouvelle vente',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -2539,9 +2704,11 @@ class _VenteFormState extends State<_VenteForm> {
                           ),
                         )
                       : Text(
-                          _saleItems.isNotEmpty
-                              ? 'Valider la vente (${formatter.format(_totalAmount)})'
-                              : 'Valider la vente',
+                          widget.initialVente != null
+                              ? 'Enregistrer les modifications (${formatter.format(_totalAmount)})'
+                              : (_saleItems.isNotEmpty
+                                  ? 'Valider la vente (${formatter.format(_totalAmount)})'
+                                  : 'Valider la vente'),
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -2604,7 +2771,8 @@ class _VenteFormState extends State<_VenteForm> {
       final paidVal = double.tryParse(_paidCtrl.text.trim()) ?? _totalAmount;
 
       final vente = Vente(
-        ticketNumber: '',
+        id: widget.initialVente?.id,
+        ticketNumber: widget.initialVente?.ticketNumber ?? '',
         clientId: clientId,
         clientName: clientName,
         totalAmount: _totalAmount,
@@ -2618,10 +2786,14 @@ class _VenteFormState extends State<_VenteForm> {
 
       await widget.onSave(vente);
       if (mounted) {
-        if (paidVal > _totalAmount && clientId != null) {
+        if (widget.initialVente != null) {
+          AppToast.showSuccess(context, 'Vente modifiée avec succès !');
+        } else if (paidVal > _totalAmount && clientId != null) {
           final surplus = paidVal - _totalAmount;
           final fmt = NumberFormat.currency(locale: 'fr_FR', symbol: 'F', decimalDigits: 0);
           AppToast.showSuccess(context, 'Vente validée ! Trop-perçu de ${fmt.format(surplus)} crédité en Avoir pour $clientName.');
+        } else {
+          AppToast.showSuccess(context, 'Vente enregistrée avec succès !');
         }
         Navigator.pop(context);
       }

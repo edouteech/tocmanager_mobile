@@ -18,8 +18,8 @@ import '../theme/app_theme.dart';
 import '../models/vente.dart';
 import '../models/decaissement.dart';
 import '../models/product.dart';
-
-enum ReportPeriod { today, last7days, thisMonth, thisYear, allTime }
+import '../models/date_filter_period.dart';
+import '../widgets/period_filter_modal.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -29,7 +29,7 @@ class ReportsScreen extends StatefulWidget {
 }
 
 class _ReportsScreenState extends State<ReportsScreen> {
-  ReportPeriod _period = ReportPeriod.thisMonth;
+  DateFilterPeriod _period = DateFilterPeriod.thisMonth();
 
   @override
   Widget build(BuildContext context) {
@@ -116,48 +116,89 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  bool _matchPeriod(DateTime date, DateTime now) {
-    switch (_period) {
-      case ReportPeriod.today:
-        return date.year == now.year && date.month == now.month && date.day == now.day;
-      case ReportPeriod.last7days:
-        return date.isAfter(now.subtract(const Duration(days: 7)));
-      case ReportPeriod.thisMonth:
-        return date.year == now.year && date.month == now.month;
-      case ReportPeriod.thisYear:
-        return date.year == now.year;
-      case ReportPeriod.allTime:
-        return true;
-    }
+  bool _matchPeriod(DateTime date, [DateTime? _]) {
+    return _period.matches(date);
   }
 
   Widget _buildPeriodFilter() {
+    final isCustomActive = _period.preset != PeriodPreset.all &&
+        _period.preset != PeriodPreset.today &&
+        _period.preset != PeriodPreset.thisWeek &&
+        _period.preset != PeriodPreset.thisMonth &&
+        _period.preset != PeriodPreset.thisYear;
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          _periodChip('Aujourd\'hui', ReportPeriod.today),
+          _periodChip('Aujourd\'hui', _period.preset == PeriodPreset.today,
+              () => setState(() => _period = DateFilterPeriod.today())),
           const SizedBox(width: 8),
-          _periodChip('7 derniers jours', ReportPeriod.last7days),
+          _periodChip('Cette semaine', _period.preset == PeriodPreset.thisWeek,
+              () => setState(() => _period = DateFilterPeriod.thisWeek())),
           const SizedBox(width: 8),
-          _periodChip('Ce mois-ci', ReportPeriod.thisMonth),
+          _periodChip('Ce mois-ci', _period.preset == PeriodPreset.thisMonth,
+              () => setState(() => _period = DateFilterPeriod.thisMonth())),
           const SizedBox(width: 8),
-          _periodChip('Cette année', ReportPeriod.thisYear),
+          _periodChip('Cette année', _period.preset == PeriodPreset.thisYear,
+              () => setState(() => _period = DateFilterPeriod.thisYear())),
           const SizedBox(width: 8),
-          _periodChip('Tout l\'historique', ReportPeriod.allTime),
+          _periodChip('Tout l\'historique', _period.preset == PeriodPreset.all,
+              () => setState(() => _period = DateFilterPeriod.all())),
+          const SizedBox(width: 8),
+          ActionChip(
+            avatar: Icon(
+              isCustomActive ? Icons.event_available : Icons.date_range,
+              size: 16,
+              color: isCustomActive ? Colors.white : AppColors.primary,
+            ),
+            label: Text(
+              isCustomActive ? _period.shortLabel : 'Période...',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isCustomActive ? FontWeight.w700 : FontWeight.w600,
+                color: isCustomActive ? Colors.white : AppColors.primaryDark,
+              ),
+            ),
+            backgroundColor:
+                isCustomActive ? AppColors.primary : AppColors.primarySurface,
+            side: BorderSide(
+              color: isCustomActive
+                  ? AppColors.primary
+                  : AppColors.primary.withAlpha(50),
+            ),
+            onPressed: () async {
+              final selected = await PeriodFilterModal.show(
+                context,
+                current: _period,
+              );
+              if (selected != null) {
+                setState(() => _period = selected);
+              }
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _periodChip(String label, ReportPeriod period) {
-    final selected = _period == period;
+  Widget _periodChip(String label, bool isSelected, VoidCallback onTap) {
     return ChoiceChip(
-      label: Text(label, style: TextStyle(color: selected ? Colors.white : AppColors.textDark, fontWeight: selected ? FontWeight.w700 : FontWeight.w500, fontSize: 12)),
-      selected: selected,
+      label: Text(
+        label,
+        style: TextStyle(
+          color: isSelected ? Colors.white : AppColors.textDark,
+          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+          fontSize: 12,
+        ),
+      ),
+      selected: isSelected,
       selectedColor: AppColors.primary,
       backgroundColor: Colors.white,
-      onSelected: (_) => setState(() => _period = period),
+      side: BorderSide(
+        color: isSelected ? AppColors.primary : AppColors.divider,
+      ),
+      onSelected: (_) => onTap(),
     );
   }
 
@@ -416,6 +457,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.Text('Rapport Financier Synthétique', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 4),
+                  pw.Text('Période : ${_period.label}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.blueGrey800)),
                   pw.Text('Généré le ${dateFmt.format(now)}', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
                   pw.Divider(),
                   pw.SizedBox(height: 14),
@@ -448,12 +491,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
       final venteProv = context.read<VenteProvider>();
       final decaissementProv = context.read<DecaissementProvider>();
       final now = DateTime.now();
+      final dateFmt = DateFormat('dd/MM/yyyy HH:mm');
 
       final ventes = venteProv.items.where((v) => _matchPeriod(v.date, now)).toList();
       final decaissements = decaissementProv.items.where((d) => _matchPeriod(d.date, now)).toList();
 
       sheet.appendRow([xl.TextCellValue('Rapport Financier TocManager')]);
-      sheet.appendRow([xl.TextCellValue('Période: ${DateFormat("dd/MM/yyyy").format(now)}')]);
+      sheet.appendRow([xl.TextCellValue('Période: ${_period.label}')]);
+      sheet.appendRow([xl.TextCellValue('Généré le: ${dateFmt.format(now)}')]);
       sheet.appendRow([]);
       sheet.appendRow([xl.TextCellValue('Indicateur'), xl.TextCellValue('Montant (FCFA)')]);
 

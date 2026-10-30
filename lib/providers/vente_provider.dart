@@ -100,6 +100,11 @@ class VenteProvider extends ChangeNotifier {
     await load(productId: _activeProductId);
   }
 
+  Future<void> update(Vente vente) async {
+    await DatabaseHelper.instance.updateVente(vente);
+    await load(productId: _activeProductId);
+  }
+
   Future<void> delete(Vente vente) async {
     await DatabaseHelper.instance.deleteVente(vente);
     await load(productId: _activeProductId);

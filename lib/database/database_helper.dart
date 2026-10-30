@@ -950,6 +950,87 @@ class DatabaseHelper {
     });
   }
 
+  Future<void> updateVente(Vente v) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      final now = DateTime.now().toIso8601String();
+
+      // 1. Get previous items for this vente
+      final previousItemMaps = await txn.query(
+        'vente_items',
+        where: 'vente_id = ?',
+        whereArgs: [v.id],
+      );
+      final previousItems =
+          previousItemMaps.map((m) => VenteItem.fromMap(m)).toList();
+
+      // 2. Restore stock for previously sold items
+      for (final prev in previousItems) {
+        await txn.rawUpdate(
+          'UPDATE products SET quantity = quantity + ?, updated_at = ? WHERE id = ?',
+          [prev.quantity, now, prev.productId],
+        );
+      }
+
+      // 3. Delete previous vente_items
+      await txn.delete('vente_items', where: 'vente_id = ?', whereArgs: [v.id]);
+
+      // 4. Insert updated items and deduct updated stock
+      for (final item in v.items) {
+        await txn.insert('vente_items', item.toMap(venteIdParam: v.id));
+        await txn.rawUpdate(
+          'UPDATE products SET quantity = max(0, quantity - ?), updated_at = ? WHERE id = ?',
+          [item.quantity, now, item.productId],
+        );
+      }
+
+      // 5. Get previous vente to know previous clientId if changed
+      final prevVenteMaps = await txn.query(
+        'ventes',
+        where: 'id = ?',
+        whereArgs: [v.id],
+      );
+      final prevClientId = prevVenteMaps.isNotEmpty
+          ? prevVenteMaps.first['client_id'] as int?
+          : null;
+
+      // 6. Update the vente record
+      await txn.update(
+        'ventes',
+        {
+          'client_id': v.clientId,
+          'client_name': v.clientName,
+          'total_amount': v.totalAmount,
+          'discount_amount': v.discountAmount,
+          'paid_amount': v.paidAmount,
+          'payment_method': v.paymentMethod,
+          'notes': v.notes,
+          'date': v.date.toIso8601String(),
+        },
+        where: 'id = ?',
+        whereArgs: [v.id],
+      );
+
+      // 7. Update client balance(s)
+      final clientsToUpdate = <int>{};
+      if (prevClientId != null) clientsToUpdate.add(prevClientId);
+      if (v.clientId != null) clientsToUpdate.add(v.clientId!);
+
+      for (final cId in clientsToUpdate) {
+        final sumRes = await txn.rawQuery(
+          'SELECT COALESCE(SUM(total_amount - paid_amount), 0) as total_debt FROM ventes WHERE client_id = ? AND paid_amount < total_amount',
+          [cId],
+        );
+        final newBalance =
+            (sumRes.first['total_debt'] as num?)?.toDouble() ?? 0.0;
+        await txn.rawUpdate(
+          'UPDATE clients SET balance = ? WHERE id = ?',
+          [newBalance, cId],
+        );
+      }
+    });
+  }
+
   Future<int> deleteVente(Vente v) async {
     final db = await database;
     return db.transaction((txn) async {

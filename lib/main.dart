@@ -20,10 +20,16 @@ import 'screens/decaissement_screen.dart';
 import 'screens/clients_screen.dart';
 import 'screens/suppliers_screen.dart';
 import 'screens/reports_screen.dart';
+import 'dart:io';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'widgets/app_drawer.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
   await initializeDateFormatting('fr_FR', null);
   runApp(const TocManagerApp());
 }
