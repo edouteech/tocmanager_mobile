@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tocmanager_api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/data:/app/data
+    environment:
+      - PORT=8000
+      - DATABASE_URL=sqlite:////app/data/tocmanager.db
+    restart: unless-stopped
+
+  backoffice:
+    build:
+      context: ./backoffice
+      dockerfile: Dockerfile
+    container_name: tocmanager_backoffice
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
