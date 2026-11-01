@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/audit_service.dart';
 import '../theme/app_theme.dart';
 import 'login_screen.dart';
 
@@ -28,6 +29,7 @@ class _PinLockScreenState extends State<PinLockScreen> {
       final auth = context.read<AuthProvider>();
       final success = await auth.unlockWithPin(_enteredPin);
       if (success) {
+        AuditService.logAction(action: 'PIN_UNLOCK', entityType: 'auth');
         widget.onUnlocked();
       } else {
         setState(() {

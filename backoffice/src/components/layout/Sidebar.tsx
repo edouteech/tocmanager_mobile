@@ -7,6 +7,7 @@ import {
   Users,
   Settings,
   Layers,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -18,7 +19,10 @@ export const Sidebar: React.FC = () => {
     { to: '/ventes', label: 'Journal des Ventes', icon: ShoppingCart },
     { to: '/produits', label: 'Stocks & Articles', icon: Package },
     ...(user?.role === 'admin'
-      ? [{ to: '/utilisateurs', label: 'Utilisateurs & Rôles', icon: Users }]
+      ? [
+          { to: '/utilisateurs', label: 'Utilisateurs & Rôles', icon: Users },
+          { to: '/audit', label: "Journal d'Audit", icon: ShieldCheck },
+        ]
       : []),
   ];
 

@@ -1,11 +1,36 @@
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.core.database import engine, Base
 from app.core.security import get_password_hash, hash_pin
-from app.models import User, Category, Product, Client, Supplier
+from app.models import User, Category, Product, Client, Supplier, AuditLog
+
+def _migrate_columns() -> None:
+    """Ajoute de façon non destructive les nouvelles colonnes si la table existe déjà."""
+    with engine.connect() as conn:
+        def add_col_if_missing(table: str, col: str, col_type: str):
+            try:
+                res = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
+                existing = [r[1] for r in res]
+                if existing and col not in existing:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
+                    conn.commit()
+            except Exception:
+                pass
+
+        add_col_if_missing("clients", "user_id", "VARCHAR(36)")
+        add_col_if_missing("clients", "user_name", "VARCHAR(255)")
+        add_col_if_missing("suppliers", "user_id", "VARCHAR(36)")
+        add_col_if_missing("suppliers", "user_name", "VARCHAR(255)")
+        add_col_if_missing("ventes", "user_name", "VARCHAR(255)")
+        add_col_if_missing("approvisionnements", "user_id", "VARCHAR(36)")
+        add_col_if_missing("approvisionnements", "user_name", "VARCHAR(255)")
+        add_col_if_missing("decaissements", "user_id", "VARCHAR(36)")
+        add_col_if_missing("decaissements", "user_name", "VARCHAR(255)")
 
 def init_db(db: Session) -> None:
     # Create all tables
     Base.metadata.create_all(bind=engine)
+    _migrate_columns()
 
     # Check if admin user exists
     admin = db.query(User).filter(User.username == "admin").first()

@@ -5,26 +5,33 @@ import 'package:tocmanager/models/vente.dart';
 
 void main() {
   setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   });
 
-  group('Migration SQLite v13 & Sécurité des Données Production', () {
-    test('La migration v13 crée sync_queue et ajoute les colonnes sans altérer l\'existant', () async {
+  group('Migration SQLite v13/v14 & Traçabilité des Utilisateurs', () {
+    test('La migration crée sync_queue, audit_logs et ajoute user_id sans altérer l\'existant', () async {
       final db = await DatabaseHelper.instance.database;
 
-      // 1. Vérifier la présence de la table sync_queue
+      // 1. Vérifier la présence des tables sync_queue et audit_logs
       final queueTable = await db.rawQuery(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='sync_queue'",
       );
       expect(queueTable, isNotEmpty);
 
-      // 2. Vérifier les colonnes de synchronisation sur la table des ventes
+      final auditTable = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='audit_logs'",
+      );
+      expect(auditTable, isNotEmpty);
+
+      // 2. Vérifier les colonnes de traçabilité sur la table des ventes
       final cols = await db.rawQuery('PRAGMA table_info(ventes)');
       final colNames = cols.map((c) => c['name']).toList();
       expect(colNames.contains('sync_id'), isTrue);
       expect(colNames.contains('sync_status'), isTrue);
-      expect(colNames.contains('updated_at'), isTrue);
+      expect(colNames.contains('user_id'), isTrue);
+      expect(colNames.contains('user_name'), isTrue);
     });
 
     test('L\'insertion d\'une vente alimente la table locale et sync_queue en tâche de fond', () async {

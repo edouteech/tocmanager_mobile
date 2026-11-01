@@ -110,3 +110,20 @@ def test_sync_push_idempotent_vente(client):
     )
     assert push_res2.status_code == 200
     assert test_uuid in push_res2.json()["synced_uuids"]
+
+def test_audit_logs(client):
+    login_res = client.post("/api/v1/auth/login", json={
+        "username_or_email": "admin",
+        "password": "admin1234"
+    })
+    token = login_res.json()["access_token"]
+
+    res = client.get("/api/v1/audit/logs", headers={"Authorization": f"Bearer {token}"})
+    assert res.status_code == 200
+    data = res.json()
+    assert "items" in data
+    assert "total" in data
+    assert data["total"] >= 1
+    # Check that LOGIN action was recorded for admin
+    actions = [item["action"] for item in data["items"]]
+    assert "LOGIN" in actions

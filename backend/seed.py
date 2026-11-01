@@ -4,7 +4,7 @@ from app.core.database import engine, SessionLocal, Base
 from app.core.security import get_password_hash, hash_pin
 from app.models import (
     User, Category, Product, Client, Supplier,
-    Vente, VenteItem, Approvisionnement, Decaissement
+    Vente, VenteItem, Approvisionnement, Decaissement, AuditLog
 )
 
 def run_seed():
@@ -17,6 +17,7 @@ def run_seed():
         existing_users = db.query(User).count()
         if existing_users > 0:
             print(f"Database already contains {existing_users} users. Clearing previous sample data...")
+            db.query(AuditLog).delete()
             db.query(VenteItem).delete()
             db.query(Vente).delete()
             db.query(Approvisionnement).delete()
@@ -388,6 +389,7 @@ def run_seed():
                 client_sync_id=s_data["client"].sync_id,
                 client_name=s_data["client"].name,
                 user_id=s_data["user"].id,
+                user_name=s_data["user"].full_name,
                 total_amount=total_amt,
                 paid_amount=total_amt,
                 discount_amount=0.0,
@@ -400,6 +402,25 @@ def run_seed():
             db.flush()
             for vi in vente_items:
                 db.add(vi)
+
+            # Audit log de la vente
+            db.add(
+                AuditLog(
+                    id=str(uuid.uuid4()),
+                    user_id=s_data["user"].id,
+                    user_name=s_data["user"].full_name,
+                    action="SALE_CREATE",
+                    entity_type="vente",
+                    entity_id=vente_uuid,
+                    details={
+                        "ticket_number": s_data["ticket"],
+                        "total_amount": total_amt,
+                        "client": s_data["client"].name,
+                        "payment_method": s_data["payment"],
+                    },
+                    created_at=s_time,
+                )
+            )
 
         db.commit()
         print("✓ Database successfully seeded with all realistic data!")

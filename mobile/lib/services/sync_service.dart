@@ -71,6 +71,7 @@ class SyncService {
     final List<Map<String, dynamic>> clients = [];
     final List<Map<String, dynamic>> decaissements = [];
     final List<Map<String, dynamic>> approvisionnements = [];
+    final List<Map<String, dynamic>> auditLogs = [];
 
     for (final item in queueItems) {
       final type = item['entity_type'] as String;
@@ -85,6 +86,8 @@ class SyncService {
           decaissements.add(payload);
         } else if (type == 'approvisionnement') {
           approvisionnements.add(payload);
+        } else if (type == 'audit_log') {
+          auditLogs.add(payload);
         }
       } catch (_) {}
     }
@@ -94,6 +97,7 @@ class SyncService {
       'clients': clients,
       'decaissements': decaissements,
       'approvisionnements': approvisionnements,
+      'audit_logs': auditLogs,
     };
 
     final uri = Uri.parse('$baseUrl/sync/push');
@@ -127,6 +131,7 @@ class SyncService {
             await txn.update('clients', {'sync_status': 'synced'}, where: 'sync_id = ?', whereArgs: [uuid]);
             await txn.update('decaissements', {'sync_status': 'synced'}, where: 'sync_id = ?', whereArgs: [uuid]);
             await txn.update('approvisionnements', {'sync_status': 'synced'}, where: 'sync_id = ?', whereArgs: [uuid]);
+            await txn.update('audit_logs', {'sync_status': 'synced'}, where: 'sync_id = ?', whereArgs: [uuid]);
           }
         });
       }

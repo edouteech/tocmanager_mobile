@@ -6,7 +6,7 @@ from app.api import deps
 from app.core.database import get_db
 from app.models import (
     User, Category, Product, Client, Supplier, Vente, VenteItem,
-    Approvisionnement, Decaissement, SyncEvent
+    Approvisionnement, Decaissement, SyncEvent, AuditLog
 )
 from app.schemas.sync import (
     SyncPullResponse, SyncPushRequest, SyncPushResult,
@@ -196,6 +196,8 @@ def push_changes(
     # 1. Clients
     for cl in payload.clients:
         try:
+            cl_uid = cl.user_id or current_user.id
+            cl_uname = cl.user_name or (current_user.full_name or current_user.username)
             existing = db.query(Client).filter(Client.sync_id == cl.sync_id).first()
             if existing:
                 existing.name = cl.name
@@ -204,6 +206,8 @@ def push_changes(
                 existing.address = cl.address
                 existing.balance = cl.balance
                 existing.notes = cl.notes
+                existing.user_id = cl_uid
+                existing.user_name = cl_uname
                 existing.updated_at = cl.updated_at or datetime.now(timezone.utc)
             else:
                 db.add(Client(
@@ -214,8 +218,20 @@ def push_changes(
                     address=cl.address,
                     balance=cl.balance,
                     notes=cl.notes,
+                    user_id=cl_uid,
+                    user_name=cl_uname,
                     created_at=cl.updated_at or datetime.now(timezone.utc),
                     updated_at=cl.updated_at or datetime.now(timezone.utc),
+                ))
+                db.add(AuditLog(
+                    id=f"audit-{cl.sync_id}",
+                    user_id=cl_uid,
+                    user_name=cl_uname,
+                    action="CLIENT_CREATE",
+                    entity_type="client",
+                    entity_id=cl.sync_id,
+                    details={"name": cl.name, "phone": cl.phone, "balance": cl.balance},
+                    created_at=cl.updated_at or datetime.now(timezone.utc),
                 ))
             synced_uuids.append(cl.sync_id)
         except Exception as e:
@@ -229,13 +245,17 @@ def push_changes(
                 synced_uuids.append(v.sync_id)
                 continue
 
+            v_uid = v.user_id or current_user.id
+            v_uname = v.user_name or (current_user.full_name or current_user.username)
+
             # Création de la vente
             new_vente = Vente(
                 sync_id=v.sync_id,
                 ticket_number=v.ticket_number,
                 client_sync_id=v.client_sync_id,
                 client_name=v.client_name,
-                user_id=current_user.id,
+                user_id=v_uid,
+                user_name=v_uname,
                 total_amount=v.total_amount,
                 paid_amount=v.paid_amount,
                 discount_amount=v.discount_amount,
@@ -275,6 +295,25 @@ def push_changes(
                     target_client.balance += reliquat
                     target_client.updated_at = datetime.now(timezone.utc)
 
+            # Audit log de la vente
+            db.add(AuditLog(
+                id=f"audit-{v.sync_id}",
+                user_id=v_uid,
+                user_name=v_uname,
+                action="SALE_CREATE",
+                entity_type="vente",
+                entity_id=v.sync_id,
+                details={
+                    "ticket_number": v.ticket_number,
+                    "total_amount": v.total_amount,
+                    "paid_amount": v.paid_amount,
+                    "client_name": v.client_name,
+                    "payment_method": v.payment_method,
+                    "item_count": len(v.items),
+                },
+                created_at=v.created_at,
+            ))
+
             synced_uuids.append(v.sync_id)
         except Exception as e:
             errors.append(f"Vente {v.sync_id}: {str(e)}")
@@ -283,6 +322,8 @@ def push_changes(
     for d in payload.decaissements:
         try:
             existing = db.query(Decaissement).filter(Decaissement.sync_id == d.sync_id).first()
+            d_uid = d.user_id or current_user.id
+            d_uname = d.user_name or (current_user.full_name or current_user.username)
             if not existing:
                 db.add(Decaissement(
                     sync_id=d.sync_id,
@@ -293,8 +334,25 @@ def push_changes(
                     payment_method=d.payment_method,
                     date=d.date,
                     notes=d.notes,
+                    user_id=d_uid,
+                    user_name=d_uname,
                     created_at=d.date,
                     updated_at=d.updated_at or d.date,
+                ))
+                db.add(AuditLog(
+                    id=f"audit-{d.sync_id}",
+                    user_id=d_uid,
+                    user_name=d_uname,
+                    action="EXPENSE_CREATE",
+                    entity_type="decaissement",
+                    entity_id=d.sync_id,
+                    details={
+                        "title": d.title,
+                        "amount": d.amount,
+                        "category": d.category,
+                        "beneficiary": d.beneficiary,
+                    },
+                    created_at=d.date,
                 ))
             synced_uuids.append(d.sync_id)
         except Exception as e:
@@ -304,6 +362,8 @@ def push_changes(
     for a in payload.approvisionnements:
         try:
             existing = db.query(Approvisionnement).filter(Approvisionnement.sync_id == a.sync_id).first()
+            a_uid = a.user_id or current_user.id
+            a_uname = a.user_name or (current_user.full_name or current_user.username)
             if not existing:
                 db.add(Approvisionnement(
                     sync_id=a.sync_id,
@@ -317,8 +377,25 @@ def push_changes(
                     payment_status=a.payment_status,
                     date=a.date,
                     notes=a.notes,
+                    user_id=a_uid,
+                    user_name=a_uname,
                     created_at=a.date,
                     updated_at=a.updated_at or a.date,
+                ))
+                db.add(AuditLog(
+                    id=f"audit-{a.sync_id}",
+                    user_id=a_uid,
+                    user_name=a_uname,
+                    action="STOCK_SUPPLY",
+                    entity_type="approvisionnement",
+                    entity_id=a.sync_id,
+                    details={
+                        "product_name": a.product_name,
+                        "quantity": a.quantity,
+                        "unit_cost": a.unit_cost,
+                        "total_cost": a.total_cost,
+                    },
+                    created_at=a.date,
                 ))
                 # Incrémenter le stock produit
                 if a.product_sync_id:
@@ -330,6 +407,25 @@ def push_changes(
             synced_uuids.append(a.sync_id)
         except Exception as e:
             errors.append(f"Approvisionnement {a.sync_id}: {str(e)}")
+
+    # 5. Audit logs poussés directement depuis le terminal mobile
+    for al in payload.audit_logs:
+        try:
+            existing_al = db.query(AuditLog).filter(AuditLog.id == al.sync_id).first()
+            if not existing_al:
+                db.add(AuditLog(
+                    id=al.sync_id,
+                    user_id=al.user_id or current_user.id,
+                    user_name=al.user_name or (current_user.full_name or current_user.username),
+                    action=al.action,
+                    entity_type=al.entity_type,
+                    entity_id=al.entity_id,
+                    details=al.details,
+                    created_at=al.created_at,
+                ))
+            synced_uuids.append(al.sync_id)
+        except Exception as e:
+            errors.append(f"AuditLog {al.sync_id}: {str(e)}")
 
     db.commit()
 

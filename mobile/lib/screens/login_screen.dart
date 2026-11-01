@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/secure_storage_service.dart';
+import '../services/audit_service.dart';
 import '../theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -48,6 +49,14 @@ class _LoginScreenState extends State<LoginScreen> {
       password: password,
       serverUrl: serverUrl.isNotEmpty ? serverUrl : null,
     );
+
+    if (success) {
+      await AuditService.logAction(
+        action: 'LOGIN',
+        entityType: 'auth',
+        details: {'username': username},
+      );
+    }
 
     if (success && mounted) {
       // Prompt for PIN if not configured

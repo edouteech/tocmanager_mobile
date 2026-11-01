@@ -16,6 +16,8 @@ class VenteSync(BaseModel):
     ticket_number: str
     client_sync_id: Optional[str] = None
     client_name: Optional[str] = "Occasionnel"
+    user_id: Optional[str] = None
+    user_name: Optional[str] = None
     total_amount: float
     paid_amount: float
     discount_amount: float = 0.0
@@ -58,6 +60,8 @@ class ClientSync(BaseModel):
     address: Optional[str] = None
     balance: float = 0.0
     notes: Optional[str] = None
+    user_id: Optional[str] = None
+    user_name: Optional[str] = None
     updated_at: datetime
     deleted_at: Optional[datetime] = None
 
@@ -70,6 +74,8 @@ class SupplierSync(BaseModel):
     address: Optional[str] = None
     balance: float = 0.0
     notes: Optional[str] = None
+    user_id: Optional[str] = None
+    user_name: Optional[str] = None
     updated_at: datetime
     deleted_at: Optional[datetime] = None
 
@@ -82,6 +88,8 @@ class DecaissementSync(BaseModel):
     payment_method: str = "Espèces"
     date: datetime
     notes: Optional[str] = None
+    user_id: Optional[str] = None
+    user_name: Optional[str] = None
     updated_at: datetime
     deleted_at: Optional[datetime] = None
 
@@ -97,8 +105,20 @@ class ApprovisionnementSync(BaseModel):
     payment_status: str = "Payé"
     date: datetime
     notes: Optional[str] = None
+    user_id: Optional[str] = None
+    user_name: Optional[str] = None
     updated_at: datetime
     deleted_at: Optional[datetime] = None
+
+class AuditLogSync(BaseModel):
+    sync_id: str
+    user_id: Optional[str] = None
+    user_name: Optional[str] = None
+    action: str
+    entity_type: Optional[str] = None
+    entity_id: Optional[str] = None
+    details: Optional[Any] = None
+    created_at: datetime
 
 class SyncPushRequest(BaseModel):
     device_id: Optional[str] = None
@@ -106,6 +126,7 @@ class SyncPushRequest(BaseModel):
     clients: List[ClientSync] = []
     decaissements: List[DecaissementSync] = []
     approvisionnements: List[ApprovisionnementSync] = []
+    audit_logs: List[AuditLogSync] = []
 
 class SyncPushResult(BaseModel):
     synced_count: int

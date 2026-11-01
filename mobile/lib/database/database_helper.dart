@@ -12,10 +12,11 @@ import '../models/decaissement.dart';
 import '../models/vente.dart';
 import '../models/client.dart';
 import '../models/supplier.dart';
+import '../services/secure_storage_service.dart';
 
 class DatabaseHelper {
   static const _dbName = 'tocmanager.db';
-  static const _dbVersion = 13;
+  static const _dbVersion = 14;
 
   static DatabaseHelper? _instance;
   static Database? _database;
@@ -101,6 +102,7 @@ class DatabaseHelper {
     await _createV11Schema(db);
     await _createV12Schema(db);
     await _createV13Schema(db);
+    await _createV14Schema(db);
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -126,6 +128,48 @@ class DatabaseHelper {
     if (oldVersion < 11) await _createV11Schema(db);
     if (oldVersion < 12) await _createV12Schema(db);
     if (oldVersion < 13) await _createV13Schema(db);
+    if (oldVersion < 14) await _createV14Schema(db);
+  }
+
+  Future<void> _createV14Schema(Database db) async {
+    try {
+      // 1. Table audit_logs
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS audit_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          sync_id TEXT UNIQUE,
+          user_id TEXT,
+          user_name TEXT,
+          action TEXT NOT NULL,
+          entity_type TEXT,
+          entity_id TEXT,
+          details TEXT,
+          created_at TEXT NOT NULL,
+          sync_status TEXT DEFAULT 'pending'
+        )
+      ''');
+
+      // 2. Colonnes user_id et user_name pour la traçabilité des opérations
+      const tables = ['ventes', 'clients', 'decaissements', 'approvisionnements'];
+      for (final table in tables) {
+        try {
+          final tableInfo = await db.rawQuery('PRAGMA table_info($table)');
+          if (tableInfo.isEmpty) continue;
+
+          final hasUserId = tableInfo.any((col) => col['name'] == 'user_id');
+          if (!hasUserId) {
+            await db.execute('ALTER TABLE $table ADD COLUMN user_id TEXT');
+          }
+
+          final hasUserName = tableInfo.any((col) => col['name'] == 'user_name');
+          if (!hasUserName) {
+            await db.execute('ALTER TABLE $table ADD COLUMN user_name TEXT');
+          }
+        } catch (_) {}
+      }
+    } catch (e) {
+      debugPrint('V14 migration notice: $e');
+    }
   }
 
   Future<void> _createV13Schema(Database db) async {
@@ -812,8 +856,20 @@ class DatabaseHelper {
 
   Future<int> insertApprovisionnement(Approvisionnement a) async {
     final db = await database;
+    String? userId;
+    String? userName;
+    try {
+      final activeUser = await SecureStorageService.getUser();
+      userId = activeUser?.id;
+      userName = activeUser?.fullName ?? activeUser?.username;
+    } catch (_) {}
+
+    final approMap = a.toMap();
+    if (userId != null) approMap['user_id'] = userId;
+    if (userName != null) approMap['user_name'] = userName;
+
     return db.transaction((txn) async {
-      final id = await txn.insert('approvisionnements', a.toMap());
+      final id = await txn.insert('approvisionnements', approMap);
       await txn.rawUpdate(
         'UPDATE products SET quantity = quantity + ?, updated_at = ? WHERE id = ?',
         [a.quantity, DateTime.now().toIso8601String(), a.productId],
@@ -822,6 +878,30 @@ class DatabaseHelper {
       if (a.supplierId != null) {
         await _updateSupplierBalance(txn, a.supplierId!);
       }
+
+      // Enregistrement de l'audit pour l'approvisionnement
+      try {
+        final now = DateTime.now().toIso8601String();
+        final auditSyncId = const Uuid().v4();
+        await txn.insert('audit_logs', {
+          'sync_id': auditSyncId,
+          'user_id': userId,
+          'user_name': userName,
+          'action': 'STOCK_SUPPLY',
+          'entity_type': 'approvisionnement',
+          'entity_id': id.toString(),
+          'details': jsonEncode({
+            'product_id': a.productId,
+            'quantity': a.quantity,
+            'unit_price': a.unitPrice,
+            'total': a.total,
+            'supplier': a.supplier,
+          }),
+          'created_at': now,
+          'sync_status': 'pending',
+        });
+      } catch (_) {}
+
       return id;
     });
   }
@@ -970,7 +1050,42 @@ class DatabaseHelper {
 
   Future<int> insertDecaissement(Decaissement d) async {
     final db = await database;
-    return db.insert('decaissements', d.toMap());
+    String? userId;
+    String? userName;
+    try {
+      final activeUser = await SecureStorageService.getUser();
+      userId = activeUser?.id;
+      userName = activeUser?.fullName ?? activeUser?.username;
+    } catch (_) {}
+
+    final decMap = d.toMap();
+    if (userId != null) decMap['user_id'] = userId;
+    if (userName != null) decMap['user_name'] = userName;
+    final id = await db.insert('decaissements', decMap);
+
+    // Enregistrement de l'audit pour la dépense
+    try {
+      final now = DateTime.now().toIso8601String();
+      final auditSyncId = const Uuid().v4();
+      await db.insert('audit_logs', {
+        'sync_id': auditSyncId,
+        'user_id': userId,
+        'user_name': userName,
+        'action': 'EXPENSE_CREATE',
+        'entity_type': 'decaissement',
+        'entity_id': id.toString(),
+        'details': jsonEncode({
+          'description': d.description,
+          'amount': d.amount,
+          'category': d.category,
+          'reference': d.reference,
+        }),
+        'created_at': now,
+        'sync_status': 'pending',
+      });
+    } catch (_) {}
+
+    return id;
   }
 
   Future<int> updateDecaissement(Decaissement d) async {
@@ -1008,6 +1123,14 @@ class DatabaseHelper {
 
   Future<int> insertVente(Vente v) async {
     final db = await database;
+    String? userId;
+    String? userName;
+    try {
+      final activeUser = await SecureStorageService.getUser();
+      userId = activeUser?.id;
+      userName = activeUser?.fullName ?? activeUser?.username;
+    } catch (_) {}
+
     return db.transaction((txn) async {
       final now = DateTime.now();
       final countRes = Sqflite.firstIntValue(await txn.rawQuery('SELECT COUNT(*) FROM ventes')) ?? 0;
@@ -1021,6 +1144,8 @@ class DatabaseHelper {
       venteMap['sync_id'] = venteSyncId;
       venteMap['sync_status'] = 'pending_insert';
       venteMap['updated_at'] = now.toIso8601String();
+      if (userId != null) venteMap['user_id'] = userId;
+      if (userName != null) venteMap['user_name'] = userName;
 
       final venteId = await txn.insert('ventes', venteMap);
 
@@ -1060,6 +1185,8 @@ class DatabaseHelper {
           'sync_id': venteSyncId,
           'ticket_number': ticketNum,
           'client_name': v.clientName ?? 'Occasionnel',
+          'user_id': userId,
+          'user_name': userName,
           'total_amount': v.totalAmount,
           'paid_amount': v.paidAmount,
           'discount_amount': v.discountAmount,
@@ -1076,6 +1203,25 @@ class DatabaseHelper {
           'payload': queuePayload,
           'created_at': now.toIso8601String(),
           'attempts': 0,
+        });
+
+        // Enregistrement de l'action dans le journal d'audit local
+        final auditSyncId = const Uuid().v4();
+        await txn.insert('audit_logs', {
+          'sync_id': auditSyncId,
+          'user_id': userId,
+          'user_name': userName,
+          'action': 'SALE_CREATE',
+          'entity_type': 'vente',
+          'entity_id': venteSyncId,
+          'details': jsonEncode({
+            'ticket_number': ticketNum,
+            'total_amount': v.totalAmount,
+            'paid_amount': v.paidAmount,
+            'payment_method': v.paymentMethod,
+          }),
+          'created_at': now.toIso8601String(),
+          'sync_status': 'pending',
         });
       } catch (_) {}
 
@@ -1218,7 +1364,41 @@ class DatabaseHelper {
 
   Future<int> insertClient(Client client) async {
     final db = await database;
-    return db.insert('clients', client.toMap());
+    String? userId;
+    String? userName;
+    try {
+      final activeUser = await SecureStorageService.getUser();
+      userId = activeUser?.id;
+      userName = activeUser?.fullName ?? activeUser?.username;
+    } catch (_) {}
+
+    final clientMap = client.toMap();
+    if (userId != null) clientMap['user_id'] = userId;
+    if (userName != null) clientMap['user_name'] = userName;
+
+    final clientId = await db.insert('clients', clientMap);
+
+    try {
+      final auditSyncId = const Uuid().v4();
+      final now = DateTime.now().toIso8601String();
+      await db.insert('audit_logs', {
+        'sync_id': auditSyncId,
+        'user_id': userId,
+        'user_name': userName,
+        'action': 'CLIENT_CREATE',
+        'entity_type': 'client',
+        'entity_id': clientId.toString(),
+        'details': jsonEncode({
+          'name': client.name,
+          'phone': client.phone,
+          'balance': client.balance,
+        }),
+        'created_at': now,
+        'sync_status': 'pending',
+      });
+    } catch (_) {}
+
+    return clientId;
   }
 
   Future<int> updateClient(Client client) async {
@@ -1275,6 +1455,28 @@ class DatabaseHelper {
         'UPDATE clients SET balance = ? WHERE id = ?',
         [newBalance, clientId],
       );
+
+      // Audit log pour le règlement de dette
+      try {
+        final activeUser = await SecureStorageService.getUser();
+        final now = DateTime.now().toIso8601String();
+        final auditSyncId = const Uuid().v4();
+        await txn.insert('audit_logs', {
+          'sync_id': auditSyncId,
+          'user_id': activeUser?.id,
+          'user_name': activeUser?.fullName ?? activeUser?.username,
+          'action': 'DEBT_PAYMENT',
+          'entity_type': 'client',
+          'entity_id': clientId.toString(),
+          'details': jsonEncode({
+            'client_id': clientId,
+            'amount_paid': amount,
+            'new_balance': newBalance,
+          }),
+          'created_at': now,
+          'sync_status': 'pending',
+        });
+      } catch (_) {}
     });
   }
 

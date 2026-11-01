@@ -9,6 +9,7 @@ import { DashboardPage } from './features/dashboard/DashboardPage';
 import { SalesPage } from './features/sales/SalesPage';
 import { ProductsPage } from './features/inventory/ProductsPage';
 import { UsersPage } from './features/users/UsersPage';
+import { AuditLogsPage } from './features/audit/AuditLogsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,6 +51,14 @@ export const App: React.FC = () => {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <UsersPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="audit"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AuditLogsPage />
                 </ProtectedRoute>
               }
             />

@@ -72,6 +72,8 @@ class Client(Base):
     address = Column(Text, nullable=True)
     balance = Column(Float, nullable=False, default=0.0)
     notes = Column(Text, nullable=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    user_name = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utc_now)
     updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
@@ -87,6 +89,8 @@ class Supplier(Base):
     address = Column(Text, nullable=True)
     balance = Column(Float, nullable=False, default=0.0)
     notes = Column(Text, nullable=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    user_name = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utc_now)
     updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
@@ -99,6 +103,7 @@ class Vente(Base):
     client_sync_id = Column(String(36), ForeignKey("clients.sync_id"), nullable=True)
     client_name = Column(String(255), nullable=True)
     user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    user_name = Column(String(255), nullable=True)
     total_amount = Column(Float, nullable=False, default=0.0)
     paid_amount = Column(Float, nullable=False, default=0.0)
     discount_amount = Column(Float, nullable=False, default=0.0)
@@ -138,6 +143,8 @@ class Approvisionnement(Base):
     payment_status = Column(String(50), default="Payé")
     date = Column(DateTime(timezone=True), default=utc_now)
     notes = Column(Text, nullable=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    user_name = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utc_now)
     updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
@@ -153,9 +160,23 @@ class Decaissement(Base):
     payment_method = Column(String(50), default="Espèces")
     date = Column(DateTime(timezone=True), default=utc_now)
     notes = Column(Text, nullable=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    user_name = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), default=utc_now)
     updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    user_name = Column(String(255), nullable=True)
+    action = Column(String(100), nullable=False)  # LOGIN, LOGOUT, PIN_VERIFY, SALE_CREATE, CLIENT_CREATE, DEBT_PAYMENT, EXPENSE_CREATE, STOCK_SUPPLY, PRODUCT_UPDATE
+    entity_type = Column(String(50), nullable=True)  # vente, client, decaissement, product, auth
+    entity_id = Column(String(100), nullable=True)
+    details = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
 
 class SyncEvent(Base):
     __tablename__ = "sync_events"

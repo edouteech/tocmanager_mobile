@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, sync, products, categories, ventes, users, reports
+from app.api.v1.endpoints import auth, sync, products, categories, ventes, users, reports, audit
 
 api_router = APIRouter()
 
@@ -10,3 +10,4 @@ api_router.include_router(categories.router, prefix="/categories", tags=["Catég
 api_router.include_router(ventes.router, prefix="/ventes", tags=["Ventes & Caisses"])
 api_router.include_router(users.router, prefix="/users", tags=["Utilisateurs & Rôles"])
 api_router.include_router(reports.router, prefix="/reports", tags=["Rapports & Statistiques"])
+api_router.include_router(audit.router, prefix="/audit", tags=["Journal d'Audit & Sécurité"])

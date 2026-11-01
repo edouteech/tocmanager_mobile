@@ -13,7 +13,7 @@ from app.core.security import (
     create_refresh_token,
 )
 from app.core.config import settings
-from app.models import User
+from app.models import User, AuditLog
 from app.schemas.auth import (
     Token,
     LoginRequest,
@@ -69,6 +69,20 @@ def login(
 
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
+
+    # Enregistrement de l'audit de connexion
+    try:
+        db.add(AuditLog(
+            user_id=user.id,
+            user_name=user.full_name or user.username,
+            action="LOGIN",
+            entity_type="auth",
+            details={"username": user.username, "role": user.role},
+        ))
+        db.commit()
+    except Exception:
+        db.rollback()
+
     return Token(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -121,12 +135,26 @@ def refresh_token(
 def verify_user_pin(
     pin_data: PinVerifyRequest,
     current_user: User = Depends(deps.get_current_user),
+    db: Session = Depends(get_db),
 ) -> Any:
     """Vérification du code PIN pour déverrouiller la session courante."""
     if not current_user.pin_hash:
         raise HTTPException(status_code=400, detail="Aucun code PIN n'a encore été configuré")
     if not verify_pin(pin_data.pin, current_user.pin_hash):
         raise HTTPException(status_code=400, detail="Code PIN erroné")
+
+    try:
+        db.add(AuditLog(
+            user_id=current_user.id,
+            user_name=current_user.full_name or current_user.username,
+            action="PIN_VERIFY",
+            entity_type="auth",
+            details={"result": "success"},
+        ))
+        db.commit()
+    except Exception:
+        db.rollback()
+
     return _user_to_brief(current_user)
 
 @router.post("/set-pin", response_model=UserBrief)
@@ -142,7 +170,18 @@ def set_user_pin(
         raise HTTPException(status_code=400, detail="Le code PIN doit comporter 4 ou 6 chiffres")
 
     current_user.pin_hash = hash_pin(pin_data.pin)
-    db.commit()
+    try:
+        db.add(AuditLog(
+            user_id=current_user.id,
+            user_name=current_user.full_name or current_user.username,
+            action="PIN_SET",
+            entity_type="auth",
+            details={"pin_length": len(pin_data.pin)},
+        ))
+        db.commit()
+    except Exception:
+        db.rollback()
+
     db.refresh(current_user)
     return _user_to_brief(current_user)
 
