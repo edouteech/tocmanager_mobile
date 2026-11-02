@@ -124,6 +124,19 @@ def refresh_token(
 
     new_access = create_access_token(user.id)
     new_refresh = create_refresh_token(user.id)
+
+    try:
+        db.add(AuditLog(
+            user_id=user.id,
+            user_name=user.full_name or user.username,
+            action="TOKEN_REFRESH",
+            entity_type="auth",
+            details={"type": "sliding_rotation"},
+        ))
+        db.commit()
+    except Exception:
+        db.rollback()
+
     return Token(
         access_token=new_access,
         refresh_token=new_refresh,

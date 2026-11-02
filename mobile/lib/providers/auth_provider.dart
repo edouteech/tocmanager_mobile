@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../models/user.dart';
 import '../services/secure_storage_service.dart';
+import '../services/api_client.dart';
 
 class AuthProvider extends ChangeNotifier {
   bool _isInitialized = false;
@@ -40,6 +42,7 @@ class AuthProvider extends ChangeNotifier {
         _currentUser = user;
         _isAuthenticated = true;
         _isPinLocked = hasPin; // Verrouillé par PIN au démarrage si configuré
+        unawaited(ApiClient.instance.checkAndProactiveRefresh());
       } else {
         _isAuthenticated = false;
         _isPinLocked = false;
@@ -64,6 +67,12 @@ class AuthProvider extends ChangeNotifier {
       _isPinLocked = false;
       _pinAttemptsRemaining = 3;
       notifyListeners();
+
+      // Contrôle proactif au déverrouillage PIN :
+      // - Si access token expire dans < 5h : rafraîchi
+      // - Si refresh token expire dans < 10h : renouvelé
+      unawaited(ApiClient.instance.checkAndProactiveRefresh());
+
       return true;
     } else {
       _pinAttemptsRemaining--;

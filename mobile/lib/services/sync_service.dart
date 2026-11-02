@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:sqflite/sqflite.dart';
 import '../database/database_helper.dart';
 import '../services/secure_storage_service.dart';
 import '../services/network_service.dart';
+import '../services/api_client.dart';
 
 enum SyncStatus {
   idle,
@@ -41,11 +41,11 @@ class SyncService {
 
       final baseUrl = await SecureStorageService.getServerUrl();
 
-      // 1. PUSH des opérations hors-ligne accumulées
-      await _pushPendingQueue(baseUrl, token);
+      // 1. PUSH des opérations hors-ligne accumulées (avec interception 401 et retry automatique)
+      await _pushPendingQueue(baseUrl);
 
-      // 2. PULL des mises à jour du catalogue serveur
-      await _pullServerChanges(baseUrl, token);
+      // 2. PULL des mises à jour du catalogue serveur (avec interception 401 et retry automatique)
+      await _pullServerChanges(baseUrl);
 
       _isSyncing = false;
       return SyncStatus.synced;
@@ -57,7 +57,7 @@ class SyncService {
   }
 
   /// PUSH de la file sync_queue vers /sync/push
-  Future<void> _pushPendingQueue(String baseUrl, String token) async {
+  Future<void> _pushPendingQueue(String baseUrl) async {
     final db = await DatabaseHelper.instance.database;
     final queueItems = await db.query(
       'sync_queue',
@@ -101,14 +101,10 @@ class SyncService {
     };
 
     final uri = Uri.parse('$baseUrl/sync/push');
-    final response = await http.post(
+    final response = await ApiClient.instance.post(
       uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
       body: jsonEncode(pushBody),
-    ).timeout(const Duration(seconds: 15));
+    );
 
     if (response.statusCode == 200) {
       final resData = jsonDecode(response.body) as Map<String, dynamic>;
@@ -139,7 +135,7 @@ class SyncService {
   }
 
   /// PULL différentiel depuis /sync/pull?since=...
-  Future<void> _pullServerChanges(String baseUrl, String token) async {
+  Future<void> _pullServerChanges(String baseUrl) async {
     final db = await DatabaseHelper.instance.database;
 
     // Récupérer le timestamp du dernier pull
@@ -158,12 +154,9 @@ class SyncService {
       pullUrl += '?since=${Uri.encodeComponent(lastSync)}';
     }
 
-    final response = await http.get(
+    final response = await ApiClient.instance.get(
       Uri.parse(pullUrl),
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    ).timeout(const Duration(seconds: 15));
+    );
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
