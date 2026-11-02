@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
@@ -18,6 +19,9 @@ class SyncService {
   static final SyncService _instance = SyncService._();
   static SyncService get instance => _instance;
   SyncService._();
+
+  static final StreamController<void> _syncCompletedController = StreamController<void>.broadcast();
+  static Stream<void> get onSyncCompleted => _syncCompletedController.stream;
 
   bool _isSyncing = false;
   bool get isSyncing => _isSyncing;
@@ -48,6 +52,7 @@ class SyncService {
       await _pullServerChanges(baseUrl);
 
       _isSyncing = false;
+      _syncCompletedController.add(null);
       return SyncStatus.synced;
     } catch (e) {
       debugPrint('Sync error: $e');
@@ -162,10 +167,14 @@ class SyncService {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       final serverTime = data['server_time'] as String;
 
-      // Upsert Products & Categories
+      // Upsert Products, Categories, Clients, Suppliers, Ventes, Decaissements, Approvisionnements
       final prods = (data['products'] as List<dynamic>?) ?? [];
       final cats = (data['categories'] as List<dynamic>?) ?? [];
       final clients = (data['clients'] as List<dynamic>?) ?? [];
+      final suppliers = (data['suppliers'] as List<dynamic>?) ?? [];
+      final ventes = (data['ventes'] as List<dynamic>?) ?? [];
+      final decaissements = (data['decaissements'] as List<dynamic>?) ?? [];
+      final approvisionnements = (data['approvisionnements'] as List<dynamic>?) ?? [];
 
       await db.transaction((txn) async {
         // Categories
@@ -178,8 +187,8 @@ class SyncService {
               'sync_id': syncId,
               'name': catMap['name'],
               'description': catMap['description'],
-              'color': catMap['color'],
-              'icon': catMap['icon'],
+              'color': catMap['color'] != null ? int.tryParse(catMap['color'].toString()) ?? 4280391411 : 4280391411,
+              'icon': catMap['icon'] != null ? int.tryParse(catMap['icon'].toString()) ?? 58142 : 58142,
               'created_at': catMap['updated_at'] ?? DateTime.now().toIso8601String(),
               'updated_at': catMap['updated_at'] ?? DateTime.now().toIso8601String(),
               'sync_status': 'synced',
@@ -190,8 +199,8 @@ class SyncService {
               {
                 'name': catMap['name'],
                 'description': catMap['description'],
-                'color': catMap['color'],
-                'icon': catMap['icon'],
+                'color': catMap['color'] != null ? int.tryParse(catMap['color'].toString()) ?? 4280391411 : 4280391411,
+                'icon': catMap['icon'] != null ? int.tryParse(catMap['icon'].toString()) ?? 58142 : 58142,
                 'updated_at': catMap['updated_at'],
                 'sync_status': 'synced',
               },
@@ -256,6 +265,8 @@ class SyncService {
               'address': clMap['address'],
               'balance': (clMap['balance'] as num?)?.toDouble() ?? 0.0,
               'notes': clMap['notes'],
+              'user_id': clMap['user_id'],
+              'user_name': clMap['user_name'],
               'created_at': clMap['updated_at'] ?? DateTime.now().toIso8601String(),
               'updated_at': clMap['updated_at'] ?? DateTime.now().toIso8601String(),
               'sync_status': 'synced',
@@ -270,12 +281,248 @@ class SyncService {
                 'address': clMap['address'],
                 'balance': (clMap['balance'] as num?)?.toDouble() ?? 0.0,
                 'notes': clMap['notes'],
+                'user_id': clMap['user_id'],
+                'user_name': clMap['user_name'],
                 'updated_at': clMap['updated_at'],
                 'sync_status': 'synced',
               },
               where: 'sync_id = ?',
               whereArgs: [syncId],
             );
+          }
+        }
+
+        // Suppliers
+        for (final s in suppliers) {
+          final sMap = s as Map<String, dynamic>;
+          final syncId = sMap['sync_id'] as String;
+          final existing = await txn.query('suppliers', where: 'sync_id = ?', whereArgs: [syncId]);
+          if (existing.isEmpty) {
+            await txn.insert('suppliers', {
+              'sync_id': syncId,
+              'name': sMap['name'],
+              'contact_person': sMap['contact_person'],
+              'phone': sMap['phone'],
+              'email': sMap['email'],
+              'address': sMap['address'],
+              'balance': (sMap['balance'] as num?)?.toDouble() ?? 0.0,
+              'notes': sMap['notes'],
+              'user_id': sMap['user_id'],
+              'user_name': sMap['user_name'],
+              'created_at': sMap['updated_at'] ?? DateTime.now().toIso8601String(),
+              'updated_at': sMap['updated_at'] ?? DateTime.now().toIso8601String(),
+              'sync_status': 'synced',
+            });
+          } else {
+            await txn.update(
+              'suppliers',
+              {
+                'name': sMap['name'],
+                'contact_person': sMap['contact_person'],
+                'phone': sMap['phone'],
+                'email': sMap['email'],
+                'address': sMap['address'],
+                'balance': (sMap['balance'] as num?)?.toDouble() ?? 0.0,
+                'notes': sMap['notes'],
+                'user_id': sMap['user_id'],
+                'user_name': sMap['user_name'],
+                'updated_at': sMap['updated_at'],
+                'sync_status': 'synced',
+              },
+              where: 'sync_id = ?',
+              whereArgs: [syncId],
+            );
+          }
+        }
+
+        // Decaissements
+        for (final d in decaissements) {
+          final dMap = d as Map<String, dynamic>;
+          final syncId = dMap['sync_id'] as String;
+          final existing = await txn.query('decaissements', where: 'sync_id = ?', whereArgs: [syncId]);
+          if (existing.isEmpty) {
+            await txn.insert('decaissements', {
+              'sync_id': syncId,
+              'description': dMap['title'] ?? 'Dépense',
+              'amount': (dMap['amount'] as num).toDouble(),
+              'category': dMap['category'] ?? 'Général',
+              'reference': dMap['beneficiary'],
+              'date': dMap['date'] ?? DateTime.now().toIso8601String(),
+              'notes': dMap['notes'],
+              'user_id': dMap['user_id'],
+              'user_name': dMap['user_name'],
+              'updated_at': dMap['updated_at'] ?? DateTime.now().toIso8601String(),
+              'sync_status': 'synced',
+            });
+          } else {
+            await txn.update(
+              'decaissements',
+              {
+                'description': dMap['title'] ?? 'Dépense',
+                'amount': (dMap['amount'] as num).toDouble(),
+                'category': dMap['category'] ?? 'Général',
+                'reference': dMap['beneficiary'],
+                'date': dMap['date'] ?? DateTime.now().toIso8601String(),
+                'notes': dMap['notes'],
+                'user_id': dMap['user_id'],
+                'user_name': dMap['user_name'],
+                'updated_at': dMap['updated_at'],
+                'sync_status': 'synced',
+              },
+              where: 'sync_id = ?',
+              whereArgs: [syncId],
+            );
+          }
+        }
+
+        // Approvisionnements
+        for (final a in approvisionnements) {
+          final aMap = a as Map<String, dynamic>;
+          final syncId = aMap['sync_id'] as String;
+          final existing = await txn.query('approvisionnements', where: 'sync_id = ?', whereArgs: [syncId]);
+
+          int? localProdId;
+          if (aMap['product_sync_id'] != null) {
+            final pRes = await txn.query('products', columns: ['id'], where: 'sync_id = ?', whereArgs: [aMap['product_sync_id']]);
+            if (pRes.isNotEmpty) {
+              localProdId = pRes.first['id'] as int?;
+            }
+          }
+
+          int? localSupId;
+          if (aMap['supplier_sync_id'] != null) {
+            final sRes = await txn.query('suppliers', columns: ['id'], where: 'sync_id = ?', whereArgs: [aMap['supplier_sync_id']]);
+            if (sRes.isNotEmpty) {
+              localSupId = sRes.first['id'] as int?;
+            }
+          }
+
+          if (existing.isEmpty) {
+            await txn.insert('approvisionnements', {
+              'sync_id': syncId,
+              'product_id': localProdId ?? 0,
+              'quantity': (aMap['quantity'] as num).toDouble(),
+              'unit_price': (aMap['unit_cost'] as num).toDouble(),
+              'total': (aMap['total_cost'] as num).toDouble(),
+              'paid_amount': (aMap['total_cost'] as num).toDouble(),
+              'payment_status': aMap['payment_status'] ?? 'Payé',
+              'supplier_id': localSupId,
+              'supplier': aMap['supplier_name'],
+              'date': aMap['date'] ?? DateTime.now().toIso8601String(),
+              'notes': aMap['notes'],
+              'user_id': aMap['user_id'],
+              'user_name': aMap['user_name'],
+              'updated_at': aMap['updated_at'] ?? DateTime.now().toIso8601String(),
+              'sync_status': 'synced',
+            });
+          } else {
+            await txn.update(
+              'approvisionnements',
+              {
+                if (localProdId != null) 'product_id': localProdId,
+                'quantity': (aMap['quantity'] as num).toDouble(),
+                'unit_price': (aMap['unit_cost'] as num).toDouble(),
+                'total': (aMap['total_cost'] as num).toDouble(),
+                'supplier_id': localSupId,
+                'supplier': aMap['supplier_name'],
+                'date': aMap['date'] ?? DateTime.now().toIso8601String(),
+                'notes': aMap['notes'],
+                'user_id': aMap['user_id'],
+                'user_name': aMap['user_name'],
+                'updated_at': aMap['updated_at'],
+                'sync_status': 'synced',
+              },
+              where: 'sync_id = ?',
+              whereArgs: [syncId],
+            );
+          }
+        }
+
+        // Ventes
+        for (final v in ventes) {
+          final vMap = v as Map<String, dynamic>;
+          final syncId = vMap['sync_id'] as String;
+          final existing = await txn.query('ventes', where: 'sync_id = ?', whereArgs: [syncId]);
+
+          int? localClientId;
+          if (vMap['client_sync_id'] != null) {
+            final cRes = await txn.query('clients', columns: ['id'], where: 'sync_id = ?', whereArgs: [vMap['client_sync_id']]);
+            if (cRes.isNotEmpty) {
+              localClientId = cRes.first['id'] as int?;
+            }
+          }
+
+          int localVenteId;
+          if (existing.isEmpty) {
+            localVenteId = await txn.insert('ventes', {
+              'sync_id': syncId,
+              'ticket_number': vMap['ticket_number'] ?? 'TK-${DateTime.now().millisecondsSinceEpoch}',
+              'client_id': localClientId,
+              'client_name': vMap['client_name'] ?? 'Occasionnel',
+              'total_amount': (vMap['total_amount'] as num).toDouble(),
+              'discount_amount': (vMap['discount_amount'] as num?)?.toDouble() ?? 0.0,
+              'paid_amount': (vMap['paid_amount'] as num).toDouble(),
+              'payment_method': vMap['payment_method'] ?? 'Espèces',
+              'date': vMap['created_at'] ?? DateTime.now().toIso8601String(),
+              'notes': vMap['notes'],
+              'user_id': vMap['user_id'],
+              'user_name': vMap['user_name'],
+              'updated_at': vMap['updated_at'] ?? vMap['created_at'] ?? DateTime.now().toIso8601String(),
+              'sync_status': 'synced',
+            });
+          } else {
+            localVenteId = existing.first['id'] as int;
+            await txn.update(
+              'ventes',
+              {
+                'ticket_number': vMap['ticket_number'],
+                'client_id': localClientId,
+                'client_name': vMap['client_name'],
+                'total_amount': (vMap['total_amount'] as num).toDouble(),
+                'discount_amount': (vMap['discount_amount'] as num?)?.toDouble() ?? 0.0,
+                'paid_amount': (vMap['paid_amount'] as num).toDouble(),
+                'payment_method': vMap['payment_method'] ?? 'Espèces',
+                'notes': vMap['notes'],
+                'user_id': vMap['user_id'],
+                'user_name': vMap['user_name'],
+                'updated_at': vMap['updated_at'],
+                'sync_status': 'synced',
+              },
+              where: 'id = ?',
+              whereArgs: [localVenteId],
+            );
+          }
+
+          final items = (vMap['items'] as List<dynamic>?) ?? [];
+          for (final it in items) {
+            final itMap = it as Map<String, dynamic>;
+            final itemSyncId = itMap['sync_id'] as String?;
+
+            int? localProdId;
+            if (itMap['product_sync_id'] != null) {
+              final pRes = await txn.query('products', columns: ['id'], where: 'sync_id = ?', whereArgs: [itMap['product_sync_id']]);
+              if (pRes.isNotEmpty) {
+                localProdId = pRes.first['id'] as int?;
+              }
+            }
+
+            final existingItem = itemSyncId != null
+                ? await txn.query('vente_items', where: 'sync_id = ?', whereArgs: [itemSyncId])
+                : [];
+
+            if (existingItem.isEmpty) {
+              await txn.insert('vente_items', {
+                'sync_id': itemSyncId ?? '${syncId}_${itMap['product_name']}',
+                'vente_id': localVenteId,
+                'product_id': localProdId ?? 0,
+                'product_name': itMap['product_name'] ?? 'Article',
+                'quantity': (itMap['quantity'] as num).toDouble(),
+                'unit_price': (itMap['unit_price'] as num).toDouble(),
+                'cost_price': (itMap['cost_price'] as num?)?.toDouble() ?? 0.0,
+                'total': (itMap['total'] as num).toDouble(),
+                'sync_status': 'synced',
+              });
+            }
           }
         }
 

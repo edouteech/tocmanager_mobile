@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'services/sync_service.dart';
 import 'providers/settings_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/sync_provider.dart';
@@ -116,6 +118,28 @@ class _MainShellState extends State<MainShell> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _homeKey = GlobalKey();
   int _currentIndex = 0;
+  StreamSubscription? _syncSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncSub = SyncService.onSyncCompleted.listen((_) {
+      if (mounted) {
+        context.read<CategoryProvider>().load();
+        context.read<ProductProvider>().load();
+        context.read<ClientProvider>().loadClients();
+        context.read<SupplierProvider>().loadSuppliers();
+        context.read<DecaissementProvider>().load();
+        (_homeKey.currentState as dynamic)?.reload();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _syncSub?.cancel();
+    super.dispose();
+  }
 
   Future<void> _navigate(int index, {String? statusFilter}) async {
     if (index == 3) {

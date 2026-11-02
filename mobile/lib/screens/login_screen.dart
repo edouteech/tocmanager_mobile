@@ -300,7 +300,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _serverUrlController,
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.dns_outlined, size: 20),
-                    hintText: 'http://localhost:8000/api/v1',
+                    hintText: 'http://localhost:8008/api/v1',
                     filled: true,
                     fillColor: AppColors.background,
                     border: OutlineInputBorder(
