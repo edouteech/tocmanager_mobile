@@ -1,0 +1,91 @@
+name: Build & Upload APK to Google Drive
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/build-apk.yml'
+      - '.github/scripts/**'
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Créer également une Release GitHub"
+        type: boolean
+        default: false
+
+jobs:
+  build-apk:
+    name: Build Android APK & Google Drive Upload
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Libérer de l'espace disque sur le runner
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/.ghc
+
+      - name: Configuration de Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Configuration de Flutter (Stable)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Téléchargement des dépendances Flutter
+        working-directory: mobile
+        run: |
+          flutter clean
+          flutter pub get
+
+      - name: Build Android APK (Release)
+        working-directory: mobile
+        run: |
+          flutter build apk --release
+
+      - name: Préparer l'APK pour l'export
+        run: |
+          cp mobile/build/app/outputs/flutter-apk/app-release.apk tocmanager.apk
+          ls -lh tocmanager.apk
+
+      - name: Sauvegarder l'APK dans les artefacts GitHub Actions
+        uses: actions/upload-artifact@v4
+        with:
+          name: tocmanager-apk
+          path: tocmanager.apk
+          retention-days: 14
+
+      - name: Configurer l'environnement Python pour Google Drive
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install google-api-python-client google-auth --break-system-packages 2>/dev/null || pip install google-api-python-client google-auth
+
+      - name: Uploader l'APK sur Google Drive
+        env:
+          GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
+          GDRIVE_FOLDER_ID: "12WVpbRWejBpp3ckRn7i_QhlWKBCSpGkB"
+        run: |
+          python3 .github/scripts/upload_to_gdrive.py --folder-id 12WVpbRWejBpp3ckRn7i_QhlWKBCSpGkB tocmanager.apk
+
+      - name: Publier la Release GitHub (si activé)
+        if: github.event.inputs.publish_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: TocManager Mobile v1.0 (build ${{ github.run_number }})
+          files: tocmanager.apk
+          generate_release_notes: true
