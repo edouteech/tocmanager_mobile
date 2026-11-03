@@ -1,0 +1,13 @@
+.git/
+.gitignore
+.agents/
+mobile/
+backend/venv/
+backend/.pytest_cache/
+backend/__pycache__/
+backend/*.db
+backoffice/node_modules/
+backoffice/dist/
+*.log
+.env
+*.env.local
