@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Receipt,
@@ -9,6 +9,8 @@ import {
   Trash2,
   TrendingDown,
   UserCheck,
+  Tag,
+  Search,
 } from 'lucide-react';
 import { decaissementsApi } from '../../lib/api';
 import { formatFCFA, formatDateTime } from '../../lib/formatters';
@@ -16,44 +18,116 @@ import { Decaissement } from '../../types';
 import { Modal } from '../../components/common/Modal';
 import { useDensity } from '../../context/DensityContext';
 
-const CATEGORIES = [
-  'Loyer & Charges',
-  'Salaires & Rémunérations',
-  'Transport & Livraison',
-  'Énergie & Eau (CIE/CEET)',
-  'Maintenance & Réparations',
-  'Fournitures & Emballages',
-  'Marketing & Communication',
-  'Divers & Imprévus',
-];
+const getCategoryBadgeClass = (cat: string) => {
+  switch (cat.toLowerCase().trim()) {
+    case 'fournisseur':
+      return 'bg-brand-50 text-brand-700 border-brand-200 dark:bg-brand-500/15 dark:text-brand-300 dark:border-brand-500/30';
+    case 'loyer':
+    case 'télécoms':
+    case 'telecoms':
+      return 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40';
+    case 'salaires':
+      return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40';
+    case 'transport':
+      return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/40';
+    case 'énergie':
+    case 'energie':
+      return 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800/40';
+    case 'entretien':
+    case 'maintenance':
+      return 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800/40';
+    case 'consommables':
+    case 'fournitures':
+      return 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/40';
+    default:
+      return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-dark-700 dark:text-slate-300 dark:border-dark-600';
+  }
+};
 
 export const ExpensesPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { tableClasses } = useDensity();
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Form state
   const [form, setForm] = useState({
     title: '',
     amount: 0,
-    category: 'Loyer & Charges',
+    category: 'Transport',
+    customCategory: '',
     beneficiary: '',
     payment_method: 'Espèces',
     notes: '',
   });
 
-  // Query
-  const { data: expenses = [], isLoading } = useQuery({
-    queryKey: ['decaissements', selectedCategory],
-    queryFn: () => decaissementsApi.getAll({ category: selectedCategory || undefined }),
+  // Query all expenses
+  const { data: allExpenses = [], isLoading } = useQuery({
+    queryKey: ['decaissements'],
+    queryFn: () => decaissementsApi.getAll(),
   });
+
+  // Query distinct server categories
+  const { data: serverCategories = [] } = useQuery({
+    queryKey: ['decaissement-categories'],
+    queryFn: () => decaissementsApi.getCategories(),
+  });
+
+  // Extract all distinct real categories present in current data + server categories
+  const availableCategories = useMemo(() => {
+    const set = new Set<string>();
+    // Add real categories from loaded expenses
+    allExpenses.forEach((d) => {
+      if (d.category && d.category.trim()) {
+        set.add(d.category.trim());
+      }
+    });
+    // Add server categories
+    serverCategories.forEach((c) => {
+      if (c && c.trim()) {
+        set.add(c.trim());
+      }
+    });
+    // Defaults if empty
+    if (set.size === 0) {
+      ['Transport', 'Télécoms', 'Entretien', 'Consommables', 'Énergie', 'Loyer', 'Salaires', 'Divers'].forEach((c) => set.add(c));
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
+  }, [allExpenses, serverCategories]);
+
+  // Compute count and amount per category
+  const categoryStats = useMemo(() => {
+    const stats: Record<string, { count: number; total: number }> = {};
+    allExpenses.forEach((d) => {
+      const cat = (d.category || 'Général').trim();
+      if (!stats[cat]) stats[cat] = { count: 0, total: 0 };
+      stats[cat].count += 1;
+      stats[cat].total += d.amount;
+    });
+    return stats;
+  }, [allExpenses]);
+
+  // Filtered expenses for display
+  const filteredExpenses = useMemo(() => {
+    return allExpenses.filter((d) => {
+      const matchCategory = !selectedCategory || (d.category || '').toLowerCase().trim() === selectedCategory.toLowerCase().trim();
+      const matchSearch =
+        !searchTerm ||
+        d.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (d.beneficiary && d.beneficiary.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (d.category && d.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (d.payment_method && d.payment_method.toLowerCase().includes(searchTerm.toLowerCase()));
+      return matchCategory && matchSearch;
+    });
+  }, [allExpenses, selectedCategory, searchTerm]);
 
   // Mutations
   const createMutation = useMutation({
     mutationFn: decaissementsApi.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['decaissements'] });
+      queryClient.invalidateQueries({ queryKey: ['decaissement-categories'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       setIsModalOpen(false);
       resetForm();
@@ -64,6 +138,7 @@ export const ExpensesPage: React.FC = () => {
     mutationFn: decaissementsApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['decaissements'] });
+      queryClient.invalidateQueries({ queryKey: ['decaissement-categories'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     },
   });
@@ -72,7 +147,8 @@ export const ExpensesPage: React.FC = () => {
     setForm({
       title: '',
       amount: 0,
-      category: 'Loyer & Charges',
+      category: availableCategories[0] || 'Transport',
+      customCategory: '',
       beneficiary: '',
       payment_method: 'Espèces',
       notes: '',
@@ -83,10 +159,15 @@ export const ExpensesPage: React.FC = () => {
     e.preventDefault();
     if (!form.title.trim() || form.amount <= 0) return;
 
+    const finalCategory =
+      form.category === '__custom__' && form.customCategory.trim()
+        ? form.customCategory.trim()
+        : form.category;
+
     createMutation.mutate({
       title: form.title.trim(),
       amount: form.amount,
-      category: form.category,
+      category: finalCategory,
       beneficiary: form.beneficiary.trim() || undefined,
       payment_method: form.payment_method,
       notes: form.notes.trim() || undefined,
@@ -100,8 +181,9 @@ export const ExpensesPage: React.FC = () => {
   };
 
   // KPIs
-  const totalExpenses = expenses.reduce((sum, d) => sum + d.amount, 0);
-  const avgExpense = expenses.length > 0 ? Math.round(totalExpenses / expenses.length) : 0;
+  const totalExpenses = allExpenses.reduce((sum, d) => sum + d.amount, 0);
+  const avgExpense = allExpenses.length > 0 ? Math.round(totalExpenses / allExpenses.length) : 0;
+  const filteredTotal = filteredExpenses.reduce((sum, d) => sum + d.amount, 0);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -137,7 +219,7 @@ export const ExpensesPage: React.FC = () => {
               <TrendingDown className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">{expenses.length} dépenses enregistrées</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">{allExpenses.length} dépenses enregistrées</p>
         </div>
 
         <div className="card-toc card-hover p-5">
@@ -156,53 +238,86 @@ export const ExpensesPage: React.FC = () => {
         <div className="card-toc card-hover p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Catégorie la plus active</p>
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Filtre Actif</p>
               <p className="text-base font-extrabold text-slate-900 dark:text-white mt-2 truncate">
-                {selectedCategory || 'Toutes catégories'}
+                {selectedCategory ? `${selectedCategory} (${formatFCFA(filteredTotal)})` : 'Toutes les catégories'}
               </p>
             </div>
             <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400 flex items-center justify-center border border-brand-200 dark:border-brand-500/30">
               <Receipt className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">Filtre d'affichage actuel</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">
+            {filteredExpenses.length} dépense(s) affichée(s)
+          </p>
         </div>
       </div>
 
-      {/* Category Filter Pills */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        <button
-          onClick={() => setSelectedCategory('')}
-          className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${
-            selectedCategory === ''
-              ? 'bg-brand-500 text-white shadow-sm'
-              : 'bg-white dark:bg-dark-800 text-slate-600 dark:text-slate-400 border border-[#E8EFF5] dark:border-dark-600 hover:bg-slate-50 dark:hover:bg-dark-700'
-          }`}
-        >
-          Toutes ({expenses.length})
-        </button>
-        {CATEGORIES.map((cat) => (
+      {/* Filter and Search Bar */}
+      <div className="space-y-3">
+        {/* Search input */}
+        <div className="relative w-full sm:w-80">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Rechercher par motif, bénéficiaire, mode..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="input-toc pl-10"
+          />
+        </div>
+
+        {/* Dynamic Category Filter Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5">
           <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap ${
-              selectedCategory === cat
-                ? 'bg-brand-500 text-white shadow-sm font-bold'
-                : 'bg-white dark:bg-dark-800 text-slate-600 dark:text-slate-400 border border-[#E8EFF5] dark:border-dark-600 hover:bg-slate-50 dark:hover:bg-dark-700'
+            onClick={() => setSelectedCategory('')}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap shadow-xs ${
+              selectedCategory === ''
+                ? 'bg-brand-500 text-white shadow-sm ring-2 ring-brand-500/30'
+                : 'bg-white dark:bg-dark-800 text-slate-600 dark:text-slate-300 border border-[#E8EFF5] dark:border-dark-600 hover:bg-slate-50 dark:hover:bg-dark-700'
             }`}
           >
-            {cat}
+            Toutes les dépenses ({allExpenses.length})
           </button>
-        ))}
+
+          {availableCategories.map((cat) => {
+            const count = categoryStats[cat]?.count || 0;
+            const isSelected = selectedCategory.toLowerCase().trim() === cat.toLowerCase().trim();
+            return (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(isSelected ? '' : cat)}
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap shadow-xs ${
+                  isSelected
+                    ? 'bg-brand-500 text-white shadow-sm ring-2 ring-brand-500/30'
+                    : 'bg-white dark:bg-dark-800 text-slate-600 dark:text-slate-300 border border-[#E8EFF5] dark:border-dark-600 hover:bg-slate-50 dark:hover:bg-dark-700'
+                }`}
+              >
+                <span>{cat}</span>
+                {count > 0 && (
+                  <span
+                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                      isSelected
+                        ? 'bg-white/25 text-white'
+                        : 'bg-slate-100 dark:bg-dark-700 text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Expenses Table with Density */}
       <div className="card-toc overflow-hidden">
         {isLoading ? (
           <div className="p-12 text-center text-slate-400 text-sm">Chargement des dépenses...</div>
-        ) : expenses.length === 0 ? (
+        ) : filteredExpenses.length === 0 ? (
           <div className="p-12 text-center text-slate-400 text-sm">
-            Aucun décaissement enregistré pour ces critères.
+            Aucun décaissement trouvé pour cette sélection.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -220,7 +335,7 @@ export const ExpensesPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E8EFF5] dark:divide-dark-600/60">
-                {expenses.map((d) => (
+                {filteredExpenses.map((d) => (
                   <tr key={d.sync_id} className="hover:bg-brand-50/30 dark:hover:bg-dark-700/40 transition-colors">
                     <td className={tableClasses.td}>
                       <div className="flex items-center gap-1.5 font-medium text-slate-900 dark:text-white">
@@ -233,8 +348,13 @@ export const ExpensesPage: React.FC = () => {
                       {d.notes && <div className="text-xs text-slate-400 italic font-normal mt-0.5">{d.notes}</div>}
                     </td>
                     <td className={tableClasses.td}>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-900/50">
-                        {d.category}
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border ${getCategoryBadgeClass(
+                          d.category || 'Général'
+                        )}`}
+                      >
+                        <Tag className="w-3 h-3" />
+                        <span>{d.category || 'Général'}</span>
                       </span>
                     </td>
                     <td className={`${tableClasses.td} text-slate-700 dark:text-slate-200`}>
@@ -330,21 +450,38 @@ export const ExpensesPage: React.FC = () => {
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
-                Catégorie comptable *
+                Catégorie *
               </label>
               <select
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
                 className="input-toc bg-white dark:bg-dark-700"
               >
-                {CATEGORIES.map((cat) => (
+                {availableCategories.map((cat) => (
                   <option key={cat} value={cat}>
                     {cat}
                   </option>
                 ))}
+                <option value="__custom__">+ Nouvelle catégorie personnalisée...</option>
               </select>
             </div>
           </div>
+
+          {form.category === '__custom__' && (
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Nom de la nouvelle catégorie *
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Ex: Frais Bancaires, Sécurité..."
+                value={form.customCategory}
+                onChange={(e) => setForm({ ...form, customCategory: e.target.value })}
+                className="input-toc"
+              />
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -353,7 +490,7 @@ export const ExpensesPage: React.FC = () => {
               </label>
               <input
                 type="text"
-                placeholder="Ex: CEET, Livreur Paul..."
+                placeholder="Ex: SBEE, Moov Africa, Chauffeur..."
                 value={form.beneficiary}
                 onChange={(e) => setForm({ ...form, beneficiary: e.target.value })}
                 className="input-toc"
@@ -369,7 +506,7 @@ export const ExpensesPage: React.FC = () => {
                 className="input-toc bg-white dark:bg-dark-700"
               >
                 <option value="Espèces">Espèces de Caisse</option>
-                <option value="Mobile Money">Mobile Money (T-Money/Flooz)</option>
+                <option value="Mobile Money">Mobile Money (T-Money/Flooz/Moov)</option>
                 <option value="Virement">Virement bancaire</option>
                 <option value="Chèque">Chèque</option>
               </select>

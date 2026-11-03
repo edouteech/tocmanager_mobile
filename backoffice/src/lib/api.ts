@@ -111,6 +111,8 @@ export const approvisionnementsApi = {
 export const decaissementsApi = {
   getAll: (params?: { category?: string; start_date?: string; end_date?: string }) =>
     api.get<Decaissement[]>('/decaissements', { params }).then((r) => r.data),
+  getCategories: () =>
+    api.get<string[]>('/decaissements/categories').then((r) => r.data),
   create: (data: {
     title: string;
     amount: number;

@@ -33,6 +33,23 @@ def list_decaissements(
 
     return query.order_by(Decaissement.date.desc()).offset(offset).limit(limit).all()
 
+@router.get("/categories", response_model=List[str])
+def list_expense_categories(
+    current_user: User = Depends(deps.get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Retourne la liste ordonnée des catégories de décaissement réellement enregistrées en base."""
+    rows = (
+        db.query(Decaissement.category)
+        .filter(Decaissement.deleted_at.is_(None))
+        .distinct()
+        .all()
+    )
+    db_cats = {r[0].strip() for r in rows if r[0] and r[0].strip()}
+    defaults = {"Transport", "Télécoms", "Entretien", "Consommables", "Énergie", "Loyer", "Salaires", "Fournisseur", "Divers"}
+    all_cats = sorted(list(db_cats.union(defaults)))
+    return all_cats
+
 @router.post("", response_model=DecaissementResponse, status_code=status.HTTP_201_CREATED)
 def create_decaissement(
     dec_in: DecaissementCreate,
