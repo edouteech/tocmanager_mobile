@@ -41,6 +41,8 @@ export interface Vente {
   ticket_number: string;
   client_sync_id?: string | null;
   client_name?: string | null;
+  user_id?: string | null;
+  user_name?: string | null;
   total_amount: number;
   paid_amount: number;
   discount_amount: number;
@@ -74,8 +76,9 @@ export interface Category {
   description?: string | null;
   color?: string | null;
   icon?: string | null;
-  updated_at: string;
-  deleted_at?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+  products_count?: number;
 }
 
 export interface Client {
@@ -86,6 +89,107 @@ export interface Client {
   address?: string | null;
   balance: number;
   notes?: string | null;
-  updated_at: string;
-  deleted_at?: string | null;
+  user_id?: string | null;
+  user_name?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+}
+
+export interface Supplier {
+  sync_id: string;
+  name: string;
+  contact_person?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  balance: number;
+  notes?: string | null;
+  user_id?: string | null;
+  user_name?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+}
+
+export interface Approvisionnement {
+  sync_id: string;
+  supplier_sync_id?: string | null;
+  supplier_name?: string | null;
+  product_sync_id?: string | null;
+  product_name: string;
+  quantity: number;
+  unit_cost: number;
+  total_cost: number;
+  payment_status: string;
+  date: string;
+  notes?: string | null;
+  user_id?: string | null;
+  user_name?: string | null;
+  created_at: string;
+}
+
+export interface Decaissement {
+  sync_id: string;
+  title: string;
+  amount: number;
+  category?: string | null;
+  beneficiary?: string | null;
+  payment_method: string;
+  date: string;
+  notes?: string | null;
+  user_id?: string | null;
+  user_name?: string | null;
+  created_at: string;
+}
+
+export interface StoreSettings {
+  store_name: string;
+  currency: string;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  tax_rate: number;
+  low_stock_threshold: number;
+  rccm?: string | null;
+  nif?: string | null;
+}
+
+export interface FinancialKPIs {
+  gross_sales: number;
+  discount_amount: number;
+  net_sales: number;
+  cogs: number;
+  gross_margin: number;
+  gross_margin_rate: number;
+  total_expenses: number;
+  net_profit: number;
+  net_margin_rate: number;
+}
+
+export interface TopProductItem {
+  product_name: string;
+  quantity_sold: number;
+  total_revenue: number;
+  total_profit: number;
+}
+
+export interface ExpenseCategoryItem {
+  category: string;
+  total_amount: number;
+  percentage: number;
+}
+
+export interface MonthlyTrendItem {
+  period: string;
+  sales: number;
+  expenses: number;
+  profit: number;
+}
+
+export interface FinancialReport {
+  start_date: string;
+  end_date: string;
+  kpis: FinancialKPIs;
+  top_products: TopProductItem[];
+  expenses_by_category: ExpenseCategoryItem[];
+  monthly_trend: MonthlyTrendItem[];
 }

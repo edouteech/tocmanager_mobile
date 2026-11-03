@@ -188,3 +188,11 @@ class SyncEvent(Base):
     entity_type = Column(String(50), nullable=False)
     entity_uuid = Column(String(36), nullable=False)
     synced_at = Column(DateTime(timezone=True), default=utc_now)
+
+class StoreSetting(Base):
+    __tablename__ = "store_settings"
+
+    key = Column(String(100), primary_key=True)
+    value = Column(Text, nullable=True)
+    description = Column(String(255), nullable=True)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)

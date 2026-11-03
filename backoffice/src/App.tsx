@@ -8,8 +8,15 @@ import { LoginPage } from './features/auth/LoginPage';
 import { DashboardPage } from './features/dashboard/DashboardPage';
 import { SalesPage } from './features/sales/SalesPage';
 import { ProductsPage } from './features/inventory/ProductsPage';
+import { CategoriesPage } from './features/inventory/CategoriesPage';
+import { ClientsPage } from './features/clients/ClientsPage';
+import { SuppliersPage } from './features/suppliers/SuppliersPage';
+import { SuppliesPage } from './features/supplies/SuppliesPage';
+import { ExpensesPage } from './features/expenses/ExpensesPage';
+import { ReportsPage } from './features/reports/ReportsPage';
 import { UsersPage } from './features/users/UsersPage';
 import { AuditLogsPage } from './features/audit/AuditLogsPage';
+import { SettingsPage } from './features/settings/SettingsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,7 +41,7 @@ export const App: React.FC = () => {
           {/* Public login route */}
           <Route path="/login" element={<LoginPage />} />
 
-          {/* Protected routes */}
+          {/* Protected routes inside MainLayout */}
           <Route
             path="/"
             element={
@@ -43,9 +50,45 @@ export const App: React.FC = () => {
               </ProtectedRoute>
             }
           >
+            {/* Ventes & Commerce */}
             <Route index element={<DashboardPage />} />
             <Route path="ventes" element={<SalesPage />} />
+            <Route path="clients" element={<ClientsPage />} />
+
+            {/* Catalogue & Stocks */}
             <Route path="produits" element={<ProductsPage />} />
+            <Route path="categories" element={<CategoriesPage />} />
+            <Route
+              path="approvisionnements"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                  <SuppliesPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Finances & Dépenses */}
+            <Route path="depenses" element={<ExpensesPage />} />
+            <Route
+              path="fournisseurs"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                  <SuppliersPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Analytique & Pilotage */}
+            <Route
+              path="rapports"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                  <ReportsPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Administration */}
             <Route
               path="utilisateurs"
               element={
@@ -59,6 +102,14 @@ export const App: React.FC = () => {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AuditLogsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="parametres"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <SettingsPage />
                 </ProtectedRoute>
               }
             />
