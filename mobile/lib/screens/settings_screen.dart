@@ -38,7 +38,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _restoring = false;
   bool _clearingData = false;
   bool _enableAverageCostPrice = false;
-  String _serverUrl = SecureStorageService.defaultServerUrl;
 
   @override
   void initState() {
@@ -49,12 +48,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _addressCtrl = TextEditingController();
     _footerCtrl = TextEditingController();
     _currencyCtrl = TextEditingController();
-    _loadServerUrl();
-  }
-
-  Future<void> _loadServerUrl() async {
-    final url = await SecureStorageService.getServerUrl();
-    if (mounted) setState(() => _serverUrl = url);
   }
 
   @override
@@ -325,14 +318,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: AppColors.divider),
                         ),
-                        child: Row(
+                        child: const Row(
                           children: [
-                            const Icon(Icons.dns_outlined, size: 18, color: AppColors.primary),
-                            const SizedBox(width: 8),
+                            Icon(Icons.cloud_done_outlined, size: 18, color: AppColors.primary),
+                            SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                _serverUrl,
-                                style: const TextStyle(
+                                SecureStorageService.apiUrl,
+                                style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.textDark,
@@ -341,10 +334,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            TextButton(
-                              onPressed: _showEditServerDialog,
-                              child: const Text('Modifier', style: TextStyle(fontSize: 12)),
-                            ),
+                            Icon(Icons.lock_outline, size: 16, color: AppColors.textLight),
                           ],
                         ),
                       ),
@@ -468,52 +458,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Divider(height: 1),
           const SizedBox(height: 14),
           ...children,
-        ],
-      ),
-    );
-  }
-
-  void _showEditServerDialog() {
-    final controller = TextEditingController(text: _serverUrl);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Adresse du Serveur API'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Indiquez l\'URL du serveur backend (ex: http://192.168.1.100:8000/api/v1 ou https://api.domaine.com/api/v1) :',
-              style: TextStyle(fontSize: 13, color: AppColors.textMedium),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                labelText: 'URL API',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.link, size: 20),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final newUrl = controller.text.trim();
-              if (newUrl.isNotEmpty) {
-                await SecureStorageService.setServerUrl(newUrl);
-                if (mounted) setState(() => _serverUrl = newUrl);
-              }
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-            child: const Text('Enregistrer'),
-          ),
         ],
       ),
     );

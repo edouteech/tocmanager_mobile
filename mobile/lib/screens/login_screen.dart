@@ -15,24 +15,20 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _serverUrlController = TextEditingController();
 
   bool _obscurePassword = true;
-  bool _showAdvancedSettings = false;
 
   @override
   void initState() {
     super.initState();
-    _usernameController.text = 'caissier1';
-    _passwordController.text = 'caisse1234';
-    _serverUrlController.text = SecureStorageService.defaultServerUrl;
+    _usernameController.text = '';
+    _passwordController.text = '';
   }
 
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
-    _serverUrlController.dispose();
     super.dispose();
   }
 
@@ -40,14 +36,12 @@ class _LoginScreenState extends State<LoginScreen> {
     final auth = context.read<AuthProvider>();
     final username = _usernameController.text.trim();
     final password = _passwordController.text;
-    final serverUrl = _serverUrlController.text.trim();
 
     if (username.isEmpty || password.isEmpty) return;
 
     final success = await auth.login(
       usernameOrEmail: username,
       password: password,
-      serverUrl: serverUrl.isNotEmpty ? serverUrl : null,
     );
 
     if (success) {
@@ -276,40 +270,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-
-              // Advanced server settings toggle
-              InkWell(
-                onTap: () => setState(() => _showAdvancedSettings = !_showAdvancedSettings),
-                child: Row(
-                  children: [
-                    Icon(
-                      _showAdvancedSettings ? Icons.arrow_drop_down : Icons.arrow_right,
-                      color: AppColors.textMedium,
-                    ),
-                    const Text(
-                      'Paramètres serveur (API)',
-                      style: TextStyle(fontSize: 12, color: AppColors.textMedium),
-                    ),
-                  ],
-                ),
-              ),
-              if (_showAdvancedSettings) ...[
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _serverUrlController,
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.dns_outlined, size: 20),
-                    hintText: 'http://localhost:8008/api/v1',
-                    filled: true,
-                    fillColor: AppColors.background,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.divider),
-                    ),
-                  ),
-                ),
-              ],
               const SizedBox(height: 28),
 
               // Login button
