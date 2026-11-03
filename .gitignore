@@ -1,6 +1,7 @@
 # Environment & secrets
 .env
 *.env.local
+.agents/
 
 # Python / Backend
 backend/venv/
