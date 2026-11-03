@@ -35,6 +35,7 @@ def list_decaissements(
 
 @router.get("/categories", response_model=List[str])
 def list_expense_categories(
+    include_defaults: bool = False,
     current_user: User = Depends(deps.get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -47,8 +48,9 @@ def list_expense_categories(
     )
     db_cats = {r[0].strip() for r in rows if r[0] and r[0].strip()}
     defaults = {"Transport", "Télécoms", "Entretien", "Consommables", "Énergie", "Loyer", "Salaires", "Fournisseur", "Divers"}
-    all_cats = sorted(list(db_cats.union(defaults)))
-    return all_cats
+    if include_defaults or not db_cats:
+        return sorted(list(db_cats.union(defaults)))
+    return sorted(list(db_cats))
 
 @router.post("", response_model=DecaissementResponse, status_code=status.HTTP_201_CREATED)
 def create_decaissement(

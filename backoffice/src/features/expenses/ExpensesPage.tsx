@@ -71,28 +71,39 @@ export const ExpensesPage: React.FC = () => {
   // Query distinct server categories
   const { data: serverCategories = [] } = useQuery({
     queryKey: ['decaissement-categories'],
-    queryFn: () => decaissementsApi.getCategories(),
+    queryFn: () => decaissementsApi.getCategories({ include_defaults: true }),
   });
 
-  // Extract all distinct real categories present in current data + server categories
-  const availableCategories = useMemo(() => {
+  // Extract all distinct real categories present in current data for filtering
+  const filterCategories = useMemo(() => {
     const set = new Set<string>();
-    // Add real categories from loaded expenses
     allExpenses.forEach((d) => {
       if (d.category && d.category.trim()) {
         set.add(d.category.trim());
       }
     });
-    // Add server categories
-    serverCategories.forEach((c) => {
-      if (c && c.trim()) {
-        set.add(c.trim());
-      }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
+  }, [allExpenses]);
+
+  // Categories available in the creation form (defaults + all existing categories)
+  const formCategories = useMemo(() => {
+    const set = new Set<string>([
+      'Transport',
+      'Télécoms',
+      'Entretien',
+      'Consommables',
+      'Énergie',
+      'Loyer',
+      'Salaires',
+      'Fournisseur',
+      'Divers',
+    ]);
+    allExpenses.forEach((d) => {
+      if (d.category && d.category.trim()) set.add(d.category.trim());
     });
-    // Defaults if empty
-    if (set.size === 0) {
-      ['Transport', 'Télécoms', 'Entretien', 'Consommables', 'Énergie', 'Loyer', 'Salaires', 'Divers'].forEach((c) => set.add(c));
-    }
+    serverCategories.forEach((c) => {
+      if (c && c.trim()) set.add(c.trim());
+    });
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
   }, [allExpenses, serverCategories]);
 
@@ -147,7 +158,7 @@ export const ExpensesPage: React.FC = () => {
     setForm({
       title: '',
       amount: 0,
-      category: availableCategories[0] || 'Transport',
+      category: formCategories[0] || 'Transport',
       customCategory: '',
       beneficiary: '',
       payment_method: 'Espèces',
@@ -280,7 +291,7 @@ export const ExpensesPage: React.FC = () => {
             Toutes les dépenses ({allExpenses.length})
           </button>
 
-          {availableCategories.map((cat) => {
+          {filterCategories.map((cat) => {
             const count = categoryStats[cat]?.count || 0;
             const isSelected = selectedCategory.toLowerCase().trim() === cat.toLowerCase().trim();
             return (
@@ -457,7 +468,7 @@ export const ExpensesPage: React.FC = () => {
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
                 className="input-toc bg-white dark:bg-dark-700"
               >
-                {availableCategories.map((cat) => (
+                {formCategories.map((cat) => (
                   <option key={cat} value={cat}>
                     {cat}
                   </option>
