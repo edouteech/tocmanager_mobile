@@ -5,19 +5,22 @@ import {
   Plus,
   Search,
   AlertTriangle,
-  X,
   Edit2,
   Trash2,
   CheckCircle,
+  Tag,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { formatFCFA } from '../../lib/formatters';
 import { Product, Category } from '../../types';
+import { Drawer } from '../../components/common/Drawer';
+import { useDensity } from '../../context/DensityContext';
 
 export const ProductsPage: React.FC = () => {
   const queryClient = useQueryClient();
+  const { tableClasses } = useDensity();
   const [searchTerm, setSearchTerm] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   // Form states
@@ -55,7 +58,7 @@ export const ProductsPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-      closeModal();
+      closeDrawer();
     },
   });
 
@@ -67,7 +70,7 @@ export const ProductsPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-      closeModal();
+      closeDrawer();
     },
   });
 
@@ -82,7 +85,7 @@ export const ProductsPage: React.FC = () => {
     },
   });
 
-  const openCreateModal = () => {
+  const openCreateDrawer = () => {
     setEditingProduct(null);
     setName('');
     setCategoryId(categories && categories.length > 0 ? categories[0].sync_id : '');
@@ -91,10 +94,10 @@ export const ProductsPage: React.FC = () => {
     setStock(0);
     setMinStock(5);
     setUnit('pièce');
-    setIsModalOpen(true);
+    setIsDrawerOpen(true);
   };
 
-  const openEditModal = (p: Product) => {
+  const openEditDrawer = (p: Product) => {
     setEditingProduct(p);
     setName(p.name);
     setCategoryId(p.category_sync_id || '');
@@ -103,11 +106,11 @@ export const ProductsPage: React.FC = () => {
     setStock(p.stock);
     setMinStock(p.min_stock);
     setUnit(p.unit || 'pièce');
-    setIsModalOpen(true);
+    setIsDrawerOpen(true);
   };
 
-  const closeModal = () => {
-    setIsModalOpen(false);
+  const closeDrawer = () => {
+    setIsDrawerOpen(false);
     setEditingProduct(null);
   };
 
@@ -139,11 +142,11 @@ export const ProductsPage: React.FC = () => {
       {/* Title & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             Stocks & Articles
-          </h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Catalogue général, prix de vente, coûts d'achat et seuils d'alerte.
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Catalogue général des produits, prix de vente, coûts d'achat et seuils d'alerte.
           </p>
         </div>
 
@@ -157,13 +160,13 @@ export const ProductsPage: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Rechercher un article..."
-              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 shadow-sm transition"
+              className="input-toc pl-10"
             />
           </div>
 
           <button
-            onClick={openCreateModal}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-sm transition"
+            onClick={openCreateDrawer}
+            className="btn-primary"
           >
             <Plus className="w-4 h-4" />
             <span>Nouvel Article</span>
@@ -171,22 +174,22 @@ export const ProductsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+      {/* Products Table with Density */}
+      <div className="card-toc overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200/80">
+          <table className="w-full text-left">
+            <thead className="bg-[#F5FAFD] dark:bg-dark-700/50 border-b border-[#E8EFF5] dark:border-dark-600">
               <tr>
-                <th className="px-6 py-3.5">Désignation</th>
-                <th className="px-6 py-3.5">Prix de Vente</th>
-                <th className="px-6 py-3.5">Coût d'Achat</th>
-                <th className="px-6 py-3.5">Marge Unitaire</th>
-                <th className="px-6 py-3.5">Stock Actuel</th>
-                <th className="px-6 py-3.5 text-center">Statut</th>
-                <th className="px-6 py-3.5 text-right">Actions</th>
+                <th className={tableClasses.th}>Désignation</th>
+                <th className={tableClasses.th}>Catégorie</th>
+                <th className={`${tableClasses.th} text-right`}>Prix Vente</th>
+                <th className={`${tableClasses.th} text-right`}>Coût Achat</th>
+                <th className={`${tableClasses.th} text-center`}>Stock Actuel</th>
+                <th className={`${tableClasses.th} text-center`}>État Stock</th>
+                <th className={`${tableClasses.th} text-right`}>Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[#E8EFF5] dark:divide-dark-600/60">
               {isLoading ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
@@ -195,47 +198,62 @@ export const ProductsPage: React.FC = () => {
                 </tr>
               ) : filteredProducts.length > 0 ? (
                 filteredProducts.map((p) => {
-                  const marge = p.price - p.cost_price;
-                  const isLow = p.stock <= p.min_stock && p.stock > 0;
-                  const isOut = p.stock <= 0;
+                  const isLow = p.stock <= p.min_stock;
+                  const cat = categories?.find((c) => c.sync_id === p.category_sync_id);
 
                   return (
-                    <tr key={p.sync_id} className="hover:bg-slate-50/70 transition">
-                      <td className="px-6 py-4 font-semibold text-slate-900">
-                        {p.name}
+                    <tr key={p.sync_id} className="hover:bg-brand-50/30 dark:hover:bg-dark-700/40 transition-colors">
+                      <td className={`${tableClasses.td} font-bold text-slate-900 dark:text-white`}>
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold">
+                            <Package className="w-4 h-4" />
+                          </div>
+                          <span>{p.name}</span>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 font-bold text-slate-800">
-                        {formatFCFA(p.price)}
-                      </td>
-                      <td className="px-6 py-4 text-slate-500">
-                        {formatFCFA(p.cost_price)}
-                      </td>
-                      <td className="px-6 py-4 font-medium text-emerald-600">
-                        + {formatFCFA(marge)}
-                      </td>
-                      <td className="px-6 py-4 font-mono font-medium text-slate-800">
-                        {p.stock} {p.unit || 'pièce'}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        {isOut ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700">
-                            Rupture
-                          </span>
-                        ) : isLow ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">
-                            Stock Faible
+                      <td className={tableClasses.td}>
+                        {cat ? (
+                          <span
+                            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                            style={{
+                              backgroundColor: `${cat.color || '#29ABE2'}18`,
+                              color: cat.color || '#29ABE2',
+                            }}
+                          >
+                            <Tag className="w-3 h-3" />
+                            {cat.name}
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">
-                            Normal
+                          <span className="text-xs text-slate-400">Non classé</span>
+                        )}
+                      </td>
+                      <td className={`${tableClasses.td} text-right font-extrabold text-slate-900 dark:text-white font-mono`}>
+                        {formatFCFA(p.price)}
+                      </td>
+                      <td className={`${tableClasses.td} text-right text-xs text-slate-500 dark:text-slate-400 font-mono`}>
+                        {formatFCFA(p.cost_price)}
+                      </td>
+                      <td className={`${tableClasses.td} text-center font-bold text-slate-900 dark:text-white`}>
+                        {p.stock} <span className="text-xs text-slate-400 font-normal">{p.unit || 'pce'}</span>
+                      </td>
+                      <td className={`${tableClasses.td} text-center`}>
+                        {isLow ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50">
+                            <AlertTriangle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                            <span>Stock Bas ({p.min_stock})</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50">
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <span>Normal</span>
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="inline-flex items-center gap-1">
+                      <td className={`${tableClasses.td} text-right`}>
+                        <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => openEditModal(p)}
-                            className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition"
+                            onClick={() => openEditDrawer(p)}
+                            className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-dark-700 rounded-xl transition"
                             title="Modifier"
                           >
                             <Edit2 className="w-4 h-4" />
@@ -246,7 +264,7 @@ export const ProductsPage: React.FC = () => {
                                 deleteMutation.mutate(p.sync_id);
                               }
                             }}
-                            className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition"
                             title="Supprimer"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -259,7 +277,7 @@ export const ProductsPage: React.FC = () => {
               ) : (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
-                    Aucun article dans le catalogue.
+                    Aucun produit trouvé pour cette recherche.
                   </td>
                 </tr>
               )}
@@ -268,130 +286,137 @@ export const ProductsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Add / Edit Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <h3 className="font-bold text-slate-900">
-                {editingProduct ? 'Modifier un Article' : 'Nouvel Article'}
-              </h3>
-              <button
-                onClick={closeModal}
-                className="text-slate-400 hover:text-slate-600 rounded-lg p-1 transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Nom du Produit
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Ex: Coca-Cola 33cl"
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                    Prix de Vente (FCFA)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    value={price}
-                    onChange={(e) => setPrice(Number(e.target.value))}
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                    Coût d'Achat (FCFA)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    value={costPrice}
-                    onChange={(e) => setCostPrice(Number(e.target.value))}
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                    Stock Initial
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    value={stock}
-                    onChange={(e) => setStock(Number(e.target.value))}
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                    Seuil Alerte
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    value={minStock}
-                    onChange={(e) => setMinStock(Number(e.target.value))}
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Unité de mesure
-                </label>
-                <input
-                  type="text"
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
-                  placeholder="pièce, carton, kg..."
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition"
-                />
-              </div>
-
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl text-sm font-medium transition"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-sm transition disabled:opacity-50"
-                >
-                  {editingProduct ? 'Enregistrer' : 'Créer l\'Article'}
-                </button>
-              </div>
-            </form>
+      {/* Slide-over Drawer for Product Create / Edit */}
+      <Drawer
+        isOpen={isDrawerOpen}
+        onClose={closeDrawer}
+        title={editingProduct ? "Modifier l'Article" : "Ajouter un Nouvel Article"}
+        subtitle="Renseignez les informations de prix et de stock"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={closeDrawer}
+              className="btn-secondary"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={createMutation.isPending || updateMutation.isPending}
+              className="btn-primary"
+            >
+              {createMutation.isPending || updateMutation.isPending
+                ? 'Enregistrement...'
+                : editingProduct
+                ? 'Mettre à jour'
+                : "Créer l'article"}
+            </button>
+          </>
+        }
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+              Désignation / Nom de l'Article *
+            </label>
+            <input
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ex: Coca-Cola 33cl"
+              className="input-toc"
+            />
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+              Catégorie / Rayon
+            </label>
+            <select
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              className="input-toc bg-white dark:bg-dark-700"
+            >
+              <option value="">Sélectionner une catégorie (optionnel)...</option>
+              {(categories || []).map((c) => (
+                <option key={c.sync_id} value={c.sync_id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Prix de Vente (F CFA) *
+              </label>
+              <input
+                type="number"
+                min="0"
+                required
+                value={price}
+                onChange={(e) => setPrice(Number(e.target.value))}
+                className="input-toc font-bold"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Coût d'Achat Référence (F CFA)
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={costPrice}
+                onChange={(e) => setCostPrice(Number(e.target.value))}
+                className="input-toc font-bold"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Stock Initial
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={stock}
+                onChange={(e) => setStock(Number(e.target.value))}
+                className="input-toc font-bold"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Seuil Alerte
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={minStock}
+                onChange={(e) => setMinStock(Number(e.target.value))}
+                className="input-toc font-bold"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Unité
+              </label>
+              <input
+                type="text"
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                placeholder="pièce, kg, carton..."
+                className="input-toc"
+              />
+            </div>
+          </div>
+        </form>
+      </Drawer>
     </div>
   );
 };

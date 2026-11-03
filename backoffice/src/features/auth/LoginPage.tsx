@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Layers, Lock, User, AlertCircle, ArrowRight } from 'lucide-react';
+import { Lock, User, AlertCircle, ArrowRight, Sun, Moon } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../stores/authStore';
+import { useTheme } from '../../context/ThemeContext';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
+  const { theme, toggleTheme } = useTheme();
 
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -39,30 +41,51 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 border border-slate-100">
-        {/* Brand header */}
+    <div className="min-h-screen bg-gradient-to-br from-[#F5FAFD] via-[#E8F5FD] to-[#DDF1FB] dark:from-dark-900 dark:via-dark-800 dark:to-dark-900 flex items-center justify-center p-6 select-none transition-colors duration-300 relative">
+      {/* Top right theme toggle */}
+      <div className="absolute top-6 right-6">
+        <button
+          onClick={toggleTheme}
+          className="p-2.5 rounded-xl bg-white/80 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-600 text-slate-600 dark:text-slate-300 shadow-soft hover:shadow-soft-md transition"
+          title={theme === 'dark' ? 'Mode Clair' : 'Mode Sombre'}
+        >
+          {theme === 'dark' ? (
+            <Sun className="w-4 h-4 text-amber-400" />
+          ) : (
+            <Moon className="w-4 h-4 text-slate-700" />
+          )}
+        </button>
+      </div>
+
+      <div className="w-full max-w-md bg-white dark:bg-dark-800 rounded-3xl shadow-soft-lg p-8 sm:p-10 border border-[#E8EFF5] dark:border-dark-600 animate-fade-in transition-colors duration-200">
+        {/* Brand header with real logo */}
         <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-indigo-600 rounded-xl mx-auto flex items-center justify-center text-white shadow-lg mb-4">
-            <Layers className="w-6 h-6" />
+          <div className="flex justify-center mb-4">
+            <img
+              src="/assets/logo.png"
+              alt="TocManager"
+              className="h-12 w-auto max-w-[200px] object-contain drop-shadow-sm"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/assets/icon.png';
+              }}
+            />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">TocManager</h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Connexion au Backoffice d'Administration
+          <p className="text-xs font-semibold text-brand-600 dark:text-brand-400 uppercase tracking-wider">
+            Portail d'Administration Central
           </p>
         </div>
 
         {/* Error Alert */}
         {errorMessage && (
-          <div className="mb-6 p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3 text-rose-700 text-sm">
-            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-            <span>{errorMessage}</span>
+          <div className="mb-6 p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded-2xl flex items-start gap-3 text-rose-700 dark:text-rose-300 text-sm animate-fade-in">
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+            <span className="font-medium text-xs">{errorMessage}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
               Identifiant ou Email
             </label>
             <div className="relative">
@@ -74,14 +97,14 @@ export const LoginPage: React.FC = () => {
                 required
                 value={usernameOrEmail}
                 onChange={(e) => setUsernameOrEmail(e.target.value)}
-                placeholder="Ex: admin"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition"
+                placeholder="Ex: admin ou caissier1"
+                className="w-full pl-10 pr-4 py-2.5 input-toc text-sm font-medium"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
               Mot de passe
             </label>
             <div className="relative">
@@ -94,7 +117,7 @@ export const LoginPage: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition"
+                className="w-full pl-10 pr-4 py-2.5 input-toc text-sm font-medium"
               />
             </div>
           </div>
@@ -102,10 +125,13 @@ export const LoginPage: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full mt-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full mt-3 py-3 px-4 btn-primary font-bold text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {isLoading ? (
-              <span>Connexion en cours...</span>
+              <span className="inline-flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                <span>Connexion en cours...</span>
+              </span>
             ) : (
               <>
                 <span>Se connecter</span>
@@ -115,8 +141,8 @@ export const LoginPage: React.FC = () => {
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-slate-100 text-center text-xs text-slate-400">
-          Système certifié pour la gestion de caisse et stock
+        <div className="mt-8 pt-6 border-t border-[#E8EFF5] dark:border-dark-600 text-center text-xs text-slate-400 dark:text-slate-500 font-medium">
+          Plateforme synchronisée pour caisses tactiles et terminaux mobiles
         </div>
       </div>
     </div>

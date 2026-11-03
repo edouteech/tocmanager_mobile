@@ -3,17 +3,18 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Search,
   Printer,
-  X,
   FileText,
-  Calendar,
-  CheckCircle2,
-  Clock,
+  CreditCard,
+  ShoppingBag,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { formatFCFA, formatDateTime } from '../../lib/formatters';
 import { Vente } from '../../types';
+import { Drawer } from '../../components/common/Drawer';
+import { useDensity } from '../../context/DensityContext';
 
 export const SalesPage: React.FC = () => {
+  const { tableClasses } = useDensity();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedVente, setSelectedVente] = useState<Vente | null>(null);
 
@@ -43,11 +44,11 @@ export const SalesPage: React.FC = () => {
       {/* Title & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             Journal des Ventes
-          </h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Historique exhaustif de tous les tickets et factures encaissés.
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Historique complet des tickets et factures encaissés sur l'ensemble des caisses.
           </p>
         </div>
 
@@ -60,28 +61,28 @@ export const SalesPage: React.FC = () => {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Rechercher ticket, client..."
-            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 shadow-sm transition"
+            placeholder="Rechercher ticket, client, paiement..."
+            className="input-toc pl-10"
           />
         </div>
       </div>
 
-      {/* Ventes Table */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+      {/* Ventes Table with Density */}
+      <div className="card-toc overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200/80">
+          <table className="w-full text-left">
+            <thead className="bg-[#F5FAFD] dark:bg-dark-700/50 border-b border-[#E8EFF5] dark:border-dark-600">
               <tr>
-                <th className="px-6 py-3.5">Numéro Ticket</th>
-                <th className="px-6 py-3.5">Client</th>
-                <th className="px-6 py-3.5">Articles</th>
-                <th className="px-6 py-3.5">Mode Paiement</th>
-                <th className="px-6 py-3.5">Date</th>
-                <th className="px-6 py-3.5 text-right">Montant Total</th>
-                <th className="px-6 py-3.5 text-center">Actions</th>
+                <th className={tableClasses.th}>Numéro Ticket</th>
+                <th className={tableClasses.th}>Client</th>
+                <th className={tableClasses.th}>Articles</th>
+                <th className={tableClasses.th}>Mode Paiement</th>
+                <th className={tableClasses.th}>Date & Heure</th>
+                <th className={`${tableClasses.th} text-right`}>Montant Total</th>
+                <th className={`${tableClasses.th} text-center`}>Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[#E8EFF5] dark:divide-dark-600/60">
               {isLoading ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
@@ -90,33 +91,38 @@ export const SalesPage: React.FC = () => {
                 </tr>
               ) : filteredVentes.length > 0 ? (
                 filteredVentes.map((v) => (
-                  <tr key={v.sync_id} className="hover:bg-slate-50/70 transition">
-                    <td className="px-6 py-4 font-mono text-xs font-semibold text-indigo-700">
+                  <tr key={v.sync_id} className="hover:bg-brand-50/30 dark:hover:bg-dark-700/40 transition-colors">
+                    <td className={`${tableClasses.td} font-mono font-bold text-brand-600 dark:text-brand-400`}>
                       {v.ticket_number}
                     </td>
-                    <td className="px-6 py-4 font-medium text-slate-900">
+                    <td className={`${tableClasses.td} font-semibold text-slate-900 dark:text-white`}>
                       {v.client_name || 'Occasionnel'}
                     </td>
-                    <td className="px-6 py-4 text-xs text-slate-500">
-                      {v.items?.length || 0} article(s)
+                    <td className={`${tableClasses.td} text-slate-500 dark:text-slate-400`}>
+                      <span className="inline-flex items-center gap-1">
+                        <ShoppingBag className="w-3.5 h-3.5 text-brand-500" />
+                        {v.items?.length || 0} article(s)
+                      </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                    <td className={tableClasses.td}>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-500/30">
+                        <CreditCard className="w-3 h-3 text-brand-500" />
                         {v.payment_method}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-xs text-slate-500">
+                    <td className={`${tableClasses.td} text-slate-500 dark:text-slate-400`}>
                       {formatDateTime(v.created_at)}
                     </td>
-                    <td className="px-6 py-4 text-right font-bold text-slate-900">
+                    <td className={`${tableClasses.td} text-right font-extrabold text-slate-900 dark:text-white font-mono`}>
                       {formatFCFA(v.total_amount)}
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className={`${tableClasses.td} text-center`}>
                       <button
                         onClick={() => setSelectedVente(v)}
-                        className="px-3 py-1 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-medium text-xs rounded-lg transition"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-50 hover:bg-brand-100 dark:bg-brand-500/15 dark:hover:bg-brand-500/25 text-brand-700 dark:text-brand-300 rounded-xl text-xs font-bold transition-all border border-brand-200 dark:border-brand-500/30"
                       >
-                        Détails
+                        <FileText className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+                        <span>Détails</span>
                       </button>
                     </td>
                   </tr>
@@ -124,7 +130,7 @@ export const SalesPage: React.FC = () => {
               ) : (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
-                    Aucun ticket trouvé.
+                    Aucune vente trouvée pour cette recherche.
                   </td>
                 </tr>
               )}
@@ -133,122 +139,111 @@ export const SalesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal Détail du Ticket */}
-      {selectedVente && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-indigo-600" />
-                <h3 className="font-bold text-slate-900">
-                  Détail Ticket {selectedVente.ticket_number}
-                </h3>
+      {/* Slide-over Drawer for Ticket Detail */}
+      <Drawer
+        isOpen={!!selectedVente}
+        onClose={() => setSelectedVente(null)}
+        title={
+          <div className="flex items-center gap-2">
+            <FileText className="w-5 h-5 text-brand-500" />
+            <span>Ticket {selectedVente?.ticket_number}</span>
+          </div>
+        }
+        subtitle="Détail complet de la transaction de caisse"
+        footer={
+          <button
+            onClick={handlePrintReceipt}
+            className="btn-primary"
+          >
+            <Printer className="w-4 h-4" />
+            <span>Imprimer le Reçu</span>
+          </button>
+        }
+      >
+        {selectedVente && (
+          <div className="space-y-6">
+            {/* Meta information */}
+            <div className="grid grid-cols-2 gap-3.5 text-xs bg-[#F5FAFD] dark:bg-dark-700/60 p-4 rounded-2xl border border-[#E8EFF5] dark:border-dark-600">
+              <div>
+                <span className="text-slate-400 dark:text-slate-500 block mb-0.5">Client</span>
+                <span className="font-bold text-slate-900 dark:text-white">
+                  {selectedVente.client_name || 'Occasionnel'}
+                </span>
               </div>
-              <button
-                onClick={() => setSelectedVente(null)}
-                className="text-slate-400 hover:text-slate-600 rounded-lg p-1 transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div>
+                <span className="text-slate-400 dark:text-slate-500 block mb-0.5">Date & Heure</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-200">
+                  {formatDateTime(selectedVente.created_at)}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 dark:text-slate-500 block mb-0.5">Mode de Paiement</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-200">
+                  {selectedVente.payment_method}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 dark:text-slate-500 block mb-0.5">Vendeur / Caissier</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-200">
+                  {selectedVente.user_name || 'Système'}
+                </span>
+              </div>
             </div>
 
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-6">
-              {/* Meta information */}
-              <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-4 rounded-xl border border-slate-100">
-                <div>
-                  <span className="text-slate-400 block mb-0.5">Client</span>
-                  <span className="font-semibold text-slate-800">
-                    {selectedVente.client_name || 'Occasionnel'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block mb-0.5">Date & Heure</span>
-                  <span className="font-semibold text-slate-800">
-                    {formatDateTime(selectedVente.created_at)}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block mb-0.5">Mode de Paiement</span>
-                  <span className="font-semibold text-slate-800">
-                    {selectedVente.payment_method}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block mb-0.5">Identifiant Unique (UUID)</span>
-                  <span className="font-mono text-[10px] text-slate-500 truncate block">
-                    {selectedVente.sync_id}
-                  </span>
-                </div>
-              </div>
-
-              {/* Items List */}
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-                  Articles Vendus
-                </h4>
-                <div className="border border-slate-100 rounded-xl overflow-hidden divide-y divide-slate-100">
-                  {selectedVente.items.map((it, idx) => (
-                    <div key={idx} className="p-3 text-xs flex items-center justify-between">
-                      <div>
-                        <div className="font-medium text-slate-800">{it.product_name}</div>
-                        <div className="text-slate-400 text-[11px] mt-0.5">
-                          {it.quantity} x {formatFCFA(it.unit_price)}
-                        </div>
-                      </div>
-                      <div className="font-bold text-slate-900">
-                        {formatFCFA(it.total)}
+            {/* Items List */}
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
+                Articles Vendus
+              </h4>
+              <div className="border border-[#E8EFF5] dark:border-dark-600 rounded-2xl overflow-hidden divide-y divide-[#E8EFF5] dark:divide-dark-600/60">
+                {selectedVente.items.map((it, idx) => (
+                  <div key={idx} className="p-3.5 text-xs flex items-center justify-between hover:bg-slate-50 dark:hover:bg-dark-700/40">
+                    <div>
+                      <div className="font-bold text-slate-900 dark:text-white">{it.product_name}</div>
+                      <div className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5">
+                        {it.quantity} x {formatFCFA(it.unit_price)}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Financial summary */}
-              <div className="space-y-1.5 pt-2 border-t border-slate-100 text-xs">
-                <div className="flex justify-between text-slate-600">
-                  <span>Sous-total</span>
-                  <span>{formatFCFA(selectedVente.total_amount + (selectedVente.discount_amount || 0))}</span>
-                </div>
-                {selectedVente.discount_amount > 0 && (
-                  <div className="flex justify-between text-rose-600">
-                    <span>Remise accordée</span>
-                    <span>- {formatFCFA(selectedVente.discount_amount)}</span>
+                    <div className="font-extrabold text-slate-900 dark:text-white font-mono">
+                      {formatFCFA(it.total)}
+                    </div>
                   </div>
-                )}
-                <div className="flex justify-between text-sm font-bold text-slate-900 pt-2 border-t border-slate-100">
-                  <span>Total Net</span>
-                  <span>{formatFCFA(selectedVente.total_amount)}</span>
-                </div>
-                <div className="flex justify-between text-xs text-emerald-600 font-medium">
-                  <span>Montant Encaissé</span>
-                  <span>{formatFCFA(selectedVente.paid_amount)}</span>
-                </div>
-                {selectedVente.paid_amount < selectedVente.total_amount && (
-                  <div className="flex justify-between text-xs text-amber-600 font-bold">
-                    <span>Reliquat / Créance</span>
-                    <span>
-                      {formatFCFA(selectedVente.total_amount - selectedVente.paid_amount)}
-                    </span>
-                  </div>
-                )}
+                ))}
               </div>
             </div>
 
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3">
-              <button
-                onClick={handlePrintReceipt}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm transition"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Imprimer le Reçu</span>
-              </button>
+            {/* Financial summary */}
+            <div className="p-4 bg-slate-50 dark:bg-dark-700/40 rounded-2xl border border-[#E8EFF5] dark:border-dark-600 space-y-2 text-xs">
+              <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                <span>Sous-total</span>
+                <span>{formatFCFA(selectedVente.total_amount + (selectedVente.discount_amount || 0))}</span>
+              </div>
+              {selectedVente.discount_amount > 0 && (
+                <div className="flex justify-between text-rose-600 dark:text-rose-400 font-semibold">
+                  <span>Remise accordée</span>
+                  <span>- {formatFCFA(selectedVente.discount_amount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm font-extrabold text-slate-900 dark:text-white pt-2 border-t border-[#E8EFF5] dark:border-dark-600">
+                <span>Total Net</span>
+                <span>{formatFCFA(selectedVente.total_amount)}</span>
+              </div>
+              <div className="flex justify-between text-xs text-emerald-600 dark:text-emerald-400 font-bold">
+                <span>Montant Encaissé</span>
+                <span>{formatFCFA(selectedVente.paid_amount)}</span>
+              </div>
+              {selectedVente.paid_amount < selectedVente.total_amount && (
+                <div className="flex justify-between text-xs text-amber-600 dark:text-amber-400 font-bold">
+                  <span>Reliquat restant dû (Créance)</span>
+                  <span>
+                    {formatFCFA(selectedVente.total_amount - selectedVente.paid_amount)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Drawer>
     </div>
   );
 };

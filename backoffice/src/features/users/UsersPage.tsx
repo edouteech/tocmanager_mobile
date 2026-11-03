@@ -5,15 +5,18 @@ import {
   UserPlus,
   Shield,
   KeyRound,
-  X,
   Check,
   AlertCircle,
+  UserCheck,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { UserBrief } from '../../types';
+import { Modal } from '../../components/common/Modal';
+import { useDensity } from '../../context/DensityContext';
 
 export const UsersPage: React.FC = () => {
   const queryClient = useQueryClient();
+  const { tableClasses } = useDensity();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Form state
@@ -82,11 +85,11 @@ export const UsersPage: React.FC = () => {
       {/* Title & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             Utilisateurs & Rôles
-          </h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Gestion des accès backoffice et des identifiants/codes PIN pour les caisses mobiles.
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Gestion des accès centralisés et des identifiants/codes PIN de déverrouillage caisse.
           </p>
         </div>
 
@@ -95,89 +98,88 @@ export const UsersPage: React.FC = () => {
             resetForm();
             setIsCreateModalOpen(true);
           }}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-sm transition"
+          className="btn-primary"
         >
           <UserPlus className="w-4 h-4" />
-          <span>Créer un Utilisateur</span>
+          <span>Nouvel Utilisateur</span>
         </button>
       </div>
 
-      {/* Users Table */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+      {/* Users Table with Density */}
+      <div className="card-toc overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200/80">
+          <table className="w-full text-left">
+            <thead className="bg-[#F5FAFD] dark:bg-dark-700/50 border-b border-[#E8EFF5] dark:border-dark-600">
               <tr>
-                <th className="px-6 py-3.5">Identifiant</th>
-                <th className="px-6 py-3.5">Nom Complet</th>
-                <th className="px-6 py-3.5">Email</th>
-                <th className="px-6 py-3.5">Rôle</th>
-                <th className="px-6 py-3.5 text-center">Code PIN Mobile</th>
-                <th className="px-6 py-3.5 text-center">Permissions</th>
+                <th className={tableClasses.th}>Utilisateur</th>
+                <th className={tableClasses.th}>Rôle Système</th>
+                <th className={tableClasses.th}>Code PIN Caisse</th>
+                <th className={tableClasses.th}>Statut Compte</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[#E8EFF5] dark:divide-dark-600/60">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
                     Chargement des utilisateurs...
                   </td>
                 </tr>
-              ) : users && users.length > 0 ? (
-                users.map((u) => {
-                  const roleBadge =
-                    u.role === 'admin' ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700">
-                        Administrateur
+              ) : (users || []).length > 0 ? (
+                users?.map((u) => (
+                  <tr key={u.id} className="hover:bg-brand-50/30 dark:hover:bg-dark-700/40 transition-colors">
+                    <td className={tableClasses.td}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-500/30 flex items-center justify-center font-bold">
+                          <UserCheck className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="font-bold text-slate-900 dark:text-white">{u.full_name || u.username}</div>
+                          <div className="text-xs text-slate-400">@{u.username}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className={tableClasses.td}>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+                          u.role === 'admin'
+                            ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/40'
+                            : u.role === 'manager'
+                            ? 'bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300 border-brand-200 dark:border-brand-500/30'
+                            : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40'
+                        }`}
+                      >
+                        <Shield className="w-3.5 h-3.5" />
+                        <span>
+                          {u.role === 'admin'
+                            ? 'Administrateur'
+                            : u.role === 'manager'
+                            ? 'Gérant'
+                            : 'Caissier'}
+                        </span>
                       </span>
-                    ) : u.role === 'manager' ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700">
-                        Gérant
+                    </td>
+                    <td className={tableClasses.td}>
+                      {u.has_pin ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-800/40">
+                          <KeyRound className="w-3 h-3 text-emerald-600" />
+                          <span>Actif (4-6 chiffres)</span>
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400">Non configuré</span>
+                      )}
+                    </td>
+                    <td className={tableClasses.td}>
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                        <Check className="w-4 h-4" />
+                        <span>Actif</span>
                       </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
-                        Caissier
-                      </span>
-                    );
-
-                  return (
-                    <tr key={u.id} className="hover:bg-slate-50/70 transition">
-                      <td className="px-6 py-4 font-semibold text-slate-900 font-mono text-xs">
-                        {u.username}
-                      </td>
-                      <td className="px-6 py-4 font-medium text-slate-800">
-                        {u.full_name || '—'}
-                      </td>
-                      <td className="px-6 py-4 text-xs text-slate-500">
-                        {u.email || '—'}
-                      </td>
-                      <td className="px-6 py-4">
-                        {roleBadge}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        {u.has_pin ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700">
-                            <Check className="w-3 h-3" />
-                            Actif
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 text-xs italic">
-                            Non configuré
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-center text-xs text-slate-500">
-                        {u.permissions.length === 1 && u.permissions[0] === '*'
-                          ? 'Accès total'
-                          : `${u.permissions.length} droit(s)`}
-                      </td>
-                    </tr>
-                  );
-                })
+                    </td>
+                  </tr>
+                ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
-                    Aucun utilisateur enregistré.
+                  <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
+                    Aucun utilisateur trouvé.
                   </td>
                 </tr>
               )}
@@ -187,135 +189,131 @@ export const UsersPage: React.FC = () => {
       </div>
 
       {/* Modal Création Utilisateur */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <h3 className="font-bold text-slate-900">
-                Créer un Nouvel Utilisateur
-              </h3>
-              <button
-                onClick={() => setIsCreateModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 rounded-lg p-1 transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {formError && (
-              <div className="m-6 mb-0 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2 text-rose-700 text-xs">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{formError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Nom d'utilisateur (Identifiant)
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Ex: caissier2"
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Nom Complet
-                </label>
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Ex: Eric Dossou"
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Email (Optionnel)
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="eric@tocmanager.local"
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Mot de passe
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Rôle Système
-                </label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as any)}
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition"
-                >
-                  <option value="cashier">Caissier / Vendeur (Encaissement seul)</option>
-                  <option value="manager">Gérant / Manager (Stock, Ventes, Rapports)</option>
-                  <option value="admin">Administrateur (Accès Total)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Code PIN Mobile (4 ou 6 chiffres)
-                </label>
-                <input
-                  type="password"
-                  maxLength={6}
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  placeholder="Ex: 1234"
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition font-mono tracking-widest"
-                />
-                <span className="text-[11px] text-slate-400 mt-1 block">
-                  Permet à ce caissier de déverrouiller l'application mobile hors-ligne.
-                </span>
-              </div>
-
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl text-sm font-medium transition"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={createUserMutation.isPending}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-sm transition disabled:opacity-50"
-                >
-                  Créer le Compte
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Créer un Nouvel Utilisateur"
+        subtitle="Renseignez les accès pour le backoffice et le code PIN caisse"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(false)}
+              className="btn-secondary"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={createUserMutation.isPending}
+              className="btn-primary"
+            >
+              {createUserMutation.isPending ? 'Création en cours...' : 'Créer le compte'}
+            </button>
+          </>
+        }
+      >
+        {formError && (
+          <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded-2xl flex items-start gap-2.5 text-rose-700 dark:text-rose-300 text-xs font-medium">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+            <span>{formError}</span>
           </div>
-        </div>
-      )}
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Nom d'utilisateur *
+              </label>
+              <input
+                type="text"
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Ex: caissier_nord"
+                className="input-toc"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Nom complet
+              </label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Ex: Jean Koffi"
+                className="input-toc"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+              Adresse Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="koffi@magasin.com"
+              className="input-toc"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Mot de Passe *
+              </label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="input-toc"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Rôle Système *
+              </label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as any)}
+                className="input-toc bg-white dark:bg-dark-700"
+              >
+                <option value="cashier">Caissier</option>
+                <option value="manager">Gérant</option>
+                <option value="admin">Administrateur</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="p-4 bg-brand-50/50 dark:bg-dark-700/60 rounded-2xl border border-brand-100 dark:border-dark-600 space-y-2">
+            <div className="flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-brand-500" />
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                Code PIN Caisse (Optionnel)
+              </label>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Permet au caissier de déverrouiller rapidement le terminal sans ressaisir son mot de passe complet.
+            </p>
+            <input
+              type="password"
+              maxLength={6}
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              placeholder="4 ou 6 chiffres (ex: 1234)"
+              className="input-toc font-mono text-center tracking-widest text-lg font-bold"
+            />
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

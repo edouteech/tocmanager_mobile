@@ -13,7 +13,6 @@ import {
   UserCheck,
   ShieldCheck,
   Settings,
-  Layers,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -71,24 +70,24 @@ export const Sidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800">
+    <aside className="w-64 bg-white dark:bg-dark-800 text-slate-700 dark:text-slate-300 flex flex-col shrink-0 border-r border-[#E8EFF5] dark:border-dark-600 select-none shadow-soft transition-colors duration-200">
       {/* Brand logo & title */}
-      <div className="h-16 flex items-center px-6 gap-3 border-b border-slate-800">
-        <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold shadow-md">
-          <Layers className="w-5 h-5" />
-        </div>
-        <div>
-          <span className="font-bold text-white text-base tracking-wide">TocManager</span>
-          <span className="block text-[10px] text-slate-400 font-medium uppercase tracking-wider">
-            Backoffice Central
-          </span>
-        </div>
+      <div className="h-16 flex items-center px-6 gap-3 border-b border-[#E8EFF5] dark:border-dark-600 bg-white/50 dark:bg-dark-800/50 backdrop-blur-sm">
+        <img
+          src="/assets/logo.png"
+          alt="TocManager Logo"
+          className="h-9 w-auto max-w-[140px] object-contain drop-shadow-sm"
+          onError={(e) => {
+            // Fallback to icon if logo fails
+            (e.target as HTMLImageElement).src = '/assets/icon.png';
+          }}
+        />
+        <span className="sr-only">TocManager Backoffice</span>
       </div>
 
       {/* Navigation links grouped by sections */}
-      <nav className="flex-1 px-4 py-4 space-y-5 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
         {sections.map((sec) => {
-          // Filter items based on user role
           const filteredItems = sec.items.filter((item) => {
             if (!item.roles) return true;
             return user && item.roles.includes(user.role);
@@ -98,7 +97,7 @@ export const Sidebar: React.FC = () => {
 
           return (
             <div key={sec.title} className="space-y-1">
-              <p className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+              <p className="px-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">
                 {sec.title}
               </p>
               {filteredItems.map((item) => {
@@ -109,10 +108,10 @@ export const Sidebar: React.FC = () => {
                     to={item.to}
                     end={item.to === '/'}
                     className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      `flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 ${
                         isActive
-                          ? 'bg-indigo-600 text-white shadow-xs'
-                          : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                          ? 'bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400 font-bold border-l-4 border-brand-500 pl-2 shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-dark-700/60 hover:text-slate-900 dark:hover:text-white'
                       }`
                     }
                   >
@@ -126,13 +125,18 @@ export const Sidebar: React.FC = () => {
         })}
       </nav>
 
-      {/* Footer Info */}
-      <div className="p-4 border-t border-slate-800 text-xs text-slate-500 flex items-center justify-between">
-        <span className="text-[11px]">v1.0.0</span>
-        <span className="inline-flex items-center gap-1.5 text-[11px]">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>API Active</span>
-        </span>
+      {/* Footer API status */}
+      <div className="p-3 border-t border-[#E8EFF5] dark:border-dark-600 bg-slate-50/50 dark:bg-dark-700/30">
+        <div className="flex items-center justify-between px-2 py-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="font-medium">Serveur Connecté</span>
+          </div>
+          <span className="text-[10px] font-mono opacity-70">v1.2.0</span>
+        </div>
       </div>
     </aside>
   );

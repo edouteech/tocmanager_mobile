@@ -2,25 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@layer base {
+  body {
+    @apply font-sans bg-[#F5FAFD] text-[#1C2B3A] dark:bg-dark-900 dark:text-[#E2E8F0];
+  }
 }
 
-/* Custom scrollbars */
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
+
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
+  background: #BAE3F9;
+  border-radius: 9999px;
 }
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #26384C;
+}
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #29ABE2;
+}
+
+/* Shared Utility Classes */
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-500 hover:bg-brand-600 active:scale-[0.99] text-white rounded-xl text-sm font-semibold shadow-sm hover:shadow transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-50 dark:bg-dark-700 dark:hover:bg-dark-600 active:scale-[0.99] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-dark-600 rounded-xl text-sm font-semibold shadow-sm transition-all duration-150;
+}
+
+.card-toc {
+  @apply bg-white dark:bg-dark-800 border border-[#E8EFF5] dark:border-dark-600 rounded-2xl shadow-soft;
+}
+
+.card-hover {
+  @apply transition-all duration-200 hover:shadow-soft-md hover:border-brand-300 dark:hover:border-brand-500/40;
+}
+
+.input-toc {
+  @apply w-full bg-[#F0F9FE] dark:bg-dark-700/60 border border-transparent dark:border-dark-600 rounded-xl px-4 py-2.5 text-sm text-[#1C2B3A] dark:text-white placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all duration-150;
 }

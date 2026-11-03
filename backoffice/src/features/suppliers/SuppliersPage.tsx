@@ -10,7 +10,6 @@ import {
   Phone,
   Mail,
   MapPin,
-  X,
   CreditCard,
   Edit2,
   Trash2,
@@ -18,9 +17,12 @@ import {
 import { suppliersApi } from '../../lib/api';
 import { formatFCFA, formatDateTime } from '../../lib/formatters';
 import { Supplier } from '../../types';
+import { Modal } from '../../components/common/Modal';
+import { useDensity } from '../../context/DensityContext';
 
 export const SuppliersPage: React.FC = () => {
   const queryClient = useQueryClient();
+  const { tableClasses } = useDensity();
   const [search, setSearch] = useState('');
   const [onlyCreditors, setOnlyCreditors] = useState(false);
 
@@ -128,7 +130,7 @@ export const SuppliersPage: React.FC = () => {
     setPaymentForm({
       amount: s.balance,
       payment_method: 'Espèces',
-      notes: `Paiement facture fournisseur ${s.name}`,
+      notes: `Règlement facture fournisseur ${s.name}`,
     });
     setIsPaymentModalOpen(true);
   };
@@ -170,22 +172,22 @@ export const SuppliersPage: React.FC = () => {
   };
 
   // KPIs
-  const totalPayables = suppliers.reduce((sum, s) => sum + (s.balance > 0 ? s.balance : 0), 0);
+  const totalDebts = suppliers.reduce((sum, s) => sum + (s.balance > 0 ? s.balance : 0), 0);
   const creditorsCount = suppliers.filter((s) => s.balance > 0).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Fournisseurs & Dettes</h1>
-          <p className="text-sm text-slate-500">
-            Gestion des partenaires d'approvisionnement et suivi des règlements fournisseurs
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">Fournisseurs & Dettes</h1>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Gestion des approvisionneurs partenaires et suivi des factures impayées
           </p>
         </div>
         <button
           onClick={handleOpenCreate}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition shadow-sm"
+          className="btn-primary"
         >
           <Plus className="w-4 h-4" />
           <span>Nouveau Fournisseur</span>
@@ -194,72 +196,72 @@ export const SuppliersPage: React.FC = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="card-toc card-hover p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Dettes Fournisseurs</p>
-              <p className="text-2xl font-bold text-amber-600 mt-1">{formatFCFA(totalPayables)}</p>
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Dettes Fournisseurs</p>
+              <p className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 mt-1">{formatFCFA(totalDebts)}</p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-100 dark:border-rose-900/50">
               <AlertCircle className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-xs text-slate-400 mt-3">{creditorsCount} fournisseur(s) en attente de paiement</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">{creditorsCount} fournisseur(s) en attente de paiement</p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="card-toc card-hover p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Factures en Instance</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">{creditorsCount}</p>
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Factures en Instance</p>
+              <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">{creditorsCount}</p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-100 dark:border-amber-900/50">
               <DollarSign className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-xs text-slate-400 mt-3">À régler pour approvisionnements</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">Soldes créditeurs ouverts</p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="card-toc card-hover p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Fournisseurs</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">{suppliers.length}</p>
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Partenaires</p>
+              <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">{suppliers.length}</p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400 flex items-center justify-center border border-brand-200 dark:border-brand-500/30">
               <Truck className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-xs text-slate-400 mt-3">Partenaires actifs</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">Fournisseurs enregistrés</p>
         </div>
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-4 items-center justify-between">
+      <div className="card-toc p-4 flex flex-col sm:flex-row gap-4 items-center justify-between">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder="Rechercher nom, contact, tél..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+            className="input-toc pl-10"
           />
         </div>
 
-        <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-slate-600">
+        <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-slate-600 dark:text-slate-300">
           <input
             type="checkbox"
             checked={onlyCreditors}
             onChange={(e) => setOnlyCreditors(e.target.checked)}
-            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+            className="rounded border-slate-300 dark:border-dark-600 text-brand-500 focus:ring-brand-500 h-4 w-4"
           />
-          <span className="font-medium">Afficher uniquement les dettes &gt; 0</span>
+          <span>Afficher uniquement les dettes &gt; 0</span>
         </label>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* Suppliers Table with Density */}
+      <div className="card-toc overflow-hidden">
         {isLoading ? (
           <div className="p-12 text-center text-slate-400 text-sm">Chargement des fournisseurs...</div>
         ) : suppliers.length === 0 ? (
@@ -268,89 +270,79 @@ export const SuppliersPage: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase text-slate-500">
+            <table className="w-full text-left">
+              <thead className="bg-[#F5FAFD] dark:bg-dark-700/50 border-b border-[#E8EFF5] dark:border-dark-600">
                 <tr>
-                  <th className="px-6 py-3.5">Fournisseur</th>
-                  <th className="px-6 py-3.5">Contact</th>
-                  <th className="px-6 py-3.5">Adresse / Notes</th>
-                  <th className="px-6 py-3.5 text-right">Dette à Payer</th>
-                  <th className="px-6 py-3.5 text-right">Actions</th>
+                  <th className={tableClasses.th}>Fournisseur</th>
+                  <th className={tableClasses.th}>Contact Direct</th>
+                  <th className={tableClasses.th}>Coordonnées</th>
+                  <th className={`${tableClasses.th} text-right`}>Dette Restante</th>
+                  <th className={`${tableClasses.th} text-right`}>Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#E8EFF5] dark:divide-dark-600/60">
                 {suppliers.map((s) => {
                   const hasDebt = s.balance > 0;
                   return (
-                    <tr key={s.sync_id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-slate-900">{s.name}</div>
-                        {s.contact_person && (
-                          <div className="text-xs text-slate-500 mt-0.5">
-                            Contact : {s.contact_person}
-                          </div>
-                        )}
+                    <tr key={s.sync_id} className="hover:bg-brand-50/30 dark:hover:bg-dark-700/40 transition-colors">
+                      <td className={tableClasses.td}>
+                        <div className="font-bold text-slate-900 dark:text-white">{s.name}</div>
+                        <div className="text-xs text-slate-400 mt-0.5">
+                          Inscrit le {formatDateTime(s.created_at)}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 text-slate-600">
+                      <td className={tableClasses.td}>
+                        <div className="font-medium text-slate-700 dark:text-slate-200">{s.contact_person || '-'}</div>
+                      </td>
+                      <td className={tableClasses.td}>
                         {s.phone ? (
-                          <div className="flex items-center gap-1.5">
-                            <Phone className="w-3.5 h-3.5 text-slate-400" />
+                          <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                            <Phone className="w-3.5 h-3.5 text-brand-500" />
                             <span>{s.phone}</span>
                           </div>
-                        ) : (
-                          <span className="text-slate-400 text-xs">Aucun tél.</span>
-                        )}
+                        ) : null}
                         {s.email && (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5">
+                          <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-0.5">
                             <Mail className="w-3 h-3 text-slate-400" />
                             <span>{s.email}</span>
                           </div>
                         )}
+                        {!s.phone && !s.email && <span className="text-slate-400 text-xs">-</span>}
                       </td>
-                      <td className="px-6 py-4 text-slate-600">
-                        {s.address && (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                            <MapPin className="w-3 h-3 text-slate-400" />
-                            <span>{s.address}</span>
-                          </div>
-                        )}
-                        {s.notes && <div className="text-xs text-slate-400 italic mt-0.5">{s.notes}</div>}
-                        {!s.address && !s.notes && <span className="text-slate-400 text-xs">-</span>}
-                      </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className={`${tableClasses.td} text-right font-mono`}>
                         {hasDebt ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50">
                             <AlertCircle className="w-3 h-3" />
                             {formatFCFA(s.balance)}
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50">
                             <CheckCircle2 className="w-3 h-3" />
                             Soldé (0 F)
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className={`${tableClasses.td} text-right`}>
                         <div className="flex items-center justify-end gap-2">
                           {hasDebt && (
                             <button
                               onClick={() => handleOpenPayment(s)}
-                              className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-medium transition shadow-xs"
-                              title="Payer le fournisseur"
+                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                              title="Régler la dette"
                             >
-                              Payer
+                              Régler
                             </button>
                           )}
                           <button
                             onClick={() => handleOpenEdit(s)}
-                            className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition"
+                            className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-dark-700 rounded-xl transition"
                             title="Modifier"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(s)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition"
                             title="Supprimer"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -367,246 +359,234 @@ export const SuppliersPage: React.FC = () => {
       </div>
 
       {/* Modal Création / Modification Fournisseur */}
-      {isSupplierModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-base font-bold text-slate-900">
-                {selectedSupplier ? 'Modifier le Fournisseur' : 'Nouveau Fournisseur'}
-              </h2>
-              <button
-                onClick={() => setIsSupplierModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
+      <Modal
+        isOpen={isSupplierModalOpen}
+        onClose={() => setIsSupplierModalOpen(false)}
+        title={selectedSupplier ? 'Modifier le Fournisseur' : 'Nouveau Fournisseur'}
+        subtitle="Renseignez les détails du contact et les coordonnées"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsSupplierModalOpen(false)}
+              className="btn-secondary"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={handleSupplierSubmit}
+              disabled={createMutation.isPending || updateMutation.isPending}
+              className="btn-primary"
+            >
+              {selectedSupplier ? 'Enregistrer' : 'Créer le fournisseur'}
+            </button>
+          </>
+        }
+      >
+        <form onSubmit={handleSupplierSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+              Raison Sociale / Nom Entreprise *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Ex: Brasserie BB Lomé, Grossiste XYZ..."
+              value={supplierForm.name}
+              onChange={(e) => setSupplierForm({ ...supplierForm, name: e.target.value })}
+              className="input-toc"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+              Nom du Commercial / Interlocuteur
+            </label>
+            <input
+              type="text"
+              placeholder="Ex: M. Koffi"
+              value={supplierForm.contact_person}
+              onChange={(e) => setSupplierForm({ ...supplierForm, contact_person: e.target.value })}
+              className="input-toc"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Téléphone
+              </label>
+              <input
+                type="text"
+                placeholder="+228 90 00 00 00"
+                value={supplierForm.phone}
+                onChange={(e) => setSupplierForm({ ...supplierForm, phone: e.target.value })}
+                className="input-toc"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Email
+              </label>
+              <input
+                type="email"
+                placeholder="contact@fournisseur.com"
+                value={supplierForm.email}
+                onChange={(e) => setSupplierForm({ ...supplierForm, email: e.target.value })}
+                className="input-toc"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+              Adresse physique
+            </label>
+            <input
+              type="text"
+              placeholder="Zone industrielle, Rue, Ville..."
+              value={supplierForm.address}
+              onChange={(e) => setSupplierForm({ ...supplierForm, address: e.target.value })}
+              className="input-toc"
+            />
+          </div>
+
+          {!selectedSupplier && (
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Dette Initiale envers ce fournisseur
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="100"
+                placeholder="0"
+                value={supplierForm.balance}
+                onChange={(e) => setSupplierForm({ ...supplierForm, balance: parseFloat(e.target.value) || 0 })}
+                className="input-toc font-mono font-bold"
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+              Notes
+            </label>
+            <textarea
+              rows={2}
+              placeholder="Conditions de livraison, délais de paiement..."
+              value={supplierForm.notes}
+              onChange={(e) => setSupplierForm({ ...supplierForm, notes: e.target.value })}
+              className="input-toc"
+            ></textarea>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Règlement Dette Fournisseur */}
+      <Modal
+        isOpen={isPaymentModalOpen && !!paymentSupplier}
+        onClose={() => setIsPaymentModalOpen(false)}
+        title={
+          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+            <CreditCard className="w-5 h-5" />
+            <span>Paiement Fournisseur</span>
+          </div>
+        }
+        subtitle="Enregistrez un décaissement pour solder la facture du fournisseur"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsPaymentModalOpen(false)}
+              className="btn-secondary"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={handlePaymentSubmit}
+              disabled={paymentMutation.isPending || paymentForm.amount <= 0}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white rounded-xl text-sm font-bold shadow-sm transition disabled:opacity-50"
+            >
+              Valider le paiement
+            </button>
+          </>
+        }
+      >
+        {paymentSupplier && (
+          <form onSubmit={handlePaymentSubmit} className="space-y-4">
+            <div className="bg-[#F5FAFD] dark:bg-dark-700/60 p-3.5 rounded-2xl border border-[#E8EFF5] dark:border-dark-600">
+              <div className="text-xs text-slate-400 font-medium">Fournisseur</div>
+              <div className="font-bold text-slate-900 dark:text-white text-base">{paymentSupplier.name}</div>
+              <div className="flex justify-between items-center mt-2 pt-2 border-t border-[#E8EFF5] dark:border-dark-600 text-xs">
+                <span className="text-slate-500 dark:text-slate-400">Dette totale en cours :</span>
+                <span className="font-extrabold text-rose-600 dark:text-rose-400 font-mono">{formatFCFA(paymentSupplier.balance)}</span>
+              </div>
             </div>
 
-            <form onSubmit={handleSupplierSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Raison Sociale / Nom Entreprise *
-                </label>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Montant payé *
+              </label>
+              <div className="relative">
                 <input
-                  type="text"
+                  type="number"
                   required
-                  placeholder="Ex: Distributeur Boissons SARL"
-                  value={supplierForm.name}
-                  onChange={(e) => setSupplierForm({ ...supplierForm, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  min="1"
+                  max={paymentSupplier.balance}
+                  value={paymentForm.amount}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })}
+                  className="input-toc pr-20 font-mono font-bold"
                 />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Personne de contact / Commercial
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: M. Jean Directeur Commercial"
-                  value={supplierForm.contact_person}
-                  onChange={(e) => setSupplierForm({ ...supplierForm, contact_person: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Téléphone
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="+228 90 00 00 00"
-                    value={supplierForm.phone}
-                    onChange={(e) => setSupplierForm({ ...supplierForm, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="contact@fournisseur.com"
-                    value={supplierForm.email}
-                    onChange={(e) => setSupplierForm({ ...supplierForm, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Adresse / Entrepôt
-                </label>
-                <input
-                  type="text"
-                  placeholder="Zone Industrielle, Ville"
-                  value={supplierForm.address}
-                  onChange={(e) => setSupplierForm({ ...supplierForm, address: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                />
-              </div>
-
-              {!selectedSupplier && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Dette initiale envers ce fournisseur
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="100"
-                    placeholder="0"
-                    value={supplierForm.balance}
-                    onChange={(e) => setSupplierForm({ ...supplierForm, balance: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Conditions / Notes
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Délais de paiement, RIB, etc."
-                  value={supplierForm.notes}
-                  onChange={(e) => setSupplierForm({ ...supplierForm, notes: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                ></textarea>
-              </div>
-
-              <div className="pt-2 flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsSupplierModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition"
+                  onClick={() => setPaymentForm({ ...paymentForm, amount: paymentSupplier.balance })}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-brand-600 dark:text-brand-400 hover:underline"
                 >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition disabled:opacity-50"
-                >
-                  {selectedSupplier ? 'Enregistrer' : 'Créer le fournisseur'}
+                  Totalité
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Paiement Fournisseur */}
-      {isPaymentModalOpen && paymentSupplier && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-amber-600 font-bold">
-                <CreditCard className="w-5 h-5" />
-                <h2 className="text-base text-slate-900">Règlement Facture Fournisseur</h2>
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 flex justify-between">
+                <span>Solde restant après paiement :</span>
+                <span className="font-bold text-slate-700 dark:text-slate-200 font-mono">
+                  {formatFCFA(Math.max(0, paymentSupplier.balance - paymentForm.amount))}
+                </span>
               </div>
-              <button
-                onClick={() => setIsPaymentModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
             </div>
 
-            <form onSubmit={handlePaymentSubmit} className="p-6 space-y-4">
-              <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-100">
-                <div className="text-xs text-slate-500 font-medium">Fournisseur</div>
-                <div className="font-bold text-slate-900 text-base">{paymentSupplier.name}</div>
-                <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-200 text-xs">
-                  <span className="text-slate-500">Dette totale en cours :</span>
-                  <span className="font-bold text-amber-600">{formatFCFA(paymentSupplier.balance)}</span>
-                </div>
-              </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Moyen de décaissement *
+              </label>
+              <select
+                value={paymentForm.payment_method}
+                onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}
+                className="input-toc bg-white dark:bg-dark-700"
+              >
+                <option value="Espèces">Espèces de Caisse</option>
+                <option value="Chèque">Chèque bancaire</option>
+                <option value="Virement">Virement bancaire</option>
+                <option value="Mobile Money">Mobile Money Pro</option>
+              </select>
+            </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Montant payé *
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    max={paymentSupplier.balance}
-                    value={paymentForm.amount}
-                    onChange={(e) => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })}
-                    className="w-full pl-3 pr-16 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setPaymentForm({ ...paymentForm, amount: paymentSupplier.balance })}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-indigo-600 hover:text-indigo-800"
-                  >
-                    Totalité
-                  </button>
-                </div>
-                <div className="text-xs text-slate-500 mt-1 flex justify-between">
-                  <span>Reste dû après paiement :</span>
-                  <span className="font-bold text-slate-700">
-                    {formatFCFA(Math.max(0, paymentSupplier.balance - paymentForm.amount))}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Moyen de règlement *
-                </label>
-                <select
-                  value={paymentForm.payment_method}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 bg-white"
-                >
-                  <option value="Espèces">Espèces</option>
-                  <option value="Virement">Virement bancaire</option>
-                  <option value="Chèque">Chèque</option>
-                  <option value="Mobile Money">Mobile Money</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Référence du paiement / Chèque / Virement
-                </label>
-                <input
-                  type="text"
-                  value={paymentForm.notes}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
-                  placeholder="Ex: Réf virement ou n° chèque..."
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
-                />
-              </div>
-
-              <div className="pt-2 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsPaymentModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={paymentMutation.isPending || paymentForm.amount <= 0}
-                  className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition disabled:opacity-50"
-                >
-                  Valider le paiement
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Référence / Numéro Chèque ou Reçu
+              </label>
+              <input
+                type="text"
+                value={paymentForm.notes}
+                onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
+                placeholder="Ex: Chèque n°49204..."
+                className="input-toc"
+              />
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   );
 };

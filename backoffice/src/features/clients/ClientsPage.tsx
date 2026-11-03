@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   Phone,
   MapPin,
-  X,
   CreditCard,
   Edit2,
   Trash2,
@@ -17,9 +16,12 @@ import {
 import { clientsApi } from '../../lib/api';
 import { formatFCFA, formatDateTime } from '../../lib/formatters';
 import { Client } from '../../types';
+import { Modal } from '../../components/common/Modal';
+import { useDensity } from '../../context/DensityContext';
 
 export const ClientsPage: React.FC = () => {
   const queryClient = useQueryClient();
+  const { tableClasses } = useDensity();
   const [search, setSearch] = useState('');
   const [onlyDebtors, setOnlyDebtors] = useState(false);
 
@@ -169,18 +171,18 @@ export const ClientsPage: React.FC = () => {
   const debtorsCount = clients.filter((c) => c.balance > 0).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Clients & Créances</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">Clients & Créances</h1>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             Gestion du répertoire clients et suivi des règlements de dettes
           </p>
         </div>
         <button
           onClick={handleOpenCreate}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition shadow-sm"
+          className="btn-primary"
         >
           <Plus className="w-4 h-4" />
           <span>Nouveau Client</span>
@@ -189,72 +191,72 @@ export const ClientsPage: React.FC = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="card-toc card-hover p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Créances Dues</p>
-              <p className="text-2xl font-bold text-rose-600 mt-1">{formatFCFA(totalReceivables)}</p>
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Créances Dues</p>
+              <p className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 mt-1">{formatFCFA(totalReceivables)}</p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-100 dark:border-rose-900/50">
               <AlertCircle className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-xs text-slate-400 mt-3">{debtorsCount} client(s) avec un solde débiteur</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">{debtorsCount} client(s) avec un solde débiteur</p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="card-toc card-hover p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Clients Débiteurs</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">{debtorsCount}</p>
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Clients Débiteurs</p>
+              <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">{debtorsCount}</p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-100 dark:border-amber-900/50">
               <DollarSign className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-xs text-slate-400 mt-3">En attente de paiement</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">En attente de paiement</p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="card-toc card-hover p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Répertoire</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">{clients.length}</p>
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Répertoire</p>
+              <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">{clients.length}</p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400 flex items-center justify-center border border-brand-200 dark:border-brand-500/30">
               <Users className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-xs text-slate-400 mt-3">Comptes clients enregistrés</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">Comptes clients enregistrés</p>
         </div>
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-4 items-center justify-between">
+      <div className="card-toc p-4 flex flex-col sm:flex-row gap-4 items-center justify-between">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder="Rechercher nom, téléphone, email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+            className="input-toc pl-10"
           />
         </div>
 
-        <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-slate-600">
+        <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-slate-600 dark:text-slate-300">
           <input
             type="checkbox"
             checked={onlyDebtors}
             onChange={(e) => setOnlyDebtors(e.target.checked)}
-            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+            className="rounded border-slate-300 dark:border-dark-600 text-brand-500 focus:ring-brand-500 h-4 w-4"
           />
-          <span className="font-medium">Afficher uniquement les créances &gt; 0</span>
+          <span>Afficher uniquement les créances &gt; 0</span>
         </label>
       </div>
 
-      {/* Clients Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* Clients Table with Density */}
+      <div className="card-toc overflow-hidden">
         {isLoading ? (
           <div className="p-12 text-center text-slate-400 text-sm">Chargement des clients...</div>
         ) : clients.length === 0 ? (
@@ -263,67 +265,67 @@ export const ClientsPage: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase text-slate-500">
+            <table className="w-full text-left">
+              <thead className="bg-[#F5FAFD] dark:bg-dark-700/50 border-b border-[#E8EFF5] dark:border-dark-600">
                 <tr>
-                  <th className="px-6 py-3.5">Client</th>
-                  <th className="px-6 py-3.5">Contact</th>
-                  <th className="px-6 py-3.5">Adresse / Notes</th>
-                  <th className="px-6 py-3.5 text-right">Solde Dû</th>
-                  <th className="px-6 py-3.5 text-right">Actions</th>
+                  <th className={tableClasses.th}>Client</th>
+                  <th className={tableClasses.th}>Contact</th>
+                  <th className={tableClasses.th}>Adresse / Notes</th>
+                  <th className={`${tableClasses.th} text-right`}>Solde Dû</th>
+                  <th className={`${tableClasses.th} text-right`}>Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#E8EFF5] dark:divide-dark-600/60">
                 {clients.map((c) => {
                   const hasDebt = c.balance > 0;
                   return (
-                    <tr key={c.sync_id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-slate-900">{c.name}</div>
+                    <tr key={c.sync_id} className="hover:bg-brand-50/30 dark:hover:bg-dark-700/40 transition-colors">
+                      <td className={tableClasses.td}>
+                        <div className="font-bold text-slate-900 dark:text-white">{c.name}</div>
                         <div className="text-xs text-slate-400 mt-0.5">
                           Enregistré le {formatDateTime(c.created_at)}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-slate-600">
+                      <td className={tableClasses.td}>
                         {c.phone ? (
-                          <div className="flex items-center gap-1.5">
-                            <Phone className="w-3.5 h-3.5 text-slate-400" />
+                          <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                            <Phone className="w-3.5 h-3.5 text-brand-500" />
                             <span>{c.phone}</span>
                           </div>
                         ) : (
                           <span className="text-slate-400 text-xs">Aucun tél.</span>
                         )}
-                        {c.email && <div className="text-xs text-slate-500 mt-0.5">{c.email}</div>}
+                        {c.email && <div className="text-xs text-slate-400 mt-0.5">{c.email}</div>}
                       </td>
-                      <td className="px-6 py-4 text-slate-600">
+                      <td className={tableClasses.td}>
                         {c.address && (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                            <MapPin className="w-3 h-3 text-slate-400" />
+                          <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400" />
                             <span>{c.address}</span>
                           </div>
                         )}
                         {c.notes && <div className="text-xs text-slate-400 italic mt-0.5">{c.notes}</div>}
                         {!c.address && !c.notes && <span className="text-slate-400 text-xs">-</span>}
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className={`${tableClasses.td} text-right font-mono`}>
                         {hasDebt ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50">
                             <AlertCircle className="w-3 h-3" />
                             {formatFCFA(c.balance)}
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50">
                             <CheckCircle2 className="w-3 h-3" />
                             À jour (0 F)
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className={`${tableClasses.td} text-right`}>
                         <div className="flex items-center justify-end gap-2">
                           {hasDebt && (
                             <button
                               onClick={() => handleOpenPayment(c)}
-                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-medium transition shadow-xs"
+                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
                               title="Enregistrer un règlement"
                             >
                               Régler
@@ -331,14 +333,14 @@ export const ClientsPage: React.FC = () => {
                           )}
                           <button
                             onClick={() => handleOpenEdit(c)}
-                            className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition"
+                            className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-dark-700 rounded-xl transition"
                             title="Modifier"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(c)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition"
                             title="Supprimer"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -355,233 +357,221 @@ export const ClientsPage: React.FC = () => {
       </div>
 
       {/* Modal Création / Modification Client */}
-      {isClientModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-base font-bold text-slate-900">
-                {selectedClient ? 'Modifier le Client' : 'Nouveau Client'}
-              </h2>
-              <button
-                onClick={() => setIsClientModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleClientSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Nom Complet / Raison Sociale *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Jean Dupont ou Boutique ABC"
-                  value={clientForm.name}
-                  onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Téléphone
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="+228 90 00 00 00"
-                    value={clientForm.phone}
-                    onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="client@mail.com"
-                    value={clientForm.email}
-                    onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Adresse physique
-                </label>
-                <input
-                  type="text"
-                  placeholder="Quartier, Ville"
-                  value={clientForm.address}
-                  onChange={(e) => setClientForm({ ...clientForm, address: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                />
-              </div>
-
-              {!selectedClient && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Solde Débiteur Initial (Créance antérieure)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="100"
-                    placeholder="0"
-                    value={clientForm.balance}
-                    onChange={(e) => setClientForm({ ...clientForm, balance: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Notes
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Remarques particulières..."
-                  value={clientForm.notes}
-                  onChange={(e) => setClientForm({ ...clientForm, notes: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                ></textarea>
-              </div>
-
-              <div className="pt-2 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsClientModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition disabled:opacity-50"
-                >
-                  {selectedClient ? 'Enregistrer' : 'Créer le client'}
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={isClientModalOpen}
+        onClose={() => setIsClientModalOpen(false)}
+        title={selectedClient ? 'Modifier le Client' : 'Nouveau Client'}
+        subtitle="Renseignez les coordonnées et le solde éventuel"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsClientModalOpen(false)}
+              className="btn-secondary"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={handleClientSubmit}
+              disabled={createMutation.isPending || updateMutation.isPending}
+              className="btn-primary"
+            >
+              {selectedClient ? 'Enregistrer' : 'Créer le client'}
+            </button>
+          </>
+        }
+      >
+        <form onSubmit={handleClientSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+              Nom Complet / Raison Sociale *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Ex: Jean Dupont ou Boutique ABC"
+              value={clientForm.name}
+              onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })}
+              className="input-toc"
+            />
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Téléphone
+              </label>
+              <input
+                type="text"
+                placeholder="+228 90 00 00 00"
+                value={clientForm.phone}
+                onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })}
+                className="input-toc"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Email
+              </label>
+              <input
+                type="email"
+                placeholder="client@mail.com"
+                value={clientForm.email}
+                onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
+                className="input-toc"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+              Adresse physique
+            </label>
+            <input
+              type="text"
+              placeholder="Quartier, Ville"
+              value={clientForm.address}
+              onChange={(e) => setClientForm({ ...clientForm, address: e.target.value })}
+              className="input-toc"
+            />
+          </div>
+
+          {!selectedClient && (
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Solde Débiteur Initial (Créance antérieure)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="100"
+                placeholder="0"
+                value={clientForm.balance}
+                onChange={(e) => setClientForm({ ...clientForm, balance: parseFloat(e.target.value) || 0 })}
+                className="input-toc font-mono font-bold"
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+              Notes
+            </label>
+            <textarea
+              rows={2}
+              placeholder="Remarques particulières..."
+              value={clientForm.notes}
+              onChange={(e) => setClientForm({ ...clientForm, notes: e.target.value })}
+              className="input-toc"
+            ></textarea>
+          </div>
+        </form>
+      </Modal>
 
       {/* Modal Règlement Créance */}
-      {isPaymentModalOpen && paymentClient && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-emerald-600 font-bold">
-                <CreditCard className="w-5 h-5" />
-                <h2 className="text-base text-slate-900">Règlement de Créance</h2>
+      <Modal
+        isOpen={isPaymentModalOpen && !!paymentClient}
+        onClose={() => setIsPaymentModalOpen(false)}
+        title={
+          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+            <CreditCard className="w-5 h-5" />
+            <span>Règlement de Créance</span>
+          </div>
+        }
+        subtitle="Enregistrez un encaissement pour solder la dette du client"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsPaymentModalOpen(false)}
+              className="btn-secondary"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={handlePaymentSubmit}
+              disabled={paymentMutation.isPending || paymentForm.amount <= 0}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white rounded-xl text-sm font-bold shadow-sm transition disabled:opacity-50"
+            >
+              Valider le règlement
+            </button>
+          </>
+        }
+      >
+        {paymentClient && (
+          <form onSubmit={handlePaymentSubmit} className="space-y-4">
+            <div className="bg-[#F5FAFD] dark:bg-dark-700/60 p-3.5 rounded-2xl border border-[#E8EFF5] dark:border-dark-600">
+              <div className="text-xs text-slate-400 font-medium">Client</div>
+              <div className="font-bold text-slate-900 dark:text-white text-base">{paymentClient.name}</div>
+              <div className="flex justify-between items-center mt-2 pt-2 border-t border-[#E8EFF5] dark:border-dark-600 text-xs">
+                <span className="text-slate-500 dark:text-slate-400">Créance totale due :</span>
+                <span className="font-extrabold text-rose-600 dark:text-rose-400 font-mono">{formatFCFA(paymentClient.balance)}</span>
               </div>
-              <button
-                onClick={() => setIsPaymentModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
             </div>
 
-            <form onSubmit={handlePaymentSubmit} className="p-6 space-y-4">
-              <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-100">
-                <div className="text-xs text-slate-500 font-medium">Client</div>
-                <div className="font-bold text-slate-900 text-base">{paymentClient.name}</div>
-                <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-200 text-xs">
-                  <span className="text-slate-500">Créance totale due :</span>
-                  <span className="font-bold text-rose-600">{formatFCFA(paymentClient.balance)}</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Montant réglé *
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    max={paymentClient.balance}
-                    value={paymentForm.amount}
-                    onChange={(e) => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })}
-                    className="w-full pl-3 pr-16 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setPaymentForm({ ...paymentForm, amount: paymentClient.balance })}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-indigo-600 hover:text-indigo-800"
-                  >
-                    Totalité
-                  </button>
-                </div>
-                <div className="text-xs text-slate-500 mt-1 flex justify-between">
-                  <span>Nouveau solde après règlement :</span>
-                  <span className="font-bold text-slate-700">
-                    {formatFCFA(Math.max(0, paymentClient.balance - paymentForm.amount))}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Moyen de paiement *
-                </label>
-                <select
-                  value={paymentForm.payment_method}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-                >
-                  <option value="Espèces">Espèces</option>
-                  <option value="Mobile Money">Mobile Money (T-Money / Moov Money)</option>
-                  <option value="Virement">Virement bancaire</option>
-                  <option value="Chèque">Chèque</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Référence / Notes
-                </label>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Montant réglé *
+              </label>
+              <div className="relative">
                 <input
-                  type="text"
-                  value={paymentForm.notes}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
-                  placeholder="Ex: Réf reçu ou transaction..."
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  type="number"
+                  required
+                  min="1"
+                  max={paymentClient.balance}
+                  value={paymentForm.amount}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })}
+                  className="input-toc pr-20 font-mono font-bold"
                 />
-              </div>
-
-              <div className="pt-2 flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsPaymentModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition"
+                  onClick={() => setPaymentForm({ ...paymentForm, amount: paymentClient.balance })}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-brand-600 dark:text-brand-400 hover:underline"
                 >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={paymentMutation.isPending || paymentForm.amount <= 0}
-                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition disabled:opacity-50"
-                >
-                  Valider le règlement
+                  Totalité
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 flex justify-between">
+                <span>Nouveau solde après règlement :</span>
+                <span className="font-bold text-slate-700 dark:text-slate-200 font-mono">
+                  {formatFCFA(Math.max(0, paymentClient.balance - paymentForm.amount))}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Moyen de paiement *
+              </label>
+              <select
+                value={paymentForm.payment_method}
+                onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}
+                className="input-toc bg-white dark:bg-dark-700"
+              >
+                <option value="Espèces">Espèces</option>
+                <option value="Mobile Money">Mobile Money (T-Money / Moov Money)</option>
+                <option value="Virement">Virement bancaire</option>
+                <option value="Chèque">Chèque</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Référence / Notes
+              </label>
+              <input
+                type="text"
+                value={paymentForm.notes}
+                onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
+                placeholder="Ex: Réf reçu ou transaction..."
+                className="input-toc"
+              />
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   );
 };

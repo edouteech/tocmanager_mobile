@@ -6,7 +6,6 @@ import {
   DollarSign,
   Truck,
   Layers,
-  X,
   Calendar,
   CheckCircle2,
   Clock,
@@ -14,11 +13,13 @@ import {
 } from 'lucide-react';
 import { approvisionnementsApi, productsApi, suppliersApi } from '../../lib/api';
 import { formatFCFA, formatDateTime } from '../../lib/formatters';
-import { Approvisionnement } from '../../types';
+import { Drawer } from '../../components/common/Drawer';
+import { useDensity } from '../../context/DensityContext';
 
 export const SuppliesPage: React.FC = () => {
   const queryClient = useQueryClient();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { tableClasses } = useDensity();
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Form state
   const [form, setForm] = useState({
@@ -53,7 +54,7 @@ export const SuppliesPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['approvisionnements'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
-      setIsModalOpen(false);
+      setIsDrawerOpen(false);
       resetForm();
     },
   });
@@ -97,28 +98,27 @@ export const SuppliesPage: React.FC = () => {
     });
   };
 
-  // KPIs
   const totalSupplyCost = supplies.reduce((sum, s) => sum + s.total_cost, 0);
   const totalQuantity = supplies.reduce((sum, s) => sum + s.quantity, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             Approvisionnements & Stocks
           </h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             Journal des réceptions de marchandises et réapprovisionnements du magasin
           </p>
         </div>
         <button
           onClick={() => {
             resetForm();
-            setIsModalOpen(true);
+            setIsDrawerOpen(true);
           }}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition shadow-sm"
+          className="btn-primary"
         >
           <Plus className="w-4 h-4" />
           <span>Nouvelle Réception</span>
@@ -127,48 +127,48 @@ export const SuppliesPage: React.FC = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="card-toc card-hover p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Valeur des Achats Reçus</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">{formatFCFA(totalSupplyCost)}</p>
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Valeur des Achats Reçus</p>
+              <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">{formatFCFA(totalSupplyCost)}</p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400 flex items-center justify-center border border-brand-200 dark:border-brand-500/30">
               <DollarSign className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-xs text-slate-400 mt-3">Investissement d'approvisionnement</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">Investissement d'approvisionnement</p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="card-toc card-hover p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Quantités Totales Reçues</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">{totalQuantity}</p>
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Quantités Totales Reçues</p>
+              <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">{totalQuantity}</p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-100 dark:border-emerald-800/40">
               <Layers className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-xs text-slate-400 mt-3">Unités réceptionnées en stock</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">Unités réceptionnées en stock</p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="card-toc card-hover p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Bons de Réception</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">{supplies.length}</p>
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Bons de Réception</p>
+              <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">{supplies.length}</p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-100 dark:border-amber-900/50">
               <PackagePlus className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-xs text-slate-400 mt-3">Opérations d'entrée répertoriées</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">Opérations d'entrée répertoriées</p>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* Table with Density */}
+      <div className="card-toc overflow-hidden">
         {isLoading ? (
           <div className="p-12 text-center text-slate-400 text-sm">Chargement des réceptions...</div>
         ) : supplies.length === 0 ? (
@@ -177,37 +177,37 @@ export const SuppliesPage: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase text-slate-500">
+            <table className="w-full text-left">
+              <thead className="bg-[#F5FAFD] dark:bg-dark-700/50 border-b border-[#E8EFF5] dark:border-dark-600">
                 <tr>
-                  <th className="px-6 py-3.5">Date & Heure</th>
-                  <th className="px-6 py-3.5">Article Réceptionné</th>
-                  <th className="px-6 py-3.5">Fournisseur</th>
-                  <th className="px-6 py-3.5 text-center">Quantité</th>
-                  <th className="px-6 py-3.5 text-right">Coût Unitaire</th>
-                  <th className="px-6 py-3.5 text-right">Total Achat</th>
-                  <th className="px-6 py-3.5 text-center">Paiement</th>
-                  <th className="px-6 py-3.5">Opérateur</th>
+                  <th className={tableClasses.th}>Date & Heure</th>
+                  <th className={tableClasses.th}>Article Réceptionné</th>
+                  <th className={tableClasses.th}>Fournisseur</th>
+                  <th className={`${tableClasses.th} text-center`}>Quantité</th>
+                  <th className={`${tableClasses.th} text-right`}>Coût Unitaire</th>
+                  <th className={`${tableClasses.th} text-right`}>Total Achat</th>
+                  <th className={`${tableClasses.th} text-center`}>Paiement</th>
+                  <th className={tableClasses.th}>Opérateur</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#E8EFF5] dark:divide-dark-600/60">
                 {supplies.map((s) => {
                   const isPaid = s.payment_status === 'Payé';
                   return (
-                    <tr key={s.sync_id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-6 py-4 text-slate-600 text-xs">
-                        <div className="flex items-center gap-1.5 font-medium text-slate-900">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    <tr key={s.sync_id} className="hover:bg-brand-50/30 dark:hover:bg-dark-700/40 transition-colors">
+                      <td className={tableClasses.td}>
+                        <div className="flex items-center gap-1.5 font-medium text-slate-900 dark:text-white">
+                          <Calendar className="w-3.5 h-3.5 text-brand-500" />
                           <span>{formatDateTime(s.date || s.created_at)}</span>
                         </div>
-                        {s.notes && <div className="text-slate-400 italic mt-0.5">{s.notes}</div>}
+                        {s.notes && <div className="text-slate-400 text-xs italic mt-0.5">{s.notes}</div>}
                       </td>
-                      <td className="px-6 py-4 font-semibold text-slate-900">
+                      <td className={`${tableClasses.td} font-bold text-slate-900 dark:text-white`}>
                         {s.product_name}
                       </td>
-                      <td className="px-6 py-4 text-slate-600">
+                      <td className={tableClasses.td}>
                         {s.supplier_name ? (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
                             <Truck className="w-3.5 h-3.5 text-slate-400" />
                             <span>{s.supplier_name}</span>
                           </div>
@@ -215,33 +215,33 @@ export const SuppliesPage: React.FC = () => {
                           <span className="text-slate-400 text-xs">Non spécifié</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700">
+                      <td className={`${tableClasses.td} text-center`}>
+                        <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-500/30">
                           +{s.quantity}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right text-slate-600 font-mono">
+                      <td className={`${tableClasses.td} text-right text-slate-500 dark:text-slate-400 font-mono`}>
                         {formatFCFA(s.unit_cost)}
                       </td>
-                      <td className="px-6 py-4 text-right font-bold text-slate-900 font-mono">
+                      <td className={`${tableClasses.td} text-right font-extrabold text-slate-900 dark:text-white font-mono`}>
                         {formatFCFA(s.total_cost)}
                       </td>
-                      <td className="px-6 py-4 text-center">
+                      <td className={`${tableClasses.td} text-center`}>
                         {isPaid ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50">
                             <CheckCircle2 className="w-3 h-3" />
                             Payé
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50">
                             <Clock className="w-3 h-3" />
                             À crédit
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-xs text-slate-500">
-                        <div className="flex items-center gap-1">
-                          <UserCheck className="w-3 h-3 text-slate-400" />
+                      <td className={tableClasses.td}>
+                        <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                          <UserCheck className="w-3.5 h-3.5 text-slate-400" />
                           <span>{s.user_name || 'Système'}</span>
                         </div>
                       </td>
@@ -254,177 +254,171 @@ export const SuppliesPage: React.FC = () => {
         )}
       </div>
 
-      {/* Modal Nouvelle Entrée de Stock */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-indigo-600 font-bold">
-                <PackagePlus className="w-5 h-5" />
-                <h2 className="text-base text-slate-900">Enregistrer une Réception de Stock</h2>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Article / Produit à réapprovisionner *
-                </label>
-                <select
-                  required
-                  value={form.product_sync_id}
-                  onChange={(e) => handleProductChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
-                >
-                  <option value="">Sélectionner un produit...</option>
-                  {products.map((p) => (
-                    <option key={p.sync_id} value={p.sync_id}>
-                      {p.name} (Stock actuel : {p.stock} {p.unit || 'pce'})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Fournisseur partenaire
-                </label>
-                <select
-                  value={form.supplier_sync_id}
-                  onChange={(e) => setForm({ ...form, supplier_sync_id: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
-                >
-                  <option value="">Sélectionner un fournisseur (optionnel)...</option>
-                  {suppliers.map((s) => (
-                    <option key={s.sync_id} value={s.sync_id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Quantité reçue *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    step="1"
-                    value={form.quantity}
-                    onChange={(e) => setForm({ ...form, quantity: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Prix d'achat unitaire (F) *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    step="50"
-                    value={form.unit_cost}
-                    onChange={(e) => setForm({ ...form, unit_cost: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <div className="bg-slate-50 p-3 rounded-lg flex items-center justify-between text-sm">
-                <span className="text-slate-600 font-medium">Montant total de la livraison :</span>
-                <span className="font-bold text-indigo-700 text-base">
-                  {formatFCFA(form.quantity * form.unit_cost)}
-                </span>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Modalité de règlement *
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <label
-                    className={`flex items-center gap-2 p-3 border rounded-lg cursor-pointer text-sm font-medium transition ${
-                      form.payment_status === 'Payé'
-                        ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
-                        : 'border-slate-200 bg-white text-slate-600'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="payment_status"
-                      value="Payé"
-                      checked={form.payment_status === 'Payé'}
-                      onChange={() => setForm({ ...form, payment_status: 'Payé' })}
-                      className="sr-only"
-                    />
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>Payé (Comptant)</span>
-                  </label>
-
-                  <label
-                    className={`flex items-center gap-2 p-3 border rounded-lg cursor-pointer text-sm font-medium transition ${
-                      form.payment_status === 'À crédit'
-                        ? 'border-amber-500 bg-amber-50 text-amber-800'
-                        : 'border-slate-200 bg-white text-slate-600'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="payment_status"
-                      value="À crédit"
-                      checked={form.payment_status === 'À crédit'}
-                      onChange={() => setForm({ ...form, payment_status: 'À crédit' })}
-                      className="sr-only"
-                    />
-                    <Clock className="w-4 h-4 text-amber-600" />
-                    <span>À crédit (Différé)</span>
-                  </label>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Numéro Bon / Facture / Notes
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: Facture N° BL-2026-89"
-                  value={form.notes}
-                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="pt-2 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={createMutation.isPending || !form.product_sync_id}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition disabled:opacity-50"
-                >
-                  Valider la réception
-                </button>
-              </div>
-            </form>
+      {/* Slide-over Drawer for Stock Reception */}
+      <Drawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        title="Réception de Marchandises"
+        subtitle="Entrée en stock avec recalcul automatique du PAMP"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsDrawerOpen(false)}
+              className="btn-secondary"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={createMutation.isPending || !form.product_sync_id || form.quantity <= 0}
+              className="btn-primary"
+            >
+              {createMutation.isPending ? 'Enregistrement...' : 'Valider la Réception'}
+            </button>
+          </>
+        }
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+              Article réceptionné *
+            </label>
+            <select
+              required
+              value={form.product_sync_id}
+              onChange={(e) => handleProductChange(e.target.value)}
+              className="input-toc bg-white dark:bg-dark-700"
+            >
+              <option value="">Sélectionner un produit du catalogue...</option>
+              {products.map((p) => (
+                <option key={p.sync_id} value={p.sync_id}>
+                  {p.name} (Stock actuel: {p.stock})
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+              Fournisseur partenaire
+            </label>
+            <select
+              value={form.supplier_sync_id}
+              onChange={(e) => setForm({ ...form, supplier_sync_id: e.target.value })}
+              className="input-toc bg-white dark:bg-dark-700"
+            >
+              <option value="">Sélectionner un fournisseur (optionnel)...</option>
+              {suppliers.map((s) => (
+                <option key={s.sync_id} value={s.sync_id}>
+                  {s.name} (Solde dû: {formatFCFA(s.balance)})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Quantité reçue *
+              </label>
+              <input
+                type="number"
+                min="1"
+                required
+                value={form.quantity}
+                onChange={(e) => setForm({ ...form, quantity: parseInt(e.target.value) || 1 })}
+                className="input-toc font-mono font-bold"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Coût unitaire d'achat (F CFA) *
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="50"
+                required
+                value={form.unit_cost}
+                onChange={(e) => setForm({ ...form, unit_cost: parseFloat(e.target.value) || 0 })}
+                className="input-toc font-mono font-bold"
+              />
+            </div>
+          </div>
+
+          <div className="p-3.5 bg-brand-50/50 dark:bg-dark-700/60 rounded-2xl border border-brand-100 dark:border-dark-600 flex justify-between items-center text-xs">
+            <span className="font-semibold text-slate-600 dark:text-slate-300">Montant Total de la Réception :</span>
+            <span className="font-extrabold text-brand-600 dark:text-brand-400 text-sm font-mono">
+              {formatFCFA(form.quantity * form.unit_cost)}
+            </span>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+              Modalité de règlement
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label
+                className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-bold cursor-pointer transition ${
+                  form.payment_status === 'Payé'
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                    : 'border-slate-200 dark:border-dark-600 text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="payment_status"
+                  value="Payé"
+                  checked={form.payment_status === 'Payé'}
+                  onChange={() => setForm({ ...form, payment_status: 'Payé' })}
+                  className="sr-only"
+                />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Payé (Comptant)</span>
+              </label>
+
+              <label
+                className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-bold cursor-pointer transition ${
+                  form.payment_status === 'À crédit'
+                    ? 'border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
+                    : 'border-slate-200 dark:border-dark-600 text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="payment_status"
+                  value="À crédit"
+                  checked={form.payment_status === 'À crédit'}
+                  onChange={() => setForm({ ...form, payment_status: 'À crédit' })}
+                  className="sr-only"
+                />
+                <Clock className="w-4 h-4 text-amber-600" />
+                <span>À Crédit (Dette)</span>
+              </label>
+            </div>
+            {form.payment_status === 'À crédit' && form.supplier_sync_id && (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1.5">
+                Ce montant sera ajouté automatiquement au solde débiteur du fournisseur.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+              Numéro de bon / Facture / Notes
+            </label>
+            <textarea
+              rows={2}
+              placeholder="Ex: Facture BL-9042, date de livraison..."
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              className="input-toc"
+            ></textarea>
+          </div>
+        </form>
+      </Drawer>
     </div>
   );
 };

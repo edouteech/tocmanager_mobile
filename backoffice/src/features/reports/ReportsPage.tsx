@@ -5,7 +5,6 @@ import {
   TrendingDown,
   DollarSign,
   Download,
-  Calendar,
   Layers,
   Award,
   PieChart as PieChartIcon,
@@ -23,8 +22,12 @@ import {
 } from 'recharts';
 import { reportsApi } from '../../lib/api';
 import { formatFCFA } from '../../lib/formatters';
+import { useDensity } from '../../context/DensityContext';
+import { useTheme } from '../../context/ThemeContext';
 
 export const ReportsPage: React.FC = () => {
+  const { tableClasses } = useDensity();
+  const { theme } = useTheme();
   const [periodDays, setPeriodDays] = useState<number>(30);
 
   // Compute start/end dates
@@ -76,7 +79,7 @@ export const ReportsPage: React.FC = () => {
 
   if (isLoading || !report) {
     return (
-      <div className="p-12 text-center text-slate-400 text-sm bg-white rounded-xl border border-slate-200">
+      <div className="card-toc p-12 text-center text-slate-400 text-sm">
         Génération du rapport financier et des calculs de rentabilité...
       </div>
     );
@@ -85,37 +88,37 @@ export const ReportsPage: React.FC = () => {
   const { kpis, top_products, expenses_by_category, monthly_trend } = report;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Rapports & Rentabilité (P&L)</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">Rapports & Rentabilité (P&L)</h1>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             Compte de résultat analytique, marge brute commerciale et bénéfice net d'exploitation
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center bg-white border border-slate-200 rounded-lg p-1 text-xs font-semibold text-slate-600 shadow-xs">
+          <div className="flex items-center bg-white dark:bg-dark-800 border border-[#E8EFF5] dark:border-dark-600 rounded-xl p-1 text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-soft">
             <button
               onClick={() => setPeriodDays(7)}
-              className={`px-3 py-1.5 rounded-md transition ${
-                periodDays === 7 ? 'bg-indigo-600 text-white' : 'hover:bg-slate-100'
+              className={`px-3 py-1.5 rounded-lg transition ${
+                periodDays === 7 ? 'bg-brand-500 text-white font-bold' : 'hover:bg-slate-100 dark:hover:bg-dark-700'
               }`}
             >
               7 jours
             </button>
             <button
               onClick={() => setPeriodDays(30)}
-              className={`px-3 py-1.5 rounded-md transition ${
-                periodDays === 30 ? 'bg-indigo-600 text-white' : 'hover:bg-slate-100'
+              className={`px-3 py-1.5 rounded-lg transition ${
+                periodDays === 30 ? 'bg-brand-500 text-white font-bold' : 'hover:bg-slate-100 dark:hover:bg-dark-700'
               }`}
             >
               30 jours
             </button>
             <button
               onClick={() => setPeriodDays(90)}
-              className={`px-3 py-1.5 rounded-md transition ${
-                periodDays === 90 ? 'bg-indigo-600 text-white' : 'hover:bg-slate-100'
+              className={`px-3 py-1.5 rounded-lg transition ${
+                periodDays === 90 ? 'bg-brand-500 text-white font-bold' : 'hover:bg-slate-100 dark:hover:bg-dark-700'
               }`}
             >
               90 jours
@@ -123,9 +126,9 @@ export const ReportsPage: React.FC = () => {
           </div>
           <button
             onClick={exportCSV}
-            className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition shadow-xs"
+            className="btn-secondary"
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-4 h-4 text-brand-500" />
             <span>Export CSV</span>
           </button>
         </div>
@@ -134,146 +137,167 @@ export const ReportsPage: React.FC = () => {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Chiffre d'affaires Net */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="card-toc card-hover p-5">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Chiffre d'Affaires Net</p>
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Chiffre d'Affaires Net</p>
+            <div className="w-8 h-8 rounded-xl bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400 flex items-center justify-center border border-brand-200 dark:border-brand-500/30">
               <DollarSign className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{formatFCFA(kpis.net_sales)}</p>
-          <p className="text-xs text-slate-400 mt-2">Total des ventes enregistrées</p>
+          <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-2">{formatFCFA(kpis.net_sales)}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">Total des ventes enregistrées</p>
         </div>
 
         {/* Coût des Marchandises (COGS) */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="card-toc card-hover p-5">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Coût des Ventes (COGS)</p>
-            <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Coût des Ventes (COGS)</p>
+            <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-dark-700 text-slate-600 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-dark-600">
               <Layers className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-slate-700 mt-2">{formatFCFA(kpis.cogs)}</p>
-          <p className="text-xs text-slate-400 mt-2">Prix d'achat des articles vendus</p>
+          <p className="text-2xl font-extrabold text-slate-700 dark:text-slate-200 mt-2">{formatFCFA(kpis.cogs)}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">Prix d'achat des articles vendus</p>
         </div>
 
         {/* Marge Brute */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="card-toc card-hover p-5">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Marge Brute</p>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Marge Brute</p>
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-100 dark:border-emerald-800/40">
               <Percent className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-emerald-600 mt-2">{formatFCFA(kpis.gross_margin)}</p>
-          <p className="text-xs text-emerald-700 font-semibold mt-2">
+          <p className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-2">{formatFCFA(kpis.gross_margin)}</p>
+          <p className="text-xs text-emerald-700 dark:text-emerald-300 font-semibold mt-2">
             Taux de marge brute : {kpis.gross_margin_rate}%
           </p>
         </div>
 
         {/* Résultat Net */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="card-toc card-hover p-5">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Résultat Net</p>
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Résultat Net</p>
             <div
-              className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                kpis.net_profit >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+              className={`w-8 h-8 rounded-xl flex items-center justify-center border ${
+                kpis.net_profit >= 0
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/40'
+                  : 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-800/40'
               }`}
             >
               {kpis.net_profit >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
             </div>
           </div>
           <p
-            className={`text-2xl font-bold mt-2 ${
-              kpis.net_profit >= 0 ? 'text-emerald-600' : 'text-rose-600'
+            className={`text-2xl font-extrabold mt-2 ${
+              kpis.net_profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
             }`}
           >
             {formatFCFA(kpis.net_profit)}
           </p>
-          <p className="text-xs text-slate-500 mt-2">Après déduction des charges ({formatFCFA(kpis.total_expenses)})</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Après charges ({formatFCFA(kpis.total_expenses)})</p>
         </div>
       </div>
 
       {/* Financial Statement & Trend Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Synthetic P&L Table */}
-        <div className="lg:col-span-5 bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+        <div className="lg:col-span-5 card-toc p-6 flex flex-col justify-between">
           <div>
-            <h2 className="text-base font-bold text-slate-900 mb-1">Compte de Résultat Synthétique</h2>
-            <p className="text-xs text-slate-500 mb-5">Décomposition de la formation du bénéfice net</p>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white mb-1">Compte de Résultat Synthétique</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">Décomposition de la formation du bénéfice net</p>
 
-            <div className="space-y-3.5 text-sm">
-              <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
-                <span className="text-slate-600">Chiffre d'Affaires Brut</span>
-                <span className="font-semibold text-slate-900">{formatFCFA(kpis.gross_sales)}</span>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between items-center py-1.5 border-b border-[#E8EFF5] dark:border-dark-600">
+                <span className="text-slate-600 dark:text-slate-300">Chiffre d'Affaires Brut</span>
+                <span className="font-semibold text-slate-900 dark:text-white font-mono">{formatFCFA(kpis.gross_sales)}</span>
               </div>
 
               {kpis.discount_amount > 0 && (
-                <div className="flex justify-between items-center py-1.5 border-b border-slate-100 text-rose-600">
+                <div className="flex justify-between items-center py-1.5 border-b border-[#E8EFF5] dark:border-dark-600 text-rose-600 dark:text-rose-400">
                   <span>- Remises accordées</span>
-                  <span>-{formatFCFA(kpis.discount_amount)}</span>
+                  <span className="font-mono">-{formatFCFA(kpis.discount_amount)}</span>
                 </div>
               )}
 
-              <div className="flex justify-between items-center py-1.5 border-b border-slate-100 font-medium">
-                <span className="text-slate-900">= Chiffre d'Affaires Net</span>
-                <span className="font-bold text-slate-900">{formatFCFA(kpis.net_sales)}</span>
+              <div className="flex justify-between items-center py-1.5 border-b border-[#E8EFF5] dark:border-dark-600 font-medium">
+                <span className="text-slate-900 dark:text-white font-bold">= Chiffre d'Affaires Net</span>
+                <span className="font-extrabold text-slate-900 dark:text-white font-mono">{formatFCFA(kpis.net_sales)}</span>
               </div>
 
-              <div className="flex justify-between items-center py-1.5 border-b border-slate-100 text-slate-600">
+              <div className="flex justify-between items-center py-1.5 border-b border-[#E8EFF5] dark:border-dark-600 text-slate-600 dark:text-slate-400">
                 <span>- Coût Marchandises Vendues (COGS)</span>
-                <span className="text-rose-600 font-mono">-{formatFCFA(kpis.cogs)}</span>
+                <span className="text-rose-600 dark:text-rose-400 font-mono">-{formatFCFA(kpis.cogs)}</span>
               </div>
 
-              <div className="flex justify-between items-center py-2 bg-emerald-50/60 px-3 rounded-lg text-emerald-800 font-bold">
+              <div className="flex justify-between items-center py-2.5 bg-brand-50/60 dark:bg-brand-500/15 px-3.5 rounded-xl text-brand-800 dark:text-brand-300 font-bold border border-brand-100 dark:border-brand-500/30">
                 <span>= Marge Brute Commerciale</span>
-                <span>{formatFCFA(kpis.gross_margin)}</span>
+                <span className="font-mono">{formatFCFA(kpis.gross_margin)}</span>
               </div>
 
-              <div className="flex justify-between items-center py-1.5 border-b border-slate-100 text-slate-600">
+              <div className="flex justify-between items-center py-1.5 border-b border-[#E8EFF5] dark:border-dark-600 text-slate-600 dark:text-slate-400">
                 <span>- Charges d'Exploitation (Dépenses)</span>
-                <span className="text-rose-600 font-mono">-{formatFCFA(kpis.total_expenses)}</span>
+                <span className="text-rose-600 dark:text-rose-400 font-mono">-{formatFCFA(kpis.total_expenses)}</span>
               </div>
 
               <div
-                className={`flex justify-between items-center py-3 px-3 rounded-lg font-bold text-base ${
-                  kpis.net_profit >= 0 ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                className={`flex justify-between items-center py-3 px-3.5 rounded-xl font-extrabold text-base ${
+                  kpis.net_profit >= 0 ? 'bg-emerald-600 text-white shadow-sm' : 'bg-rose-600 text-white shadow-sm'
                 }`}
               >
                 <span>= Bénéfice Net d'Exploitation</span>
-                <span>{formatFCFA(kpis.net_profit)}</span>
+                <span className="font-mono">{formatFCFA(kpis.net_profit)}</span>
               </div>
             </div>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <div className="mt-6 pt-4 border-t border-[#E8EFF5] dark:border-dark-600 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span>Taux de Marge Nette :</span>
-            <span className="font-bold text-slate-900">{kpis.net_margin_rate}%</span>
+            <span className="font-bold text-slate-900 dark:text-white">{kpis.net_margin_rate}%</span>
           </div>
         </div>
 
         {/* Monthly Trend Chart */}
-        <div className="lg:col-span-7 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <div className="lg:col-span-7 card-toc p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-base font-bold text-slate-900">Évolution Temporelle (6 derniers mois)</h2>
-              <p className="text-xs text-slate-500">Comparatif Chiffre d'Affaires vs Dépenses</p>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Évolution Temporelle (6 derniers mois)</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Comparatif Chiffre d'Affaires vs Dépenses</p>
             </div>
           </div>
 
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthly_trend} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="period" stroke="#94A3B8" fontSize={12} tickLine={false} />
-                <YAxis stroke="#94A3B8" fontSize={11} tickLine={false} />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke={theme === 'dark' ? '#26384C' : '#E8EFF5'}
+                />
+                <XAxis
+                  dataKey="period"
+                  stroke={theme === 'dark' ? '#5A7184' : '#94A3B8'}
+                  fontSize={11}
+                  tickLine={false}
+                />
+                <YAxis
+                  stroke={theme === 'dark' ? '#5A7184' : '#94A3B8'}
+                  fontSize={11}
+                  tickLine={false}
+                />
                 <Tooltip
                   formatter={(val: number) => formatFCFA(val)}
-                  contentStyle={{ backgroundColor: '#1E293B', color: '#fff', borderRadius: '8px', border: 'none' }}
+                  contentStyle={{
+                    backgroundColor: theme === 'dark' ? '#16222F' : '#1C2B3A',
+                    color: '#fff',
+                    borderRadius: '12px',
+                    border: 'none',
+                    fontSize: '12px',
+                  }}
                 />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="sales" name="Chiffre d'Affaires" fill="#4F46E5" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="expenses" name="Dépenses d'Exploitation" fill="#F43F5E" radius={[4, 4, 0, 0]} />
+                <Legend wrapperStyle={{ fontSize: 12, paddingTop: '10px' }} />
+                <Bar dataKey="sales" name="Chiffre d'Affaires" fill="#29ABE2" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="expenses" name="Dépenses d'Exploitation" fill="#E74C3C" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -283,10 +307,10 @@ export const ReportsPage: React.FC = () => {
       {/* Top Products & Expense Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Products */}
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <div className="card-toc p-6">
           <div className="flex items-center gap-2 mb-4">
             <Award className="w-5 h-5 text-amber-500" />
-            <h2 className="text-base font-bold text-slate-900">Top 10 Produits par Rentabilité</h2>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">Top 10 Produits par Rentabilité</h2>
           </div>
 
           {top_products.length === 0 ? (
@@ -294,23 +318,23 @@ export const ReportsPage: React.FC = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-100">
+                <thead className="bg-[#F5FAFD] dark:bg-dark-700/50 text-slate-500 dark:text-slate-400 uppercase font-semibold border-b border-[#E8EFF5] dark:border-dark-600">
                   <tr>
-                    <th className="py-2.5 px-3">Article</th>
-                    <th className="py-2.5 px-3 text-center">Qté</th>
-                    <th className="py-2.5 px-3 text-right">C.A.</th>
-                    <th className="py-2.5 px-3 text-right">Profit</th>
+                    <th className={tableClasses.th}>Article</th>
+                    <th className={`${tableClasses.th} text-center`}>Qté</th>
+                    <th className={`${tableClasses.th} text-right`}>C.A.</th>
+                    <th className={`${tableClasses.th} text-right`}>Profit</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-[#E8EFF5] dark:divide-dark-600/60">
                   {top_products.map((p, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/50">
-                      <td className="py-2.5 px-3 font-medium text-slate-900">{p.product_name}</td>
-                      <td className="py-2.5 px-3 text-center text-slate-600">{p.quantity_sold}</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-medium text-slate-900">
+                    <tr key={idx} className="hover:bg-brand-50/20 dark:hover:bg-dark-700/40">
+                      <td className={`${tableClasses.td} font-medium text-slate-900 dark:text-white`}>{p.product_name}</td>
+                      <td className={`${tableClasses.td} text-center text-slate-600 dark:text-slate-300 font-mono`}>{p.quantity_sold}</td>
+                      <td className={`${tableClasses.td} text-right font-mono font-medium text-slate-900 dark:text-white`}>
                         {formatFCFA(p.total_revenue)}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-600">
+                      <td className={`${tableClasses.td} text-right font-mono font-bold text-emerald-600 dark:text-emerald-400`}>
                         +{formatFCFA(p.total_profit)}
                       </td>
                     </tr>
@@ -322,27 +346,27 @@ export const ReportsPage: React.FC = () => {
         </div>
 
         {/* Expenses by Category */}
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <div className="card-toc p-6">
           <div className="flex items-center gap-2 mb-4">
-            <PieChartIcon className="w-5 h-5 text-indigo-600" />
-            <h2 className="text-base font-bold text-slate-900">Répartition des Dépenses par Catégorie</h2>
+            <PieChartIcon className="w-5 h-5 text-brand-500" />
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">Répartition des Dépenses par Catégorie</h2>
           </div>
 
           {expenses_by_category.length === 0 ? (
             <p className="text-xs text-slate-400 py-6 text-center">Aucune dépense sur cette période.</p>
           ) : (
-            <div className="space-y-3.5">
+            <div className="space-y-4">
               {expenses_by_category.map((e, idx) => (
                 <div key={idx}>
-                  <div className="flex justify-between items-center text-xs font-medium mb-1">
-                    <span className="text-slate-700">{e.category}</span>
-                    <span className="font-bold text-slate-900">
+                  <div className="flex justify-between items-center text-xs font-semibold mb-1.5">
+                    <span className="text-slate-700 dark:text-slate-200">{e.category}</span>
+                    <span className="font-bold text-slate-900 dark:text-white font-mono">
                       {formatFCFA(e.total_amount)} ({e.percentage}%)
                     </span>
                   </div>
-                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div className="w-full bg-slate-100 dark:bg-dark-700 h-2.5 rounded-full overflow-hidden">
                     <div
-                      className="bg-indigo-600 h-full rounded-full transition-all duration-300"
+                      className="bg-brand-500 h-full rounded-full transition-all duration-300"
                       style={{ width: `${Math.min(100, e.percentage)}%` }}
                     />
                   </div>
