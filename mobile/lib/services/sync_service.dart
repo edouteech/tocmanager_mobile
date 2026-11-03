@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:uuid/uuid.dart';
 import '../database/database_helper.dart';
 import '../services/secure_storage_service.dart';
 import '../services/network_service.dart';
@@ -45,6 +46,9 @@ class SyncService {
 
       final baseUrl = await SecureStorageService.getServerUrl();
 
+      // 0. PUSH initial automatique du catalogue et de l'historique préexistants (si première connexion)
+      await _checkAndPerformInitialSeed(baseUrl);
+
       // 1. PUSH des opérations hors-ligne accumulées (avec interception 401 et retry automatique)
       await _pushPendingQueue(baseUrl);
 
@@ -58,6 +62,158 @@ class SyncService {
       debugPrint('Sync error: $e');
       _isSyncing = false;
       return SyncStatus.error;
+    }
+  }
+
+  /// Téléversement automatique complet des données historiques locales lors de la première connexion
+  Future<void> _checkAndPerformInitialSeed(String baseUrl) async {
+    final alreadyDone = await SecureStorageService.hasInitialSeedDone();
+    if (alreadyDone) return;
+
+    try {
+      debugPrint('[SYNC] Premier lancement connecté : préparation du téléversement initial des données préexistantes...');
+      final db = await DatabaseHelper.instance.database;
+
+      final catRows = await db.query('categories');
+      final prodRows = await db.query('products');
+      final supRows = await db.query('suppliers');
+      final clientRows = await db.query('clients');
+      final decRows = await db.query('decaissements');
+      final appRows = await db.query('approvisionnements');
+      final venteRows = await db.query('ventes');
+
+      // Si aucune donnée locale n'existe, on marque comme fait et on quitte
+      if (catRows.isEmpty && prodRows.isEmpty && clientRows.isEmpty && venteRows.isEmpty) {
+        await SecureStorageService.setInitialSeedDone();
+        return;
+      }
+
+      const uuid = Uuid();
+
+      final List<Map<String, dynamic>> ventesPayload = [];
+      for (final v in venteRows) {
+        final venteId = v['id'];
+        final items = await db.query(
+          'vente_items',
+          where: 'vente_id = ?',
+          whereArgs: [venteId],
+        );
+        final vMap = Map<String, dynamic>.from(v);
+        vMap['sync_id'] = vMap['sync_id'] ?? uuid.v4();
+        vMap['items'] = items.map((it) {
+          return {
+            'sync_id': it['sync_id'] ?? uuid.v4(),
+            'product_sync_id': it['product_sync_id'],
+            'product_name': it['product_name'] ?? 'Article',
+            'quantity': (it['quantity'] as num?)?.toDouble() ?? 1.0,
+            'unit_price': (it['unit_price'] as num?)?.toDouble() ?? 0.0,
+            'cost_price': (it['cost_price'] as num?)?.toDouble() ?? 0.0,
+            'total': (it['total'] as num?)?.toDouble() ?? 0.0,
+          };
+        }).toList();
+        ventesPayload.add(vMap);
+      }
+
+      final seedBody = {
+        'is_initial_sync': true,
+        'categories': catRows.map((c) => {
+          'sync_id': c['sync_id'] ?? uuid.v4(),
+          'name': c['name'] ?? '',
+          'description': c['description'],
+          'color': c['color']?.toString(),
+          'icon': c['icon']?.toString(),
+          'updated_at': c['updated_at'] ?? DateTime.now().toIso8601String(),
+        }).toList(),
+        'products': prodRows.map((p) => {
+          'sync_id': p['sync_id'] ?? uuid.v4(),
+          'name': p['name'] ?? '',
+          'category_sync_id': p['category_sync_id'],
+          'price': (p['price'] as num?)?.toDouble() ?? 0.0,
+          'cost_price': (p['cost_price'] as num?)?.toDouble() ?? 0.0,
+          'average_cost_price': (p['average_cost_price'] as num?)?.toDouble() ?? 0.0,
+          'stock': (p['quantity'] as num?)?.toDouble() ?? 0.0,
+          'min_stock': (p['alert_quantity'] as num?)?.toDouble() ?? 5.0,
+          'barcode': p['barcode'],
+          'unit': p['unit'] ?? 'pièce',
+          'is_active': (p['is_active'] ?? 1) == 1,
+          'updated_at': p['updated_at'] ?? DateTime.now().toIso8601String(),
+        }).toList(),
+        'suppliers': supRows.map((s) => {
+          'sync_id': s['sync_id'] ?? uuid.v4(),
+          'name': s['name'] ?? '',
+          'contact_person': s['contact_person'],
+          'phone': s['phone'],
+          'email': s['email'],
+          'address': s['address'],
+          'balance': (s['balance'] as num?)?.toDouble() ?? 0.0,
+          'notes': s['notes'],
+          'updated_at': s['updated_at'] ?? DateTime.now().toIso8601String(),
+        }).toList(),
+        'clients': clientRows.map((cl) => {
+          'sync_id': cl['sync_id'] ?? uuid.v4(),
+          'name': cl['name'] ?? '',
+          'phone': cl['phone'],
+          'email': cl['email'],
+          'address': cl['address'],
+          'balance': (cl['balance'] as num?)?.toDouble() ?? 0.0,
+          'notes': cl['notes'],
+          'updated_at': cl['updated_at'] ?? DateTime.now().toIso8601String(),
+        }).toList(),
+        'decaissements': decRows.map((d) => {
+          'sync_id': d['sync_id'] ?? uuid.v4(),
+          'title': d['title'] ?? '',
+          'amount': (d['amount'] as num?)?.toDouble() ?? 0.0,
+          'category': d['category'] ?? 'Divers',
+          'beneficiary': d['beneficiary'],
+          'payment_method': d['payment_method'] ?? 'Espèces',
+          'date': d['date'] ?? d['created_at'] ?? DateTime.now().toIso8601String(),
+          'notes': d['notes'],
+          'updated_at': d['updated_at'] ?? DateTime.now().toIso8601String(),
+        }).toList(),
+        'approvisionnements': appRows.map((a) => {
+          'sync_id': a['sync_id'] ?? uuid.v4(),
+          'supplier_sync_id': a['supplier_sync_id'],
+          'supplier_name': a['supplier_name'],
+          'product_sync_id': a['product_sync_id'],
+          'product_name': a['product_name'] ?? '',
+          'quantity': (a['quantity'] as num?)?.toDouble() ?? 0.0,
+          'unit_cost': (a['unit_cost'] as num?)?.toDouble() ?? 0.0,
+          'total_cost': (a['total_cost'] as num?)?.toDouble() ?? 0.0,
+          'payment_status': a['payment_status'] ?? 'Payé',
+          'date': a['date'] ?? DateTime.now().toIso8601String(),
+          'notes': a['notes'],
+          'updated_at': a['updated_at'] ?? DateTime.now().toIso8601String(),
+        }).toList(),
+        'ventes': ventesPayload.map((v) => {
+          'sync_id': v['sync_id'],
+          'ticket_number': v['ticket_number'] ?? 'TICKET',
+          'client_sync_id': v['client_sync_id'],
+          'client_name': v['client_name'] ?? 'Occasionnel',
+          'total_amount': (v['total_amount'] as num?)?.toDouble() ?? 0.0,
+          'paid_amount': (v['paid_amount'] as num?)?.toDouble() ?? 0.0,
+          'discount_amount': (v['discount_amount'] as num?)?.toDouble() ?? 0.0,
+          'payment_method': v['payment_method'] ?? 'Espèces',
+          'notes': v['notes'],
+          'created_at': v['created_at'] ?? DateTime.now().toIso8601String(),
+          'updated_at': v['updated_at'] ?? v['created_at'] ?? DateTime.now().toIso8601String(),
+          'items': v['items'],
+        }).toList(),
+      };
+
+      final response = await ApiClient.instance.post(
+        Uri.parse('$baseUrl/sync/push'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(seedBody),
+      );
+
+      if (response.statusCode == 200) {
+        await SecureStorageService.setInitialSeedDone();
+        debugPrint('[SYNC] Téléversement initial des données historiques réussi avec succès !');
+      } else {
+        debugPrint('[SYNC] Échec du téléversement initial (${response.statusCode}): ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('[SYNC] Erreur lors du téléversement initial: $e');
     }
   }
 

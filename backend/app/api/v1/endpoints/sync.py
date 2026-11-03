@@ -193,6 +193,98 @@ def push_changes(
     synced_uuids = []
     errors = []
 
+    # 0.1 Catégories (initial seed / push)
+    for cat in payload.categories:
+        try:
+            existing_cat = db.query(Category).filter(Category.sync_id == cat.sync_id).first()
+            if existing_cat:
+                existing_cat.name = cat.name
+                existing_cat.description = cat.description
+                existing_cat.color = cat.color
+                existing_cat.icon = cat.icon
+                existing_cat.updated_at = cat.updated_at or datetime.now(timezone.utc)
+            else:
+                db.add(Category(
+                    sync_id=cat.sync_id,
+                    name=cat.name,
+                    description=cat.description,
+                    color=cat.color,
+                    icon=cat.icon,
+                    created_at=cat.updated_at or datetime.now(timezone.utc),
+                    updated_at=cat.updated_at or datetime.now(timezone.utc),
+                ))
+            synced_uuids.append(cat.sync_id)
+        except Exception as e:
+            errors.append(f"Category {cat.sync_id}: {str(e)}")
+
+    # 0.2 Produits (initial seed / push)
+    for prod in payload.products:
+        try:
+            existing_prod = db.query(Product).filter(Product.sync_id == prod.sync_id).first()
+            if existing_prod:
+                existing_prod.name = prod.name
+                existing_prod.category_sync_id = prod.category_sync_id
+                existing_prod.price = prod.price
+                existing_prod.cost_price = prod.cost_price
+                existing_prod.average_cost_price = prod.average_cost_price or 0.0
+                existing_prod.stock = prod.stock
+                existing_prod.min_stock = prod.min_stock
+                existing_prod.barcode = prod.barcode
+                existing_prod.unit = prod.unit
+                existing_prod.is_active = prod.is_active
+                existing_prod.updated_at = prod.updated_at or datetime.now(timezone.utc)
+            else:
+                db.add(Product(
+                    sync_id=prod.sync_id,
+                    name=prod.name,
+                    category_sync_id=prod.category_sync_id,
+                    price=prod.price,
+                    cost_price=prod.cost_price,
+                    average_cost_price=prod.average_cost_price or 0.0,
+                    stock=prod.stock,
+                    min_stock=prod.min_stock,
+                    barcode=prod.barcode,
+                    unit=prod.unit or "pièce",
+                    is_active=prod.is_active,
+                    created_at=prod.updated_at or datetime.now(timezone.utc),
+                    updated_at=prod.updated_at or datetime.now(timezone.utc),
+                ))
+            synced_uuids.append(prod.sync_id)
+        except Exception as e:
+            errors.append(f"Product {prod.sync_id}: {str(e)}")
+
+    # 0.3 Fournisseurs (initial seed / push)
+    for sup in payload.suppliers:
+        try:
+            existing_sup = db.query(Supplier).filter(Supplier.sync_id == sup.sync_id).first()
+            if existing_sup:
+                existing_sup.name = sup.name
+                existing_sup.contact_person = sup.contact_person
+                existing_sup.phone = sup.phone
+                existing_sup.email = sup.email
+                existing_sup.address = sup.address
+                existing_sup.balance = sup.balance
+                existing_sup.notes = sup.notes
+                existing_sup.updated_at = sup.updated_at or datetime.now(timezone.utc)
+            else:
+                db.add(Supplier(
+                    sync_id=sup.sync_id,
+                    name=sup.name,
+                    contact_person=sup.contact_person,
+                    phone=sup.phone,
+                    email=sup.email,
+                    address=sup.address,
+                    balance=sup.balance,
+                    notes=sup.notes,
+                    user_id=sup.user_id or current_user.id,
+                    user_name=sup.user_name or (current_user.full_name or current_user.username),
+                    created_at=sup.updated_at or datetime.now(timezone.utc),
+                    updated_at=sup.updated_at or datetime.now(timezone.utc),
+                ))
+            synced_uuids.append(sup.sync_id)
+        except Exception as e:
+            errors.append(f"Supplier {sup.sync_id}: {str(e)}")
+
     # 1. Clients
     for cl in payload.clients:
         try:
@@ -280,15 +372,15 @@ def push_changes(
                 )
                 db.add(v_item)
 
-                # Décrémenter le stock produit sur le serveur
-                if item.product_sync_id:
+                # Décrémenter le stock produit sur le serveur (uniquement hors seed initial)
+                if not payload.is_initial_sync and item.product_sync_id:
                     prod = db.query(Product).filter(Product.sync_id == item.product_sync_id).first()
                     if prod:
                         prod.stock -= item.quantity
                         prod.updated_at = datetime.now(timezone.utc)
 
-            # Mise à jour de la créance client si paiement partiel
-            if v.client_sync_id and v.paid_amount < v.total_amount:
+            # Mise à jour de la créance client si paiement partiel (uniquement hors seed initial)
+            if not payload.is_initial_sync and v.client_sync_id and v.paid_amount < v.total_amount:
                 reliquat = v.total_amount - v.paid_amount
                 target_client = db.query(Client).filter(Client.sync_id == v.client_sync_id).first()
                 if target_client:
@@ -397,8 +489,8 @@ def push_changes(
                     },
                     created_at=a.date,
                 ))
-                # Incrémenter le stock produit
-                if a.product_sync_id:
+                # Incrémenter le stock produit (uniquement hors seed initial)
+                if not payload.is_initial_sync and a.product_sync_id:
                     prod = db.query(Product).filter(Product.sync_id == a.product_sync_id).first()
                     if prod:
                         prod.stock += a.quantity

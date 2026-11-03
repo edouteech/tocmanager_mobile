@@ -40,7 +40,7 @@ class ProductSync(BaseModel):
     unit: Optional[str] = "pièce"
     image_path: Optional[str] = None
     is_active: bool = True
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
 
 class CategorySync(BaseModel):
@@ -49,7 +49,7 @@ class CategorySync(BaseModel):
     description: Optional[str] = None
     color: Optional[str] = None
     icon: Optional[str] = None
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
 
 class ClientSync(BaseModel):
@@ -62,7 +62,7 @@ class ClientSync(BaseModel):
     notes: Optional[str] = None
     user_id: Optional[str] = None
     user_name: Optional[str] = None
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
 
 class SupplierSync(BaseModel):
@@ -76,7 +76,7 @@ class SupplierSync(BaseModel):
     notes: Optional[str] = None
     user_id: Optional[str] = None
     user_name: Optional[str] = None
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
 
 class DecaissementSync(BaseModel):
@@ -90,7 +90,7 @@ class DecaissementSync(BaseModel):
     notes: Optional[str] = None
     user_id: Optional[str] = None
     user_name: Optional[str] = None
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
 
 class ApprovisionnementSync(BaseModel):
@@ -107,7 +107,7 @@ class ApprovisionnementSync(BaseModel):
     notes: Optional[str] = None
     user_id: Optional[str] = None
     user_name: Optional[str] = None
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
 
 class AuditLogSync(BaseModel):
@@ -118,10 +118,14 @@ class AuditLogSync(BaseModel):
     entity_type: Optional[str] = None
     entity_id: Optional[str] = None
     details: Optional[Any] = None
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
 class SyncPushRequest(BaseModel):
     device_id: Optional[str] = None
+    is_initial_sync: bool = False
+    categories: List[CategorySync] = []
+    products: List[ProductSync] = []
+    suppliers: List[SupplierSync] = []
     ventes: List[VenteSync] = []
     clients: List[ClientSync] = []
     decaissements: List[DecaissementSync] = []

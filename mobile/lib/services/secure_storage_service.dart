@@ -14,12 +14,26 @@ class SecureStorageService {
   static const _kPinHash = 'toc_pin_hash';
   static const _kPinSalt = 'toc_pin_salt';
   static const _kServerUrl = 'toc_server_url';
+  static const _kInitialSeedDone = 'toc_initial_seed_done';
 
-  /// URL par défaut dynamique (10.0.2.2 sur émulateur Android, localhost sur desktop/iOS)
+  /// URL par défaut dynamique (Production en release, 10.0.2.2 sur émulateur Android en debug)
   static String get defaultServerUrl {
+    if (kReleaseMode) {
+      return 'https://api.tocmanager.locarapide.com/api/v1';
+    }
     if (kIsWeb) return 'http://localhost:8008/api/v1';
     if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:8008/api/v1';
     return 'http://localhost:8008/api/v1';
+  }
+
+  /// Indique si le téléversement initial des données préexistantes a été effectué
+  static Future<bool> hasInitialSeedDone() async {
+    final val = await _storage.read(key: _kInitialSeedDone);
+    return val == 'true';
+  }
+
+  static Future<void> setInitialSeedDone() async {
+    await _storage.write(key: _kInitialSeedDone, value: 'true');
   }
 
   /// Sauvegarde les tokens d'authentification
