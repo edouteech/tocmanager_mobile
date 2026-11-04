@@ -6,7 +6,7 @@ from sqlalchemy import func, desc
 
 from app.api import deps
 from app.core.database import get_db
-from app.models import Vente, VenteItem, Product, Client, Decaissement, User
+from app.models import Vente, VenteItem, Product, Client, Decaissement, User, Category
 from app.schemas.entities import (
     FinancialReportResponse, FinancialKPIs, TopProductItem, ExpenseCategoryItem
 )
@@ -23,6 +23,9 @@ class DashboardStats(BaseModel):
     total_expenses: float
     products_count: int
     low_stock_count: int
+    categories_count: int = 0
+    stock_value: float = 0.0
+    stock_cost: float = 0.0
 
 @router.get("/dashboard", response_model=DashboardStats)
 def get_dashboard_stats(
@@ -60,6 +63,18 @@ def get_dashboard_stats(
         Product.stock <= Product.min_stock
     ).scalar() or 0
 
+    # Categories count
+    categories_count = db.query(func.count(Category.sync_id)).filter(Category.deleted_at.is_(None)).scalar() or 0
+
+    # Stock retail valuation (Prix de vente * stock) and cost valuation (Coût achat * stock)
+    stock_value = db.query(
+        func.coalesce(func.sum(Product.price * Product.stock), 0.0)
+    ).filter(Product.deleted_at.is_(None)).scalar() or 0.0
+
+    stock_cost = db.query(
+        func.coalesce(func.sum(Product.cost_price * Product.stock), 0.0)
+    ).filter(Product.deleted_at.is_(None)).scalar() or 0.0
+
     return DashboardStats(
         total_sales_amount=float(total_sales[0]),
         total_sales_count=int(total_sales[1]),
@@ -69,22 +84,57 @@ def get_dashboard_stats(
         total_expenses=float(expenses),
         products_count=int(prods_count),
         low_stock_count=int(low_stock),
+        categories_count=int(categories_count),
+        stock_value=round(float(stock_value), 2),
+        stock_cost=round(float(stock_cost), 2),
     )
 
 @router.get("/financial", response_model=FinancialReportResponse)
 def get_financial_report(
+    preset: Optional[str] = Query(None),
     start_date: Optional[datetime] = Query(None),
     end_date: Optional[datetime] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(deps.require_role(["admin", "manager"])),
 ) -> Any:
-    """Rapport de rentabilité complet : Compte de résultat, COGS, Marge brute, Dépenses et Résultat Net."""
+    """Rapport de rentabilité complet : Compte de résultat, COGS, Marge brute, Dépenses, Trésorerie nette et Résultat Net."""
     now = datetime.now(timezone.utc)
-    # Période par défaut : les 30 derniers jours si non spécifiée
+
+    # Resolution of preset if provided (matching mobile DateFilterPeriod presets)
+    if preset:
+        p = preset.lower()
+        if p == "today":
+            start_date = datetime(now.year, now.month, now.day, 0, 0, 0, tzinfo=timezone.utc)
+            end_date = datetime(now.year, now.month, now.day, 23, 59, 59, 999999, tzinfo=timezone.utc)
+        elif p in ["thisweek", "week"]:
+            day_of_week = now.weekday()  # Monday = 0
+            start_of_week = now - timedelta(days=day_of_week)
+            start_date = datetime(start_of_week.year, start_of_week.month, start_of_week.day, 0, 0, 0, tzinfo=timezone.utc)
+            end_date = start_date + timedelta(days=6, hours=23, minutes=59, seconds=59)
+        elif p in ["thismonth", "month"]:
+            start_date = datetime(now.year, now.month, 1, 0, 0, 0, tzinfo=timezone.utc)
+            # Last day of current month
+            if now.month == 12:
+                next_month = datetime(now.year + 1, 1, 1, tzinfo=timezone.utc)
+            else:
+                next_month = datetime(now.year, now.month + 1, 1, tzinfo=timezone.utc)
+            end_date = next_month - timedelta(microseconds=1)
+        elif p in ["thisyear", "year"]:
+            start_date = datetime(now.year, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+            end_date = datetime(now.year, 12, 31, 23, 59, 59, 999999, tzinfo=timezone.utc)
+        elif p in ["all", "alltime"]:
+            start_date = datetime(2000, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+            end_date = datetime(2100, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+
+    # Default period: Current Month (matching mobile default DateFilterPeriod.thisMonth())
     if not start_date:
-        start_date = now - timedelta(days=30)
+        start_date = datetime(now.year, now.month, 1, 0, 0, 0, tzinfo=timezone.utc)
     if not end_date:
-        end_date = now
+        if now.month == 12:
+            next_month = datetime(now.year + 1, 1, 1, tzinfo=timezone.utc)
+        else:
+            next_month = datetime(now.year, now.month + 1, 1, tzinfo=timezone.utc)
+        end_date = next_month - timedelta(microseconds=1)
 
     # 1. Requête Ventes dans la période
     vente_q = db.query(Vente).filter(
@@ -130,6 +180,7 @@ def get_financial_report(
 
     net_profit = round(gross_margin - total_expenses, 2)
     net_margin_rate = round((net_profit / net_sales * 100), 2) if net_sales > 0 else 0.0
+    net_cashflow = round(net_sales - total_expenses, 2)
 
     # 4. Top produits
     sorted_prods = sorted(top_prods_map.items(), key=lambda x: x[1]["revenue"], reverse=True)[:10]
@@ -197,6 +248,7 @@ def get_financial_report(
             total_expenses=total_expenses,
             net_profit=net_profit,
             net_margin_rate=net_margin_rate,
+            net_cashflow=net_cashflow,
         ),
         top_products=top_products,
         expenses_by_category=expenses_by_category,

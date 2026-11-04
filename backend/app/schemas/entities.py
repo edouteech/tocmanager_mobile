@@ -174,6 +174,7 @@ class FinancialKPIs(BaseModel):
     total_expenses: float
     net_profit: float  # gross_margin - total_expenses
     net_margin_rate: float  # % de résultat net
+    net_cashflow: Optional[float] = 0.0  # Trésorerie nette = net_sales - total_expenses
 
 class TopProductItem(BaseModel):
     product_name: str

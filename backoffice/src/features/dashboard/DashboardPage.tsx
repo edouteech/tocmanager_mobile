@@ -12,6 +12,9 @@ import {
   ArrowRight,
   ChevronRight,
   CheckCircle2,
+  Package,
+  Layers,
+  ShoppingBag,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -49,7 +52,7 @@ export const DashboardPage: React.FC = () => {
   });
 
   // Query categories for summary pill
-  const { data: categories } = useQuery<Category[]>({
+  const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ['categories'],
     queryFn: () => categoriesApi.getAll(),
   });
@@ -103,7 +106,7 @@ export const DashboardPage: React.FC = () => {
               <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-xs text-xs font-semibold text-white">
                 <span>{stats?.products_count ?? 0} produits</span>
                 <span className="opacity-60">•</span>
-                <span>{categories?.length ?? 0} catégories</span>
+                <span>{stats?.categories_count ?? categories.length} catégories</span>
               </span>
             </div>
           </div>
@@ -155,94 +158,208 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* 3. KPI Cards Grid (Palette canonique Mobile) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-        {/* Card 1: Ventes Aujourd'hui */}
-        <div className="card-toc card-hover p-5 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#5A7184] dark:text-slate-400">
-              Ventes Aujourd'hui
-            </span>
-            <div className="w-10 h-10 rounded-xl bg-[#E8F8F0] dark:bg-[#27AE60]/20 text-[#27AE60] flex items-center justify-center">
-              <TrendingUp className="w-5 h-5" />
+      {/* 3. Core Inventory & Stock Valuation Cards (Exact match with Mobile _buildStatsGrid) */}
+      <div>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 px-1">
+          Inventaire & Valorisation du Stock
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+          {/* Card 1: Produits */}
+          <div
+            onClick={() => navigate('/produits')}
+            className="card-toc p-4 sm:p-5 flex flex-col justify-between hover:border-brand-300 dark:hover:border-brand-500/40 transition-all cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Produits
+              </span>
+              <div className="w-10 h-10 rounded-2xl bg-brand-50 dark:bg-brand-500/20 text-brand-600 dark:text-brand-400 flex items-center justify-center">
+                <Package className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="text-2xl font-extrabold text-[#1C2B3A] dark:text-white tracking-tight">
+                {statsLoading ? '...' : stats?.products_count ?? 0}
+              </div>
+              <div className="text-xs text-slate-400 mt-0.5 font-medium">
+                Articles au catalogue
+              </div>
             </div>
           </div>
-          <div className="mt-4">
-            <div className="text-2xl font-extrabold text-[#1C2B3A] dark:text-white tracking-tight">
-              {statsLoading ? '...' : formatFCFA(stats?.today_sales_amount || 0)}
-            </div>
-            <div className="text-xs text-[#5A7184] dark:text-slate-400 mt-1 font-medium flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-[#27AE60]" />
-              <span>{stats?.today_sales_count || 0} tickets encaissés</span>
-            </div>
-          </div>
-        </div>
 
-        {/* Card 2: CA Global Cumulé */}
-        <div className="card-toc card-hover p-5 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#5A7184] dark:text-slate-400">
-              CA Global Cumulé
-            </span>
-            <div className="w-10 h-10 rounded-xl bg-[#E8F5FD] dark:bg-[#29ABE2]/20 text-[#29ABE2] flex items-center justify-center">
-              <Receipt className="w-5 h-5" />
+          {/* Card 2: Catégories */}
+          <div
+            onClick={() => navigate('/categories')}
+            className="card-toc p-4 sm:p-5 flex flex-col justify-between hover:border-emerald-300 dark:hover:border-emerald-500/40 transition-all cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Catégories
+              </span>
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                <Layers className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="text-2xl font-extrabold text-[#1C2B3A] dark:text-white tracking-tight">
+                {statsLoading ? '...' : stats?.categories_count ?? categories.length}
+              </div>
+              <div className="text-xs text-slate-400 mt-0.5 font-medium">
+                Rayons organisés
+              </div>
             </div>
           </div>
-          <div className="mt-4">
-            <div className="text-2xl font-extrabold text-[#1C2B3A] dark:text-white tracking-tight">
-              {statsLoading ? '...' : formatFCFA(stats?.total_sales_amount || 0)}
-            </div>
-            <div className="text-xs text-[#5A7184] dark:text-slate-400 mt-1 font-medium">
-              <span>{stats?.total_sales_count || 0} ventes au total</span>
-            </div>
-          </div>
-        </div>
 
-        {/* Card 3: Créances Clients */}
-        <div className="card-toc card-hover p-5 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#5A7184] dark:text-slate-400">
-              Créances Clients (Crédits)
-            </span>
-            <div className="w-10 h-10 rounded-xl bg-[#FEF5E7] dark:bg-[#F39C12]/20 text-[#F39C12] flex items-center justify-center">
-              <Users className="w-5 h-5" />
+          {/* Card 3: Valeur Stock (Vente & Coût) */}
+          <div
+            onClick={() => navigate('/produits')}
+            className="card-toc p-4 sm:p-5 flex flex-col justify-between hover:border-purple-300 dark:hover:border-purple-500/40 transition-all cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Valeur Stock (Vente)
+              </span>
+              <div className="w-10 h-10 rounded-2xl bg-purple-50 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="text-2xl font-extrabold text-purple-600 dark:text-purple-400 font-mono tracking-tight">
+                {statsLoading ? '...' : formatFCFA(stats?.stock_value || 0)}
+              </div>
+              <div className="text-xs text-slate-400 mt-0.5 font-medium">
+                Coût : {formatFCFA(stats?.stock_cost || 0)}
+              </div>
             </div>
           </div>
-          <div className="mt-4">
-            <div className="text-2xl font-extrabold text-[#F39C12] tracking-tight">
-              {statsLoading ? '...' : formatFCFA(stats?.total_receivables || 0)}
-            </div>
-            <div className="text-xs text-[#5A7184] dark:text-slate-400 mt-1 font-medium">
-              <span>Solde total restant dû</span>
-            </div>
-          </div>
-        </div>
 
-        {/* Card 4: Ruptures de Stock */}
-        <div
-          onClick={() => navigate('/produits')}
-          className="card-toc card-hover p-5 flex flex-col justify-between cursor-pointer"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#5A7184] dark:text-slate-400">
-              Alertes Stock
-            </span>
-            <div className="w-10 h-10 rounded-xl bg-[#FDEBE9] dark:bg-[#E74C3C]/20 text-[#E74C3C] flex items-center justify-center">
-              <AlertTriangle className="w-5 h-5" />
+          {/* Card 4: Alertes Stock */}
+          <div
+            onClick={() => navigate('/produits')}
+            className="card-toc p-4 sm:p-5 flex flex-col justify-between hover:border-rose-300 dark:hover:border-rose-500/40 transition-all cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Alertes Stock
+              </span>
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
             </div>
-          </div>
-          <div className="mt-4">
-            <div className="text-2xl font-extrabold text-[#E74C3C] tracking-tight">
-              {statsLoading ? '...' : lowStockCount}
-            </div>
-            <div className="text-xs text-[#5A7184] dark:text-slate-400 mt-1 font-medium">
-              <span>Articles sous le seuil d'alerte</span>
+            <div className="mt-3">
+              <div className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 tracking-tight">
+                {statsLoading ? '...' : lowStockCount}
+              </div>
+              <div className="text-xs text-slate-400 mt-0.5 font-medium">
+                Sous le seuil d'alerte
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 4. Analytics & Financial Breakdown */}
+      {/* 4. Operational Financial KPI Cards (Ventes, CA, Créances, Dépenses) */}
+      <div>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 px-1">
+          Activité Commerciale & Trésorerie
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+          {/* Card 1: Ventes Aujourd'hui */}
+          <div
+            onClick={() => navigate('/ventes')}
+            className="card-toc p-4 sm:p-5 flex flex-col justify-between hover:border-emerald-300 dark:hover:border-emerald-500/40 transition-all cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Ventes Aujourd'hui
+              </span>
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                <ShoppingBag className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="text-2xl font-extrabold text-[#1C2B3A] dark:text-white font-mono tracking-tight">
+                {statsLoading ? '...' : formatFCFA(stats?.today_sales_amount || 0)}
+              </div>
+              <div className="text-xs text-slate-400 mt-0.5 font-medium flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{stats?.today_sales_count || 0} tickets encaissés</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: CA Global Cumulé */}
+          <div
+            onClick={() => navigate('/ventes')}
+            className="card-toc p-4 sm:p-5 flex flex-col justify-between hover:border-brand-300 dark:hover:border-brand-500/40 transition-all cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                CA Global Cumulé
+              </span>
+              <div className="w-10 h-10 rounded-2xl bg-brand-50 dark:bg-brand-500/20 text-brand-600 dark:text-brand-400 flex items-center justify-center">
+                <Receipt className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="text-2xl font-extrabold text-[#1C2B3A] dark:text-white font-mono tracking-tight">
+                {statsLoading ? '...' : formatFCFA(stats?.total_sales_amount || 0)}
+              </div>
+              <div className="text-xs text-slate-400 mt-0.5 font-medium">
+                {stats?.total_sales_count || 0} ventes au total
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Créances Clients (Crédits) */}
+          <div
+            onClick={() => navigate('/clients')}
+            className="card-toc p-4 sm:p-5 flex flex-col justify-between hover:border-amber-300 dark:hover:border-amber-500/40 transition-all cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Créances Clients (Crédits)
+              </span>
+              <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                <Users className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 font-mono tracking-tight">
+                {statsLoading ? '...' : formatFCFA(stats?.total_receivables || 0)}
+              </div>
+              <div className="text-xs text-slate-400 mt-0.5 font-medium">
+                Solde total restant dû
+              </div>
+            </div>
+          </div>
+
+          {/* Card 4: Total Décaissements */}
+          <div
+            onClick={() => navigate('/decaissements')}
+            className="card-toc p-4 sm:p-5 flex flex-col justify-between hover:border-rose-300 dark:hover:border-rose-500/40 transition-all cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Total Décaissements
+              </span>
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                <Wallet className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 font-mono tracking-tight">
+                {statsLoading ? '...' : formatFCFA(stats?.total_expenses || 0)}
+              </div>
+              <div className="text-xs text-slate-400 mt-0.5 font-medium">
+                Charges d'exploitation
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 5. Analytics & Live Sales Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Sales Chart */}
         <div className="lg:col-span-2 card-toc p-6 flex flex-col justify-between">
@@ -260,163 +377,127 @@ export const DashboardPage: React.FC = () => {
             </div>
 
             <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    vertical={false}
-                    stroke={theme === 'dark' ? '#26384C' : '#E8EFF5'}
-                  />
-                  <XAxis
-                    dataKey="ticket"
-                    stroke={theme === 'dark' ? '#5A7184' : '#9FB3C8'}
-                    fontSize={11}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    stroke={theme === 'dark' ? '#5A7184' : '#9FB3C8'}
-                    fontSize={11}
-                    tickLine={false}
-                  />
-                  <Tooltip
-                    formatter={(val: number) => formatFCFA(val)}
-                    contentStyle={{
-                      backgroundColor: theme === 'dark' ? '#121E2A' : '#1C2B3A',
-                      color: '#fff',
-                      borderRadius: '12px',
-                      border: 'none',
-                      fontSize: '12px',
-                    }}
-                  />
-                  <Bar dataKey="montant" fill="#29ABE2" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              {ventesLoading ? (
+                <div className="h-full flex items-center justify-center text-xs text-slate-400">
+                  Chargement du graphique...
+                </div>
+              ) : chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={false}
+                      stroke={theme === 'dark' ? '#26384C' : '#E8EFF5'}
+                    />
+                    <XAxis
+                      dataKey="ticket"
+                      stroke={theme === 'dark' ? '#5A7184' : '#94A3B8'}
+                      fontSize={11}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      stroke={theme === 'dark' ? '#5A7184' : '#94A3B8'}
+                      fontSize={11}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      formatter={(val: number) => formatFCFA(val)}
+                      contentStyle={{
+                        backgroundColor: theme === 'dark' ? '#16222F' : '#1C2B3A',
+                        color: '#fff',
+                        borderRadius: '12px',
+                        border: 'none',
+                        fontSize: '12px',
+                      }}
+                    />
+                    <Bar
+                      dataKey="montant"
+                      name="Montant (FCFA)"
+                      fill="#29ABE2"
+                      radius={[6, 6, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-xs text-slate-400">
+                  Aucune vente enregistrée pour le moment.
+                </div>
+              )}
             </div>
+          </div>
+
+          <div className="pt-4 mt-2 border-t border-[#E8EFF5] dark:border-dark-600 flex items-center justify-between">
+            <span className="text-xs text-[#5A7184] dark:text-slate-400">
+              Synchronisation automatique active
+            </span>
+            <button
+              onClick={() => navigate('/ventes')}
+              className="inline-flex items-center gap-1 text-xs font-bold text-brand-500 hover:text-brand-600 transition"
+            >
+              <span>Consulter le journal</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
-        {/* Financial Snapshot */}
+        {/* Recent Transactions List */}
         <div className="card-toc p-6 flex flex-col justify-between">
           <div>
-            <h3 className="text-base font-bold text-[#1C2B3A] dark:text-white mb-1">
-              Aperçu Financier Global
-            </h3>
-            <p className="text-xs text-[#5A7184] dark:text-slate-400 mb-6">Recettes vs Décaissements</p>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-[#1C2B3A] dark:text-white">
+                Tickets Récents
+              </h3>
+              <button
+                onClick={() => navigate('/ventes')}
+                className="text-xs font-bold text-brand-500 hover:underline"
+              >
+                Tout voir
+              </button>
+            </div>
 
-            <div className="space-y-3.5">
-              <div className="flex items-center justify-between p-3.5 bg-[#F0F9FE] dark:bg-dark-700/60 rounded-xl border border-[#E8EFF5] dark:border-dark-600">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#E8F5FD] dark:bg-[#29ABE2]/20 text-[#29ABE2] flex items-center justify-center font-bold">
-                    <Receipt className="w-4 h-4" />
+            <div className="space-y-3">
+              {ventesLoading ? (
+                <p className="text-xs text-slate-400">Chargement...</p>
+              ) : (recentVentes || []).length > 0 ? (
+                (recentVentes || []).slice(0, 5).map((v) => (
+                  <div
+                    key={v.sync_id}
+                    onClick={() => navigate('/ventes')}
+                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-[#F0F9FE] dark:hover:bg-dark-700/50 transition cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-brand-50 dark:bg-brand-500/15 text-brand-500 flex items-center justify-center font-bold text-xs">
+                        #
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-[#1C2B3A] dark:text-white">
+                          {v.ticket_number}
+                        </p>
+                        <p className="text-[11px] text-[#5A7184] dark:text-slate-400">
+                          {v.client_name || 'Occasionnel'} • {formatDateTime(v.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
+                      {formatFCFA(v.total_amount)}
+                    </span>
                   </div>
-                  <div>
-                    <div className="text-xs font-bold text-[#1C2B3A] dark:text-white">Recettes Ventes</div>
-                    <div className="text-[11px] text-[#5A7184] dark:text-slate-400">Encaissées</div>
-                  </div>
-                </div>
-                <div className="text-sm font-extrabold text-[#1C2B3A] dark:text-white font-mono">
-                  {formatFCFA(stats?.total_sales_amount || 0)}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between p-3.5 bg-[#FDEBE9]/50 dark:bg-rose-950/30 rounded-xl border border-[#E74C3C]/20 dark:border-rose-900/40">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#FDEBE9] dark:bg-rose-900/40 text-[#E74C3C] flex items-center justify-center">
-                    <Wallet className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-[#E74C3C]">Charges & Dépenses</div>
-                    <div className="text-[11px] text-[#5A7184] dark:text-slate-400">Décaissements</div>
-                  </div>
-                </div>
-                <div className="text-sm font-extrabold text-[#E74C3C] font-mono">
-                  - {formatFCFA(stats?.total_expenses || 0)}
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-[#E8EFF5] dark:border-dark-600 flex items-center justify-between">
-                <span className="text-xs font-bold text-[#5A7184] dark:text-slate-400 uppercase">Solde Net Théorique</span>
-                <span className="text-base font-extrabold text-[#27AE60] font-mono">
-                  {formatFCFA((stats?.total_sales_amount || 0) - (stats?.total_expenses || 0))}
-                </span>
-              </div>
+                ))
+              ) : (
+                <p className="text-xs text-slate-400">Aucune vente récente.</p>
+              )}
             </div>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-[#E8EFF5] dark:border-dark-600 text-[11px] text-[#9FB3C8]">
-            Ce solde n'inclut pas les créances clients restant à recouvrer.
+          <div className="pt-4 border-t border-[#E8EFF5] dark:border-dark-600 mt-4">
+            <button
+              onClick={() => navigate('/rapports')}
+              className="w-full py-2 bg-slate-50 hover:bg-slate-100 dark:bg-dark-700 dark:hover:bg-dark-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
+            >
+              <span>Voir le rapport financier complet</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
           </div>
-        </div>
-      </div>
-
-      {/* 5. Recent Sales Table with Density support */}
-      <div className="card-toc overflow-hidden">
-        <div className="px-6 py-4 border-b border-[#E8EFF5] dark:border-dark-600 flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-bold text-[#1C2B3A] dark:text-white">
-              Dernières Ventes Encaissées
-            </h3>
-            <span className="text-xs text-[#5A7184] dark:text-slate-400">Flux en direct des caisses</span>
-          </div>
-
-          <button
-            onClick={() => navigate('/ventes')}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#29ABE2] hover:text-[#1A8FBF] transition"
-          >
-            <span>Voir tout le journal</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-[#F5FAFD] dark:bg-dark-700/50 border-b border-[#E8EFF5] dark:border-dark-600">
-              <tr>
-                <th className={tableClasses.th}>Numéro Ticket</th>
-                <th className={tableClasses.th}>Client</th>
-                <th className={tableClasses.th}>Mode Paiement</th>
-                <th className={tableClasses.th}>Date & Heure</th>
-                <th className={`${tableClasses.th} text-right`}>Montant Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#E8EFF5] dark:divide-dark-600/60">
-              {ventesLoading ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-[#9FB3C8]">
-                    Chargement des ventes...
-                  </td>
-                </tr>
-              ) : recentVentes && recentVentes.length > 0 ? (
-                recentVentes.map((vente) => (
-                  <tr key={vente.sync_id} className="hover:bg-[#F0F9FE]/60 dark:hover:bg-dark-700/40 transition-colors">
-                    <td className={`${tableClasses.td} font-bold text-[#29ABE2] font-mono`}>
-                      {vente.ticket_number}
-                    </td>
-                    <td className={`${tableClasses.td} font-medium text-[#1C2B3A] dark:text-slate-200`}>
-                      {vente.client_name || 'Occasionnel'}
-                    </td>
-                    <td className={tableClasses.td}>
-                      <span className="badge-toc-primary">
-                        {vente.payment_method}
-                      </span>
-                    </td>
-                    <td className={`${tableClasses.td} text-[#5A7184] dark:text-slate-400`}>
-                      {formatDateTime(vente.created_at)}
-                    </td>
-                    <td className={`${tableClasses.td} text-right font-extrabold text-[#1C2B3A] dark:text-white font-mono`}>
-                      {formatFCFA(vente.total_amount)}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-[#9FB3C8]">
-                    Aucune vente enregistrée pour le moment.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
         </div>
       </div>
     </div>

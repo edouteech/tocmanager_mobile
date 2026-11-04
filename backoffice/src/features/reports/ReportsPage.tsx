@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   TrendingUp,
@@ -11,6 +11,10 @@ import {
   Percent,
   FileSpreadsheet,
   Printer,
+  Wallet,
+  Calendar,
+  BarChart2,
+  Package,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -27,20 +31,41 @@ import { formatFCFA } from '../../lib/formatters';
 import { useDensity } from '../../context/DensityContext';
 import { useTheme } from '../../context/ThemeContext';
 import { exportToExcel } from '../../lib/exportUtils';
+import { Modal } from '../../components/common/Modal';
 
 export const ReportsPage: React.FC = () => {
   const { tableClasses } = useDensity();
   const { theme } = useTheme();
-  const [periodDays, setPeriodDays] = useState<number>(30);
 
-  // Compute start/end dates
-  const endDate = new Date().toISOString();
-  const startDate = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000).toISOString();
+  // Period Preset State (default: 'thisMonth' matching mobile)
+  const [periodPreset, setPeriodPreset] = useState<string>('thisMonth');
+  const [customStart, setCustomStart] = useState<string>('');
+  const [customEnd, setCustomEnd] = useState<string>('');
+  const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
+
+  // Compute active params
+  const queryParams = useMemo(() => {
+    if (periodPreset === 'customRange' && customStart && customEnd) {
+      return {
+        start_date: new Date(customStart).toISOString(),
+        end_date: new Date(`${customEnd}T23:59:59.999Z`).toISOString(),
+      };
+    }
+    return { preset: periodPreset };
+  }, [periodPreset, customStart, customEnd]);
 
   const { data: report, isLoading } = useQuery({
-    queryKey: ['financial-report', periodDays],
-    queryFn: () => reportsApi.getFinancial({ start_date: startDate, end_date: endDate }),
+    queryKey: ['financial-report', queryParams],
+    queryFn: () => reportsApi.getFinancial(queryParams),
   });
+
+  const periodOptions = [
+    { id: 'today', label: "Aujourd'hui" },
+    { id: 'thisWeek', label: 'Cette semaine' },
+    { id: 'thisMonth', label: 'Ce mois-ci' },
+    { id: 'thisYear', label: 'Cette année' },
+    { id: 'all', label: "Tout l'historique" },
+  ];
 
   const exportCSV = () => {
     if (!report) return;
@@ -48,7 +73,7 @@ export const ReportsPage: React.FC = () => {
 
     let csvContent = 'data:text/csv;charset=utf-8,';
     csvContent += 'COMPTE DE RESULTAT ET RENTABILITE TOCMANAGER\n';
-    csvContent += `Periode : Derniers ${periodDays} jours\n\n`;
+    csvContent += `Periode : ${periodPreset}\n\n`;
 
     csvContent += 'INDICATEUR FINANCIER,MONTANT (FCFA),POURCENTAGE\n';
     csvContent += `Chiffre d'Affaires Brut,${kpis.gross_sales},100%\n`;
@@ -57,6 +82,7 @@ export const ReportsPage: React.FC = () => {
     csvContent += `Cout des marchandises vendues (COGS),-${kpis.cogs},${Math.round((kpis.cogs / (kpis.net_sales || 1)) * 100)}%\n`;
     csvContent += `Marge Brute Commerciale,${kpis.gross_margin},${kpis.gross_margin_rate}%\n`;
     csvContent += `Total Charges et Decaissements,-${kpis.total_expenses},${Math.round((kpis.total_expenses / (kpis.net_sales || 1)) * 100)}%\n`;
+    csvContent += `Tresorerie Nette (CA - Depenses),${kpis.net_cashflow ?? (kpis.net_sales - kpis.total_expenses)},-\n`;
     csvContent += `Resultat Net d'Exploitation,${kpis.net_profit},${kpis.net_margin_rate}%\n\n`;
 
     csvContent += 'TOP PRODUITS PAR CHIFFRE D AFFAIRES\n';
@@ -82,7 +108,7 @@ export const ReportsPage: React.FC = () => {
 
   const exportExcel = () => {
     if (!report) return;
-    const { kpis, top_products, expenses_by_category } = report;
+    const { kpis } = report;
 
     const kpiData = [
       { 'Indicateur Financier': "Chiffre d'Affaires Brut", 'Montant (FCFA)': kpis.gross_sales, 'Part / Marge': '100%' },
@@ -91,6 +117,7 @@ export const ReportsPage: React.FC = () => {
       { 'Indicateur Financier': 'Coût des Marchandises Vendues (COGS)', 'Montant (FCFA)': -kpis.cogs, 'Part / Marge': `${Math.round((kpis.cogs / (kpis.net_sales || 1)) * 100)}%` },
       { 'Indicateur Financier': 'Marge Brute Commerciale', 'Montant (FCFA)': kpis.gross_margin, 'Part / Marge': `${kpis.gross_margin_rate}%` },
       { 'Indicateur Financier': 'Total Charges & Dépenses', 'Montant (FCFA)': -kpis.total_expenses, 'Part / Marge': `${Math.round((kpis.total_expenses / (kpis.net_sales || 1)) * 100)}%` },
+      { 'Indicateur Financier': 'Trésorerie Nette (CA - Dépenses)', 'Montant (FCFA)': kpis.net_cashflow ?? (kpis.net_sales - kpis.total_expenses), 'Part / Marge': '-' },
       { 'Indicateur Financier': "Résultat Net d'Exploitation", 'Montant (FCFA)': kpis.net_profit, 'Part / Marge': `${kpis.net_margin_rate}%` },
     ];
 
@@ -100,61 +127,53 @@ export const ReportsPage: React.FC = () => {
   if (isLoading || !report) {
     return (
       <div className="card-toc p-12 text-center text-slate-400 text-sm">
-        Génération du rapport financier et des calculs de rentabilité...
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-brand-500 border-t-transparent mb-3" />
+        <p>Génération du rapport financier et des indicateurs de rentabilité...</p>
       </div>
     );
   }
 
   const { kpis, top_products, expenses_by_category, monthly_trend } = report;
+  const netCashflow = kpis.net_cashflow ?? (kpis.net_sales - kpis.total_expenses);
+
+  // Maximum value for horizontal bar comparison
+  const maxComparisonVal = Math.max(kpis.net_sales, kpis.total_expenses, Math.max(0, kpis.gross_margin)) || 1;
+
+  const categoryColors = [
+    '#29ABE2', // brand blue
+    '#F39C12', // warning orange
+    '#E74C3C', // danger red
+    '#27AE60', // success green
+    '#9B59B6', // purple
+    '#1ABC9C', // teal
+    '#E67E22', // deep orange
+  ];
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-[#1C2B3A] dark:text-white tracking-tight">Rapports & Analytique</h1>
-          <p className="text-xs sm:text-sm text-[#5A7184] dark:text-slate-400 mt-1">
-            Compte de résultat analytique, marge commerciale et rentabilité
+          <h1 className="text-2xl font-extrabold text-[#1C2B3A] dark:text-white tracking-tight">
+            Analytique & Rapports
+          </h1>
+          <p className="text-xs sm:text-sm text-[#5A7184] dark:text-slate-400 mt-0.5">
+            Indicateurs financiers, rentabilité, marges et compte de résultat
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-          <div className="flex items-center bg-white dark:bg-dark-800 border border-[#E8EFF5] dark:border-dark-600 rounded-xl p-1 text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-soft">
-            <button
-              onClick={() => setPeriodDays(7)}
-              className={`px-3 py-1.5 rounded-lg transition ${
-                periodDays === 7 ? 'bg-brand-500 text-white font-bold' : 'hover:bg-slate-100 dark:hover:bg-dark-700'
-              }`}
-            >
-              7 jours
-            </button>
-            <button
-              onClick={() => setPeriodDays(30)}
-              className={`px-3 py-1.5 rounded-lg transition ${
-                periodDays === 30 ? 'bg-brand-500 text-white font-bold' : 'hover:bg-slate-100 dark:hover:bg-dark-700'
-              }`}
-            >
-              30 jours
-            </button>
-            <button
-              onClick={() => setPeriodDays(90)}
-              className={`px-3 py-1.5 rounded-lg transition ${
-                periodDays === 90 ? 'bg-brand-500 text-white font-bold' : 'hover:bg-slate-100 dark:hover:bg-dark-700'
-              }`}
-            >
-              90 jours
-            </button>
-          </div>
+
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={exportExcel}
-            className="btn-toc btn-outline flex items-center gap-1.5 py-1.5 px-3 text-xs font-bold"
-            title="Exporter le compte de résultat en fichier Excel natif (.xlsx)"
+            className="btn-toc btn-outline flex items-center gap-1.5 py-2 px-3 text-xs font-bold"
+            title="Exporter le rapport en fichier Excel (.xlsx)"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span className="hidden sm:inline">Export Excel</span>
+            <span className="hidden sm:inline">Excel</span>
           </button>
           <button
             onClick={exportCSV}
-            className="btn-secondary"
+            className="btn-toc btn-outline flex items-center gap-1.5 py-2 px-3 text-xs font-bold"
             title="Exporter en CSV"
           >
             <Download className="w-4 h-4 text-brand-500" />
@@ -162,7 +181,7 @@ export const ReportsPage: React.FC = () => {
           </button>
           <button
             onClick={() => window.print()}
-            className="btn-toc btn-outline flex items-center gap-1.5 py-1.5 px-3 text-xs font-bold"
+            className="btn-toc btn-outline flex items-center gap-1.5 py-2 px-3 text-xs font-bold"
             title="Imprimer ou enregistrer en PDF"
           >
             <Printer className="w-4 h-4 text-slate-500" />
@@ -171,78 +190,208 @@ export const ReportsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Chiffre d'affaires Net */}
-        <div className="card-toc card-hover p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Chiffre d'Affaires Net</p>
-            <div className="w-8 h-8 rounded-xl bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400 flex items-center justify-center border border-brand-200 dark:border-brand-500/30">
-              <DollarSign className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-2">{formatFCFA(kpis.net_sales)}</p>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">Total des ventes enregistrées</p>
-        </div>
-
-        {/* Coût des Marchandises (COGS) */}
-        <div className="card-toc card-hover p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Coût des Ventes (COGS)</p>
-            <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-dark-700 text-slate-600 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-dark-600">
-              <Layers className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-2xl font-extrabold text-slate-700 dark:text-slate-200 mt-2">{formatFCFA(kpis.cogs)}</p>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">Prix d'achat des articles vendus</p>
-        </div>
-
-        {/* Marge Brute */}
-        <div className="card-toc card-hover p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Marge Brute</p>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-100 dark:border-emerald-800/40">
-              <Percent className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-2">{formatFCFA(kpis.gross_margin)}</p>
-          <p className="text-xs text-emerald-700 dark:text-emerald-300 font-semibold mt-2">
-            Taux de marge brute : {kpis.gross_margin_rate}%
-          </p>
-        </div>
-
-        {/* Résultat Net */}
-        <div className="card-toc card-hover p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Résultat Net</p>
-            <div
-              className={`w-8 h-8 rounded-xl flex items-center justify-center border ${
-                kpis.net_profit >= 0
-                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/40'
-                  : 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-800/40'
+      {/* Period Filter Chips (Exact match with mobile reports_screen) */}
+      <div className="card-toc p-3.5 flex items-center gap-2 overflow-x-auto no-scrollbar">
+        {periodOptions.map((opt) => {
+          const isSelected = periodPreset === opt.id;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => setPeriodPreset(opt.id)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
+                isSelected
+                  ? 'bg-brand-600 text-white shadow-xs'
+                  : 'bg-white dark:bg-dark-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-dark-600 hover:bg-slate-50 dark:hover:bg-dark-700'
               }`}
             >
-              {kpis.net_profit >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+              {opt.label}
+            </button>
+          );
+        })}
+
+        <button
+          type="button"
+          onClick={() => setIsCustomModalOpen(true)}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
+            periodPreset === 'customRange'
+              ? 'bg-brand-600 text-white shadow-xs'
+              : 'bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-500/30 hover:bg-brand-100'
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5" />
+          <span>
+            {periodPreset === 'customRange' && customStart && customEnd
+              ? `${customStart} au ${customEnd}`
+              : 'Période personnalisée...'}
+          </span>
+        </button>
+      </div>
+
+      {/* 4 Main KPI Cards (Exact replica of mobile _buildKpiGrid) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        {/* KPI 1: Chiffre d'Affaires */}
+        <div className="card-toc p-4 sm:p-5 flex flex-col justify-between hover:border-emerald-300 dark:hover:border-emerald-500/40 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Chiffre d'Affaires
+            </span>
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5" />
             </div>
           </div>
-          <p
-            className={`text-2xl font-extrabold mt-2 ${
-              kpis.net_profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
-            }`}
-          >
-            {formatFCFA(kpis.net_profit)}
-          </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Après charges ({formatFCFA(kpis.total_expenses)})</p>
+          <div className="mt-4">
+            <div className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
+              {formatFCFA(kpis.net_sales)}
+            </div>
+            <div className="text-xs text-slate-400 mt-1 font-medium">
+              Recettes des ventes
+            </div>
+          </div>
+        </div>
+
+        {/* KPI 2: Marge Brute */}
+        <div className="card-toc p-4 sm:p-5 flex flex-col justify-between hover:border-brand-300 dark:hover:border-brand-500/40 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Marge Brute
+            </span>
+            <div className="w-10 h-10 rounded-2xl bg-brand-50 dark:bg-brand-500/20 text-brand-600 dark:text-brand-400 flex items-center justify-center">
+              <PieChartIcon className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <div className="text-2xl font-extrabold text-brand-600 dark:text-brand-400 font-mono tracking-tight">
+              {formatFCFA(kpis.gross_margin)}
+            </div>
+            <div className="text-xs text-brand-600 dark:text-brand-400 mt-1 font-bold">
+              {kpis.gross_margin_rate}% du CA
+            </div>
+          </div>
+        </div>
+
+        {/* KPI 3: Total Dépenses */}
+        <div className="card-toc p-4 sm:p-5 flex flex-col justify-between hover:border-rose-300 dark:hover:border-rose-500/40 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Total Dépenses
+            </span>
+            <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+              <TrendingDown className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <div className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 font-mono tracking-tight">
+              {formatFCFA(kpis.total_expenses)}
+            </div>
+            <div className="text-xs text-slate-400 mt-1 font-medium">
+              Décaissements enregistrés
+            </div>
+          </div>
+        </div>
+
+        {/* KPI 4: Trésorerie Nette (CA - Dépenses) */}
+        <div className="card-toc p-4 sm:p-5 flex flex-col justify-between hover:border-sky-300 dark:hover:border-sky-500/40 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Trésorerie Nette
+            </span>
+            <div
+              className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
+                netCashflow >= 0
+                  ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400'
+              }`}
+            >
+              <Wallet className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <div
+              className={`text-2xl font-extrabold font-mono tracking-tight ${
+                netCashflow >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+              }`}
+            >
+              {formatFCFA(netCashflow)}
+            </div>
+            <div className="text-xs text-slate-400 mt-1 font-medium">
+              CA − Dépenses
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Comparative Bar Chart Card (Exact replica of mobile _buildBarChartCard) */}
+      <div className="card-toc p-5 sm:p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <BarChart2 className="w-5 h-5 text-brand-500" />
+          <h3 className="text-base font-bold text-[#1C2B3A] dark:text-white">
+            Ventes vs Dépenses (Marge)
+          </h3>
+        </div>
+
+        <div className="space-y-4 pt-1">
+          {/* Row 1: CA (Ventes) */}
+          <div>
+            <div className="flex justify-between items-center text-xs font-bold mb-1.5">
+              <span className="text-slate-700 dark:text-slate-300">CA (Ventes)</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-mono text-sm font-extrabold">
+                {formatFCFA(kpis.net_sales)}
+              </span>
+            </div>
+            <div className="w-full bg-slate-100 dark:bg-dark-700 h-3 rounded-full overflow-hidden">
+              <div
+                className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(100, (kpis.net_sales / maxComparisonVal) * 100)}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Row 2: Dépenses */}
+          <div>
+            <div className="flex justify-between items-center text-xs font-bold mb-1.5">
+              <span className="text-slate-700 dark:text-slate-300">Dépenses</span>
+              <span className="text-rose-600 dark:text-rose-400 font-mono text-sm font-extrabold">
+                {formatFCFA(kpis.total_expenses)}
+              </span>
+            </div>
+            <div className="w-full bg-slate-100 dark:bg-dark-700 h-3 rounded-full overflow-hidden">
+              <div
+                className="bg-rose-500 h-full rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(100, (kpis.total_expenses / maxComparisonVal) * 100)}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Row 3: Marge Brute */}
+          <div>
+            <div className="flex justify-between items-center text-xs font-bold mb-1.5">
+              <span className="text-slate-700 dark:text-slate-300">Marge Brute</span>
+              <span className="text-brand-600 dark:text-brand-400 font-mono text-sm font-extrabold">
+                {formatFCFA(kpis.gross_margin > 0 ? kpis.gross_margin : 0)}
+              </span>
+            </div>
+            <div className="w-full bg-slate-100 dark:bg-dark-700 h-3 rounded-full overflow-hidden">
+              <div
+                className="bg-brand-500 h-full rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(100, (Math.max(0, kpis.gross_margin) / maxComparisonVal) * 100)}%` }}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Financial Statement & Trend Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Synthetic P&L Table */}
-        <div className="lg:col-span-5 card-toc p-6 flex flex-col justify-between">
+        <div className="lg:col-span-5 card-toc p-5 sm:p-6 flex flex-col justify-between">
           <div>
-            <h2 className="text-base font-bold text-slate-900 dark:text-white mb-1">Compte de Résultat Synthétique</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">Décomposition de la formation du bénéfice net</p>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white mb-1">
+              Compte de Résultat Synthétique
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">
+              Décomposition analytique de la rentabilité
+            </p>
 
             <div className="space-y-3 text-sm">
               <div className="flex justify-between items-center py-1.5 border-b border-[#E8EFF5] dark:border-dark-600">
@@ -252,8 +401,8 @@ export const ReportsPage: React.FC = () => {
 
               {kpis.discount_amount > 0 && (
                 <div className="flex justify-between items-center py-1.5 border-b border-[#E8EFF5] dark:border-dark-600 text-rose-600 dark:text-rose-400">
-                  <span>- Remises accordées</span>
-                  <span className="font-mono">-{formatFCFA(kpis.discount_amount)}</span>
+                  <span>− Remises accordées</span>
+                  <span className="font-mono">−{formatFCFA(kpis.discount_amount)}</span>
                 </div>
               )}
 
@@ -263,8 +412,8 @@ export const ReportsPage: React.FC = () => {
               </div>
 
               <div className="flex justify-between items-center py-1.5 border-b border-[#E8EFF5] dark:border-dark-600 text-slate-600 dark:text-slate-400">
-                <span>- Coût Marchandises Vendues (COGS)</span>
-                <span className="text-rose-600 dark:text-rose-400 font-mono">-{formatFCFA(kpis.cogs)}</span>
+                <span>− Coût Marchandises (COGS)</span>
+                <span className="text-rose-600 dark:text-rose-400 font-mono">−{formatFCFA(kpis.cogs)}</span>
               </div>
 
               <div className="flex justify-between items-center py-2.5 bg-brand-50/60 dark:bg-brand-500/15 px-3.5 rounded-xl text-brand-800 dark:text-brand-300 font-bold border border-brand-100 dark:border-brand-500/30">
@@ -273,16 +422,16 @@ export const ReportsPage: React.FC = () => {
               </div>
 
               <div className="flex justify-between items-center py-1.5 border-b border-[#E8EFF5] dark:border-dark-600 text-slate-600 dark:text-slate-400">
-                <span>- Charges d'Exploitation (Dépenses)</span>
-                <span className="text-rose-600 dark:text-rose-400 font-mono">-{formatFCFA(kpis.total_expenses)}</span>
+                <span>− Charges d'Exploitation (Dépenses)</span>
+                <span className="text-rose-600 dark:text-rose-400 font-mono">−{formatFCFA(kpis.total_expenses)}</span>
               </div>
 
               <div
-                className={`flex justify-between items-center py-3 px-3.5 rounded-xl font-extrabold text-base ${
+                className={`flex justify-between items-center py-3 px-3.5 rounded-2xl font-extrabold text-base ${
                   kpis.net_profit >= 0 ? 'bg-emerald-600 text-white shadow-sm' : 'bg-rose-600 text-white shadow-sm'
                 }`}
               >
-                <span>= Bénéfice Net d'Exploitation</span>
+                <span>= Résultat Net d'Exploitation</span>
                 <span className="font-mono">{formatFCFA(kpis.net_profit)}</span>
               </div>
             </div>
@@ -290,16 +439,20 @@ export const ReportsPage: React.FC = () => {
 
           <div className="mt-6 pt-4 border-t border-[#E8EFF5] dark:border-dark-600 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span>Taux de Marge Nette :</span>
-            <span className="font-bold text-slate-900 dark:text-white">{kpis.net_margin_rate}%</span>
+            <span className="font-bold text-slate-900 dark:text-white font-mono">{kpis.net_margin_rate}%</span>
           </div>
         </div>
 
         {/* Monthly Trend Chart */}
-        <div className="lg:col-span-7 card-toc p-6">
+        <div className="lg:col-span-7 card-toc p-5 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Évolution Temporelle (6 derniers mois)</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Comparatif Chiffre d'Affaires vs Dépenses</p>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                Évolution Historique (6 derniers mois)
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Comparatif mensuel Chiffre d'Affaires vs Dépenses
+              </p>
             </div>
           </div>
 
@@ -341,78 +494,178 @@ export const ReportsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Top Products & Expense Breakdown */}
+      {/* Top Products & Expense Category Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Products */}
-        <div className="card-toc p-6">
+        {/* Top Products (Mirrors mobile _buildTopProductsList) */}
+        <div className="card-toc p-5 sm:p-6">
           <div className="flex items-center gap-2 mb-4">
             <Award className="w-5 h-5 text-amber-500" />
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">Top 10 Produits par Rentabilité</h2>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">
+              Top Produits les plus vendus
+            </h2>
           </div>
 
           {top_products.length === 0 ? (
-            <p className="text-xs text-slate-400 py-6 text-center">Aucune vente enregistrée sur cette période.</p>
+            <p className="text-xs text-slate-400 py-6 text-center">
+              Aucune vente enregistrée sur cette période.
+            </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#F5FAFD] dark:bg-dark-700/50 text-slate-500 dark:text-slate-400 uppercase font-semibold border-b border-[#E8EFF5] dark:border-dark-600">
-                  <tr>
-                    <th className={tableClasses.th}>Article</th>
-                    <th className={`${tableClasses.th} text-center`}>Qté</th>
-                    <th className={`${tableClasses.th} text-right`}>C.A.</th>
-                    <th className={`${tableClasses.th} text-right`}>Profit</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E8EFF5] dark:divide-dark-600/60">
-                  {top_products.map((p, idx) => (
-                    <tr key={idx} className="hover:bg-brand-50/20 dark:hover:bg-dark-700/40">
-                      <td className={`${tableClasses.td} font-medium text-slate-900 dark:text-white`}>{p.product_name}</td>
-                      <td className={`${tableClasses.td} text-center text-slate-600 dark:text-slate-300 font-mono`}>{p.quantity_sold}</td>
-                      <td className={`${tableClasses.td} text-right font-mono font-medium text-slate-900 dark:text-white`}>
-                        {formatFCFA(p.total_revenue)}
-                      </td>
-                      <td className={`${tableClasses.td} text-right font-mono font-bold text-emerald-600 dark:text-emerald-400`}>
-                        +{formatFCFA(p.total_profit)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Expenses by Category */}
-        <div className="card-toc p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <PieChartIcon className="w-5 h-5 text-brand-500" />
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">Répartition des Dépenses par Catégorie</h2>
-          </div>
-
-          {expenses_by_category.length === 0 ? (
-            <p className="text-xs text-slate-400 py-6 text-center">Aucune dépense sur cette période.</p>
-          ) : (
-            <div className="space-y-4">
-              {expenses_by_category.map((e, idx) => (
-                <div key={idx}>
-                  <div className="flex justify-between items-center text-xs font-semibold mb-1.5">
-                    <span className="text-slate-700 dark:text-slate-200">{e.category}</span>
-                    <span className="font-bold text-slate-900 dark:text-white font-mono">
-                      {formatFCFA(e.total_amount)} ({e.percentage}%)
+            <div className="space-y-3">
+              {top_products.map((p, idx) => (
+                <div
+                  key={idx}
+                  className="p-3.5 rounded-2xl border border-slate-100 dark:border-dark-600 bg-[#F5FAFD] dark:bg-dark-700/50 flex items-center justify-between gap-3 hover:border-brand-200 transition"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
+                        idx === 0
+                          ? 'bg-amber-400 text-white'
+                          : idx === 1
+                          ? 'bg-slate-300 text-slate-800'
+                          : idx === 2
+                          ? 'bg-amber-600 text-white'
+                          : 'bg-slate-100 dark:bg-dark-600 text-slate-500'
+                      }`}
+                    >
+                      {idx + 1}
                     </span>
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-sm text-[#1C2B3A] dark:text-white truncate">
+                        {p.product_name}
+                      </h4>
+                      <span className="text-[11px] text-slate-400 font-mono">
+                        {p.quantity_sold} unité{p.quantity_sold > 1 ? 's' : ''} vendue{p.quantity_sold > 1 ? 's' : ''}
+                      </span>
+                    </div>
                   </div>
-                  <div className="w-full bg-slate-100 dark:bg-dark-700 h-2.5 rounded-full overflow-hidden">
-                    <div
-                      className="bg-brand-500 h-full rounded-full transition-all duration-300"
-                      style={{ width: `${Math.min(100, e.percentage)}%` }}
-                    />
+
+                  <div className="text-right shrink-0">
+                    <div className="font-mono text-sm font-extrabold text-slate-900 dark:text-white">
+                      {formatFCFA(p.total_revenue)}
+                    </div>
+                    <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                      +{formatFCFA(p.total_profit)}
+                    </span>
                   </div>
                 </div>
               ))}
             </div>
           )}
         </div>
+
+        {/* Expenses by Category (Mirrors mobile _buildExpenseCategoryChart) */}
+        <div className="card-toc p-5 sm:p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <PieChartIcon className="w-5 h-5 text-brand-500" />
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">
+              Répartition des Dépenses par Catégorie
+            </h2>
+          </div>
+
+          {expenses_by_category.length === 0 ? (
+            <p className="text-xs text-slate-400 py-6 text-center">
+              Aucune dépense enregistrée sur cette période.
+            </p>
+          ) : (
+            <div className="space-y-3.5">
+              {expenses_by_category.map((e, idx) => {
+                const color = categoryColors[idx % categoryColors.length];
+                return (
+                  <div key={idx} className="space-y-1.5">
+                    <div className="flex justify-between items-center text-xs font-semibold">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="w-3 h-3 rounded-full shrink-0"
+                          style={{ backgroundColor: color }}
+                        />
+                        <span className="text-slate-700 dark:text-slate-200 font-bold truncate">
+                          {e.category}
+                        </span>
+                      </div>
+                      <div className="text-right shrink-0 font-mono">
+                        <span className="text-slate-400 mr-2">{e.percentage}%</span>
+                        <span className="font-extrabold text-slate-900 dark:text-white">
+                          {formatFCFA(e.total_amount)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-slate-100 dark:bg-dark-700 h-2.5 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-300"
+                        style={{
+                          width: `${Math.min(100, e.percentage)}%`,
+                          backgroundColor: color,
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Modal Période Personnalisée */}
+      <Modal
+        isOpen={isCustomModalOpen}
+        onClose={() => setIsCustomModalOpen(false)}
+        title="Sélectionner une Période"
+        subtitle="Définissez les dates de début et de fin du rapport"
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <button
+              type="button"
+              onClick={() => setIsCustomModalOpen(false)}
+              className="btn-toc btn-secondary text-xs"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (customStart && customEnd) {
+                  setPeriodPreset('customRange');
+                  setIsCustomModalOpen(false);
+                }
+              }}
+              disabled={!customStart || !customEnd}
+              className="btn-toc btn-primary text-xs"
+            >
+              Appliquer la Période
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+              Date de début *
+            </label>
+            <input
+              type="date"
+              required
+              value={customStart}
+              onChange={(e) => setCustomStart(e.target.value)}
+              className="input-toc"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+              Date de fin *
+            </label>
+            <input
+              type="date"
+              required
+              value={customEnd}
+              onChange={(e) => setCustomEnd(e.target.value)}
+              className="input-toc"
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

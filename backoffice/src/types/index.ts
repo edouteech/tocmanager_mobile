@@ -43,6 +43,9 @@ export interface DashboardStats {
   total_expenses: number;
   products_count: number;
   low_stock_count: number;
+  categories_count?: number;
+  stock_value?: number;
+  stock_cost?: number;
 }
 
 export interface VenteItem {
@@ -182,6 +185,7 @@ export interface FinancialKPIs {
   total_expenses: number;
   net_profit: number;
   net_margin_rate: number;
+  net_cashflow?: number;
 }
 
 export interface TopProductItem {

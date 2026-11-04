@@ -144,7 +144,7 @@ export const productsApi = {
 
 export const reportsApi = {
   getDashboard: () => api.get<DashboardStats>('/reports/dashboard').then((r) => r.data),
-  getFinancial: (params?: { start_date?: string; end_date?: string }) =>
+  getFinancial: (params?: { preset?: string; start_date?: string; end_date?: string }) =>
     api.get<FinancialReport>('/reports/financial', { params }).then((r) => r.data),
 };
 
