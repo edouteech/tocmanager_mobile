@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Users,
@@ -12,24 +12,35 @@ import {
   CreditCard,
   Edit2,
   Trash2,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { clientsApi } from '../../lib/api';
 import { formatFCFA, formatDateTime } from '../../lib/formatters';
 import { Client } from '../../types';
 import { Modal } from '../../components/common/Modal';
 import { useDensity } from '../../context/DensityContext';
+import { exportToExcel } from '../../lib/exportUtils';
+import { PaymentReceiptModal, PaymentReceiptData } from '../../components/common/PaymentReceiptModal';
+import { SummaryChipsRow, SummaryChipItem } from '../../components/common/SummaryChipsRow';
+import { FilterPeriodChips, FilterChipItem, SortOption } from '../../components/common/FilterPeriodChips';
+import { ViewToggle, ViewMode } from '../../components/common/ViewToggle';
+import { ClientCard } from './ClientCard';
 
 export const ClientsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { tableClasses } = useDensity();
   const [search, setSearch] = useState('');
-  const [onlyDebtors, setOnlyDebtors] = useState(false);
+  const [clientFilter, setClientFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<string>('name_asc');
+  const [viewMode, setViewMode] = useState<ViewMode>('cards');
 
   // Modals state
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentClient, setPaymentClient] = useState<Client | null>(null);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [receiptData, setReceiptData] = useState<PaymentReceiptData | null>(null);
 
   // Form states
   const [clientForm, setClientForm] = useState({
@@ -49,8 +60,8 @@ export const ClientsPage: React.FC = () => {
 
   // Fetch clients
   const { data: clients = [], isLoading } = useQuery({
-    queryKey: ['clients', search, onlyDebtors],
-    queryFn: () => clientsApi.getAll({ q: search || undefined, only_debtors: onlyDebtors }),
+    queryKey: ['clients'],
+    queryFn: () => clientsApi.getAll(),
   });
 
   // Mutations
@@ -83,13 +94,126 @@ export const ClientsPage: React.FC = () => {
   const paymentMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: { amount: number; payment_method: string; notes?: string } }) =>
       clientsApi.recordPayment(id, data),
-    onSuccess: () => {
+    onSuccess: (updatedClient, variables) => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       setIsPaymentModalOpen(false);
+      if (paymentClient) {
+        setReceiptData({
+          type: 'client',
+          recipientName: paymentClient.name,
+          phone: paymentClient.phone,
+          amount: variables.data.amount,
+          previousBalance: paymentClient.balance,
+          newBalance: updatedClient.balance,
+          paymentMethod: variables.data.payment_method,
+          notes: variables.data.notes,
+        });
+        setIsReceiptModalOpen(true);
+      }
       setPaymentClient(null);
       setPaymentForm({ amount: 0, payment_method: 'Espèces', notes: '' });
     },
   });
+
+  // Stats calculation
+  const stats = useMemo(() => {
+    let debtors = 0;
+    let upToDate = 0;
+    let totalDebt = 0;
+
+    clients.forEach((c) => {
+      if (c.balance > 0) {
+        debtors++;
+        totalDebt += c.balance;
+      } else {
+        upToDate++;
+      }
+    });
+
+    return { total: clients.length, debtors, upToDate, totalDebt };
+  }, [clients]);
+
+  // Summary chips
+  const summaryChips: SummaryChipItem[] = [
+    {
+      label: 'Total Répertoire',
+      value: stats.total,
+      color: 'primary',
+      icon: <Users className="w-4 h-4" />,
+      subtext: 'Clients enregistrés',
+    },
+    {
+      label: 'Créances Clients',
+      value: formatFCFA(stats.totalDebt),
+      color: stats.totalDebt > 0 ? 'warning' : 'success',
+      icon: <AlertCircle className="w-4 h-4" />,
+      subtext: 'Reste dû sur achats',
+    },
+    {
+      label: 'Clients Débiteurs',
+      value: stats.debtors,
+      color: stats.debtors > 0 ? 'warning' : 'primary',
+      icon: <DollarSign className="w-4 h-4" />,
+      subtext: 'En attente de règlement',
+    },
+    {
+      label: 'Clients à Jour',
+      value: stats.upToDate,
+      color: 'success',
+      icon: <CheckCircle2 className="w-4 h-4" />,
+      subtext: 'Solde entièrement soldé',
+    },
+  ];
+
+  // Filter chips
+  const filterChips: FilterChipItem[] = [
+    { id: 'all', label: 'Tous', count: stats.total },
+    { id: 'debtors', label: 'Débiteurs', count: stats.debtors },
+    { id: 'uptodate', label: 'À jour', count: stats.upToDate },
+  ];
+
+  const sortOptions: SortOption[] = [
+    { id: 'name_asc', label: 'Nom (A - Z)' },
+    { id: 'debt_desc', label: 'Dette décroissante' },
+    { id: 'debt_asc', label: 'Dette croissante' },
+  ];
+
+  // Filtered and sorted clients
+  const filteredClients = useMemo(() => {
+    return clients
+      .filter((c) => {
+        const term = search.toLowerCase();
+        const matchesSearch =
+          c.name.toLowerCase().includes(term) ||
+          (c.phone && c.phone.toLowerCase().includes(term)) ||
+          (c.email && c.email.toLowerCase().includes(term)) ||
+          (c.address && c.address.toLowerCase().includes(term));
+
+        if (!matchesSearch) return false;
+
+        if (clientFilter === 'debtors' && c.balance <= 0) return false;
+        if (clientFilter === 'uptodate' && c.balance > 0) return false;
+
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'debt_desc') return b.balance - a.balance;
+        if (sortBy === 'debt_asc') return a.balance - b.balance;
+        return a.name.localeCompare(b.name);
+      });
+  }, [clients, search, clientFilter, sortBy]);
+
+  const handleExportExcel = () => {
+    const exportData = filteredClients.map((c) => ({
+      'Nom du Client': c.name,
+      'Téléphone': c.phone || '',
+      'Email': c.email || '',
+      'Adresse': c.address || '',
+      'Dette Restante (FCFA)': c.balance,
+      'Date Création': c.created_at ? formatDateTime(c.created_at) : '',
+    }));
+    exportToExcel(exportData, `clients_${new Date().toISOString().slice(0, 10)}.xlsx`, 'Clients');
+  };
 
   const resetClientForm = () => {
     setClientForm({
@@ -166,104 +290,105 @@ export const ClientsPage: React.FC = () => {
     });
   };
 
-  // KPIs
-  const totalReceivables = clients.reduce((sum, c) => sum + (c.balance > 0 ? c.balance : 0), 0);
-  const debtorsCount = clients.filter((c) => c.balance > 0).length;
-
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-5 max-w-7xl mx-auto">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-[#1C2B3A] dark:text-white tracking-tight">Clients</h1>
-          <p className="text-xs sm:text-sm text-[#5A7184] dark:text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-[#5A7184] dark:text-slate-400 mt-0.5">
             Gestion du répertoire clients et suivi des règlements de dettes
           </p>
         </div>
-        <button
-          onClick={handleOpenCreate}
-          className="btn-primary w-full sm:w-auto justify-center"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Nouveau Client</span>
-        </button>
-      </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
-        <div className="card-toc card-hover p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Créances Dues</p>
-              <p className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 mt-1">{formatFCFA(totalReceivables)}</p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-100 dark:border-rose-900/50">
-              <AlertCircle className="w-5 h-5" />
-            </div>
-          </div>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">{debtorsCount} client(s) avec un solde débiteur</p>
-        </div>
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <ViewToggle mode={viewMode} onChange={setViewMode} />
 
-        <div className="card-toc card-hover p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Clients Débiteurs</p>
-              <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">{debtorsCount}</p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-100 dark:border-amber-900/50">
-              <DollarSign className="w-5 h-5" />
-            </div>
-          </div>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">En attente de paiement</p>
-        </div>
+          <button
+            onClick={handleExportExcel}
+            className="btn-toc btn-outline flex items-center justify-center gap-2 py-2 px-3 text-xs font-bold"
+            title="Exporter la liste des clients vers Excel"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <span className="hidden sm:inline">Excel</span>
+          </button>
 
-        <div className="card-toc card-hover p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Répertoire</p>
-              <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">{clients.length}</p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400 flex items-center justify-center border border-brand-200 dark:border-brand-500/30">
-              <Users className="w-5 h-5" />
-            </div>
-          </div>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">Comptes clients enregistrés</p>
+          <button
+            onClick={handleOpenCreate}
+            className="btn-toc btn-primary flex items-center gap-2 py-2 px-3.5 text-xs font-bold shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nouveau Client</span>
+          </button>
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="card-toc p-4 flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
-        <div className="relative w-full sm:w-72">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+      {/* Mobile-Style Summary Chips Row */}
+      <SummaryChipsRow chips={summaryChips} />
+
+      {/* Search & Filter Bar */}
+      <div className="card-toc p-3.5 sm:p-4 space-y-3">
+        {/* Search Input */}
+        <div className="relative w-full">
+          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+            <Search className="w-4 h-4" />
+          </div>
           <input
             type="text"
-            placeholder="Rechercher nom, téléphone, email..."
+            placeholder="Rechercher nom, téléphone, adresse..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="input-toc pl-10"
+            className="input-toc pl-10 w-full text-xs sm:text-sm"
           />
         </div>
 
-        <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-slate-600 dark:text-slate-300">
-          <input
-            type="checkbox"
-            checked={onlyDebtors}
-            onChange={(e) => setOnlyDebtors(e.target.checked)}
-            className="rounded border-slate-300 dark:border-dark-600 text-brand-500 focus:ring-brand-500 h-4 w-4"
-          />
-          <span>Afficher uniquement les créances &gt; 0</span>
-        </label>
+        {/* Filter Chips & Sort */}
+        <FilterPeriodChips
+          chips={filterChips}
+          selectedChip={clientFilter}
+          onSelectChip={setClientFilter}
+          sortOptions={sortOptions}
+          selectedSort={sortBy}
+          onSelectSort={setSortBy}
+        />
       </div>
 
-      {/* Clients Table with Density */}
-      <div className="card-toc overflow-hidden">
-        {isLoading ? (
-          <div className="p-12 text-center text-slate-400 text-sm">Chargement des clients...</div>
-        ) : clients.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 text-sm">
-            Aucun client trouvé pour ces critères de recherche.
+      {/* Content: Cards View (Mobile style) or Table View */}
+      {isLoading ? (
+        <div className="card-toc p-12 text-center text-slate-400">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-brand-500 border-t-transparent mb-3" />
+          <p className="text-sm">Chargement des clients...</p>
+        </div>
+      ) : filteredClients.length === 0 ? (
+        <div className="card-toc p-12 text-center text-slate-400">
+          <div className="w-16 h-16 bg-slate-100 dark:bg-dark-700 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Users className="w-8 h-8 text-slate-400" />
           </div>
-        ) : (
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
+            Aucun client trouvé
+          </h3>
+          <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+            {search || clientFilter !== 'all'
+              ? 'Aucun client ne correspond à vos critères de recherche.'
+              : 'Enregistrez votre premier client en cliquant sur "Nouveau Client".'}
+          </p>
+        </div>
+      ) : viewMode === 'cards' ? (
+        /* Mobile Cards Grid */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          {filteredClients.map((c) => (
+            <ClientCard
+              key={c.sync_id}
+              client={c}
+              onEdit={handleOpenEdit}
+              onDelete={handleDelete}
+              onPayment={handleOpenPayment}
+            />
+          ))}
+        </div>
+      ) : (
+        /* Desktop Table View */
+        <div className="card-toc overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left min-w-[650px]">
               <thead className="bg-[#F5FAFD] dark:bg-dark-700/50 border-b border-[#E8EFF5] dark:border-dark-600">
@@ -276,7 +401,7 @@ export const ClientsPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E8EFF5] dark:divide-dark-600/60">
-                {clients.map((c) => {
+                {filteredClients.map((c) => {
                   const hasDebt = c.balance > 0;
                   return (
                     <tr key={c.sync_id} className="hover:bg-brand-50/30 dark:hover:bg-dark-700/40 transition-colors">
@@ -309,7 +434,7 @@ export const ClientsPage: React.FC = () => {
                       </td>
                       <td className={`${tableClasses.td} text-right font-mono`}>
                         {hasDebt ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50">
                             <AlertCircle className="w-3 h-3" />
                             {formatFCFA(c.balance)}
                           </span>
@@ -353,21 +478,21 @@ export const ClientsPage: React.FC = () => {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Modal Création / Modification Client */}
       <Modal
         isOpen={isClientModalOpen}
         onClose={() => setIsClientModalOpen(false)}
         title={selectedClient ? 'Modifier le Client' : 'Nouveau Client'}
-        subtitle="Renseignez les coordonnées et le solde éventuel"
+        subtitle="Renseignez les coordonnées du compte client"
         footer={
-          <>
+          <div className="flex items-center justify-end gap-2 w-full">
             <button
               type="button"
               onClick={() => setIsClientModalOpen(false)}
-              className="btn-secondary"
+              className="btn-toc btn-secondary text-xs"
             >
               Annuler
             </button>
@@ -375,39 +500,43 @@ export const ClientsPage: React.FC = () => {
               type="button"
               onClick={handleClientSubmit}
               disabled={createMutation.isPending || updateMutation.isPending}
-              className="btn-primary"
+              className="btn-toc btn-primary text-xs"
             >
-              {selectedClient ? 'Enregistrer' : 'Créer le client'}
+              {createMutation.isPending || updateMutation.isPending
+                ? 'Enregistrement...'
+                : selectedClient
+                ? 'Mettre à jour'
+                : 'Enregistrer'}
             </button>
-          </>
+          </div>
         }
       >
         <form onSubmit={handleClientSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
-              Nom Complet / Raison Sociale *
+              Nom Complet *
             </label>
             <input
               type="text"
               required
-              placeholder="Ex: Jean Dupont ou Boutique ABC"
               value={clientForm.name}
               onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })}
+              placeholder="Ex: Entreprise Toure ou Jean Dupont"
               className="input-toc"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
                 Téléphone
               </label>
               <input
-                type="text"
-                placeholder="+228 90 00 00 00"
+                type="tel"
                 value={clientForm.phone}
                 onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })}
-                className="input-toc"
+                placeholder="+225 07..."
+                className="input-toc font-mono"
               />
             </div>
             <div>
@@ -416,9 +545,9 @@ export const ClientsPage: React.FC = () => {
               </label>
               <input
                 type="email"
-                placeholder="client@mail.com"
                 value={clientForm.email}
                 onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
+                placeholder="client@mail.com"
                 className="input-toc"
               />
             </div>
@@ -430,9 +559,9 @@ export const ClientsPage: React.FC = () => {
             </label>
             <input
               type="text"
-              placeholder="Quartier, Ville"
               value={clientForm.address}
               onChange={(e) => setClientForm({ ...clientForm, address: e.target.value })}
+              placeholder="Quartier, Rue, Ville"
               className="input-toc"
             />
           </div>
@@ -440,16 +569,14 @@ export const ClientsPage: React.FC = () => {
           {!selectedClient && (
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
-                Solde Débiteur Initial (Créance antérieure)
+                Solde Initial (Dette antérieure éventuelle)
               </label>
               <input
                 type="number"
                 min="0"
-                step="100"
-                placeholder="0"
                 value={clientForm.balance}
-                onChange={(e) => setClientForm({ ...clientForm, balance: parseFloat(e.target.value) || 0 })}
-                className="input-toc font-mono font-bold"
+                onChange={(e) => setClientForm({ ...clientForm, balance: Number(e.target.value) })}
+                className="input-toc font-bold font-mono"
               />
             </div>
           )}
@@ -460,32 +587,27 @@ export const ClientsPage: React.FC = () => {
             </label>
             <textarea
               rows={2}
-              placeholder="Remarques particulières..."
               value={clientForm.notes}
               onChange={(e) => setClientForm({ ...clientForm, notes: e.target.value })}
+              placeholder="Remarques, conditions accordées..."
               className="input-toc"
-            ></textarea>
+            />
           </div>
         </form>
       </Modal>
 
-      {/* Modal Règlement Créance */}
+      {/* Modal Règlement Dette Client */}
       <Modal
-        isOpen={isPaymentModalOpen && !!paymentClient}
+        isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
-        title={
-          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-            <CreditCard className="w-5 h-5" />
-            <span>Règlement de Créance</span>
-          </div>
-        }
-        subtitle="Enregistrez un encaissement pour solder la dette du client"
+        title="Règlement de Créance Client"
+        subtitle={paymentClient ? `Enregistrement d'un paiement pour ${paymentClient.name}` : ''}
         footer={
-          <>
+          <div className="flex items-center justify-end gap-2 w-full">
             <button
               type="button"
               onClick={() => setIsPaymentModalOpen(false)}
-              className="btn-secondary"
+              className="btn-toc btn-secondary text-xs"
             >
               Annuler
             </button>
@@ -493,57 +615,49 @@ export const ClientsPage: React.FC = () => {
               type="button"
               onClick={handlePaymentSubmit}
               disabled={paymentMutation.isPending || paymentForm.amount <= 0}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white rounded-xl text-sm font-bold shadow-sm transition disabled:opacity-50"
+              className="btn-toc btn-primary text-xs bg-emerald-600 hover:bg-emerald-700"
             >
-              Valider le règlement
+              {paymentMutation.isPending ? 'Enregistrement...' : 'Valider le Règlement'}
             </button>
-          </>
+          </div>
         }
       >
         {paymentClient && (
           <form onSubmit={handlePaymentSubmit} className="space-y-4">
-            <div className="bg-[#F5FAFD] dark:bg-dark-700/60 p-3.5 rounded-2xl border border-[#E8EFF5] dark:border-dark-600">
-              <div className="text-xs text-slate-400 font-medium">Client</div>
-              <div className="font-bold text-slate-900 dark:text-white text-base">{paymentClient.name}</div>
-              <div className="flex justify-between items-center mt-2 pt-2 border-t border-[#E8EFF5] dark:border-dark-600 text-xs">
-                <span className="text-slate-500 dark:text-slate-400">Créance totale due :</span>
-                <span className="font-extrabold text-rose-600 dark:text-rose-400 font-mono">{formatFCFA(paymentClient.balance)}</span>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
-                Montant réglé *
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  max={paymentClient.balance}
-                  value={paymentForm.amount}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })}
-                  className="input-toc pr-20 font-mono font-bold"
-                />
-                <button
-                  type="button"
-                  onClick={() => setPaymentForm({ ...paymentForm, amount: paymentClient.balance })}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-brand-600 dark:text-brand-400 hover:underline"
-                >
-                  Totalité
-                </button>
-              </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 flex justify-between">
-                <span>Nouveau solde après règlement :</span>
-                <span className="font-bold text-slate-700 dark:text-slate-200 font-mono">
-                  {formatFCFA(Math.max(0, paymentClient.balance - paymentForm.amount))}
+            <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 flex justify-between items-center">
+              <div>
+                <span className="text-xs text-amber-800 dark:text-amber-300 font-semibold block">Dette actuelle due :</span>
+                <span className="text-lg font-extrabold text-amber-900 dark:text-amber-200 font-mono">
+                  {formatFCFA(paymentClient.balance)}
                 </span>
               </div>
+              <button
+                type="button"
+                onClick={() => setPaymentForm({ ...paymentForm, amount: paymentClient.balance })}
+                className="px-2.5 py-1 text-xs font-bold bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 rounded-lg hover:bg-amber-300 transition"
+              >
+                Tout solder
+              </button>
             </div>
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
-                Moyen de paiement *
+                Montant Reçu (FCFA) *
+              </label>
+              <input
+                type="number"
+                min="1"
+                required
+                value={paymentForm.amount || ''}
+                onChange={(e) => setPaymentForm({ ...paymentForm, amount: Number(e.target.value) })}
+                placeholder="Montant du versement"
+                className="input-toc text-base font-extrabold font-mono text-emerald-600"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Mode de Paiement
               </label>
               <select
                 value={paymentForm.payment_method}
@@ -551,27 +665,36 @@ export const ClientsPage: React.FC = () => {
                 className="input-toc bg-white dark:bg-dark-700"
               >
                 <option value="Espèces">Espèces</option>
-                <option value="Mobile Money">Mobile Money (T-Money / Moov Money)</option>
-                <option value="Virement">Virement bancaire</option>
+                <option value="Wave">Wave</option>
+                <option value="Orange Money">Orange Money</option>
+                <option value="MTN MoMo">MTN MoMo</option>
+                <option value="Virement Bancaire">Virement Bancaire</option>
                 <option value="Chèque">Chèque</option>
               </select>
             </div>
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
-                Référence / Notes
+                Notes / Référence transaction
               </label>
               <input
                 type="text"
                 value={paymentForm.notes}
                 onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
-                placeholder="Ex: Réf reçu ou transaction..."
+                placeholder="Ex: Reçu N° 4582..."
                 className="input-toc"
               />
             </div>
           </form>
         )}
       </Modal>
+
+      {/* Reçu de Paiement Modal */}
+      <PaymentReceiptModal
+        isOpen={isReceiptModalOpen}
+        onClose={() => setIsReceiptModalOpen(false)}
+        data={receiptData}
+      />
     </div>
   );
 };

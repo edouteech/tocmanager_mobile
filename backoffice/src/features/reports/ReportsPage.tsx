@@ -9,6 +9,8 @@ import {
   Award,
   PieChart as PieChartIcon,
   Percent,
+  FileSpreadsheet,
+  Printer,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -24,6 +26,7 @@ import { reportsApi } from '../../lib/api';
 import { formatFCFA } from '../../lib/formatters';
 import { useDensity } from '../../context/DensityContext';
 import { useTheme } from '../../context/ThemeContext';
+import { exportToExcel } from '../../lib/exportUtils';
 
 export const ReportsPage: React.FC = () => {
   const { tableClasses } = useDensity();
@@ -77,6 +80,23 @@ export const ReportsPage: React.FC = () => {
     document.body.removeChild(link);
   };
 
+  const exportExcel = () => {
+    if (!report) return;
+    const { kpis, top_products, expenses_by_category } = report;
+
+    const kpiData = [
+      { 'Indicateur Financier': "Chiffre d'Affaires Brut", 'Montant (FCFA)': kpis.gross_sales, 'Part / Marge': '100%' },
+      { 'Indicateur Financier': 'Remises Commerciales', 'Montant (FCFA)': -kpis.discount_amount, 'Part / Marge': '-' },
+      { 'Indicateur Financier': "Chiffre d'Affaires Net", 'Montant (FCFA)': kpis.net_sales, 'Part / Marge': '100%' },
+      { 'Indicateur Financier': 'Coût des Marchandises Vendues (COGS)', 'Montant (FCFA)': -kpis.cogs, 'Part / Marge': `${Math.round((kpis.cogs / (kpis.net_sales || 1)) * 100)}%` },
+      { 'Indicateur Financier': 'Marge Brute Commerciale', 'Montant (FCFA)': kpis.gross_margin, 'Part / Marge': `${kpis.gross_margin_rate}%` },
+      { 'Indicateur Financier': 'Total Charges & Dépenses', 'Montant (FCFA)': -kpis.total_expenses, 'Part / Marge': `${Math.round((kpis.total_expenses / (kpis.net_sales || 1)) * 100)}%` },
+      { 'Indicateur Financier': "Résultat Net d'Exploitation", 'Montant (FCFA)': kpis.net_profit, 'Part / Marge': `${kpis.net_margin_rate}%` },
+    ];
+
+    exportToExcel(kpiData, `Rapport_Financier_P&L_${new Date().toISOString().slice(0, 10)}.xlsx`, 'Compte de Résultat');
+  };
+
   if (isLoading || !report) {
     return (
       <div className="card-toc p-12 text-center text-slate-400 text-sm">
@@ -125,11 +145,28 @@ export const ReportsPage: React.FC = () => {
             </button>
           </div>
           <button
+            onClick={exportExcel}
+            className="btn-toc btn-outline flex items-center gap-1.5 py-1.5 px-3 text-xs font-bold"
+            title="Exporter le compte de résultat en fichier Excel natif (.xlsx)"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <span className="hidden sm:inline">Export Excel</span>
+          </button>
+          <button
             onClick={exportCSV}
             className="btn-secondary"
+            title="Exporter en CSV"
           >
             <Download className="w-4 h-4 text-brand-500" />
-            <span>Export CSV</span>
+            <span className="hidden sm:inline">CSV</span>
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="btn-toc btn-outline flex items-center gap-1.5 py-1.5 px-3 text-xs font-bold"
+            title="Imprimer ou enregistrer en PDF"
+          >
+            <Printer className="w-4 h-4 text-slate-500" />
+            <span className="hidden sm:inline">Imprimer / PDF</span>
           </button>
         </div>
       </div>

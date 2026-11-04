@@ -39,19 +39,24 @@ export const Modal: React.FC<ModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       {/* Backdrop */}
       <div
         onClick={onClose}
-        className="fixed inset-0 bg-[#1C2B3A]/50 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 bg-[#1C2B3A]/50 backdrop-blur-xs transition-opacity duration-300"
       />
 
-      {/* Modal Dialog Box */}
+      {/* Modal Dialog Box (Bottom Sheet on mobile, centered rounded dialog on sm+) */}
       <div
-        className={`relative z-10 w-full ${maxWidth} max-h-[90vh] bg-white dark:bg-dark-800 rounded-3xl shadow-soft-lg border border-[#E8EFF5] dark:border-dark-600 overflow-hidden transform animate-fade-in flex flex-col`}
+        className={`relative z-10 w-full ${maxWidth} max-h-[92vh] sm:max-h-[90vh] bg-white dark:bg-dark-800 rounded-t-3xl sm:rounded-3xl shadow-soft-lg border-t sm:border border-[#E8EFF5] dark:border-dark-600 overflow-hidden transform animate-fade-in flex flex-col`}
       >
+        {/* Mobile Tactile Grab Handle */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-12 h-1.5 rounded-full bg-slate-300 dark:bg-dark-600" />
+        </div>
+
         {/* Header */}
-        <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-[#E8EFF5] dark:border-dark-600 flex items-center justify-between shrink-0">
+        <div className="px-5 sm:px-6 py-3.5 sm:py-5 border-b border-[#E8EFF5] dark:border-dark-600 flex items-center justify-between shrink-0">
           <div className="min-w-0 pr-2">
             <h3 className="text-base sm:text-lg font-bold text-[#1C2B3A] dark:text-white tracking-tight truncate">
               {title}
@@ -65,6 +70,7 @@ export const Modal: React.FC<ModalProps> = ({
           <button
             onClick={onClose}
             className="p-1.5 text-[#5A7184] hover:text-[#1C2B3A] dark:hover:text-slate-200 hover:bg-[#F0F9FE] dark:hover:bg-dark-700 rounded-xl transition shrink-0"
+            aria-label="Fermer"
           >
             <X className="w-5 h-5" />
           </button>

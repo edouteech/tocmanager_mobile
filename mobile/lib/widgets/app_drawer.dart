@@ -13,6 +13,7 @@ class AppDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final isAdmin = auth.currentUser?.isAdmin ?? false;
+    final isManagerOrAdmin = isAdmin || (auth.currentUser?.isManager ?? false);
 
     return Drawer(
       backgroundColor: Colors.white,
@@ -69,6 +70,16 @@ class AppDrawer extends StatelessWidget {
               icon: Icons.manage_accounts_outlined,
               activeIcon: Icons.manage_accounts,
               label: 'Utilisateurs & Rôles',
+              current: currentIndex,
+              onTap: onNav,
+            ),
+          ],
+          if (isManagerOrAdmin) ...[
+            _NavItem(
+              index: 12,
+              icon: Icons.shield_outlined,
+              activeIcon: Icons.shield,
+              label: 'Journal d\'Audit',
               current: currentIndex,
               onTap: onNav,
             ),

@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useSidebar } from '../../context/SidebarContext';
+import { PinLockModal } from '../common/PinLockModal';
 
 export const MainLayout: React.FC = () => {
   const { isOpen, close } = useSidebar();
@@ -28,6 +29,9 @@ export const MainLayout: React.FC = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* PIN Lock Overlay */}
+      <PinLockModal />
     </div>
   );
 };

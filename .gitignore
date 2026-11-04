@@ -17,6 +17,7 @@ backend/tocmanager.db
 backoffice/node_modules/
 backoffice/dist/
 backoffice/.vite/
+*.tsbuildinfo
 
 # Flutter / Mobile
 mobile/.dart_tool/

@@ -46,12 +46,17 @@ export const Drawer: React.FC<DrawerProps> = ({
         className="fixed inset-0 bg-[#1C2B3A]/50 backdrop-blur-xs transition-opacity duration-300"
       />
 
-      {/* Slide-over panel (full width on mobile, max-width on tablet/desktop) */}
+      {/* Slide-over panel (full width on mobile with tactile feel, max-width on tablet/desktop) */}
       <div
         className={`relative z-10 w-full ${width} bg-white dark:bg-dark-800 shadow-soft-lg border-l border-[#E8EFF5] dark:border-dark-600 flex flex-col h-full transform transition-transform duration-300 ease-out animate-slide-in-right`}
       >
+        {/* Mobile Tactile Grab Handle */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1 bg-white dark:bg-dark-800">
+          <div className="w-12 h-1.5 rounded-full bg-slate-300 dark:bg-dark-600" />
+        </div>
+
         {/* Header */}
-        <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-[#E8EFF5] dark:border-dark-600 flex items-center justify-between bg-white dark:bg-dark-800 sticky top-0 z-10">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-5 border-b border-[#E8EFF5] dark:border-dark-600 flex items-center justify-between bg-white dark:bg-dark-800 sticky top-0 z-10">
           <div className="min-w-0 pr-3">
             <h3 className="text-base sm:text-lg font-bold text-[#1C2B3A] dark:text-white tracking-tight truncate">
               {title}

@@ -12,6 +12,7 @@ import {
   AlignJustify,
   Rows,
   Bell,
+  Lock,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../context/ThemeContext';
@@ -22,7 +23,7 @@ import { DashboardStats } from '../../types';
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
+  const { user, logout, lockSession } = useAuthStore();
   const { theme, toggleTheme } = useTheme();
   const { density, toggleDensity } = useDensity();
   const { toggle: toggleSidebar } = useSidebar();
@@ -142,6 +143,16 @@ export const Header: React.FC = () => {
           ) : (
             <Moon className="w-4 h-4 text-[#1C2B3A] animate-fade-in" />
           )}
+        </button>
+
+        {/* Lock Screen / Session Button */}
+        <button
+          onClick={lockSession}
+          className="p-2 text-[#5A7184] dark:text-slate-300 hover:text-amber-500 bg-[#F0F9FE] dark:bg-dark-700 hover:bg-amber-50 dark:hover:bg-amber-950/20 rounded-xl border border-[#E8EFF5] dark:border-dark-600 transition"
+          title="Verrouiller la session / Caisse (Code PIN)"
+          aria-label="Verrouiller la session"
+        >
+          <Lock className="w-4 h-4" />
         </button>
 
         {/* User profile summary */}

@@ -11,12 +11,17 @@ import {
   UserCheck,
   Tag,
   Search,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { decaissementsApi } from '../../lib/api';
 import { formatFCFA, formatDateTime } from '../../lib/formatters';
 import { Decaissement } from '../../types';
 import { Modal } from '../../components/common/Modal';
 import { useDensity } from '../../context/DensityContext';
+import { exportToExcel } from '../../lib/exportUtils';
+import { SummaryChipsRow, SummaryChipItem } from '../../components/common/SummaryChipsRow';
+import { ViewToggle, ViewMode } from '../../components/common/ViewToggle';
+import { ExpenseCard } from './ExpenseCard';
 
 const getCategoryBadgeClass = (cat: string) => {
   switch (cat.toLowerCase().trim()) {
@@ -50,6 +55,7 @@ export const ExpensesPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('cards');
 
   // Form state
   const [form, setForm] = useState({
@@ -191,106 +197,124 @@ export const ExpensesPage: React.FC = () => {
     }
   };
 
+  const handleExportExcel = () => {
+    const exportData = filteredExpenses.map((d) => ({
+      'Date & Heure': formatDateTime(d.date || d.created_at),
+      'Motif': d.title,
+      'Catégorie': d.category || 'Général',
+      'Montant (FCFA)': d.amount,
+      'Bénéficiaire': d.beneficiary || '',
+      'Mode Paiement': d.payment_method || 'Espèces',
+      'Opérateur': d.user_name || '',
+      'Notes': d.notes || '',
+    }));
+    exportToExcel(exportData, `decaissements_${new Date().toISOString().slice(0, 10)}.xlsx`, 'Décaissements');
+  };
+
   // KPIs
   const totalExpenses = allExpenses.reduce((sum, d) => sum + d.amount, 0);
   const avgExpense = allExpenses.length > 0 ? Math.round(totalExpenses / allExpenses.length) : 0;
   const filteredTotal = filteredExpenses.reduce((sum, d) => sum + d.amount, 0);
 
+  // Summary Chips
+  const summaryChips: SummaryChipItem[] = [
+    {
+      label: 'Total Décaissements',
+      value: formatFCFA(totalExpenses),
+      color: 'danger',
+      icon: <TrendingDown className="w-4 h-4" />,
+      subtext: `${allExpenses.length} dépenses au total`,
+    },
+    {
+      label: 'Dépense Moyenne',
+      value: formatFCFA(avgExpense),
+      color: 'warning',
+      icon: <DollarSign className="w-4 h-4" />,
+      subtext: 'Montant unitaire moyen',
+    },
+    {
+      label: selectedCategory ? `Total ${selectedCategory}` : 'Sélection Actuelle',
+      value: formatFCFA(filteredTotal),
+      color: 'purple',
+      icon: <Receipt className="w-4 h-4" />,
+      subtext: `${filteredExpenses.length} dépense(s) affichée(s)`,
+    },
+    {
+      label: 'Catégories Actives',
+      value: filterCategories.length,
+      color: 'info',
+      icon: <Tag className="w-4 h-4" />,
+      subtext: 'Rayons de charges',
+    },
+  ];
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-5 max-w-7xl mx-auto">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-[#1C2B3A] dark:text-white tracking-tight">
             Décaissements
           </h1>
-          <p className="text-xs sm:text-sm text-[#5A7184] dark:text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-[#5A7184] dark:text-slate-400 mt-0.5">
             Suivi des charges d'exploitation et sorties de caisse
           </p>
         </div>
-        <button
-          onClick={() => {
-            resetForm();
-            setIsModalOpen(true);
-          }}
-          className="btn-primary w-full sm:w-auto justify-center"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Nouveau Décaissement</span>
-        </button>
-      </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
-        <div className="card-toc card-hover p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Décaissements</p>
-              <p className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 mt-1">{formatFCFA(totalExpenses)}</p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-100 dark:border-rose-900/50">
-              <TrendingDown className="w-5 h-5" />
-            </div>
-          </div>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">{allExpenses.length} dépenses enregistrées</p>
-        </div>
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <ViewToggle mode={viewMode} onChange={setViewMode} />
 
-        <div className="card-toc card-hover p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Dépense Moyenne</p>
-              <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">{formatFCFA(avgExpense)}</p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-100 dark:border-amber-900/50">
-              <DollarSign className="w-5 h-5" />
-            </div>
-          </div>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">Montant unitaire moyen</p>
-        </div>
+          <button
+            onClick={handleExportExcel}
+            className="btn-toc btn-outline flex items-center justify-center gap-2 py-2 px-3 text-xs font-bold"
+            title="Exporter les décaissements vers Excel"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <span className="hidden sm:inline">Excel</span>
+          </button>
 
-        <div className="card-toc card-hover p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Filtre Actif</p>
-              <p className="text-base font-extrabold text-slate-900 dark:text-white mt-2 truncate">
-                {selectedCategory ? `${selectedCategory} (${formatFCFA(filteredTotal)})` : 'Toutes les catégories'}
-              </p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400 flex items-center justify-center border border-brand-200 dark:border-brand-500/30">
-              <Receipt className="w-5 h-5" />
-            </div>
-          </div>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">
-            {filteredExpenses.length} dépense(s) affichée(s)
-          </p>
+          <button
+            onClick={() => {
+              resetForm();
+              setIsModalOpen(true);
+            }}
+            className="btn-toc btn-primary flex items-center gap-2 py-2 px-3.5 text-xs font-bold shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nouveau Décaissement</span>
+          </button>
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="space-y-3">
-        {/* Search input */}
-        <div className="relative w-full sm:w-72">
+      {/* Mobile-Style Summary Chips Row */}
+      <SummaryChipsRow chips={summaryChips} />
+
+      {/* Search & Category Filter Pills */}
+      <div className="card-toc p-3.5 sm:p-4 space-y-3">
+        {/* Search Input */}
+        <div className="relative w-full">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Rechercher par motif, bénéficiaire, mode..."
+            placeholder="Rechercher motif, bénéficiaire, mode..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="input-toc pl-10"
+            className="input-toc pl-10 w-full text-xs sm:text-sm"
           />
         </div>
 
         {/* Dynamic Category Filter Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 text-xs">
           <button
+            type="button"
             onClick={() => setSelectedCategory('')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap shadow-xs ${
+            className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all duration-150 shrink-0 ${
               selectedCategory === ''
-                ? 'bg-brand-500 text-white shadow-sm ring-2 ring-brand-500/30'
-                : 'bg-white dark:bg-dark-800 text-slate-600 dark:text-slate-300 border border-[#E8EFF5] dark:border-dark-600 hover:bg-slate-50 dark:hover:bg-dark-700'
+                ? 'bg-brand-600 text-white shadow-xs'
+                : 'bg-white dark:bg-dark-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-dark-600 hover:bg-slate-50 dark:hover:bg-dark-700'
             }`}
           >
-            Toutes les dépenses ({allExpenses.length})
+            Toutes ({allExpenses.length})
           </button>
 
           {filterCategories.map((cat) => {
@@ -299,19 +323,20 @@ export const ExpensesPage: React.FC = () => {
             return (
               <button
                 key={cat}
+                type="button"
                 onClick={() => setSelectedCategory(isSelected ? '' : cat)}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap shadow-xs ${
+                className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all duration-150 flex items-center gap-1.5 shrink-0 ${
                   isSelected
-                    ? 'bg-brand-500 text-white shadow-sm ring-2 ring-brand-500/30'
-                    : 'bg-white dark:bg-dark-800 text-slate-600 dark:text-slate-300 border border-[#E8EFF5] dark:border-dark-600 hover:bg-slate-50 dark:hover:bg-dark-700'
+                    ? 'bg-brand-600 text-white shadow-xs'
+                    : 'bg-white dark:bg-dark-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-dark-600 hover:bg-slate-50 dark:hover:bg-dark-700'
                 }`}
               >
                 <span>{cat}</span>
                 {count > 0 && (
                   <span
-                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
                       isSelected
-                        ? 'bg-white/25 text-white'
+                        ? 'bg-white/20 text-white'
                         : 'bg-slate-100 dark:bg-dark-700 text-slate-600 dark:text-slate-400'
                     }`}
                   >
@@ -324,15 +349,41 @@ export const ExpensesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Expenses Table with Density */}
-      <div className="card-toc overflow-hidden">
-        {isLoading ? (
-          <div className="p-12 text-center text-slate-400 text-sm">Chargement des dépenses...</div>
-        ) : filteredExpenses.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 text-sm">
-            Aucun décaissement trouvé pour cette sélection.
+      {/* Content: Cards View (Mobile style) or Table View */}
+      {isLoading ? (
+        <div className="card-toc p-12 text-center text-slate-400">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-brand-500 border-t-transparent mb-3" />
+          <p className="text-sm">Chargement des dépenses...</p>
+        </div>
+      ) : filteredExpenses.length === 0 ? (
+        <div className="card-toc p-12 text-center text-slate-400">
+          <div className="w-16 h-16 bg-slate-100 dark:bg-dark-700 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Receipt className="w-8 h-8 text-slate-400" />
           </div>
-        ) : (
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
+            Aucun décaissement trouvé
+          </h3>
+          <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+            {searchTerm || selectedCategory
+              ? 'Aucune dépense ne correspond aux critères de recherche.'
+              : 'Enregistrez votre première sortie de caisse.'}
+          </p>
+        </div>
+      ) : viewMode === 'cards' ? (
+        /* Mobile Cards Grid */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          {filteredExpenses.map((d) => (
+            <ExpenseCard
+              key={d.sync_id}
+              expense={d}
+              onDelete={handleDelete}
+              badgeClass={getCategoryBadgeClass(d.category || 'Général')}
+            />
+          ))}
+        </div>
+      ) : (
+        /* Desktop Table View */
+        <div className="card-toc overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left min-w-[750px]">
               <thead className="bg-[#F5FAFD] dark:bg-dark-700/50 border-b border-[#E8EFF5] dark:border-dark-600">
@@ -402,8 +453,8 @@ export const ExpensesPage: React.FC = () => {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Modal Nouveau Décaissement */}
       <Modal
@@ -412,11 +463,11 @@ export const ExpensesPage: React.FC = () => {
         title="Enregistrer un Décaissement"
         subtitle="Sortie de caisse justifiée pour charges d'exploitation"
         footer={
-          <>
+          <div className="flex items-center justify-end gap-2 w-full">
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="btn-secondary"
+              className="btn-toc btn-secondary text-xs"
             >
               Annuler
             </button>
@@ -424,11 +475,11 @@ export const ExpensesPage: React.FC = () => {
               type="button"
               onClick={handleSubmit}
               disabled={createMutation.isPending || !form.title.trim() || form.amount <= 0}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-[0.99] text-white rounded-xl text-sm font-bold shadow-sm transition disabled:opacity-50"
+              className="btn-toc btn-primary text-xs bg-rose-600 hover:bg-rose-700"
             >
               {createMutation.isPending ? 'Enregistrement...' : 'Valider la Dépense'}
             </button>
-          </>
+          </div>
         }
       >
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -446,7 +497,7 @@ export const ExpensesPage: React.FC = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
                 Montant décaissé (F CFA) *
@@ -456,9 +507,9 @@ export const ExpensesPage: React.FC = () => {
                 min="1"
                 step="100"
                 required
-                value={form.amount}
+                value={form.amount || ''}
                 onChange={(e) => setForm({ ...form, amount: parseFloat(e.target.value) || 0 })}
-                className="input-toc font-mono font-bold"
+                className="input-toc font-mono font-bold text-rose-600"
               />
             </div>
             <div>
@@ -496,7 +547,7 @@ export const ExpensesPage: React.FC = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
                 Bénéficiaire / Prestataire

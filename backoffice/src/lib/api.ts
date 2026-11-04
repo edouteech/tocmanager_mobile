@@ -153,6 +153,10 @@ export const settingsApi = {
   updateSettings: (data: StoreSettings) => api.put<StoreSettings>('/settings', data).then((r) => r.data),
 };
 
+export const authApi = {
+  verifyPin: (pin: string) => api.post<UserBrief>('/auth/verify-pin', { pin }).then((r) => r.data),
+};
+
 export const ventesApi = {
   getAll: (params?: { limit?: number; skip?: number; start_date?: string; end_date?: string }) =>
     api.get<Vente[]>('/ventes', { params }).then((r) => r.data),

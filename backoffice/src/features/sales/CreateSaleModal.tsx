@@ -417,22 +417,31 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
                           {isInCart.quantity}
                         </span>
                       )}
-                      <div>
-                        <h5 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-2 leading-tight">
-                          {p.name}
-                        </h5>
-                        <div className="mt-1 flex items-center gap-1.5">
-                          <span
-                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
-                              p.stock > 5
-                                ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                                : p.stock > 0
-                                ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                                : 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400'
-                            }`}
-                          >
-                            Stock: {p.stock} {p.unit || 'pièce'}
-                          </span>
+                      <div className="flex gap-2.5 items-start">
+                        {p.image_path ? (
+                          <img
+                            src={p.image_path}
+                            alt={p.name}
+                            className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-dark-600 shrink-0 shadow-2xs"
+                          />
+                        ) : null}
+                        <div className="min-w-0 flex-1">
+                          <h5 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-2 leading-tight">
+                            {p.name}
+                          </h5>
+                          <div className="mt-1 flex items-center gap-1.5">
+                            <span
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                                p.stock > 5
+                                  ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                  : p.stock > 0
+                                  ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                                  : 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400'
+                              }`}
+                            >
+                              Stock: {p.stock} {p.unit || 'pièce'}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
