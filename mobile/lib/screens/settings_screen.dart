@@ -14,6 +14,8 @@ import '../widgets/app_toast.dart';
 import '../services/secure_storage_service.dart';
 import '../services/sync_service.dart';
 import '../providers/sync_provider.dart';
+import '../providers/auth_provider.dart';
+import 'users_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -369,6 +371,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ],
                   ),
+                  if (context.watch<AuthProvider>().currentUser?.isAdmin ?? false) ...[
+                    const SizedBox(height: 20),
+                    _buildSectionCard(
+                      title: 'Utilisateurs & Accès Caisse',
+                      icon: Icons.manage_accounts_outlined,
+                      children: [
+                        const Text(
+                          'Gérez les comptes d\'accès des caissiers et gérants, réinitialisez les codes PIN et configurez les droits système.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMedium,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const UsersScreen()),
+                              );
+                            },
+                            icon: const Icon(Icons.people_alt_rounded, size: 18),
+                            label: const Text('Gérer les utilisateurs & codes PIN'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   _buildSectionCard(
                     title: 'Zone de Danger',

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, User, AlertCircle, ArrowRight, Sun, Moon } from 'lucide-react';
+import { Lock, User, AlertCircle, ArrowRight, Sun, Moon, Store } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../context/ThemeContext';
@@ -41,55 +41,53 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F5FAFD] via-[#E8F5FD] to-[#DDF1FB] dark:from-dark-900 dark:via-dark-800 dark:to-dark-900 flex items-center justify-center p-6 select-none transition-colors duration-300 relative">
+    <div className="min-h-screen bg-[#F5FAFD] dark:bg-dark-900 flex items-center justify-center p-6 select-none transition-colors duration-300 relative">
       {/* Top right theme toggle */}
       <div className="absolute top-6 right-6">
         <button
           onClick={toggleTheme}
-          className="p-2.5 rounded-xl bg-white/80 dark:bg-dark-800/80 border border-slate-200 dark:border-dark-600 text-slate-600 dark:text-slate-300 shadow-soft hover:shadow-soft-md transition"
+          className="p-2.5 rounded-xl bg-white dark:bg-dark-800 border border-[#E8EFF5] dark:border-dark-600 text-[#5A7184] dark:text-slate-300 shadow-soft hover:shadow-soft-md transition"
           title={theme === 'dark' ? 'Mode Clair' : 'Mode Sombre'}
         >
           {theme === 'dark' ? (
             <Sun className="w-4 h-4 text-amber-400" />
           ) : (
-            <Moon className="w-4 h-4 text-slate-700" />
+            <Moon className="w-4 h-4 text-[#1C2B3A]" />
           )}
         </button>
       </div>
 
-      <div className="w-full max-w-md bg-white dark:bg-dark-800 rounded-3xl shadow-soft-lg p-8 sm:p-10 border border-[#E8EFF5] dark:border-dark-600 animate-fade-in transition-colors duration-200">
-        {/* Brand header with real logo */}
+      <div className="w-full max-w-md bg-white dark:bg-dark-800 rounded-3xl shadow-soft p-8 sm:p-10 border border-[#E8EFF5] dark:border-dark-600 animate-fade-in transition-colors duration-200">
+        {/* Brand header calqué sur LoginScreen mobile */}
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <img
-              src="/assets/logo.png"
-              alt="TocManager"
-              className="h-12 w-auto max-w-[200px] object-contain drop-shadow-sm"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = '/assets/icon.png';
-              }}
-            />
+          <div className="flex justify-center mb-3">
+            <div className="w-16 h-16 rounded-2xl bg-[#E8F5FD] dark:bg-[#29ABE2]/20 flex items-center justify-center text-[#29ABE2]">
+              <Store className="w-8 h-8" />
+            </div>
           </div>
-          <p className="text-xs font-semibold text-brand-600 dark:text-brand-400 uppercase tracking-wider">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#1C2B3A] dark:text-white tracking-tight">
+            TocManager
+          </h2>
+          <p className="text-xs text-[#5A7184] dark:text-slate-400 mt-1">
             Portail d'Administration Central
           </p>
         </div>
 
         {/* Error Alert */}
         {errorMessage && (
-          <div className="mb-6 p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded-2xl flex items-start gap-3 text-rose-700 dark:text-rose-300 text-sm animate-fade-in">
-            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
-            <span className="font-medium text-xs">{errorMessage}</span>
+          <div className="mb-6 p-3.5 bg-[#FDEBE9] dark:bg-[#E74C3C]/20 border border-[#E74C3C]/30 rounded-2xl flex items-start gap-3 text-[#E74C3C] text-xs animate-fade-in font-medium">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{errorMessage}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#1C2B3A] dark:text-slate-300 mb-1.5">
               Identifiant ou Email
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#9FB3C8]">
                 <User className="w-4 h-4" />
               </div>
               <input
@@ -104,11 +102,11 @@ export const LoginPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#1C2B3A] dark:text-slate-300 mb-1.5">
               Mot de passe
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#9FB3C8]">
                 <Lock className="w-4 h-4" />
               </div>
               <input
@@ -125,7 +123,7 @@ export const LoginPage: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full mt-3 py-3 px-4 btn-primary font-bold text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full mt-3 py-3 px-4 btn-primary font-bold text-sm rounded-xl transition flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <span className="inline-flex items-center gap-2">
@@ -141,8 +139,8 @@ export const LoginPage: React.FC = () => {
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-[#E8EFF5] dark:border-dark-600 text-center text-xs text-slate-400 dark:text-slate-500 font-medium">
-          Plateforme synchronisée pour caisses tactiles et terminaux mobiles
+        <div className="mt-8 pt-5 border-t border-[#E8EFF5] dark:border-dark-600 text-center text-[11px] text-[#9FB3C8] font-medium">
+          tocmanager v1.0.0
         </div>
       </div>
     </div>

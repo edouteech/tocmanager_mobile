@@ -124,13 +124,13 @@ export const AuditLogsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-6 h-6 text-brand-500" />
-            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              Journal d'Audit & Sécurité
+            <ShieldCheck className="w-6 h-6 text-[#29ABE2]" />
+            <h1 className="text-2xl font-extrabold text-[#1C2B3A] dark:text-white tracking-tight">
+              Journal d'Audit
             </h1>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Traçabilité complète de chaque action effectuée par les caissiers et administrateurs.
+          <p className="text-xs sm:text-sm text-[#5A7184] dark:text-slate-400 mt-1">
+            Traçabilité des actions effectuées par les caissiers et administrateurs
           </p>
         </div>
         <button

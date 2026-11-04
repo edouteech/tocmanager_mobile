@@ -26,6 +26,7 @@ import 'screens/decaissement_screen.dart';
 import 'screens/clients_screen.dart';
 import 'screens/suppliers_screen.dart';
 import 'screens/reports_screen.dart';
+import 'screens/users_screen.dart';
 import 'dart:io';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'widgets/app_drawer.dart';
@@ -182,6 +183,12 @@ class _MainShellState extends State<MainShell> {
       await Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const SettingsScreen()),
+      );
+      (_homeKey.currentState as dynamic)?.reload();
+    } else if (index == 11) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const UsersScreen()),
       );
       (_homeKey.currentState as dynamic)?.reload();
     } else if (index < 3) {

@@ -142,11 +142,11 @@ export const ProductsPage: React.FC = () => {
       {/* Title & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Stocks & Articles
+          <h1 className="text-2xl font-extrabold text-[#1C2B3A] dark:text-white tracking-tight">
+            Produits
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Catalogue général des produits, prix de vente, coûts d'achat et seuils d'alerte.
+          <p className="text-xs sm:text-sm text-[#5A7184] dark:text-slate-400 mt-1">
+            Catalogue des articles, prix de vente et gestion des stocks
           </p>
         </div>
 

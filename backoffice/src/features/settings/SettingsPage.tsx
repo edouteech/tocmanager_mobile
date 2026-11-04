@@ -66,9 +66,9 @@ export const SettingsPage: React.FC = () => {
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">Paramètres Généraux</h1>
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Configuration des informations du magasin, devise et alertes opérationnelles
+        <h1 className="text-2xl font-extrabold text-[#1C2B3A] dark:text-white tracking-tight">Paramètres</h1>
+        <p className="text-xs sm:text-sm text-[#5A7184] dark:text-slate-400 mt-1">
+          Configuration des informations du magasin, devise et alertes
         </p>
       </div>
 

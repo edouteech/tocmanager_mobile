@@ -43,28 +43,28 @@ export const Modal: React.FC<ModalProps> = ({
       {/* Backdrop */}
       <div
         onClick={onClose}
-        className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-[#1C2B3A]/50 backdrop-blur-xs transition-opacity"
       />
 
       {/* Modal Dialog Box */}
       <div
-        className={`relative z-10 w-full ${maxWidth} bg-white dark:bg-dark-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-dark-600 overflow-hidden transform animate-fade-in`}
+        className={`relative z-10 w-full ${maxWidth} bg-white dark:bg-dark-800 rounded-3xl shadow-soft-lg border border-[#E8EFF5] dark:border-dark-600 overflow-hidden transform animate-fade-in`}
       >
         {/* Header */}
-        <div className="px-6 py-5 border-b border-slate-100 dark:border-dark-600 flex items-center justify-between">
+        <div className="px-6 py-5 border-b border-[#E8EFF5] dark:border-dark-600 flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+            <h3 className="text-lg font-bold text-[#1C2B3A] dark:text-white tracking-tight">
               {title}
             </h3>
             {subtitle && (
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-[#5A7184] dark:text-slate-400 mt-0.5">
                 {subtitle}
               </p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-700 rounded-xl transition"
+            className="p-1.5 text-[#5A7184] hover:text-[#1C2B3A] dark:hover:text-slate-200 hover:bg-[#F0F9FE] dark:hover:bg-dark-700 rounded-xl transition"
           >
             <X className="w-5 h-5" />
           </button>
@@ -77,7 +77,7 @@ export const Modal: React.FC<ModalProps> = ({
 
         {/* Footer */}
         {footer && (
-          <div className="px-6 py-4 border-t border-slate-100 dark:border-dark-600 bg-slate-50/80 dark:bg-dark-700/50 flex items-center justify-end gap-3">
+          <div className="px-6 py-4 border-t border-[#E8EFF5] dark:border-dark-600 bg-[#F5FAFD] dark:bg-dark-700/50 flex items-center justify-end gap-3">
             {footer}
           </div>
         )}

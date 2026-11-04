@@ -6,6 +6,7 @@ class AppUser {
   final String role; // 'admin', 'manager', 'cashier'
   final List<String> permissions;
   final bool hasPin;
+  final bool isActive;
 
   const AppUser({
     required this.id,
@@ -15,6 +16,7 @@ class AppUser {
     required this.role,
     this.permissions = const [],
     this.hasPin = false,
+    this.isActive = true,
   });
 
   bool get isAdmin => role == 'admin';
@@ -35,6 +37,7 @@ class AppUser {
       role: map['role'] as String? ?? 'cashier',
       permissions: (map['permissions'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
       hasPin: map['has_pin'] as bool? ?? false,
+      isActive: map['is_active'] as bool? ?? true,
     );
   }
 
@@ -47,6 +50,7 @@ class AppUser {
       'role': role,
       'permissions': permissions,
       'has_pin': hasPin,
+      'is_active': isActive,
     };
   }
 }

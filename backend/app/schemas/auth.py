@@ -35,6 +35,7 @@ class UserBrief(BaseModel):
     role: str
     permissions: List[str] = []
     has_pin: bool = False
+    is_active: bool = True
 
     model_config = ConfigDict(from_attributes=True)
 

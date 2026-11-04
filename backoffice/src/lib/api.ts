@@ -3,6 +3,7 @@ import {
   AuthResponse,
   DashboardStats,
   Vente,
+  VenteCreate,
   Product,
   Category,
   Client,
@@ -11,6 +12,7 @@ import {
   Decaissement,
   StoreSettings,
   FinancialReport,
+  UserBrief,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -150,3 +152,35 @@ export const settingsApi = {
   getSettings: () => api.get<StoreSettings>('/settings').then((r) => r.data),
   updateSettings: (data: StoreSettings) => api.put<StoreSettings>('/settings', data).then((r) => r.data),
 };
+
+export const ventesApi = {
+  getAll: (params?: { limit?: number; skip?: number; start_date?: string; end_date?: string }) =>
+    api.get<Vente[]>('/ventes', { params }).then((r) => r.data),
+  getById: (id: string) => api.get<Vente>(`/ventes/${id}`).then((r) => r.data),
+  create: (data: VenteCreate) => api.post<Vente>('/ventes', data).then((r) => r.data),
+};
+
+export const usersApi = {
+  getAll: () => api.get<UserBrief[]>('/users').then((r) => r.data),
+  create: (data: {
+    username: string;
+    password: string;
+    full_name?: string | null;
+    email?: string | null;
+    role: string;
+    pin?: string | null;
+  }) => api.post<UserBrief>('/users', data).then((r) => r.data),
+  update: (
+    id: string,
+    data: Partial<{
+      full_name: string | null;
+      email: string | null;
+      role: string;
+      password?: string;
+      pin?: string | null;
+      is_active: boolean;
+    }>
+  ) => api.put<UserBrief>(`/users/${id}`, data).then((r) => r.data),
+  delete: (id: string) => api.delete(`/users/${id}`),
+};
+

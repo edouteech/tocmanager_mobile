@@ -6,6 +6,25 @@ export interface UserBrief {
   role: 'admin' | 'manager' | 'cashier';
   permissions: string[];
   has_pin: boolean;
+  is_active?: boolean;
+}
+
+export interface VenteItemCreate {
+  product_sync_id: string;
+  quantity: number;
+  unit_price: number;
+  cost_price?: number;
+  product_name?: string;
+}
+
+export interface VenteCreate {
+  client_sync_id?: string | null;
+  client_name?: string | null;
+  items: VenteItemCreate[];
+  discount_amount?: number;
+  paid_amount: number;
+  payment_method: string;
+  notes?: string | null;
 }
 
 export interface AuthResponse {

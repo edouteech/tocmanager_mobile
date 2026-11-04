@@ -1,6 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:crypto/crypto.dart';
 import '../models/user.dart';
@@ -13,7 +11,6 @@ class SecureStorageService {
   static const _kUserProfile = 'toc_user_profile';
   static const _kPinHash = 'toc_pin_hash';
   static const _kPinSalt = 'toc_pin_salt';
-  static const _kServerUrl = 'toc_server_url';
   static const _kInitialSeedDone = 'toc_initial_seed_done';
 
   /// URL unique et définitive de l'API en production sur Coolify

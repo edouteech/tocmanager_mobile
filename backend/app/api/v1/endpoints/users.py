@@ -49,6 +49,7 @@ def list_users(
             role=u.role,
             permissions=perms,
             has_pin=bool(u.pin_hash),
+            is_active=bool(u.is_active) if u.is_active is not None else True,
         ))
     return result
 
@@ -71,6 +72,7 @@ def create_user(
         role=data.role,
         hashed_password=get_password_hash(data.password),
         pin_hash=pin_hash,
+        is_active=True,
     )
     db.add(user)
     db.commit()
@@ -85,4 +87,74 @@ def create_user(
         role=user.role,
         permissions=perms,
         has_pin=bool(user.pin_hash),
+        is_active=bool(user.is_active),
     )
+
+@router.put("/{user_id}", response_model=UserBrief)
+def update_user(
+    user_id: str,
+    data: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.require_role(["admin"])),
+) -> Any:
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+
+    if data.email and data.email != target.email:
+        existing_email = db.query(User).filter(User.email == data.email, User.id != user_id).first()
+        if existing_email:
+            raise HTTPException(status_code=400, detail="Cette adresse email est déjà utilisée")
+        target.email = data.email
+
+    if data.full_name is not None:
+        target.full_name = data.full_name
+
+    if data.role is not None:
+        if target.id == current_user.id and data.role != "admin":
+            raise HTTPException(status_code=400, detail="Vous ne pouvez pas révoquer votre propre rôle d'administrateur.")
+        target.role = data.role
+
+    if data.is_active is not None:
+        if target.id == current_user.id and not data.is_active:
+            raise HTTPException(status_code=400, detail="Vous ne pouvez pas désactiver votre propre compte administrateur.")
+        target.is_active = data.is_active
+
+    if data.password:
+        target.hashed_password = get_password_hash(data.password)
+
+    if data.pin is not None:
+        target.pin_hash = hash_pin(data.pin) if data.pin.strip() else None
+
+    db.commit()
+    db.refresh(target)
+
+    perms = ["*"] if target.role == "admin" else (["sales.*", "products.*", "reports.view"] if target.role == "manager" else ["sales.create"])
+    return UserBrief(
+        id=target.id,
+        username=target.username,
+        email=target.email,
+        full_name=target.full_name,
+        role=target.role,
+        permissions=perms,
+        has_pin=bool(target.pin_hash),
+        is_active=bool(target.is_active),
+    )
+
+@router.delete("/{user_id}")
+def delete_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.require_role(["admin"])),
+) -> Any:
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+
+    if target.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Vous ne pouvez pas supprimer votre propre compte administrateur.")
+
+    db.delete(target)
+    db.commit()
+    return {"status": "success", "message": "Utilisateur supprimé avec succès"}
+

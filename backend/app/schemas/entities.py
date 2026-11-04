@@ -193,3 +193,21 @@ class FinancialReportResponse(BaseModel):
     top_products: List[TopProductItem]
     expenses_by_category: List[ExpenseCategoryItem]
     monthly_trend: List[Dict[str, Any]]
+
+# --- Ventes / POS Sales ---
+class VenteItemCreate(BaseModel):
+    product_sync_id: str
+    quantity: float = Field(..., gt=0)
+    unit_price: float = Field(..., ge=0)
+    cost_price: Optional[float] = None
+    product_name: Optional[str] = None
+
+class VenteCreate(BaseModel):
+    client_sync_id: Optional[str] = None
+    client_name: Optional[str] = None
+    items: List[VenteItemCreate]
+    discount_amount: float = 0.0
+    paid_amount: float = Field(..., ge=0)
+    payment_method: str = "Espèces"
+    notes: Optional[str] = None
+

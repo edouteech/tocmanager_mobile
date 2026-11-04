@@ -6,17 +6,20 @@ import {
   FileText,
   CreditCard,
   ShoppingBag,
+  Plus,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { formatFCFA, formatDateTime } from '../../lib/formatters';
 import { Vente } from '../../types';
 import { Drawer } from '../../components/common/Drawer';
 import { useDensity } from '../../context/DensityContext';
+import { CreateSaleModal } from './CreateSaleModal';
 
 export const SalesPage: React.FC = () => {
   const { tableClasses } = useDensity();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedVente, setSelectedVente] = useState<Vente | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const { data: ventes, isLoading } = useQuery<Vente[]>({
     queryKey: ['ventes'],
@@ -44,26 +47,36 @@ export const SalesPage: React.FC = () => {
       {/* Title & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Journal des Ventes
+          <h1 className="text-2xl font-extrabold text-[#1C2B3A] dark:text-white tracking-tight">
+            Ventes
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Historique complet des tickets et factures encaissés sur l'ensemble des caisses.
+          <p className="text-xs sm:text-sm text-[#5A7184] dark:text-slate-400 mt-1">
+            Historique des encaissements et tickets de caisse
           </p>
         </div>
 
-        {/* Search input */}
-        <div className="relative w-full sm:w-80">
-          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-            <Search className="w-4 h-4" />
+        {/* Search input and New Sale button */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+          <div className="relative w-full sm:w-80">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <Search className="w-4 h-4" />
+            </div>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Rechercher ticket, client, paiement..."
+              className="input-toc pl-10"
+            />
           </div>
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Rechercher ticket, client, paiement..."
-            className="input-toc pl-10"
-          />
+
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="btn-toc btn-primary flex items-center gap-2 whitespace-nowrap w-full sm:w-auto justify-center shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nouvelle Vente</span>
+          </button>
         </div>
       </div>
 
@@ -244,6 +257,12 @@ export const SalesPage: React.FC = () => {
           </div>
         )}
       </Drawer>
+
+      {/* POS / New Sale Modal */}
+      <CreateSaleModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+      />
     </div>
   );
 };

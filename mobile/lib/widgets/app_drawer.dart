@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 
 class AppDrawer extends StatelessWidget {
@@ -9,6 +11,9 @@ class AppDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final isAdmin = auth.currentUser?.isAdmin ?? false;
+
     return Drawer(
       backgroundColor: Colors.white,
       child: Column(
@@ -58,6 +63,16 @@ class AppDrawer extends StatelessWidget {
             index: 9, icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart,
             label: 'Rapports & Analytique', current: currentIndex, onTap: onNav,
           ),
+          if (isAdmin) ...[
+            _NavItem(
+              index: 11,
+              icon: Icons.manage_accounts_outlined,
+              activeIcon: Icons.manage_accounts,
+              label: 'Utilisateurs & Rôles',
+              current: currentIndex,
+              onTap: onNav,
+            ),
+          ],
           const Spacer(),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
