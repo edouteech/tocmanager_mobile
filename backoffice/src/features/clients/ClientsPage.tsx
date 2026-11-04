@@ -173,7 +173,7 @@ export const ClientsPage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-[#1C2B3A] dark:text-white tracking-tight">Clients</h1>
           <p className="text-xs sm:text-sm text-[#5A7184] dark:text-slate-400 mt-1">
@@ -182,7 +182,7 @@ export const ClientsPage: React.FC = () => {
         </div>
         <button
           onClick={handleOpenCreate}
-          className="btn-primary"
+          className="btn-primary w-full sm:w-auto justify-center"
         >
           <Plus className="w-4 h-4" />
           <span>Nouveau Client</span>
@@ -190,7 +190,7 @@ export const ClientsPage: React.FC = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
         <div className="card-toc card-hover p-5">
           <div className="flex items-center justify-between">
             <div>
@@ -232,8 +232,8 @@ export const ClientsPage: React.FC = () => {
       </div>
 
       {/* Filter Bar */}
-      <div className="card-toc p-4 flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div className="relative w-full sm:w-80">
+      <div className="card-toc p-4 flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
+        <div className="relative w-full sm:w-72">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
@@ -265,7 +265,7 @@ export const ClientsPage: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
+            <table className="w-full text-left min-w-[650px]">
               <thead className="bg-[#F5FAFD] dark:bg-dark-700/50 border-b border-[#E8EFF5] dark:border-dark-600">
                 <tr>
                   <th className={tableClasses.th}>Client</th>

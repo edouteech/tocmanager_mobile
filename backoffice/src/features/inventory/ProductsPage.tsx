@@ -150,8 +150,8 @@ export const ProductsPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative w-64">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+          <div className="relative w-full sm:w-64">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
               <Search className="w-4 h-4" />
             </div>
@@ -166,7 +166,7 @@ export const ProductsPage: React.FC = () => {
 
           <button
             onClick={openCreateDrawer}
-            className="btn-primary"
+            className="btn-primary w-full sm:w-auto justify-center"
           >
             <Plus className="w-4 h-4" />
             <span>Nouvel Article</span>
@@ -177,7 +177,7 @@ export const ProductsPage: React.FC = () => {
       {/* Products Table with Density */}
       <div className="card-toc overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left min-w-[700px]">
             <thead className="bg-[#F5FAFD] dark:bg-dark-700/50 border-b border-[#E8EFF5] dark:border-dark-600">
               <tr>
                 <th className={tableClasses.th}>Désignation</th>

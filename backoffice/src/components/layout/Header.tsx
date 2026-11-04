@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
+  Menu,
   LogOut,
   User as UserIcon,
   Shield,
@@ -15,6 +16,7 @@ import {
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../context/ThemeContext';
 import { useDensity } from '../../context/DensityContext';
+import { useSidebar } from '../../context/SidebarContext';
 import { api } from '../../lib/api';
 import { DashboardStats } from '../../types';
 
@@ -23,6 +25,7 @@ export const Header: React.FC = () => {
   const { user, logout } = useAuthStore();
   const { theme, toggleTheme } = useTheme();
   const { density, toggleDensity } = useDensity();
+  const { toggle: toggleSidebar } = useSidebar();
 
   // Query stats for stock alert notifications (same as mobile HomeScreen)
   const { data: stats } = useQuery<DashboardStats>({
@@ -54,21 +57,46 @@ export const Header: React.FC = () => {
   const capitalizedDate = todayFormatted.charAt(0).toUpperCase() + todayFormatted.slice(1);
 
   return (
-    <header className="h-16 bg-white dark:bg-dark-800 border-b border-[#E8EFF5] dark:border-dark-600 px-6 sm:px-8 flex items-center justify-between sticky top-0 z-20 shadow-none transition-colors duration-200">
-      {/* Date & Context (Mobile-like clean pill) */}
-      <div className="flex items-center gap-3">
-        <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-[#5A7184] dark:text-slate-400 bg-[#F0F9FE] dark:bg-dark-700/60 px-3.5 py-1.5 rounded-xl border border-[#E8EFF5] dark:border-dark-600">
+    <header className="h-16 bg-white dark:bg-dark-800 border-b border-[#E8EFF5] dark:border-dark-600 px-3 sm:px-6 lg:px-8 flex items-center justify-between sticky top-0 z-20 shadow-none transition-colors duration-200">
+      {/* Left side: Hamburger button on mobile + Logo / Date */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Mobile Hamburger toggle */}
+        <button
+          onClick={toggleSidebar}
+          className="lg:hidden p-2 text-[#5A7184] hover:text-[#29ABE2] hover:bg-[#F0F9FE] dark:hover:bg-dark-700 rounded-xl transition"
+          aria-label="Ouvrir le menu de navigation"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        {/* Small mobile logo brand */}
+        <div className="flex items-center gap-2 lg:hidden">
+          <img
+            src="/assets/icon.png"
+            alt="TocManager"
+            className="w-7 h-7 object-contain"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = '/assets/logo.png';
+            }}
+          />
+          <span className="font-bold text-[#1C2B3A] dark:text-white text-sm sm:text-base tracking-tight">
+            tocmanager
+          </span>
+        </div>
+
+        {/* Desktop Date badge */}
+        <div className="hidden md:flex items-center gap-2 text-xs font-semibold text-[#5A7184] dark:text-slate-400 bg-[#F0F9FE] dark:bg-dark-700/60 px-3.5 py-1.5 rounded-xl border border-[#E8EFF5] dark:border-dark-600">
           <Calendar className="w-3.5 h-3.5 text-[#29ABE2]" />
           <span>{capitalizedDate}</span>
         </div>
       </div>
 
       {/* Right controls: Notifications, Density, Dark Mode, Profile & Logout */}
-      <div className="flex items-center gap-2 sm:gap-3.5">
-        {/* Stock Alert Notification Bell (Exact replica of mobile notification bell) */}
+      <div className="flex items-center gap-1.5 sm:gap-2.5">
+        {/* Stock Alert Notification Bell */}
         <button
           onClick={() => navigate('/produits')}
-          className="relative p-2 text-[#5A7184] dark:text-slate-300 hover:text-[#29ABE2] hover:bg-[#F0F9FE] dark:hover:bg-dark-700 rounded-xl transition-all"
+          className="relative p-2 text-[#5A7184] dark:text-slate-300 hover:text-[#29ABE2] hover:bg-[#F0F9FE] dark:hover:bg-dark-700 rounded-xl transition"
           title={
             lowStockCount > 0
               ? `${lowStockCount} produit(s) en alerte de stock`
@@ -86,7 +114,7 @@ export const Header: React.FC = () => {
         {/* Density Toggle Button */}
         <button
           onClick={toggleDensity}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-[#5A7184] dark:text-slate-300 bg-[#F0F9FE] hover:bg-[#E8F5FD] dark:bg-dark-700 dark:hover:bg-dark-600 rounded-xl border border-[#E8EFF5] dark:border-dark-600 transition-all"
+          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-[#5A7184] dark:text-slate-300 bg-[#F0F9FE] hover:bg-[#E8F5FD] dark:bg-dark-700 dark:hover:bg-dark-600 rounded-xl border border-[#E8EFF5] dark:border-dark-600 transition"
           title={`Densité : ${density === 'comfortable' ? 'Aérée' : 'Compacte'} (Cliquer pour basculer)`}
         >
           {density === 'comfortable' ? (
@@ -105,7 +133,7 @@ export const Header: React.FC = () => {
         {/* Theme Toggle (Light / Dark) */}
         <button
           onClick={toggleTheme}
-          className="p-2 text-[#5A7184] dark:text-slate-300 hover:text-[#29ABE2] dark:hover:text-[#29ABE2] bg-[#F0F9FE] dark:bg-dark-700 hover:bg-[#E8F5FD] dark:hover:bg-dark-600 rounded-xl border border-[#E8EFF5] dark:border-dark-600 transition-all"
+          className="p-2 text-[#5A7184] dark:text-slate-300 hover:text-[#29ABE2] dark:hover:text-[#29ABE2] bg-[#F0F9FE] dark:bg-dark-700 hover:bg-[#E8F5FD] dark:hover:bg-dark-600 rounded-xl border border-[#E8EFF5] dark:border-dark-600 transition"
           title={theme === 'dark' ? 'Passer au mode Clair' : 'Passer au mode Sombre'}
           aria-label="Changer de thème"
         >
@@ -117,12 +145,12 @@ export const Header: React.FC = () => {
         </button>
 
         {/* User profile summary */}
-        <div className="flex items-center gap-2.5 pl-3 border-l border-[#E8EFF5] dark:border-dark-600">
+        <div className="flex items-center gap-2 pl-1.5 sm:pl-2.5 border-l border-[#E8EFF5] dark:border-dark-600">
           <div className="w-8 h-8 rounded-xl bg-[#E8F5FD] dark:bg-[#29ABE2]/15 flex items-center justify-center text-[#29ABE2] border border-[#BAE3F9] dark:border-[#29ABE2]/30 font-bold shrink-0">
             <UserIcon className="w-4 h-4" />
           </div>
-          <div className="hidden sm:block">
-            <div className="text-xs font-bold text-[#1C2B3A] dark:text-white leading-tight">
+          <div className="hidden md:block">
+            <div className="text-xs font-bold text-[#1C2B3A] dark:text-white leading-tight truncate max-w-[120px]">
               {user?.full_name || user?.username}
             </div>
             <div className="text-[11px] text-[#5A7184] dark:text-slate-400 flex items-center gap-1 mt-0.5">
@@ -135,11 +163,11 @@ export const Header: React.FC = () => {
         {/* Logout button */}
         <button
           onClick={logout}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-[#5A7184] dark:text-slate-400 hover:text-[#E74C3C] dark:hover:text-[#E74C3C] hover:bg-[#FDEBE9] dark:hover:bg-rose-950/30 rounded-xl transition-all border border-transparent hover:border-[#E74C3C]/20"
+          className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 text-xs font-semibold text-[#5A7184] dark:text-slate-400 hover:text-[#E74C3C] dark:hover:text-[#E74C3C] hover:bg-[#FDEBE9] dark:hover:bg-rose-950/30 rounded-xl transition border border-transparent hover:border-[#E74C3C]/20"
           title="Se déconnecter"
         >
           <LogOut className="w-4 h-4" />
-          <span className="hidden sm:inline">Déconnexion</span>
+          <span className="hidden lg:inline">Déconnexion</span>
         </button>
       </div>
     </header>

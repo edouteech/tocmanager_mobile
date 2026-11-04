@@ -13,8 +13,10 @@ import {
   Settings,
   UserCheck,
   ShieldCheck,
+  X,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import { useSidebar } from '../../context/SidebarContext';
 
 interface NavItem {
   to: string;
@@ -25,6 +27,7 @@ interface NavItem {
 
 export const Sidebar: React.FC = () => {
   const user = useAuthStore((s) => s.user);
+  const { isOpen, close } = useSidebar();
 
   // Group 1: Navigation principale (ordre identique à l'AppDrawer Mobile)
   const mainNavItems: NavItem[] = [
@@ -50,6 +53,13 @@ export const Sidebar: React.FC = () => {
     { to: '/audit', label: "Journal d'Audit", icon: ShieldCheck, roles: ['admin'] },
   ];
 
+  const handleNavClick = () => {
+    // Referme la sidebar sur mobile au clic sur un lien
+    if (window.innerWidth < 1024) {
+      close();
+    }
+  };
+
   const renderNavList = (items: NavItem[]) => {
     return items
       .filter((item) => !item.roles || (user && item.roles.includes(user.role)))
@@ -60,6 +70,7 @@ export const Sidebar: React.FC = () => {
             key={item.to}
             to={item.to}
             end={item.to === '/'}
+            onClick={handleNavClick}
             className={({ isActive }) =>
               `flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-150 ${
                 isActive
@@ -84,27 +95,42 @@ export const Sidebar: React.FC = () => {
   };
 
   return (
-    <aside className="w-64 bg-white dark:bg-dark-800 text-[#1C2B3A] dark:text-slate-300 flex flex-col shrink-0 border-r border-[#E8EFF5] dark:border-dark-600 select-none shadow-soft transition-colors duration-200">
+    <aside
+      className={`fixed inset-y-0 left-0 z-50 w-72 lg:w-64 lg:static flex flex-col shrink-0 bg-white dark:bg-dark-800 text-[#1C2B3A] dark:text-slate-300 border-r border-[#E8EFF5] dark:border-dark-600 select-none shadow-soft transition-transform duration-300 ease-in-out ${
+        isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      }`}
+    >
       {/* Drawer Header signature Mobile (Dégradé #1A8FBF -> #29ABE2) */}
-      <div className="bg-gradient-to-br from-[#1A8FBF] to-[#29ABE2] px-5 py-5 flex items-center gap-3.5 text-white">
-        <div className="p-2.5 bg-white/20 backdrop-blur-xs rounded-2xl flex items-center justify-center shrink-0">
-          <img
-            src="/assets/icon.png"
-            alt="TocManager Icon"
-            className="w-8 h-8 object-contain"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = '/assets/logo.png';
-            }}
-          />
+      <div className="bg-gradient-to-br from-[#1A8FBF] to-[#29ABE2] px-5 py-5 flex items-center justify-between text-white">
+        <div className="flex items-center gap-3.5">
+          <div className="p-2.5 bg-white/20 backdrop-blur-xs rounded-2xl flex items-center justify-center shrink-0">
+            <img
+              src="/assets/icon.png"
+              alt="TocManager Icon"
+              className="w-8 h-8 object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/assets/logo.png';
+              }}
+            />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold tracking-tight text-white leading-tight truncate">
+              tocmanager
+            </h1>
+            <p className="text-xs text-white/80 font-normal">
+              Gestion simplifiée
+            </p>
+          </div>
         </div>
-        <div className="min-w-0">
-          <h1 className="text-lg font-bold tracking-tight text-white leading-tight truncate">
-            tocmanager
-          </h1>
-          <p className="text-xs text-white/80 font-normal">
-            Gestion simplifiée
-          </p>
-        </div>
+
+        {/* Mobile close button */}
+        <button
+          onClick={close}
+          className="lg:hidden p-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white transition"
+          aria-label="Fermer le menu"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Navigation Links calqués sur le mobile */}

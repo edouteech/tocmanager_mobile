@@ -18,7 +18,7 @@ export const Drawer: React.FC<DrawerProps> = ({
   subtitle,
   children,
   footer,
-  width = 'max-w-xl',
+  width = 'sm:max-w-xl',
 }) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -46,25 +46,25 @@ export const Drawer: React.FC<DrawerProps> = ({
         className="fixed inset-0 bg-[#1C2B3A]/50 backdrop-blur-xs transition-opacity duration-300"
       />
 
-      {/* Slide-over panel */}
+      {/* Slide-over panel (full width on mobile, max-width on tablet/desktop) */}
       <div
         className={`relative z-10 w-full ${width} bg-white dark:bg-dark-800 shadow-soft-lg border-l border-[#E8EFF5] dark:border-dark-600 flex flex-col h-full transform transition-transform duration-300 ease-out animate-slide-in-right`}
       >
         {/* Header */}
-        <div className="px-6 py-5 border-b border-[#E8EFF5] dark:border-dark-600 flex items-center justify-between bg-white dark:bg-dark-800 sticky top-0 z-10">
-          <div>
-            <h3 className="text-lg font-bold text-[#1C2B3A] dark:text-white tracking-tight">
+        <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-[#E8EFF5] dark:border-dark-600 flex items-center justify-between bg-white dark:bg-dark-800 sticky top-0 z-10">
+          <div className="min-w-0 pr-3">
+            <h3 className="text-base sm:text-lg font-bold text-[#1C2B3A] dark:text-white tracking-tight truncate">
               {title}
             </h3>
             {subtitle && (
-              <p className="text-xs text-[#5A7184] dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-[#5A7184] dark:text-slate-400 mt-0.5 truncate">
                 {subtitle}
               </p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-[#5A7184] hover:text-[#1C2B3A] dark:hover:text-slate-200 hover:bg-[#F0F9FE] dark:hover:bg-dark-700 rounded-xl transition"
+            className="p-2 text-[#5A7184] hover:text-[#1C2B3A] dark:hover:text-slate-200 hover:bg-[#F0F9FE] dark:hover:bg-dark-700 rounded-xl transition shrink-0"
             aria-label="Fermer"
           >
             <X className="w-5 h-5" />
@@ -72,13 +72,13 @@ export const Drawer: React.FC<DrawerProps> = ({
         </div>
 
         {/* Content body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
           {children}
         </div>
 
         {/* Footer */}
         {footer && (
-          <div className="px-6 py-4 border-t border-[#E8EFF5] dark:border-dark-600 bg-[#F5FAFD] dark:bg-dark-700/50 flex items-center justify-end gap-3">
+          <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-t border-[#E8EFF5] dark:border-dark-600 bg-[#F5FAFD] dark:bg-dark-700/50 flex flex-wrap items-center justify-end gap-2.5 sm:gap-3">
             {footer}
           </div>
         )}

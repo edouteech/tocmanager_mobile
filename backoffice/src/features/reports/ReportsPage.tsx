@@ -90,14 +90,14 @@ export const ReportsPage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-[#1C2B3A] dark:text-white tracking-tight">Rapports & Analytique</h1>
           <p className="text-xs sm:text-sm text-[#5A7184] dark:text-slate-400 mt-1">
             Compte de résultat analytique, marge commerciale et rentabilité
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
           <div className="flex items-center bg-white dark:bg-dark-800 border border-[#E8EFF5] dark:border-dark-600 rounded-xl p-1 text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-soft">
             <button
               onClick={() => setPeriodDays(7)}

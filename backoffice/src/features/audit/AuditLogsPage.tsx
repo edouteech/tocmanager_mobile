@@ -136,7 +136,7 @@ export const AuditLogsPage: React.FC = () => {
         <button
           onClick={() => refetch()}
           disabled={isFetching}
-          className="btn-secondary"
+          className="btn-secondary w-full sm:w-auto justify-center"
         >
           <RefreshCw className={`w-4 h-4 text-brand-500 ${isFetching ? 'animate-spin' : ''}`} />
           <span>Actualiser</span>
@@ -156,12 +156,12 @@ export const AuditLogsPage: React.FC = () => {
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-slate-400" />
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Filter className="w-4 h-4 text-slate-400 shrink-0" />
           <select
             value={selectedAction}
             onChange={(e) => setSelectedAction(e.target.value)}
-            className="input-toc bg-white dark:bg-dark-700 w-auto"
+            className="input-toc bg-white dark:bg-dark-700 w-full sm:w-auto"
           >
             <option value="">Toutes les actions</option>
             <option value="SALE_CREATE">Nouvelle Vente</option>
@@ -192,7 +192,7 @@ export const AuditLogsPage: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
+            <table className="w-full text-left min-w-[650px]">
               <thead className="bg-[#F5FAFD] dark:bg-dark-700/50 border-b border-[#E8EFF5] dark:border-dark-600">
                 <tr>
                   <th className={tableClasses.th}>Date & Heure</th>

@@ -98,7 +98,7 @@ export const UsersPage: React.FC = () => {
             resetForm();
             setIsCreateModalOpen(true);
           }}
-          className="btn-primary"
+          className="btn-primary w-full sm:w-auto justify-center"
         >
           <UserPlus className="w-4 h-4" />
           <span>Nouvel Utilisateur</span>
@@ -108,7 +108,7 @@ export const UsersPage: React.FC = () => {
       {/* Users Table with Density */}
       <div className="card-toc overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left min-w-[600px]">
             <thead className="bg-[#F5FAFD] dark:bg-dark-700/50 border-b border-[#E8EFF5] dark:border-dark-600">
               <tr>
                 <th className={tableClasses.th}>Utilisateur</th>
