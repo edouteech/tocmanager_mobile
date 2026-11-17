@@ -23,7 +23,7 @@ def get_current_user(
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id: str = payload.get("sub")
         token_type: str = payload.get("type")
-        if user_id is None or token_type != "access":
+        if user_id is None or (token_type and token_type != "access"):
             raise credentials_exception
     except JWTError:
         raise credentials_exception
@@ -37,6 +37,10 @@ def get_current_user(
 
 def require_role(allowed_roles: List[str]) -> Callable:
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
+        if current_user.role == "superadmin":
+            return current_user
+        if current_user.role == "merchant" and ("admin" in allowed_roles or "manager" in allowed_roles or "merchant" in allowed_roles):
+            return current_user
         if current_user.role not in allowed_roles and current_user.role != "admin":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

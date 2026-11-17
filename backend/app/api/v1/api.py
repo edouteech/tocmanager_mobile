@@ -1,11 +1,22 @@
 from fastapi import APIRouter
 from app.api.v1.endpoints import (
     auth, sync, products, categories, ventes, users, reports, audit,
-    clients, suppliers, approvisionnements, decaissements, settings
+    clients, suppliers, approvisionnements, decaissements, settings,
+    saas_public, saas_admin, tenant
 )
 
 api_router = APIRouter()
 
+# SaaS Public, Pricing & Inscription
+api_router.include_router(saas_public.router, prefix="/saas", tags=["SaaS Public & Pricing"])
+
+# Super-Admin Platform Console
+api_router.include_router(saas_admin.router, prefix="/admin", tags=["Super-Admin Console"])
+
+# Tenant Operations (Multi-Boutiques & Multi-Magasins)
+api_router.include_router(tenant.router, prefix="/tenant", tags=["Boutiques & Magasins (Tenant)"])
+
+# Core Modules
 api_router.include_router(auth.router, prefix="/auth", tags=["Authentification"])
 api_router.include_router(sync.router, prefix="/sync", tags=["Synchronisation Offline-First"])
 api_router.include_router(products.router, prefix="/products", tags=["Produits"])

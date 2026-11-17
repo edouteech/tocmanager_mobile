@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/audit_service.dart';
 import '../theme/app_theme.dart';
+import 'select_magasin_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -52,8 +53,16 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     if (success && mounted) {
-      // Prompt for PIN if not configured
-      _promptSetupPinIfNeeded();
+      final auth = context.read<AuthProvider>();
+      if (auth.currentUser != null) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => SelectMagasinScreen(user: auth.currentUser!),
+          ),
+        );
+      } else {
+        _promptSetupPinIfNeeded();
+      }
     }
   }
 

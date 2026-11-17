@@ -3,10 +3,11 @@ export interface UserBrief {
   username: string;
   email?: string | null;
   full_name?: string | null;
-  role: 'admin' | 'manager' | 'cashier';
+  role: 'superadmin' | 'merchant' | 'admin' | 'manager' | 'cashier' | string;
   permissions: string[];
   has_pin: boolean;
   is_active?: boolean;
+  assigned_magasin_ids?: string[];
 }
 
 export interface VenteItemCreate {
@@ -215,4 +216,87 @@ export interface FinancialReport {
   top_products: TopProductItem[];
   expenses_by_category: ExpenseCategoryItem[];
   monthly_trend: MonthlyTrendItem[];
+}
+
+
+// SaaS & Multi-Tenant Types
+export interface SaasPlanFeature {
+  id: string;
+  feature_code: string;
+  feature_name: string;
+  value_type: 'boolean' | 'limit_number' | 'text';
+  boolean_value: boolean;
+  int_limit: number;
+}
+
+export interface SaasPlan {
+  id: string;
+  name: string;
+  code: string;
+  description?: string | null;
+  price_monthly: number;
+  price_yearly: number;
+  currency: string;
+  trial_period_days: number;
+  badge?: string | null;
+  is_active: boolean;
+  features: SaasPlanFeature[];
+}
+
+export interface Magasin {
+  id: string;
+  boutique_id?: string;
+  name: string;
+  code?: string;
+  address?: string | null;
+  phone?: string | null;
+  is_warehouse: boolean;
+  is_active: boolean;
+  created_at?: string;
+}
+
+export interface Boutique {
+  id: string;
+  slug: string;
+  name: string;
+  company_name?: string | null;
+  currency: string;
+  country: string;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  logo_url?: string | null;
+  owner_user_id: string;
+  is_active: boolean;
+  created_at?: string;
+  magasins: Magasin[];
+  user_role?: string;
+  assigned_magasin_ids: string[];
+}
+
+export interface CurrentPlanStatus {
+  plan_id: string;
+  plan_name: string;
+  plan_code: string;
+  status: string;
+  trial_active: boolean;
+  trial_days_left: number;
+  features: Record<string, any>;
+  can_access_stock_transfers: boolean;
+  can_access_pnl_reports: boolean;
+  can_access_data_exports: boolean;
+  magasins_used: number;
+  magasins_limit: number;
+}
+
+export interface PlatformKPIs {
+  mrr: number;
+  arr: number;
+  total_boutiques: number;
+  active_boutiques: number;
+  total_magasins: number;
+  trialing_subscriptions: number;
+  active_subscriptions: number;
+  total_gmv: number;
+  currency: string;
 }

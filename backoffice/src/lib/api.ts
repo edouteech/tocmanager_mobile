@@ -13,6 +13,11 @@ import {
   StoreSettings,
   FinancialReport,
   UserBrief,
+  SaasPlan,
+  Boutique,
+  Magasin,
+  CurrentPlanStatus,
+  PlatformKPIs,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -24,11 +29,19 @@ export const api = axios.create({
   },
 });
 
-// Request interceptor to attach Bearer token
+// Request interceptor to attach Bearer token and active Tenant context
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('toc_access_token');
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  const boutiqueId = localStorage.getItem('toc_current_boutique_id');
+  if (boutiqueId && config.headers) {
+    config.headers['X-Boutique-Id'] = boutiqueId;
+  }
+  const magasinId = localStorage.getItem('toc_current_magasin_id');
+  if (magasinId && config.headers) {
+    config.headers['X-Magasin-Id'] = magasinId;
   }
   return config;
 });
@@ -53,16 +66,14 @@ api.interceptors.response.use(
           }
           originalRequest.headers.Authorization = `Bearer ${access_token}`;
           return api(originalRequest);
-        } catch {
+        } catch (refreshErr) {
           localStorage.removeItem('toc_access_token');
           localStorage.removeItem('toc_refresh_token');
-          localStorage.removeItem('toc_user');
           window.location.href = '/login';
+          return Promise.reject(refreshErr);
         }
       } else {
         localStorage.removeItem('toc_access_token');
-        localStorage.removeItem('toc_refresh_token');
-        localStorage.removeItem('toc_user');
         window.location.href = '/login';
       }
     }
@@ -70,7 +81,25 @@ api.interceptors.response.use(
   }
 );
 
-// --- API Services ---
+export const dashboardApi = {
+  getStats: (params?: { start_date?: string; end_date?: string; magasin_id?: string }) =>
+    api.get<DashboardStats>('/reports/dashboard', { params }).then((r) => r.data),
+};
+
+export const productsApi = {
+  getAll: (params?: { q?: string; category_id?: string; magasin_id?: string }) =>
+    api.get<Product[]>('/products', { params }).then((r) => r.data),
+  create: (data: Partial<Product>) => api.post<Product>('/products', data).then((r) => r.data),
+  update: (id: string, data: Partial<Product>) => api.put<Product>(`/products/${id}`, data).then((r) => r.data),
+  delete: (id: string) => api.delete(`/products/${id}`).then((r) => r.data),
+};
+
+export const categoriesApi = {
+  getAll: () => api.get<Category[]>('/categories').then((r) => r.data),
+  create: (data: Partial<Category>) => api.post<Category>('/categories', data).then((r) => r.data),
+  update: (id: string, data: Partial<Category>) => api.put<Category>(`/categories/${id}`, data).then((r) => r.data),
+  delete: (id: string) => api.delete(`/categories/${id}`).then((r) => r.data),
+};
 
 export const clientsApi = {
   getAll: (params?: { q?: string; only_debtors?: boolean }) =>
@@ -78,7 +107,7 @@ export const clientsApi = {
   getById: (id: string) => api.get<Client>(`/clients/${id}`).then((r) => r.data),
   create: (data: Partial<Client>) => api.post<Client>('/clients', data).then((r) => r.data),
   update: (id: string, data: Partial<Client>) => api.put<Client>(`/clients/${id}`, data).then((r) => r.data),
-  delete: (id: string) => api.delete(`/clients/${id}`),
+  delete: (id: string) => api.delete(`/clients/${id}`).then((r) => r.data),
   recordPayment: (id: string, payment: { amount: number; payment_method: string; notes?: string }) =>
     api.post<Client>(`/clients/${id}/payments`, payment).then((r) => r.data),
 };
@@ -89,62 +118,30 @@ export const suppliersApi = {
   getById: (id: string) => api.get<Supplier>(`/suppliers/${id}`).then((r) => r.data),
   create: (data: Partial<Supplier>) => api.post<Supplier>('/suppliers', data).then((r) => r.data),
   update: (id: string, data: Partial<Supplier>) => api.put<Supplier>(`/suppliers/${id}`, data).then((r) => r.data),
-  delete: (id: string) => api.delete(`/suppliers/${id}`),
+  delete: (id: string) => api.delete(`/suppliers/${id}`).then((r) => r.data),
   recordPayment: (id: string, payment: { amount: number; payment_method: string; notes?: string }) =>
     api.post<Supplier>(`/suppliers/${id}/payments`, payment).then((r) => r.data),
 };
 
 export const approvisionnementsApi = {
-  getAll: (params?: { product_sync_id?: string; supplier_sync_id?: string }) =>
-    api.get<Approvisionnement[]>('/approvisionnements', { params }).then((r) => r.data),
-  create: (data: {
-    product_sync_id: string;
-    product_name?: string;
-    supplier_sync_id?: string;
-    supplier_name?: string;
-    quantity: number;
-    unit_cost: number;
-    payment_status: string;
-    notes?: string;
-    date?: string;
-  }) => api.post<Approvisionnement>('/approvisionnements', data).then((r) => r.data),
+  getAll: () => api.get<Approvisionnement[]>('/approvisionnements').then((r) => r.data),
+  create: (data: Partial<Approvisionnement>) =>
+    api.post<Approvisionnement>('/approvisionnements', data).then((r) => r.data),
 };
+export const suppliesApi = approvisionnementsApi;
 
 export const decaissementsApi = {
-  getAll: (params?: { category?: string; start_date?: string; end_date?: string }) =>
-    api.get<Decaissement[]>('/decaissements', { params }).then((r) => r.data),
+  getAll: (params?: any) => api.get<Decaissement[]>('/decaissements', { params }).then((r) => r.data),
   getCategories: (params?: { include_defaults?: boolean }) =>
     api.get<string[]>('/decaissements/categories', { params }).then((r) => r.data),
-  create: (data: {
-    title: string;
-    amount: number;
-    category?: string;
-    beneficiary?: string;
-    payment_method: string;
-    notes?: string;
-    date?: string;
-  }) => api.post<Decaissement>('/decaissements', data).then((r) => r.data),
-  delete: (id: string) => api.delete(`/decaissements/${id}`),
+  create: (data: Partial<Decaissement>) => api.post<Decaissement>('/decaissements', data).then((r) => r.data),
+  delete: (id: string) => api.delete(`/decaissements/${id}`).then((r) => r.data),
 };
-
-export const categoriesApi = {
-  getAll: () => api.get<Category[]>('/categories').then((r) => r.data),
-  create: (data: Partial<Category>) => api.post<Category>('/categories', data).then((r) => r.data),
-  update: (id: string, data: Partial<Category>) => api.put<Category>(`/categories/${id}`, data).then((r) => r.data),
-  delete: (id: string) => api.delete(`/categories/${id}`),
-};
-
-export const productsApi = {
-  getAll: (params?: { q?: string; category_id?: string }) =>
-    api.get<Product[]>('/products', { params }).then((r) => r.data),
-  create: (data: Partial<Product>) => api.post<Product>('/products', data).then((r) => r.data),
-  update: (id: string, data: Partial<Product>) => api.put<Product>(`/products/${id}`, data).then((r) => r.data),
-  delete: (id: string) => api.delete(`/products/${id}`),
-};
+export const expensesApi = decaissementsApi;
 
 export const reportsApi = {
   getDashboard: () => api.get<DashboardStats>('/reports/dashboard').then((r) => r.data),
-  getFinancial: (params?: { preset?: string; start_date?: string; end_date?: string }) =>
+  getFinancial: (params?: { preset?: string; start_date?: string; end_date?: string; magasin_id?: string }) =>
     api.get<FinancialReport>('/reports/financial', { params }).then((r) => r.data),
 };
 
@@ -158,7 +155,7 @@ export const authApi = {
 };
 
 export const ventesApi = {
-  getAll: (params?: { limit?: number; skip?: number; start_date?: string; end_date?: string }) =>
+  getAll: (params?: { limit?: number; skip?: number; start_date?: string; end_date?: string; magasin_id?: string }) =>
     api.get<Vente[]>('/ventes', { params }).then((r) => r.data),
   getById: (id: string) => api.get<Vente>(`/ventes/${id}`).then((r) => r.data),
   create: (data: VenteCreate) => api.post<Vente>('/ventes', data).then((r) => r.data),
@@ -173,6 +170,7 @@ export const usersApi = {
     email?: string | null;
     role: string;
     pin?: string | null;
+    assigned_magasin_ids?: string[];
   }) => api.post<UserBrief>('/users', data).then((r) => r.data),
   update: (
     id: string,
@@ -183,8 +181,51 @@ export const usersApi = {
       password?: string;
       pin?: string | null;
       is_active: boolean;
+      assigned_magasin_ids?: string[];
     }>
   ) => api.put<UserBrief>(`/users/${id}`, data).then((r) => r.data),
   delete: (id: string) => api.delete(`/users/${id}`),
 };
 
+// SaaS Public & Inscription API
+export const saasApi = {
+  getPlans: () => api.get<SaasPlan[]>('/saas/plans').then((r) => r.data),
+  registerCredentials: (data: { full_name: string; username_or_email: string; password: string; phone?: string }) =>
+    api.post('/saas/auth/register-credentials', data).then((r) => r.data),
+  provisionTenant: (data: {
+    boutique_name: string;
+    company_name?: string;
+    currency?: string;
+    country?: string;
+    phone?: string;
+    magasin_name?: string;
+    plan_code?: string;
+  }) => api.post('/saas/tenant/provision', data).then((r) => r.data),
+};
+
+// Tenant & Multi-Magasins API
+export const tenantApi = {
+  getBoutiques: () => api.get<Boutique[]>('/tenant/boutiques').then((r) => r.data),
+  createBoutique: (data: { name: string; currency?: string; country?: string; initial_magasin_name?: string }) =>
+    api.post<Boutique>('/tenant/boutiques', data).then((r) => r.data),
+  getMagasins: () => api.get<Magasin[]>('/tenant/magasins').then((r) => r.data),
+  createMagasin: (data: { name: string; code?: string; address?: string; phone?: string; is_warehouse?: boolean }) =>
+    api.post<Magasin>('/tenant/magasins', data).then((r) => r.data),
+  updateMagasin: (id: string, data: Partial<Magasin>) =>
+    api.put<Magasin>(`/tenant/magasins/${id}`, data).then((r) => r.data),
+  getCurrentPlan: () => api.get<CurrentPlanStatus>('/tenant/current-plan').then((r) => r.data),
+  upgradePlan: (plan_code: string) => api.post('/tenant/upgrade-plan', { plan_code }).then((r) => r.data),
+};
+
+// Super-Admin Console API
+export const adminApi = {
+  getKpis: () => api.get<PlatformKPIs>('/admin/kpis').then((r) => r.data),
+  getPlans: () => api.get<SaasPlan[]>('/admin/plans').then((r) => r.data),
+  createPlan: (data: Partial<SaasPlan>) => api.post<SaasPlan>('/admin/plans', data).then((r) => r.data),
+  updatePlan: (id: string, data: Partial<SaasPlan>) => api.put<SaasPlan>(`/admin/plans/${id}`, data).then((r) => r.data),
+  getBoutiques: () => api.get<any[]>('/admin/boutiques').then((r) => r.data),
+  toggleBoutiqueStatus: (id: string, is_active: boolean) =>
+    api.put(`/admin/boutiques/${id}/status`, { is_active }).then((r) => r.data),
+  extendTrial: (id: string, days: number = 14) =>
+    api.post(`/admin/boutiques/${id}/extend-trial`, { days }).then((r) => r.data),
+};

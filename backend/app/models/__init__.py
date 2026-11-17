@@ -12,6 +12,19 @@ def generate_uuid() -> str:
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
+# Import SaaS & Multi-Tenant models
+from app.models.saas import (
+    SaasPlan,
+    SaasPlanFeature,
+    SaasSubscription,
+    Boutique,
+    BoutiqueUserMembership,
+    Magasin,
+    StockMagasin,
+    ProductMagasinAvailability,
+    PlatformAuditLog,
+)
+
 class User(Base):
     __tablename__ = "users"
 
@@ -21,7 +34,7 @@ class User(Base):
     full_name = Column(String(255), nullable=True)
     hashed_password = Column(String(255), nullable=False)
     pin_hash = Column(String(255), nullable=True)
-    role = Column(String(50), nullable=False, default="cashier")  # admin, manager, cashier
+    role = Column(String(50), nullable=False, default="cashier")  # superadmin, merchant, admin, manager, cashier
     permissions = Column(JSON, nullable=True)  # List of allowed permissions
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=utc_now)
@@ -31,6 +44,7 @@ class Category(Base):
     __tablename__ = "categories"
 
     sync_id = Column(String(36), primary_key=True, default=generate_uuid)
+    boutique_id = Column(String(36), ForeignKey("boutiques.id"), nullable=True, index=True)
     name = Column(String(150), nullable=False)
     description = Column(Text, nullable=True)
     color = Column(String(30), nullable=True)
@@ -45,6 +59,7 @@ class Product(Base):
     __tablename__ = "products"
 
     sync_id = Column(String(36), primary_key=True, default=generate_uuid)
+    boutique_id = Column(String(36), ForeignKey("boutiques.id"), nullable=True, index=True)
     name = Column(String(255), nullable=False)
     category_sync_id = Column(String(36), ForeignKey("categories.sync_id"), nullable=True)
     price = Column(Float, nullable=False, default=0.0)
@@ -66,6 +81,7 @@ class Client(Base):
     __tablename__ = "clients"
 
     sync_id = Column(String(36), primary_key=True, default=generate_uuid)
+    boutique_id = Column(String(36), ForeignKey("boutiques.id"), nullable=True, index=True)
     name = Column(String(255), nullable=False)
     phone = Column(String(50), nullable=True)
     email = Column(String(255), nullable=True)
@@ -82,6 +98,7 @@ class Supplier(Base):
     __tablename__ = "suppliers"
 
     sync_id = Column(String(36), primary_key=True, default=generate_uuid)
+    boutique_id = Column(String(36), ForeignKey("boutiques.id"), nullable=True, index=True)
     name = Column(String(255), nullable=False)
     contact_person = Column(String(255), nullable=True)
     phone = Column(String(50), nullable=True)
@@ -99,6 +116,8 @@ class Vente(Base):
     __tablename__ = "ventes"
 
     sync_id = Column(String(36), primary_key=True, default=generate_uuid)
+    boutique_id = Column(String(36), ForeignKey("boutiques.id"), nullable=True, index=True)
+    magasin_id = Column(String(36), ForeignKey("magasins.id"), nullable=True, index=True)
     ticket_number = Column(String(100), index=True, nullable=False)
     client_sync_id = Column(String(36), ForeignKey("clients.sync_id"), nullable=True)
     client_name = Column(String(255), nullable=True)
@@ -133,6 +152,8 @@ class Approvisionnement(Base):
     __tablename__ = "approvisionnements"
 
     sync_id = Column(String(36), primary_key=True, default=generate_uuid)
+    boutique_id = Column(String(36), ForeignKey("boutiques.id"), nullable=True, index=True)
+    magasin_id = Column(String(36), ForeignKey("magasins.id"), nullable=True, index=True)
     supplier_sync_id = Column(String(36), ForeignKey("suppliers.sync_id"), nullable=True)
     supplier_name = Column(String(255), nullable=True)
     product_sync_id = Column(String(36), nullable=True)
@@ -153,6 +174,8 @@ class Decaissement(Base):
     __tablename__ = "decaissements"
 
     sync_id = Column(String(36), primary_key=True, default=generate_uuid)
+    boutique_id = Column(String(36), ForeignKey("boutiques.id"), nullable=True, index=True)
+    magasin_id = Column(String(36), ForeignKey("magasins.id"), nullable=True, index=True)
     title = Column(String(255), nullable=False)
     amount = Column(Float, nullable=False, default=0.0)
     category = Column(String(100), nullable=True)
@@ -170,10 +193,11 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
+    boutique_id = Column(String(36), ForeignKey("boutiques.id"), nullable=True, index=True)
     user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
     user_name = Column(String(255), nullable=True)
-    action = Column(String(100), nullable=False)  # LOGIN, LOGOUT, PIN_VERIFY, SALE_CREATE, CLIENT_CREATE, DEBT_PAYMENT, EXPENSE_CREATE, STOCK_SUPPLY, PRODUCT_UPDATE
-    entity_type = Column(String(50), nullable=True)  # vente, client, decaissement, product, auth
+    action = Column(String(100), nullable=False)
+    entity_type = Column(String(50), nullable=True)
     entity_id = Column(String(100), nullable=True)
     details = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=utc_now)
@@ -182,9 +206,11 @@ class SyncEvent(Base):
     __tablename__ = "sync_events"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    boutique_id = Column(String(36), nullable=True, index=True)
+    magasin_id = Column(String(36), nullable=True, index=True)
     user_id = Column(String(36), nullable=True)
     device_id = Column(String(100), nullable=True)
-    action = Column(String(50), nullable=False)  # PUSH, PULL
+    action = Column(String(50), nullable=False)
     entity_type = Column(String(50), nullable=False)
     entity_uuid = Column(String(36), nullable=False)
     synced_at = Column(DateTime(timezone=True), default=utc_now)

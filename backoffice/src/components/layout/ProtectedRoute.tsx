@@ -22,8 +22,17 @@ export const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && user && !allowedRoles.includes(user.role) && user.role !== 'admin') {
-    return <Navigate to="/" replace />;
+  if (allowedRoles && user) {
+    if (user.role === 'superadmin') {
+      return <>{children}</>;
+    }
+    if (
+      !allowedRoles.includes(user.role) &&
+      user.role !== 'admin' &&
+      !(user.role === 'merchant' && allowedRoles.includes('manager'))
+    ) {
+      return <Navigate to="/" replace />;
+    }
   }
 
   return <>{children}</>;

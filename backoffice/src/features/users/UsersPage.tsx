@@ -8,15 +8,18 @@ import {
   Check,
   AlertCircle,
   UserCheck,
+  Store,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { UserBrief } from '../../types';
 import { Modal } from '../../components/common/Modal';
 import { useDensity } from '../../context/DensityContext';
+import { useTenantStore } from '../../stores/tenantStore';
 
 export const UsersPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { tableClasses } = useDensity();
+  const { magasins } = useTenantStore();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Form state
@@ -26,6 +29,7 @@ export const UsersPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'admin' | 'manager' | 'cashier'>('cashier');
   const [pin, setPin] = useState('');
+  const [assignedMagasins, setAssignedMagasins] = useState<string[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
 
   const { data: users, isLoading } = useQuery<UserBrief[]>({
@@ -58,7 +62,16 @@ export const UsersPage: React.FC = () => {
     setPassword('');
     setRole('cashier');
     setPin('');
+    setAssignedMagasins([]);
     setFormError(null);
+  };
+
+  const toggleMagasinAssign = (magasinId: string) => {
+    if (assignedMagasins.includes(magasinId)) {
+      setAssignedMagasins(assignedMagasins.filter((id) => id !== magasinId));
+    } else {
+      setAssignedMagasins([...assignedMagasins, magasinId]);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -77,7 +90,15 @@ export const UsersPage: React.FC = () => {
       password,
       role,
       pin: pin || null,
+      assigned_magasin_ids: assignedMagasins,
     });
+  };
+
+  const getMagasinNames = (ids?: string[]) => {
+    if (!ids || ids.length === 0) return 'Tous les magasins';
+    return ids
+      .map((id) => magasins.find((m) => m.id === id)?.name || 'Magasin')
+      .join(', ');
   };
 
   return (
@@ -86,10 +107,10 @@ export const UsersPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-[#1C2B3A] dark:text-white tracking-tight">
-            Utilisateurs & Rôles
+            Utilisateurs & Affectations
           </h1>
           <p className="text-xs sm:text-sm text-[#5A7184] dark:text-slate-400 mt-1">
-            Gestion des accès centralisés et des identifiants/codes PIN de déverrouillage caisse
+            Gestion du personnel et affectation aux magasins de la boutique
           </p>
         </div>
 
@@ -98,87 +119,74 @@ export const UsersPage: React.FC = () => {
             resetForm();
             setIsCreateModalOpen(true);
           }}
-          className="btn-primary w-full sm:w-auto justify-center"
+          className="btn-primary"
         >
           <UserPlus className="w-4 h-4" />
           <span>Nouvel Utilisateur</span>
         </button>
       </div>
 
-      {/* Users Table with Density */}
-      <div className="card-toc overflow-hidden">
+      {/* Users Table */}
+      <div className="card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-[600px]">
-            <thead className="bg-[#F5FAFD] dark:bg-dark-700/50 border-b border-[#E8EFF5] dark:border-dark-600">
-              <tr>
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-[#E8EFF5] dark:border-dark-600 bg-[#F0F9FE]/50 dark:bg-dark-700/50">
                 <th className={tableClasses.th}>Utilisateur</th>
-                <th className={tableClasses.th}>Rôle Système</th>
-                <th className={tableClasses.th}>Code PIN Caisse</th>
-                <th className={tableClasses.th}>Statut Compte</th>
+                <th className={tableClasses.th}>Rôle</th>
+                <th className={tableClasses.th}>Magasins Assignés</th>
+                <th className={tableClasses.th}>PIN Caisse</th>
+                <th className={tableClasses.th}>Statut</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E8EFF5] dark:divide-dark-600/60">
+            <tbody className="divide-y divide-[#E8EFF5] dark:divide-dark-600">
               {isLoading ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
                     Chargement des utilisateurs...
                   </td>
                 </tr>
-              ) : (users || []).length > 0 ? (
-                users?.map((u) => (
-                  <tr key={u.id} className="hover:bg-brand-50/30 dark:hover:bg-dark-700/40 transition-colors">
+              ) : users && users.length > 0 ? (
+                users.map((u) => (
+                  <tr key={u.id} className="hover:bg-[#F0F9FE]/40 dark:hover:bg-dark-700/40 transition">
                     <td className={tableClasses.td}>
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-500/30 flex items-center justify-center font-bold">
-                          <UserCheck className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-slate-900 dark:text-white">{u.full_name || u.username}</div>
-                          <div className="text-xs text-slate-400">@{u.username}</div>
-                        </div>
+                      <div className="font-bold text-[#1C2B3A] dark:text-white">
+                        {u.full_name || u.username}
+                      </div>
+                      <div className="text-xs text-[#5A7184] dark:text-slate-400">
+                        @{u.username} {u.email ? `• ${u.email}` : ''}
                       </div>
                     </td>
                     <td className={tableClasses.td}>
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
-                          u.role === 'admin'
-                            ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/40'
-                            : u.role === 'manager'
-                            ? 'bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300 border-brand-200 dark:border-brand-500/30'
-                            : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40'
-                        }`}
-                      >
-                        <Shield className="w-3.5 h-3.5" />
-                        <span>
-                          {u.role === 'admin'
-                            ? 'Administrateur'
-                            : u.role === 'manager'
-                            ? 'Gérant'
-                            : 'Caissier'}
-                        </span>
-                      </span>
+                      <span className="badge-blue capitalize">{u.role}</span>
+                    </td>
+                    <td className={tableClasses.td}>
+                      <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                        <Store className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                        <span className="font-medium">{getMagasinNames(u.assigned_magasin_ids)}</span>
+                      </div>
                     </td>
                     <td className={tableClasses.td}>
                       {u.has_pin ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-800/40">
-                          <KeyRound className="w-3 h-3 text-emerald-600" />
-                          <span>Actif (4-6 chiffres)</span>
+                        <span className="badge-emerald flex items-center gap-1 w-max">
+                          <Check className="w-3 h-3" /> Configuré
                         </span>
                       ) : (
-                        <span className="text-xs text-slate-400">Non configuré</span>
+                        <span className="text-xs text-slate-400">Non défini</span>
                       )}
                     </td>
                     <td className={tableClasses.td}>
-                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                        <Check className="w-4 h-4" />
-                        <span>Actif</span>
-                      </span>
+                      {u.is_active ? (
+                        <span className="badge-emerald">Actif</span>
+                      ) : (
+                        <span className="badge-rose">Inactif</span>
+                      )}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
                     Aucun utilisateur trouvé.
                   </td>
                 </tr>
@@ -193,7 +201,7 @@ export const UsersPage: React.FC = () => {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         title="Créer un Nouvel Utilisateur"
-        subtitle="Renseignez les accès pour le backoffice et le code PIN caisse"
+        subtitle="Renseignez les accès et affectez le collaborateur à un ou plusieurs magasins"
         footer={
           <>
             <button
@@ -279,38 +287,59 @@ export const UsersPage: React.FC = () => {
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
-                Rôle Système *
+                Code PIN Caisse (4 ou 6 chiffres)
               </label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as any)}
-                className="input-toc bg-white dark:bg-dark-700"
-              >
-                <option value="cashier">Caissier</option>
-                <option value="manager">Gérant</option>
-                <option value="admin">Administrateur</option>
-              </select>
+              <input
+                type="password"
+                maxLength={6}
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                placeholder="Ex: 1234"
+                className="input-toc"
+              />
             </div>
           </div>
 
-          <div className="p-4 bg-brand-50/50 dark:bg-dark-700/60 rounded-2xl border border-brand-100 dark:border-dark-600 space-y-2">
-            <div className="flex items-center gap-2">
-              <KeyRound className="w-4 h-4 text-brand-500" />
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                Code PIN Caisse (Optionnel)
-              </label>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+              Rôle du collaborateur
+            </label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as any)}
+              className="input-toc"
+            >
+              <option value="cashier">Caissier (Ventes et caisse uniquement)</option>
+              <option value="manager">Gérant de Magasin (Gestion des stocks et ventes)</option>
+              <option value="admin">Administrateur Boutique (Tous droits)</option>
+            </select>
+          </div>
+
+          {/* Affectation aux Magasins */}
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+              Magasins Assignés (Points de Vente)
+            </label>
+            <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+              {magasins.map((m) => (
+                <label key={m.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={assignedMagasins.includes(m.id)}
+                    onChange={() => toggleMagasinAssign(m.id)}
+                    className="rounded text-indigo-600"
+                  />
+                  <span className="font-medium text-slate-800 dark:text-slate-200">{m.name}</span>
+                  {m.is_warehouse && <span className="text-[10px] text-slate-400">(Dépôt)</span>}
+                </label>
+              ))}
+              {magasins.length === 0 && (
+                <span className="text-xs text-slate-400">Aucun magasin configuré.</span>
+              )}
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Permet au caissier de déverrouiller rapidement le terminal sans ressaisir son mot de passe complet.
-            </p>
-            <input
-              type="password"
-              maxLength={6}
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              placeholder="4 ou 6 chiffres (ex: 1234)"
-              className="input-toc font-mono text-center tracking-widest text-lg font-bold"
-            />
+            <span className="text-[11px] text-slate-400 mt-1 block">
+              Si aucun magasin n'est coché, l'utilisateur aura accès à tous les magasins de la boutique.
+            </span>
           </div>
         </form>
       </Modal>

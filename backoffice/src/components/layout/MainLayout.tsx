@@ -1,12 +1,19 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useSidebar } from '../../context/SidebarContext';
+import { useTenantStore } from '../../stores/tenantStore';
 import { PinLockModal } from '../common/PinLockModal';
+import { UpgradePlanModal } from '../common/UpgradePlanModal';
 
 export const MainLayout: React.FC = () => {
   const { isOpen, close } = useSidebar();
+  const initTenant = useTenantStore((s) => s.initTenant);
+
+  useEffect(() => {
+    initTenant();
+  }, [initTenant]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F5FAFD] dark:bg-dark-900 transition-colors duration-200">
@@ -19,7 +26,7 @@ export const MainLayout: React.FC = () => {
         />
       )}
 
-      {/* Responsive Sidebar (desktop anchor + mobile slide-over) */}
+      {/* Responsive Sidebar */}
       <Sidebar />
 
       {/* Main Content Area */}
@@ -32,6 +39,9 @@ export const MainLayout: React.FC = () => {
 
       {/* PIN Lock Overlay */}
       <PinLockModal />
+
+      {/* SaaS Feature Gating & Paywall Modal */}
+      <UpgradePlanModal />
     </div>
   );
 };
