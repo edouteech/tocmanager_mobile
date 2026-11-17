@@ -8,14 +8,18 @@ import { useTheme } from '../../context/ThemeContext';
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const { isAuthenticated, user } = useAuthStore();
   const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/', { replace: true });
+    if (isAuthenticated && user) {
+      if (user.role === 'superadmin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, user, navigate]);
 
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,7 +40,11 @@ export const LoginPage: React.FC = () => {
       });
 
       setAuth(response.data);
-      navigate('/');
+      if (response.data.user.role === 'superadmin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
     } catch (err: any) {
       const msg =
         err.response?.data?.detail ||

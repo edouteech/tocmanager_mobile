@@ -13,6 +13,14 @@ def get_admin_token():
     assert resp.status_code == 200, resp.text
     return resp.json()["access_token"]
 
+def get_merchant_token():
+    resp = client.post("/api/v1/auth/login", json={
+        "username_or_email": "commercant",
+        "password": "commercant1234"
+    })
+    assert resp.status_code == 200, resp.text
+    return resp.json()["access_token"]
+
 def test_public_plans():
     """Vérifie la disponibilité publique des forfaits pour la page de pricing."""
     response = client.get("/api/v1/saas/plans")
@@ -82,8 +90,13 @@ def test_admin_kpis_and_plans():
 
 def test_tenant_multi_magasins():
     """Vérifie la gestion des magasins et le statut du plan pour le tenant."""
+    # L'administrateur de plateforme n'a pas de boutique client (renvoie [])
     admin_token = get_admin_token()
-    headers = {"Authorization": f"Bearer {admin_token}"}
+    assert client.get("/api/v1/tenant/boutiques", headers={"Authorization": f"Bearer {admin_token}"}).json() == []
+
+    # Le commerçant a sa boutique
+    merchant_token = get_merchant_token()
+    headers = {"Authorization": f"Bearer {merchant_token}"}
 
     # Liste des boutiques
     btqs = client.get("/api/v1/tenant/boutiques", headers=headers).json()
@@ -95,6 +108,14 @@ def test_tenant_multi_magasins():
     plan_status = client.get("/api/v1/tenant/current-plan", headers=headers).json()
     assert "plan_name" in plan_status
     assert "features" in plan_status
+
+    # Nettoyage préventif des magasins de test pour respecter le quota Pro (max 5)
+    from app.core.database import SessionLocal
+    from app.models import Magasin
+    _db = SessionLocal()
+    _db.query(Magasin).filter(Magasin.name == "Point de Vente 2").delete()
+    _db.commit()
+    _db.close()
 
     # Création d'un magasin supplémentaire
     mag_payload = {

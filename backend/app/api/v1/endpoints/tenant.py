@@ -24,32 +24,10 @@ def get_user_boutiques(
     Renvoie la liste des boutiques accessibles par l'utilisateur connecté,
     avec son rôle et ses magasins assignés.
     """
-    # Si superadmin, peut tout voir, sinon chercher dans memberships ou boutiques possédées
-    if current_user.role in ["superadmin", "admin"]:
-        all_boutiques = db.query(Boutique).filter(Boutique.is_active == True).all()
-        results = []
-        for b in all_boutiques:
-            magasins = db.query(Magasin).filter(Magasin.boutique_id == b.id, Magasin.is_active == True).all()
-            b_dict = {
-                "id": b.id,
-                "slug": b.slug,
-                "name": b.name,
-                "company_name": b.company_name,
-                "currency": b.currency,
-                "country": b.country,
-                "phone": b.phone,
-                "email": b.email,
-                "address": b.address,
-                "logo_url": b.logo_url,
-                "owner_user_id": b.owner_user_id,
-                "is_active": b.is_active,
-                "created_at": b.created_at,
-                "magasins": magasins,
-                "user_role": "owner",
-                "assigned_magasin_ids": [m.id for m in magasins],
-            }
-            results.append(b_dict)
-        return results
+    # Les super-administrateurs de la plateforme n'ont pas de boutique cliente personnelle.
+    # Ils administrent la plateforme via la console /admin (endpoints /api/v1/admin/*)
+    if current_user.role == "superadmin":
+        return []
 
     memberships = db.query(BoutiqueUserMembership).filter(
         BoutiqueUserMembership.user_id == current_user.id,

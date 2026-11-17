@@ -16,7 +16,6 @@ import {
   Store,
   Sparkles,
   ExternalLink,
-  ShieldAlert,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useTenantStore } from '../../stores/tenantStore';
@@ -134,21 +133,8 @@ export const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      {/* Plan Card & Superadmin Link at bottom */}
+      {/* Plan Card at bottom */}
       <div className="p-3 border-t border-[#E8EFF5] dark:border-dark-600 space-y-2">
-        {user?.role === 'superadmin' && (
-          <Link
-            to="/admin"
-            className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 transition"
-          >
-            <div className="flex items-center gap-2">
-              <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
-              <span>Console Super-Admin</span>
-            </div>
-            <ExternalLink className="w-3 h-3" />
-          </Link>
-        )}
-
         {currentPlan && (
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs space-y-2">
             <div className="flex items-center justify-between">

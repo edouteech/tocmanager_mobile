@@ -22,16 +22,32 @@ export const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && user) {
-    if (user.role === 'superadmin') {
+  if (user) {
+    const isSuperAdmin = user.role === 'superadmin';
+
+    // Règle 1: Route Super-Admin plateforme
+    if (allowedRoles && allowedRoles.includes('superadmin')) {
+      if (!isSuperAdmin) {
+        // Un client / employé n'a aucun accès à l'administration de la plateforme SaaS
+        return <Navigate to="/" replace />;
+      }
       return <>{children}</>;
     }
-    if (
-      !allowedRoles.includes(user.role) &&
-      user.role !== 'admin' &&
-      !(user.role === 'merchant' && allowedRoles.includes('manager'))
-    ) {
-      return <Navigate to="/" replace />;
+
+    // Règle 2: Route Back-office Client
+    // Un administrateur de plateforme ne doit pas voir les données privées d'une boutique client en tant que tel
+    if (isSuperAdmin) {
+      return <Navigate to="/admin" replace />;
+    }
+
+    // Règle 3: Vérification des rôles au sein de la boutique (commerçant, caissier, gérant)
+    if (allowedRoles && allowedRoles.length > 0) {
+      const hasAllowedRole = allowedRoles.some(
+        (r) => r === user.role || (user.role === 'merchant' && (r === 'owner' || r === 'admin'))
+      );
+      if (!hasAllowedRole) {
+        return <Navigate to="/" replace />;
+      }
     }
   }
 

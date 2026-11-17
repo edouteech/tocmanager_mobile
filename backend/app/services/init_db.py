@@ -141,13 +141,13 @@ def init_db(db: Session) -> None:
     # 3. Seed des forfaits SaaS
     seed_saas_plans(db)
 
-    # 4. Vérification utilisateur superadmin / admin
+    # 4. Compte Super-Administrateur Plateforme (Gestionnaire SaaS pur, pas de boutique client)
     admin = db.query(User).filter(User.username == "admin").first()
     if not admin:
         admin = User(
             username="admin",
             email="admin@tocmanager.local",
-            full_name="Administrateur TocManager",
+            full_name="Super Administrateur Plateforme",
             hashed_password=get_password_hash("admin1234"),
             pin_hash=hash_pin("1234"),
             role="superadmin",
@@ -156,8 +156,30 @@ def init_db(db: Session) -> None:
         )
         db.add(admin)
         db.flush()
+    else:
+        if admin.role != "superadmin":
+            admin.role = "superadmin"
+            db.commit()
 
-        # Utilisateur caissier exemple
+    # Compte Client / Commerçant Démo (Propriétaire de boutique)
+    commercant = db.query(User).filter(User.username == "commercant").first()
+    if not commercant:
+        commercant = User(
+            username="commercant",
+            email="commercant@tocmanager.local",
+            full_name="Mamadou Diallo (Commerçant Démo)",
+            hashed_password=get_password_hash("commercant1234"),
+            pin_hash=hash_pin("1234"),
+            role="merchant",
+            permissions=["*"],
+            is_active=True,
+        )
+        db.add(commercant)
+        db.flush()
+
+    # Utilisateur caissier exemple
+    cashier_user = db.query(User).filter(User.username == "caissier1").first()
+    if not cashier_user:
         cashier_user = User(
             username="caissier1",
             email="caissier1@tocmanager.local",
@@ -171,7 +193,7 @@ def init_db(db: Session) -> None:
         db.add(cashier_user)
         db.flush()
 
-    # 5. Création de la boutique par défaut si aucune boutique n'existe
+    # 5. Création de la boutique par défaut rattachée au commerçant
     default_btq = db.query(Boutique).first()
     if not default_btq:
         default_btq = Boutique(
@@ -182,7 +204,7 @@ def init_db(db: Session) -> None:
             country="Sénégal",
             phone="+221 77 000 00 00",
             email="contact@tocmanager.local",
-            owner_user_id=admin.id,
+            owner_user_id=commercant.id,
             is_active=True,
         )
         db.add(default_btq)
@@ -201,15 +223,50 @@ def init_db(db: Session) -> None:
         db.add(main_magasin)
         db.flush()
 
-        # Membership admin (owner)
-        membership_admin = BoutiqueUserMembership(
+        # Membership commerçant (owner)
+        membership_commercant = BoutiqueUserMembership(
             boutique_id=default_btq.id,
-            user_id=admin.id,
+            user_id=commercant.id,
             role="owner",
             assigned_magasin_ids=[main_magasin.id],
             is_active=True,
         )
-        db.add(membership_admin)
+        db.add(membership_commercant)
+
+        # Membership caissier
+        membership_cashier = BoutiqueUserMembership(
+            boutique_id=default_btq.id,
+            user_id=cashier_user.id,
+            role="cashier",
+            assigned_magasin_ids=[main_magasin.id],
+            is_active=True,
+        )
+        db.add(membership_cashier)
+    else:
+        # S'assurer que le propriétaire de la boutique est le commerçant et non l'admin de plateforme
+        if default_btq.owner_user_id == admin.id:
+            default_btq.owner_user_id = commercant.id
+            db.query(BoutiqueUserMembership).filter(
+                BoutiqueUserMembership.boutique_id == default_btq.id,
+                BoutiqueUserMembership.user_id == admin.id
+            ).delete()
+            db.commit()
+
+        # S'assurer que le commercant a son membership
+        existing_comm_m = db.query(BoutiqueUserMembership).filter(
+            BoutiqueUserMembership.boutique_id == default_btq.id,
+            BoutiqueUserMembership.user_id == commercant.id
+        ).first()
+        if not existing_comm_m:
+            first_mag = db.query(Magasin).filter(Magasin.boutique_id == default_btq.id).first()
+            db.add(BoutiqueUserMembership(
+                boutique_id=default_btq.id,
+                user_id=commercant.id,
+                role="owner",
+                assigned_magasin_ids=[first_mag.id] if first_mag else [],
+                is_active=True,
+            ))
+            db.commit()
 
         # Abonnement initial Pro en période d'essai
         pro_plan = db.query(SaasPlan).filter(SaasPlan.code == "pro").first()
