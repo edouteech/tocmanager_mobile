@@ -28,10 +28,10 @@ jobs:
 
       - name: Libérer de l'espace disque sur le runner
         run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/share/boost
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /usr/local/.ghc
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /usr/local/share/boost || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/local/.ghc || true
 
       - name: Configuration de Java 17
         uses: actions/setup-java@v4
@@ -59,7 +59,20 @@ jobs:
 
       - name: Préparer l'APK pour l'export
         run: |
-          cp mobile/build/app/outputs/flutter-apk/app-release.apk tocmanager.apk
+          if [ -f mobile/build/app/outputs/flutter-apk/app-release.apk ]; then
+            cp mobile/build/app/outputs/flutter-apk/app-release.apk tocmanager.apk
+          elif [ -f build/app/outputs/flutter-apk/app-release.apk ]; then
+            cp build/app/outputs/flutter-apk/app-release.apk tocmanager.apk
+          else
+            echo "Recherche de l'APK généré..."
+            APK_PATH=$(find . -name "*release*.apk" -type f | head -n 1)
+            if [ -n "$APK_PATH" ]; then
+              cp "$APK_PATH" tocmanager.apk
+            else
+              echo "ERREUR: Aucun APK trouvé !"
+              exit 1
+            fi
+          fi
           ls -lh tocmanager.apk
 
       - name: Sauvegarder l'APK dans les artefacts GitHub Actions
@@ -75,6 +88,7 @@ jobs:
           pip install google-api-python-client google-auth --break-system-packages 2>/dev/null || pip install google-api-python-client google-auth
 
       - name: Uploader l'APK sur Google Drive
+        continue-on-error: true
         env:
           GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
           GDRIVE_FOLDER_ID: "12WVpbRWejBpp3ckRn7i_QhlWKBCSpGkB"
