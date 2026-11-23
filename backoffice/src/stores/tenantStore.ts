@@ -45,6 +45,7 @@ interface TenantState {
   selectMagasin: (magasin: Magasin | null) => void;
   dismissMagasinPrompt: () => void;
   fetchPlanStatus: () => Promise<void>;
+  resetTenant: () => void;
   openUpgradeModal: (data?: {
     title?: string;
     message?: string;
@@ -192,6 +193,21 @@ export const useTenantStore = create<TenantState>((set, get) => ({
     } catch (e) {
       console.error('Error fetching plan status:', e);
     }
+  },
+
+  resetTenant: () => {
+    set({
+      boutiques: [],
+      currentBoutique: null,
+      magasins: [],
+      currentMagasin: null,
+      isConsolidatedView: false,
+      showMagasinPrompt: false,
+      currentPlan: null,
+      isLoading: false,
+      upgradeModalOpen: false,
+      upgradeModalData: null,
+    });
   },
 }));
 

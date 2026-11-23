@@ -24,11 +24,14 @@ import { FilterPeriodChips, FilterChipItem, SortOption } from '../../components/
 import { ViewToggle, ViewMode } from '../../components/common/ViewToggle';
 import { ProductCard } from './ProductCard';
 import { ProductMagasinAvailabilityPanel } from './ProductMagasinAvailabilityPanel';
+import { useAuthStore } from '../../stores/authStore';
 import { useTenantContextKey } from '../../stores/tenantStore';
 
 export const ProductsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { tableClasses } = useDensity();
+  const user = useAuthStore((s) => s.user);
+  const canManageProducts = user?.role !== 'cashier';
   const [boutiqueKey, magasinKey] = useTenantContextKey();
   const [searchTerm, setSearchTerm] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -315,13 +318,15 @@ export const ProductsPage: React.FC = () => {
             <span className="hidden sm:inline">Excel</span>
           </button>
 
-          <button
-            onClick={openCreateDrawer}
-            className="btn-toc btn-primary flex items-center gap-2 py-2 px-3.5 text-xs font-bold shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Nouvel Article</span>
-          </button>
+          {canManageProducts && (
+            <button
+              onClick={openCreateDrawer}
+              className="btn-toc btn-primary flex items-center gap-2 py-2 px-3.5 text-xs font-bold shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Nouvel Article</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -405,6 +410,7 @@ export const ProductsPage: React.FC = () => {
                 key={p.sync_id}
                 product={p}
                 categoryName={cat?.name}
+                canManage={canManageProducts}
                 onEdit={openEditDrawer}
                 onDelete={(prod) => {
                   if (window.confirm(`Confirmer la suppression de "${prod.name}" ?`)) {
@@ -428,7 +434,7 @@ export const ProductsPage: React.FC = () => {
                   <th className={`${tableClasses.th} text-right`}>Coût Achat</th>
                   <th className={`${tableClasses.th} text-center`}>Stock Actuel</th>
                   <th className={`${tableClasses.th} text-center`}>État Stock</th>
-                  <th className={`${tableClasses.th} text-right`}>Actions</th>
+                  {canManageProducts && <th className={`${tableClasses.th} text-right`}>Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E8EFF5] dark:divide-dark-600/60">
@@ -498,28 +504,30 @@ export const ProductsPage: React.FC = () => {
                           </span>
                         )}
                       </td>
-                      <td className={`${tableClasses.td} text-right`}>
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => openEditDrawer(p)}
-                            className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-dark-700 rounded-xl transition"
-                            title="Modifier"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (window.confirm(`Confirmer la suppression de "${p.name}" ?`)) {
-                                deleteMutation.mutate(p.sync_id);
-                              }
-                            }}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition"
-                            title="Supprimer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
+                      {canManageProducts && (
+                        <td className={`${tableClasses.td} text-right`}>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => openEditDrawer(p)}
+                              className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-dark-700 rounded-xl transition"
+                              title="Modifier"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`Confirmer la suppression de "${p.name}" ?`)) {
+                                  deleteMutation.mutate(p.sync_id);
+                                }
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition"
+                              title="Supprimer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}

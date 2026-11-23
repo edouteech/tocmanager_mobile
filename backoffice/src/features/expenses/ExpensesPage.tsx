@@ -22,6 +22,7 @@ import { exportToExcel } from '../../lib/exportUtils';
 import { SummaryChipsRow, SummaryChipItem } from '../../components/common/SummaryChipsRow';
 import { ViewToggle, ViewMode } from '../../components/common/ViewToggle';
 import { ExpenseCard } from './ExpenseCard';
+import { useAuthStore } from '../../stores/authStore';
 import { useTenantStore, useTenantContextKey } from '../../stores/tenantStore';
 
 const getCategoryBadgeClass = (cat: string) => {
@@ -55,6 +56,8 @@ export const ExpensesPage: React.FC = () => {
   const { tableClasses } = useDensity();
   const [boutiqueKey, magasinKey] = useTenantContextKey();
   const { magasins, currentMagasin, isConsolidatedView } = useTenantStore();
+  const user = useAuthStore((s) => s.user);
+  const canDeleteExpense = user?.role !== 'cashier';
   const [targetMagasinId, setTargetMagasinId] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -400,6 +403,7 @@ export const ExpensesPage: React.FC = () => {
             <ExpenseCard
               key={d.sync_id}
               expense={d}
+              canDelete={canDeleteExpense}
               onDelete={handleDelete}
               badgeClass={getCategoryBadgeClass(d.category || 'Général')}
             />
@@ -419,7 +423,7 @@ export const ExpensesPage: React.FC = () => {
                   <th className={tableClasses.th}>Moyen</th>
                   <th className={`${tableClasses.th} text-right`}>Montant</th>
                   <th className={tableClasses.th}>Opérateur</th>
-                  <th className={`${tableClasses.th} text-right`}>Action</th>
+                  {canDeleteExpense && <th className={`${tableClasses.th} text-right`}>Action</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E8EFF5] dark:divide-dark-600/60">
@@ -463,15 +467,17 @@ export const ExpensesPage: React.FC = () => {
                         <span>{d.user_name || 'Système'}</span>
                       </div>
                     </td>
-                    <td className={`${tableClasses.td} text-right`}>
-                      <button
-                        onClick={() => handleDelete(d)}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition"
-                        title="Annuler le décaissement"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
+                    {canDeleteExpense && (
+                      <td className={`${tableClasses.td} text-right`}>
+                        <button
+                          onClick={() => handleDelete(d)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition"
+                          title="Annuler le décaissement"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

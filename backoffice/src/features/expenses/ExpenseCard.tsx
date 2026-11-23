@@ -12,12 +12,14 @@ import { formatFCFA, formatDateTime } from '../../lib/formatters';
 
 interface ExpenseCardProps {
   expense: Decaissement;
+  canDelete?: boolean;
   onDelete: (expense: Decaissement) => void;
   badgeClass?: string;
 }
 
 export const ExpenseCard: React.FC<ExpenseCardProps> = ({
   expense,
+  canDelete = true,
   onDelete,
   badgeClass = 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-dark-700 dark:text-slate-300 dark:border-dark-600',
 }) => {
@@ -71,14 +73,16 @@ export const ExpenseCard: React.FC<ExpenseCardProps> = ({
           <span>{expense.payment_method || 'Espèces'}</span>
         </span>
 
-        <button
-          type="button"
-          onClick={() => onDelete(expense)}
-          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition"
-          title="Annuler le décaissement"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+        {canDelete && (
+          <button
+            type="button"
+            onClick={() => onDelete(expense)}
+            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition"
+            title="Annuler le décaissement"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
       </div>
     </div>
   );

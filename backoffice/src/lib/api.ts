@@ -1,4 +1,6 @@
 import axios, { AxiosRequestConfig } from 'axios';
+import { queryClient } from './queryClient';
+import { clearTocStorage } from './sessionStorageKeys';
 import {
   AuthResponse,
   DashboardStats,
@@ -68,10 +70,9 @@ const processQueue = (error: unknown, token: string | null) => {
 };
 
 const clearAuthStorageAndRedirect = () => {
-  localStorage.removeItem('toc_access_token');
-  localStorage.removeItem('toc_refresh_token');
-  localStorage.removeItem('toc_user');
-  localStorage.removeItem('toc_pin_locked');
+  clearTocStorage();
+  queryClient.clear();
+  window.dispatchEvent(new CustomEvent('toc:session-cleared'));
   if (window.location.pathname !== '/login') {
     window.location.href = '/login';
   }
