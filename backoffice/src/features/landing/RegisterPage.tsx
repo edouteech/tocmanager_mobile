@@ -40,8 +40,8 @@ export const RegisterPage: React.FC = () => {
       .getPlans()
       .then((data) => {
         setPlans(data);
-        if (data.length > 0 && !data.some((p) => p.code === selectedPlan)) {
-          setSelectedPlan(data[0].code);
+        if (data.length > 0) {
+          setSelectedPlan((prev) => (data.some((p) => p.code === prev) ? prev : data[0].code));
         }
       })
       .catch(() => {

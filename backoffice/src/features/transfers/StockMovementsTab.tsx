@@ -75,7 +75,7 @@ export const StockMovementsTab: React.FC = () => {
           <option value="return">Retour client</option>
         </select>
 
-        <button onClick={openAdjust} className="btn-toc btn-primary text-xs flex items-center gap-1.5">
+        <button onClick={openAdjust} className="btn-primary text-xs flex items-center gap-1.5">
           <ClipboardCheck className="w-4 h-4" />
           <span>Ajustement d'inventaire</span>
         </button>
@@ -182,8 +182,8 @@ export const StockMovementsTab: React.FC = () => {
           </div>
           {adjustErr && <div className="p-2 rounded-xl bg-red-50 text-red-600">{adjustErr}</div>}
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => setAdjustOpen(false)} className="btn-toc btn-secondary text-xs">Annuler</button>
-            <button type="submit" disabled={adjustMutation.isPending} className="btn-toc btn-primary text-xs">
+            <button type="button" onClick={() => setAdjustOpen(false)} className="btn-secondary text-xs">Annuler</button>
+            <button type="submit" disabled={adjustMutation.isPending} className="btn-primary text-xs">
               {adjustMutation.isPending ? 'Validation...' : "Valider l'écart"}
             </button>
           </div>

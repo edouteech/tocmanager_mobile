@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Camera, Image as ImageIcon, Trash2, Upload, AlertCircle } from 'lucide-react';
+import { Camera, Trash2, Upload, AlertCircle } from 'lucide-react';
 
 interface ImageUploadInputProps {
   value?: string | null;
@@ -85,7 +85,7 @@ export const ImageUploadInput: React.FC<ImageUploadInputProps> = ({
       </label>
 
       {value ? (
-        <div className="relative group w-full h-36 rounded-2xl overflow-hidden border-2 border-brand-200 dark:border-brand-500/30 bg-slate-50 dark:bg-dark-700 flex items-center justify-center shadow-xs">
+        <div className="relative group w-full h-36 rounded-2xl overflow-hidden border-2 border-brand-200 dark:border-brand-500/30 bg-slate-50 dark:bg-dark-700 flex items-center justify-center shadow-sm">
           <img
             src={value}
             alt="Aperçu produit"
@@ -125,7 +125,7 @@ export const ImageUploadInput: React.FC<ImageUploadInputProps> = ({
           className={`w-full h-28 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center p-4 cursor-pointer transition-all ${
             isDragging
               ? 'border-brand-500 bg-brand-50/50 dark:bg-brand-950/20 scale-[0.99]'
-              : 'border-slate-300 dark:border-dark-600 hover:border-brand-400 bg-slate-50/60 dark:bg-dark-750'
+              : 'border-slate-300 dark:border-dark-600 hover:border-brand-400 bg-slate-50/60 dark:bg-dark-700'
           }`}
         >
           <div className="w-9 h-9 rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center mb-1.5">

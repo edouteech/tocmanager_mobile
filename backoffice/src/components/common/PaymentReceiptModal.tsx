@@ -3,10 +3,6 @@ import {
   Printer,
   CheckCircle2,
   Share2,
-  Phone,
-  FileCheck,
-  CreditCard,
-  X,
 } from 'lucide-react';
 import { formatFCFA, formatDateTime } from '../../lib/formatters';
 import { useTenantStore } from '../../stores/tenantStore';
@@ -95,7 +91,7 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
         {/* Printable Receipt Card */}
         <div
           id="payment-receipt-print"
-          className="printable-area bg-slate-50 dark:bg-dark-750 p-6 rounded-2xl border border-slate-200 dark:border-dark-600 font-mono text-xs text-slate-700 dark:text-slate-300 space-y-4 shadow-xs"
+          className="printable-area bg-slate-50 dark:bg-dark-700 p-6 rounded-2xl border border-slate-200 dark:border-dark-600 font-mono text-xs text-slate-700 dark:text-slate-300 space-y-4 shadow-sm"
         >
           <div className="text-center border-b border-dashed border-slate-300 dark:border-dark-500 pb-3">
             <h4 className="font-bold text-sm text-slate-900 dark:text-white uppercase tracking-wider font-sans">
@@ -160,7 +156,7 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
         <div className="flex flex-col sm:flex-row gap-2 pt-1">
           <button
             onClick={handlePrint}
-            className="btn-toc btn-outline flex-1 py-2.5 text-xs flex items-center justify-center gap-2"
+            className="btn-secondary flex-1 py-2.5 text-xs flex items-center justify-center gap-2"
           >
             <Printer className="w-4 h-4" />
             <span>Imprimer le reçu</span>
@@ -168,7 +164,7 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
 
           <button
             onClick={handleWhatsAppShare}
-            className="btn-toc bg-emerald-600 hover:bg-emerald-700 text-white flex-1 py-2.5 text-xs font-bold flex items-center justify-center gap-2 shadow-sm"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1 py-2.5 text-xs font-bold flex items-center justify-center gap-2 shadow-sm"
           >
             <Share2 className="w-4 h-4" />
             <span>Partager WhatsApp</span>

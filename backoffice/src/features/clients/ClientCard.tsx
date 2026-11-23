@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  User,
   Phone,
   MapPin,
   DollarSign,
@@ -117,7 +116,7 @@ export const ClientCard: React.FC<ClientCardProps> = ({
           <button
             type="button"
             onClick={() => onPayment(client)}
-            className="btn-toc btn-primary flex items-center gap-1 py-1.5 px-3 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+            className="btn-primary flex items-center gap-1 py-1.5 px-3 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
           >
             <DollarSign className="w-3.5 h-3.5" />
             <span>Régler dette</span>

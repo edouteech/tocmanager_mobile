@@ -133,7 +133,7 @@ export const CashSessionsPage: React.FC = () => {
             <button
               type="submit"
               disabled={closeMutation.isPending}
-              className="btn-toc btn-primary flex items-center justify-center gap-1.5 py-2.5"
+              className="btn-primary flex items-center justify-center gap-1.5 py-2.5"
             >
               <Lock className="w-4 h-4" />
               <span>{closeMutation.isPending ? 'Clôture...' : 'Clôturer la caisse (Z)'}</span>
@@ -181,7 +181,7 @@ export const CashSessionsPage: React.FC = () => {
             <button
               type="submit"
               disabled={openMutation.isPending || !effectiveMagId}
-              className="btn-toc btn-primary flex items-center justify-center gap-1.5 py-2.5"
+              className="btn-primary flex items-center justify-center gap-1.5 py-2.5"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>{openMutation.isPending ? 'Ouverture...' : 'Ouvrir la caisse'}</span>

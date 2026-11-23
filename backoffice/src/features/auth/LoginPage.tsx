@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, User, AlertCircle, ArrowRight, Sun, Moon, Store } from 'lucide-react';
-import { api } from '../../lib/api';
+import { authApi } from '../../lib/api';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -34,13 +34,13 @@ export const LoginPage: React.FC = () => {
     setErrorMessage(null);
 
     try {
-      const response = await api.post('/auth/login', {
+      const authData = await authApi.login({
         username_or_email: usernameOrEmail,
         password: password,
       });
 
-      setAuth(response.data);
-      if (response.data.user.role === 'superadmin') {
+      setAuth(authData);
+      if (authData.user.role === 'superadmin') {
         navigate('/admin', { replace: true });
       } else {
         navigate('/', { replace: true });
