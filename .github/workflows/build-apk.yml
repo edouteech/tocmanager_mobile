@@ -93,7 +93,11 @@ jobs:
           GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
           GDRIVE_FOLDER_ID: "12WVpbRWejBpp3ckRn7i_QhlWKBCSpGkB"
         run: |
-          python3 .github/scripts/upload_to_gdrive.py --folder-id 12WVpbRWejBpp3ckRn7i_QhlWKBCSpGkB tocmanager.apk
+          if [ -z "$GDRIVE_CREDENTIALS" ]; then
+            echo "GDRIVE_CREDENTIALS secret is not configured; skipping Google Drive upload."
+            exit 0
+          fi
+          python3 .github/scripts/upload_to_gdrive.py --skip-if-missing --folder-id 12WVpbRWejBpp3ckRn7i_QhlWKBCSpGkB tocmanager.apk
 
       - name: Publier la Release GitHub (si activé)
         if: github.event.inputs.publish_release == 'true'
