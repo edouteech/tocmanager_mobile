@@ -33,6 +33,14 @@ class Settings(BaseSettings):
     BOOTSTRAP_SUPERADMIN_EMAIL: Optional[str] = None
     BOOTSTRAP_SUPERADMIN_PASSWORD: Optional[str] = None
 
+    FEEXPAY_BASE_URL: str = os.getenv("FEEXPAY_BASE_URL", "https://api-v2.feexpay.me")
+    FEEXPAY_MODE: str = os.getenv("FEEXPAY_MODE", "sandbox")
+    FEEXPAY_API_KEY: Optional[str] = os.getenv("FEEXPAY_API_KEY")
+    FEEXPAY_API_ID: Optional[str] = os.getenv("FEEXPAY_API_ID")
+    FEEXPAY_LIVE_API_KEY: Optional[str] = os.getenv("FEEXPAY_LIVE_API_KEY")
+    FEEXPAY_LIVE_API_ID: Optional[str] = os.getenv("FEEXPAY_LIVE_API_ID")
+    PAYMENT_ENCRYPTION_KEY: Optional[str] = os.getenv("PAYMENT_ENCRYPTION_KEY")
+
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, value: Any) -> List[str]:

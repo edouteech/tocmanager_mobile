@@ -15,6 +15,8 @@ TENANT_RLS_TABLES = (
     "stocks_magasin",
     "product_magasin_availability",
     "audit_logs",
+    "saas_payment_transactions",
+    "saas_invoices",
 )
 
 

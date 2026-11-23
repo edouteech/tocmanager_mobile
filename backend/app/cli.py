@@ -3,6 +3,7 @@ import sys
 from app.core.database import SessionLocal, Base, engine
 from app.core.security import get_password_hash
 from app.models import User
+from app.services.subscription_lifecycle import sync_subscriptions_lifecycle
 
 
 def create_superadmin(username: str, email: str, password: str, full_name: str) -> int:
@@ -54,9 +55,19 @@ def main() -> int:
     sa_parser.add_argument("--password", required=True)
     sa_parser.add_argument("--full-name", default="Super Administrateur Plateforme")
 
+    subparsers.add_parser("sync-subscriptions", help="Advance subscription trial/past_due lifecycle.")
+
     args = parser.parse_args()
     if args.command == "create-superadmin":
         return create_superadmin(args.username, args.email, args.password, args.full_name)
+    if args.command == "sync-subscriptions":
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        try:
+            print(sync_subscriptions_lifecycle(db))
+            return 0
+        finally:
+            db.close()
     return 1
 
 
