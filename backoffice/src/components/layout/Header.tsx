@@ -17,14 +17,16 @@ import {
   ChevronDown,
   Layers,
   Sparkles,
+  Plus,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
-import { useTenantStore } from '../../stores/tenantStore';
+import { useTenantStore, useTenantContextKey } from '../../stores/tenantStore';
 import { useTheme } from '../../context/ThemeContext';
 import { useDensity } from '../../context/DensityContext';
 import { useSidebar } from '../../context/SidebarContext';
 import { api } from '../../lib/api';
 import { DashboardStats } from '../../types';
+import { CreateBoutiqueModal } from '../common/CreateBoutiqueModal';
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -32,6 +34,7 @@ export const Header: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const { density, toggleDensity } = useDensity();
   const { toggle: toggleSidebar } = useSidebar();
+  const [boutiqueKey, magasinKey] = useTenantContextKey();
 
   const {
     boutiques,
@@ -47,16 +50,13 @@ export const Header: React.FC = () => {
 
   const [boutiqueDropdownOpen, setBoutiqueDropdownOpen] = useState(false);
   const [magasinDropdownOpen, setMagasinDropdownOpen] = useState(false);
+  const [createBoutiqueOpen, setCreateBoutiqueOpen] = useState(false);
 
   // Query stats for stock alert notifications
   const { data: stats } = useQuery<DashboardStats>({
-    queryKey: ['header-stock-alerts', currentMagasin?.id, isConsolidatedView],
+    queryKey: ['header-stock-alerts', boutiqueKey, magasinKey],
     queryFn: async () => {
-      const res = await api.get('/reports/dashboard', {
-        params: {
-          magasin_id: isConsolidatedView ? undefined : currentMagasin?.id,
-        },
-      });
+      const res = await api.get('/reports/dashboard');
       return res.data;
     },
     refetchInterval: 30000,
@@ -116,9 +116,25 @@ export const Header: React.FC = () => {
                   }`}
                 >
                   <span className="truncate">{b.name}</span>
-                  {b.id === currentBoutique?.id && <span className="text-[10px] text-indigo-600">● Actif</span>}
+                  {b.id === currentBoutique?.id && <span className="text-[10px] text-indigo-600">Actif</span>}
                 </button>
               ))}
+              {isOwner && (
+                <>
+                  <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBoutiqueDropdownOpen(false);
+                      setCreateBoutiqueOpen(true);
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5 hover:bg-indigo-50/70 dark:hover:bg-indigo-950/40 transition"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Nouvelle Boutique</span>
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -137,7 +153,7 @@ export const Header: React.FC = () => {
             }`}
           >
             <span className="truncate max-w-[110px] sm:max-w-[150px]">
-              {isConsolidatedView ? '🌟 Vue Consolidée' : currentMagasin?.name || 'Magasin'}
+              {isConsolidatedView ? 'Vue Consolidée' : currentMagasin?.name || 'Magasin'}
             </span>
             <ChevronDown className="w-3 h-3 text-slate-400" />
           </button>
@@ -158,8 +174,8 @@ export const Header: React.FC = () => {
                       isConsolidatedView ? 'text-amber-600 font-bold bg-amber-50/50 dark:bg-amber-950/40' : 'text-slate-700 dark:text-slate-200'
                     }`}
                   >
-                    <span>🌟 Tous les Magasins (Vue Consolidée)</span>
-                    {isConsolidatedView && <span className="text-[10px] text-amber-600">● Actif</span>}
+                    <span>Tous les Magasins (Vue Consolidée)</span>
+                    {isConsolidatedView && <span className="text-[10px] text-amber-600">Actif</span>}
                   </button>
                   <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
                 </>
@@ -281,6 +297,11 @@ export const Header: React.FC = () => {
           <LogOut className="w-4 h-4" />
         </button>
       </div>
+
+      <CreateBoutiqueModal
+        isOpen={createBoutiqueOpen}
+        onClose={() => setCreateBoutiqueOpen(false)}
+      />
     </header>
   );
 };

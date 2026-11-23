@@ -25,10 +25,12 @@ import { SummaryChipsRow, SummaryChipItem } from '../../components/common/Summar
 import { FilterPeriodChips, FilterChipItem, SortOption } from '../../components/common/FilterPeriodChips';
 import { ViewToggle, ViewMode } from '../../components/common/ViewToggle';
 import { ClientCard } from './ClientCard';
+import { useTenantContextKey } from '../../stores/tenantStore';
 
 export const ClientsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { tableClasses } = useDensity();
+  const [boutiqueKey, magasinKey] = useTenantContextKey();
   const [search, setSearch] = useState('');
   const [clientFilter, setClientFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('name_asc');
@@ -60,7 +62,7 @@ export const ClientsPage: React.FC = () => {
 
   // Fetch clients
   const { data: clients = [], isLoading } = useQuery({
-    queryKey: ['clients'],
+    queryKey: ['clients', boutiqueKey, magasinKey],
     queryFn: () => clientsApi.getAll(),
   });
 

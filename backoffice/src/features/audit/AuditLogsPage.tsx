@@ -19,6 +19,7 @@ import { api } from '../../lib/api';
 import { formatDateTime } from '../../lib/formatters';
 import { Modal } from '../../components/common/Modal';
 import { useDensity } from '../../context/DensityContext';
+import { useTenantContextKey } from '../../stores/tenantStore';
 
 interface AuditLogItem {
   id: string;
@@ -38,12 +39,13 @@ interface AuditLogResponse {
 
 export const AuditLogsPage: React.FC = () => {
   const { tableClasses } = useDensity();
+  const [boutiqueKey, magasinKey] = useTenantContextKey();
   const [selectedAction, setSelectedAction] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedLog, setSelectedLog] = useState<AuditLogItem | null>(null);
 
   const { data, isLoading, refetch, isFetching } = useQuery<AuditLogResponse>({
-    queryKey: ['audit-logs', selectedAction],
+    queryKey: ['audit-logs', boutiqueKey, magasinKey, selectedAction],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedAction) params.append('action', selectedAction);

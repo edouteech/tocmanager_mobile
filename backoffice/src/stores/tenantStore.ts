@@ -2,16 +2,34 @@ import { create } from 'zustand';
 import { Boutique, Magasin, CurrentPlanStatus } from '../types';
 import { tenantApi } from '../lib/api';
 
+const notifyContextChanged = () => {
+  window.dispatchEvent(new CustomEvent('toc:tenant-context-changed'));
+};
+
+const getCanConsolidate = (boutique: Boutique | null): boolean => {
+  const rawUser = localStorage.getItem('toc_user');
+  if (!rawUser) return false;
+  try {
+    const u = JSON.parse(rawUser);
+    const role = boutique?.user_role || u?.role || '';
+    if (['owner', 'merchant', 'store_admin', 'admin'].includes(role)) return true;
+    const assigned = u?.assigned_magasin_ids || [];
+    return role === 'manager' && assigned.length === 0;
+  } catch {
+    return false;
+  }
+};
+
 interface TenantState {
   boutiques: Boutique[];
   currentBoutique: Boutique | null;
   magasins: Magasin[];
-  currentMagasin: Magasin | null; // null = Consolidated View ("Tous les magasins")
+  currentMagasin: Magasin | null;
   isConsolidatedView: boolean;
+  showMagasinPrompt: boolean;
   currentPlan: CurrentPlanStatus | null;
   isLoading: boolean;
 
-  // Paywall & Upsell Modal
   upgradeModalOpen: boolean;
   upgradeModalData: {
     title?: string;
@@ -25,8 +43,14 @@ interface TenantState {
   selectBoutique: (boutique: Boutique) => Promise<void>;
   fetchMagasins: () => Promise<void>;
   selectMagasin: (magasin: Magasin | null) => void;
+  dismissMagasinPrompt: () => void;
   fetchPlanStatus: () => Promise<void>;
-  openUpgradeModal: (data?: { title?: string; message?: string; featureCode?: string; recommendedPlan?: string }) => void;
+  openUpgradeModal: (data?: {
+    title?: string;
+    message?: string;
+    featureCode?: string;
+    recommendedPlan?: string;
+  }) => void;
   closeUpgradeModal: () => void;
 }
 
@@ -36,6 +60,7 @@ export const useTenantStore = create<TenantState>((set, get) => ({
   magasins: [],
   currentMagasin: null,
   isConsolidatedView: false,
+  showMagasinPrompt: false,
   currentPlan: null,
   isLoading: false,
 
@@ -46,8 +71,9 @@ export const useTenantStore = create<TenantState>((set, get) => ({
     set({
       upgradeModalOpen: true,
       upgradeModalData: data || {
-        title: 'Fonctionnalité Premium',
-        message: 'Cette fonctionnalité nécessite un forfait supérieur. Passez à la formule Pro pour débloquer tout le potentiel de votre commerce.',
+        title: 'Fonctionnalite Premium',
+        message:
+          'Cette fonctionnalite necessite un forfait superieur. Passez au forfait Pro pour debloquer tout le potentiel de votre commerce.',
         recommendedPlan: 'pro',
       },
     });
@@ -86,27 +112,55 @@ export const useTenantStore = create<TenantState>((set, get) => ({
   },
 
   selectBoutique: async (boutique: Boutique) => {
-    set({ currentBoutique: boutique, currentMagasin: null, isConsolidatedView: false });
+    set({
+      currentBoutique: boutique,
+      currentMagasin: null,
+      isConsolidatedView: false,
+      showMagasinPrompt: false,
+    });
     localStorage.setItem('toc_current_boutique_id', boutique.id);
     localStorage.removeItem('toc_current_magasin_id');
+    sessionStorage.removeItem('toc_magasin_prompt_dismissed');
     await get().fetchMagasins();
     await get().fetchPlanStatus();
-    window.location.reload();
+    notifyContextChanged();
   },
 
   fetchMagasins: async () => {
     try {
       const magasins = await tenantApi.getMagasins();
       set({ magasins });
+      const canConsolidate = getCanConsolidate(get().currentBoutique);
       const savedMagId = localStorage.getItem('toc_current_magasin_id');
-      if (savedMagId === 'consolidated') {
-        set({ currentMagasin: null, isConsolidatedView: true });
+
+      if (savedMagId === 'consolidated' && canConsolidate) {
+        set({ currentMagasin: null, isConsolidatedView: true, showMagasinPrompt: false });
+        return;
+      }
+
+      const matched = magasins.find((m) => m.id === savedMagId);
+      if (matched) {
+        set({ currentMagasin: matched, isConsolidatedView: false, showMagasinPrompt: false });
+        return;
+      }
+
+      const promptDismissed = sessionStorage.getItem('toc_magasin_prompt_dismissed') === '1';
+      if (magasins.length > 1 && canConsolidate) {
+        set({
+          currentMagasin: null,
+          isConsolidatedView: true,
+          showMagasinPrompt: !promptDismissed,
+        });
+        localStorage.setItem('toc_current_magasin_id', 'consolidated');
+        return;
+      }
+
+      const first = magasins[0] || null;
+      set({ currentMagasin: first, isConsolidatedView: false, showMagasinPrompt: false });
+      if (first) {
+        localStorage.setItem('toc_current_magasin_id', first.id);
       } else {
-        const active = magasins.find((m) => m.id === savedMagId) || magasins[0] || null;
-        set({ currentMagasin: active, isConsolidatedView: false });
-        if (active) {
-          localStorage.setItem('toc_current_magasin_id', active.id);
-        }
+        localStorage.removeItem('toc_current_magasin_id');
       }
     } catch (e) {
       console.error('Error fetching magasins:', e);
@@ -114,14 +168,21 @@ export const useTenantStore = create<TenantState>((set, get) => ({
   },
 
   selectMagasin: (magasin: Magasin | null) => {
+    sessionStorage.setItem('toc_magasin_prompt_dismissed', '1');
     if (magasin === null) {
-      // Consolidated view
-      set({ currentMagasin: null, isConsolidatedView: true });
+      if (!getCanConsolidate(get().currentBoutique)) return;
+      set({ currentMagasin: null, isConsolidatedView: true, showMagasinPrompt: false });
       localStorage.setItem('toc_current_magasin_id', 'consolidated');
     } else {
-      set({ currentMagasin: magasin, isConsolidatedView: false });
+      set({ currentMagasin: magasin, isConsolidatedView: false, showMagasinPrompt: false });
       localStorage.setItem('toc_current_magasin_id', magasin.id);
     }
+    notifyContextChanged();
+  },
+
+  dismissMagasinPrompt: () => {
+    sessionStorage.setItem('toc_magasin_prompt_dismissed', '1');
+    set({ showMagasinPrompt: false });
   },
 
   fetchPlanStatus: async () => {
@@ -133,3 +194,10 @@ export const useTenantStore = create<TenantState>((set, get) => ({
     }
   },
 }));
+
+export const useTenantContextKey = (): [string, string] => {
+  const boutiqueId = useTenantStore((s) => s.currentBoutique?.id || 'default');
+  const magasinId = useTenantStore((s) => s.currentMagasin?.id);
+  const isConsolidated = useTenantStore((s) => s.isConsolidatedView);
+  return [boutiqueId, isConsolidated ? 'consolidated' : magasinId || 'none'];
+};

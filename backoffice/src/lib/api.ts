@@ -23,6 +23,7 @@ import {
   CheckoutResponse,
   TransactionStatusResponse,
   SaasInvoice,
+  ProductMagasinItem,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -45,7 +46,12 @@ api.interceptors.request.use((config) => {
     config.headers['X-Boutique-Id'] = boutiqueId;
   }
   const magasinId = localStorage.getItem('toc_current_magasin_id');
-  if (magasinId && config.headers) {
+  if (
+    magasinId &&
+    magasinId !== 'consolidated' &&
+    magasinId !== 'all' &&
+    config.headers
+  ) {
     config.headers['X-Magasin-Id'] = magasinId;
   }
   return config;
@@ -102,11 +108,35 @@ export const dashboardApi = {
 };
 
 export const productsApi = {
-  getAll: (params?: { q?: string; category_id?: string; magasin_id?: string }) =>
-    api.get<Product[]>('/products', { params }).then((r) => r.data),
+  getAll: (params?: { search?: string; category_id?: string; only_available?: boolean; magasin_id?: string }) =>
+    api
+      .get<Product[]>('/products', {
+        params: {
+          search: params?.search,
+          category_id: params?.category_id,
+          only_available: params?.only_available,
+        },
+        headers: params?.magasin_id ? { 'X-Magasin-Id': params.magasin_id } : undefined,
+      })
+      .then((r) => r.data),
   create: (data: Partial<Product>) => api.post<Product>('/products', data).then((r) => r.data),
   update: (id: string, data: Partial<Product>) => api.put<Product>(`/products/${id}`, data).then((r) => r.data),
   delete: (id: string) => api.delete(`/products/${id}`).then((r) => r.data),
+  getMagasins: (syncId: string) =>
+    api.get<ProductMagasinItem[]>(`/products/${syncId}/magasins`).then((r) => r.data),
+  updateMagasinConfig: (
+    syncId: string,
+    magasinId: string,
+    payload: {
+      is_available?: boolean;
+      custom_price?: number | null;
+      clear_custom_price?: boolean;
+      min_stock?: number;
+    }
+  ) =>
+    api
+      .put<ProductMagasinItem>(`/products/${syncId}/magasins/${magasinId}`, payload)
+      .then((r) => r.data),
 };
 
 export const categoriesApi = {
@@ -234,8 +264,13 @@ export const billingApi = {
 // Tenant & Multi-Magasins API
 export const tenantApi = {
   getBoutiques: () => api.get<Boutique[]>('/tenant/boutiques').then((r) => r.data),
-  createBoutique: (data: { name: string; currency?: string; country?: string; initial_magasin_name?: string }) =>
-    api.post<Boutique>('/tenant/boutiques', data).then((r) => r.data),
+  createBoutique: (data: {
+    name: string;
+    company_name?: string;
+    currency?: string;
+    country?: string;
+    initial_magasin_name?: string;
+  }) => api.post<Boutique>('/tenant/boutiques', data).then((r) => r.data),
   getMagasins: () => api.get<Magasin[]>('/tenant/magasins').then((r) => r.data),
   createMagasin: (data: { name: string; code?: string; address?: string; phone?: string; is_warehouse?: boolean }) =>
     api.post<Magasin>('/tenant/magasins', data).then((r) => r.data),

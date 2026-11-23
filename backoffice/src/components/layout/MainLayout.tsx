@@ -1,20 +1,31 @@
 import React, { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useSidebar } from '../../context/SidebarContext';
 import { useTenantStore } from '../../stores/tenantStore';
 import { PinLockModal } from '../common/PinLockModal';
 import { UpgradePlanModal } from '../common/UpgradePlanModal';
+import { SelectMagasinPromptModal } from '../common/SelectMagasinPromptModal';
 
 export const MainLayout: React.FC = () => {
   const { isOpen, close } = useSidebar();
+  const queryClient = useQueryClient();
   const initTenant = useTenantStore((s) => s.initTenant);
   const openUpgradeModal = useTenantStore((s) => s.openUpgradeModal);
 
   useEffect(() => {
     initTenant();
   }, [initTenant]);
+
+  useEffect(() => {
+    const onTenantChanged = () => {
+      queryClient.invalidateQueries();
+    };
+    window.addEventListener('toc:tenant-context-changed', onTenantChanged);
+    return () => window.removeEventListener('toc:tenant-context-changed', onTenantChanged);
+  }, [queryClient]);
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -62,6 +73,9 @@ export const MainLayout: React.FC = () => {
 
       {/* SaaS Feature Gating & Paywall Modal */}
       <UpgradePlanModal />
+
+      {/* Multi-Magasin Selection Prompt */}
+      <SelectMagasinPromptModal />
     </div>
   );
 };

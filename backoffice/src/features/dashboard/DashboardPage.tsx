@@ -30,11 +30,13 @@ import { formatFCFA, formatDateTime } from '../../lib/formatters';
 import { DashboardStats, Vente, Category } from '../../types';
 import { useDensity } from '../../context/DensityContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTenantContextKey } from '../../stores/tenantStore';
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { tableClasses } = useDensity();
   const { theme } = useTheme();
+  const [boutiqueKey, magasinKey] = useTenantContextKey();
 
   // Query dashboard statistics
   const {
@@ -43,7 +45,7 @@ export const DashboardPage: React.FC = () => {
     refetch: refetchStats,
     isFetching: statsFetching,
   } = useQuery<DashboardStats>({
-    queryKey: ['dashboard-stats'],
+    queryKey: ['dashboard-stats', boutiqueKey, magasinKey],
     queryFn: async () => {
       const res = await api.get('/reports/dashboard');
       return res.data;
@@ -53,13 +55,13 @@ export const DashboardPage: React.FC = () => {
 
   // Query categories for summary pill
   const { data: categories = [] } = useQuery<Category[]>({
-    queryKey: ['categories'],
+    queryKey: ['categories', boutiqueKey, magasinKey],
     queryFn: () => categoriesApi.getAll(),
   });
 
   // Query recent ventes
   const { data: recentVentes, isLoading: ventesLoading } = useQuery<Vente[]>({
-    queryKey: ['recent-ventes'],
+    queryKey: ['recent-ventes', boutiqueKey, magasinKey],
     queryFn: async () => {
       const res = await api.get('/ventes?limit=7');
       return res.data;
