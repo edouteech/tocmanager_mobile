@@ -5,6 +5,7 @@ from app.core.database import engine, Base
 from app.core.rls import apply_postgresql_rls
 from app.core.security import get_password_hash
 from app.models import BoutiqueUserMembership, User
+from app.services.payments.feexpay_catalog import seed_default_payment_providers
 from app.services.seed_plans import seed_saas_plans
 from app.services.seed_demo import seed_demo_data
 
@@ -105,6 +106,7 @@ def init_db(db: Session) -> None:
     apply_postgresql_rls(engine)
     _migrate_legacy_admin_roles(db)
     seed_saas_plans(db)
+    seed_default_payment_providers(db)
 
     if settings.ENVIRONMENT.strip().lower() == "production":
         bootstrap_production_superadmin(db)

@@ -15,6 +15,7 @@ from app.models.saas import (
 from app.models.catalog import Category, Product, Client, Supplier
 from app.models.transactions import Vente, VenteItem, Approvisionnement, Decaissement
 from app.models.system import AuditLog, SyncEvent, StoreSetting
+from app.models.billing import PaymentProvider, SaasPaymentTransaction, SaasInvoice
 
 __all__ = [
     "generate_uuid",
@@ -41,4 +42,7 @@ __all__ = [
     "AuditLog",
     "SyncEvent",
     "StoreSetting",
+    "PaymentProvider",
+    "SaasPaymentTransaction",
+    "SaasInvoice",
 ]
