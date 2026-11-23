@@ -135,11 +135,11 @@ export const Sidebar: React.FC = () => {
       {/* Brand logo header */}
       <div className="h-16 px-5 border-b border-[#E8EFF5] dark:border-dark-600 flex items-center justify-between shrink-0">
         <Link to="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-800 flex items-center justify-center text-white shadow-sm font-black text-sm">
+          <div className="w-8 h-8 rounded-xl toc-gradient flex items-center justify-center text-white shadow-sm font-black text-sm">
             TM
           </div>
           <span className="font-bold text-[#1C2B3A] dark:text-white text-base tracking-tight">
-            Toc<span className="text-indigo-600">Manager</span>
+            Toc<span className="text-[#29ABE2]">Manager</span>
           </span>
         </Link>
       </div>
@@ -171,7 +171,7 @@ export const Sidebar: React.FC = () => {
       {/* Plan Card at bottom */}
       <div className="p-3 border-t border-[#E8EFF5] dark:border-dark-600 space-y-2">
         {currentPlan && (
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs space-y-2">
+          <div className="p-3 rounded-xl bg-[#F0F9FE] dark:bg-dark-700 border border-[#E8EFF5] dark:border-dark-600 text-xs space-y-2">
             <div className="flex items-center justify-between">
               <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1">
                 <Sparkles className="w-3 h-3 text-amber-500" />
