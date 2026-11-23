@@ -16,8 +16,8 @@ from app.api.deps import get_current_user
 router = APIRouter()
 
 def require_superadmin(user: User = Depends(get_current_user)):
-    """Contrôle d'accès strict : réservé au rôle superadmin ou admin système."""
-    if user.role not in ["superadmin", "admin"]:
+    """Strict access control reserved exclusively for platform superadmins."""
+    if user.role != "superadmin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Accès réservé aux super-administrateurs de la plateforme."

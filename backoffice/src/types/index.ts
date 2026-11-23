@@ -3,7 +3,7 @@ export interface UserBrief {
   username: string;
   email?: string | null;
   full_name?: string | null;
-  role: 'superadmin' | 'merchant' | 'admin' | 'manager' | 'cashier' | string;
+  role: 'superadmin' | 'owner' | 'merchant' | 'store_admin' | 'admin' | 'manager' | 'cashier' | string;
   permissions: string[];
   has_pin: boolean;
   is_active?: boolean;

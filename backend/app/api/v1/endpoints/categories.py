@@ -55,11 +55,11 @@ def list_categories(
 @router.post("", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
 def create_category(
     data: CategoryCreate,
-    ctx: TenantContext = Depends(deps.get_tenant_context),
-    current_user: User = Depends(deps.require_role(["admin", "manager"])),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ) -> Any:
     """Crée une nouvelle catégorie d'articles dans la boutique active."""
+    current_user = ctx.user
     now = datetime.now(timezone.utc)
     category = Category(
         boutique_id=ctx.boutique.id,
@@ -102,11 +102,11 @@ def create_category(
 def update_category(
     sync_id: str,
     data: CategoryUpdate,
-    ctx: TenantContext = Depends(deps.get_tenant_context),
-    current_user: User = Depends(deps.require_role(["admin", "manager"])),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ) -> Any:
     """Modifie une catégorie existante de la boutique."""
+    current_user = ctx.user
     cat = (
         db.query(Category)
         .filter(
@@ -165,11 +165,11 @@ def update_category(
 @router.delete("/{sync_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 def delete_category(
     sync_id: str,
-    ctx: TenantContext = Depends(deps.get_tenant_context),
-    current_user: User = Depends(deps.require_role(["admin", "manager"])),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
     """Suppression logique d'une catégorie de la boutique."""
+    current_user = ctx.user
     cat = (
         db.query(Category)
         .filter(

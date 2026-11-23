@@ -4,7 +4,7 @@ from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.rls import apply_postgresql_rls
 from app.core.security import get_password_hash
-from app.models import User
+from app.models import BoutiqueUserMembership, User
 from app.services.seed_plans import seed_saas_plans
 from app.services.seed_demo import seed_demo_data
 
@@ -79,10 +79,24 @@ def bootstrap_production_superadmin(db: Session) -> None:
     db.commit()
 
 
+def _migrate_legacy_admin_roles(db: Session) -> None:
+    """Migrate ambiguous legacy 'admin' user/membership roles to 'store_admin'."""
+    updated = False
+    for user in db.query(User).filter(User.role == "admin").all():
+        user.role = "store_admin"
+        updated = True
+    for membership in db.query(BoutiqueUserMembership).filter(BoutiqueUserMembership.role == "admin").all():
+        membership.role = "store_admin"
+        updated = True
+    if updated:
+        db.commit()
+
+
 def init_db(db: Session) -> None:
     _migrate_columns()
     Base.metadata.create_all(bind=engine)
     apply_postgresql_rls(engine)
+    _migrate_legacy_admin_roles(db)
     seed_saas_plans(db)
 
     if settings.ENVIRONMENT.strip().lower() == "production":

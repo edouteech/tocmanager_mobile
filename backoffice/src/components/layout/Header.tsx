@@ -67,7 +67,7 @@ export const Header: React.FC = () => {
   const isOwner =
     user?.role === 'owner' ||
     user?.role === 'merchant' ||
-    user?.role === 'superadmin' ||
+    user?.role === 'store_admin' ||
     user?.role === 'admin';
 
   return (

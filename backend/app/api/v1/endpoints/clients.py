@@ -100,10 +100,10 @@ def get_client(
 def update_client(
     sync_id: str,
     client_in: ClientUpdate,
-    ctx: TenantContext = Depends(deps.get_tenant_context),
-    current_user: User = Depends(deps.require_role(["admin", "manager"])),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
+    current_user = ctx.user
     client = (
         db.query(Client)
         .filter(
@@ -141,10 +141,10 @@ def update_client(
 @router.delete("/{sync_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 def delete_client(
     sync_id: str,
-    ctx: TenantContext = Depends(deps.get_tenant_context),
-    current_user: User = Depends(deps.require_role(["admin", "manager"])),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
+    current_user = ctx.user
     client = (
         db.query(Client)
         .filter(

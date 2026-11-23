@@ -4,6 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.api import deps
 from app.core.database import get_db
+from app.core.permissions import get_permissions_for_role
 from app.core.rate_limit import limiter
 from app.core.security import verify_password, get_password_hash, hash_pin
 from app.models import User, AuditLog
@@ -29,21 +30,13 @@ router = APIRouter()
 
 
 def _user_to_brief(user: User) -> UserBrief:
-    perms = user.permissions or []
-    if user.role == "admin":
-        perms = ["*"]
-    elif user.role == "manager":
-        perms = ["sales.*", "products.*", "categories.*", "clients.*", "suppliers.*", "reports.view"]
-    elif user.role == "cashier":
-        perms = ["sales.create", "sales.view_own", "products.view_price", "clients.create", "clients.view"]
-
     return UserBrief(
         id=user.id,
         username=user.username,
         email=user.email,
         full_name=user.full_name,
         role=user.role,
-        permissions=perms,
+        permissions=get_permissions_for_role(user.role, user.permissions),
         has_pin=bool(user.pin_hash),
     )
 
