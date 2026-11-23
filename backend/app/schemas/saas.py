@@ -153,6 +153,39 @@ class ProvisionTenantRequest(BaseModel):
     phone: Optional[str] = None
     magasin_name: str = "Magasin Principal"
     plan_code: str = "free" # free, pro, enterprise
+    billing_cycle: str = "monthly"
+
+
+class PublicContactRequest(BaseModel):
+    full_name: str
+    email: str
+    company: Optional[str] = None
+    phone: Optional[str] = None
+    message: str
+
+    @field_validator("full_name")
+    @classmethod
+    def check_full_name(cls, v: str) -> str:
+        cleaned = v.strip()
+        if len(cleaned) < 2:
+            raise ValueError("Le nom complet doit contenir au moins 2 caractères.")
+        return cleaned
+
+    @field_validator("email")
+    @classmethod
+    def check_email(cls, v: str) -> str:
+        cleaned = v.strip()
+        if "@" not in cleaned or "." not in cleaned.split("@")[-1]:
+            raise ValueError("Adresse email invalide.")
+        return cleaned
+
+    @field_validator("message")
+    @classmethod
+    def check_message(cls, v: str) -> str:
+        cleaned = v.strip()
+        if len(cleaned) < 10:
+            raise ValueError("Le message doit contenir au moins 10 caractères.")
+        return cleaned
 
 class CurrentPlanStatusOut(BaseModel):
     plan_id: str

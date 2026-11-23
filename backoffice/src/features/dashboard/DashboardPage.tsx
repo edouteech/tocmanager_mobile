@@ -31,6 +31,7 @@ import { DashboardStats, Vente, Category } from '../../types';
 import { useDensity } from '../../context/DensityContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useTenantContextKey } from '../../stores/tenantStore';
+import { WelcomeBanner } from './WelcomeBanner';
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -93,6 +94,8 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto select-none">
+      <WelcomeBanner />
+
       {/* 1. Greeting Banner signature Mobile (Dégradé #1A8FBF -> #29ABE2) */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1A8FBF] to-[#29ABE2] p-6 sm:p-8 text-white shadow-soft">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">

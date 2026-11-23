@@ -1,11 +1,12 @@
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 import uuid
 from fastapi import HTTPException, status
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.permissions import get_permissions_for_role
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -16,7 +17,21 @@ from app.core.security import (
     verify_pin,
 )
 from app.models import AuditLog, RefreshToken, User
+from app.schemas.auth import UserBrief
 from app.services.tenant_context_service import resolve_audit_boutique_id
+
+
+def user_to_brief(user: User) -> UserBrief:
+    """Serialize a User ORM model into a permission-enriched UserBrief."""
+    return UserBrief(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        full_name=user.full_name,
+        role=user.role,
+        permissions=get_permissions_for_role(user.role, user.permissions),
+        has_pin=bool(user.pin_hash),
+    )
 
 MAX_PIN_ATTEMPTS = 5
 PIN_LOCK_MINUTES = 15
@@ -55,6 +70,7 @@ def issue_token_pair(
     user: User,
     device_id: Optional[str] = None,
     family_id: Optional[str] = None,
+    access_data: Optional[Dict[str, Any]] = None,
 ) -> Tuple[str, str, RefreshToken]:
     """Émet une paire JWT access + refresh persistant en base."""
     now = datetime.now(timezone.utc)
@@ -73,7 +89,7 @@ def issue_token_pair(
     db.add(rt_record)
     db.flush()
 
-    access_token = create_access_token(user.id)
+    access_token = create_access_token(user.id, data=access_data)
     refresh_token = create_refresh_token(user.id, jti=jti)
     return access_token, refresh_token, rt_record
 
