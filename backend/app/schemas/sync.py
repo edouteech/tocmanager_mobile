@@ -13,6 +13,7 @@ class VenteItemSync(BaseModel):
 
 class VenteSync(BaseModel):
     sync_id: str
+    magasin_id: Optional[str] = None
     ticket_number: str
     client_sync_id: Optional[str] = None
     client_name: Optional[str] = "Occasionnel"
@@ -22,6 +23,7 @@ class VenteSync(BaseModel):
     paid_amount: float
     discount_amount: float = 0.0
     payment_method: str = "Espèces"
+    status: str = "completed"
     notes: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -42,6 +44,9 @@ class ProductSync(BaseModel):
     is_active: bool = True
     updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
+    custom_price: Optional[float] = None
+    is_available: bool = True
+    magasin_id: Optional[str] = None
 
 class CategorySync(BaseModel):
     sync_id: str
@@ -81,6 +86,7 @@ class SupplierSync(BaseModel):
 
 class DecaissementSync(BaseModel):
     sync_id: str
+    magasin_id: Optional[str] = None
     title: str
     amount: float
     category: Optional[str] = None
@@ -95,6 +101,7 @@ class DecaissementSync(BaseModel):
 
 class ApprovisionnementSync(BaseModel):
     sync_id: str
+    magasin_id: Optional[str] = None
     supplier_sync_id: Optional[str] = None
     supplier_name: Optional[str] = None
     product_sync_id: Optional[str] = None

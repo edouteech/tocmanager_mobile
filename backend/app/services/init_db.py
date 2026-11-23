@@ -8,6 +8,7 @@ from app.models import BoutiqueUserMembership, User
 from app.services.payments.feexpay_catalog import seed_default_payment_providers
 from app.services.seed_plans import seed_saas_plans
 from app.services.seed_demo import seed_demo_data
+from app.services.stock_service import backfill_product_stocks_to_main_magasin
 
 
 def _migrate_columns() -> None:
@@ -107,6 +108,7 @@ def init_db(db: Session) -> None:
     _migrate_legacy_admin_roles(db)
     seed_saas_plans(db)
     seed_default_payment_providers(db)
+    backfill_product_stocks_to_main_magasin(db)
 
     if settings.ENVIRONMENT.strip().lower() == "production":
         bootstrap_production_superadmin(db)

@@ -74,6 +74,7 @@ class SupplierResponse(SupplierBase):
 
 # --- Approvisionnements / Stock In ---
 class ApprovisionnementCreate(BaseModel):
+    magasin_id: Optional[str] = None
     supplier_sync_id: Optional[str] = None
     supplier_name: Optional[str] = None
     product_sync_id: str
@@ -84,8 +85,10 @@ class ApprovisionnementCreate(BaseModel):
     notes: Optional[str] = None
     date: Optional[datetime] = None
 
+
 class ApprovisionnementResponse(BaseModel):
     sync_id: str
+    magasin_id: Optional[str] = None
     supplier_sync_id: Optional[str] = None
     supplier_name: Optional[str] = None
     product_sync_id: Optional[str] = None
@@ -102,8 +105,10 @@ class ApprovisionnementResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 # --- Decaissements / Expenses ---
 class DecaissementCreate(BaseModel):
+    magasin_id: Optional[str] = None
     title: str
     amount: float = Field(..., gt=0)
     category: Optional[str] = "Général"
@@ -112,8 +117,10 @@ class DecaissementCreate(BaseModel):
     notes: Optional[str] = None
     date: Optional[datetime] = None
 
+
 class DecaissementResponse(BaseModel):
     sync_id: str
+    magasin_id: Optional[str] = None
     title: str
     amount: float
     category: Optional[str] = None
@@ -199,16 +206,38 @@ class FinancialReportResponse(BaseModel):
 class VenteItemCreate(BaseModel):
     product_sync_id: str
     quantity: float = Field(..., gt=0)
-    unit_price: float = Field(..., ge=0)
+    unit_price: Optional[float] = Field(None, ge=0)
     cost_price: Optional[float] = None
     product_name: Optional[str] = None
 
+
 class VenteCreate(BaseModel):
+    magasin_id: Optional[str] = None
     client_sync_id: Optional[str] = None
     client_name: Optional[str] = None
     items: List[VenteItemCreate]
-    discount_amount: float = 0.0
+    discount_amount: float = Field(0.0, ge=0)
     paid_amount: float = Field(..., ge=0)
     payment_method: str = "Espèces"
     notes: Optional[str] = None
+
+
+class ProductMagasinItemOut(BaseModel):
+    magasin_id: str
+    magasin_name: str
+    magasin_code: Optional[str] = None
+    is_warehouse: bool
+    is_active: bool
+    is_available: bool
+    custom_price: Optional[float] = None
+    effective_price: float
+    quantity: float
+    min_stock: float
+
+
+class ProductMagasinConfigUpdate(BaseModel):
+    is_available: Optional[bool] = None
+    custom_price: Optional[float] = Field(None, ge=0)
+    clear_custom_price: bool = False
+    min_stock: Optional[float] = Field(None, ge=0)
 
