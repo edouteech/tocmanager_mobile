@@ -22,6 +22,7 @@ import { productsApi, clientsApi, categoriesApi, ventesApi } from '../../lib/api
 import { formatFCFA, formatDateTime } from '../../lib/formatters';
 import { Product, Client, Vente, VenteCreate } from '../../types';
 import { Modal } from '../../components/common/Modal';
+import { useEntitlement } from '../../hooks/useEntitlement';
 
 interface CartItem {
   product: Product;
@@ -41,6 +42,8 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
   onSaleCreated,
 }) => {
   const queryClient = useQueryClient();
+  const { hasFeature, openUpgradeForFeature } = useEntitlement();
+  const canCreditSales = hasFeature('module_credit_sales');
 
   // Search & Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -561,7 +564,17 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
                   </label>
                   <select
                     value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    onChange={(e) => {
+                      if (e.target.value === 'À crédit' && !canCreditSales) {
+                        openUpgradeForFeature(
+                          'module_credit_sales',
+                          'Ventes a credit verrouillees',
+                          'Les ventes a credit et le suivi des creances clients necessitent le forfait Pro.'
+                        );
+                        return;
+                      }
+                      setPaymentMethod(e.target.value);
+                    }}
                     className="input-toc text-xs py-1.5"
                   >
                     <option value="Espèces">Espèces</option>
@@ -569,7 +582,7 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
                     <option value="Orange Money">Orange Money</option>
                     <option value="Moov Money">Moov Money</option>
                     <option value="Carte Bancaire">Carte Bancaire</option>
-                    <option value="À crédit">À crédit</option>
+                    <option value="À crédit">{canCreditSales ? 'À crédit' : 'À crédit (PRO)'}</option>
                   </select>
                 </div>
 

@@ -1,139 +1,168 @@
 import React, { useState } from 'react';
-import { X, Sparkles, CheckCircle2, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { X, Sparkles, CheckCircle2, ArrowRight, ShieldCheck, Zap, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../stores/authStore';
 import { useTenantStore } from '../../stores/tenantStore';
-import { tenantApi } from '../../lib/api';
+import { saasApi, tenantApi } from '../../lib/api';
+import { FeexPayCheckoutWidget } from '../../features/subscription/FeexPayCheckoutWidget';
 
 export const UpgradePlanModal: React.FC = () => {
-  const { upgradeModalOpen, upgradeModalData, closeUpgradeModal, fetchPlanStatus } = useTenantStore();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const user = useAuthStore((s) => s.user);
+  const { currentPlan, upgradeModalOpen, upgradeModalData, closeUpgradeModal, fetchPlanStatus } =
+    useTenantStore();
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const { data: plans = [] } = useQuery({
+    queryKey: ['saas-plans'],
+    queryFn: saasApi.getPlans,
+    enabled: upgradeModalOpen,
+  });
 
   if (!upgradeModalOpen) return null;
 
+  const isOwner = user?.role === 'owner' || user?.role === 'merchant';
+  const defaultCode = currentPlan?.plan_code === 'pro' ? 'enterprise' : 'pro';
+  const requestedCode = upgradeModalData?.recommendedPlan || defaultCode;
+  const targetPlan =
+    plans.find((p) => p.code === requestedCode && p.code !== 'free') ||
+    plans.find((p) => p.code === defaultCode) ||
+    plans.find((p) => p.code !== 'free') ||
+    null;
+
+  const canActivateTrial = Boolean(
+    targetPlan && targetPlan.trial_period_days > 0 && !currentPlan?.has_used_trial
+  );
+  const visibleFeatures = (targetPlan?.features || [])
+    .filter((f) => f.show_on_pricing !== false && (f.value_type !== 'boolean' || f.boolean_value))
+    .slice(0, 6);
+
+  const handleSuccessRefresh = async (message: string) => {
+    setSuccessMsg(message);
+    await fetchPlanStatus();
+    await queryClient.invalidateQueries();
+    window.setTimeout(() => {
+      setSuccessMsg(null);
+      closeUpgradeModal();
+    }, 1200);
+  };
+
   const handleStartTrial = async () => {
+    if (!targetPlan) return;
     setLoading(true);
+    setErrorMsg(null);
     try {
-      const res = await tenantApi.upgradePlan('pro');
-      setSuccessMsg(res.message || 'Passage au Plan Pro réussi !');
-      await fetchPlanStatus();
-      setTimeout(() => {
-        setSuccessMsg(null);
-        closeUpgradeModal();
-        window.location.reload();
-      }, 1500);
-    } catch (e: any) {
-      alert(e.response?.data?.detail || "Erreur lors de l'activation du forfait.");
+      const res = await tenantApi.upgradePlan(targetPlan.code);
+      await handleSuccessRefresh(res.message || `Essai ${targetPlan.name} active.`);
+    } catch (err: any) {
+      const detail = err.response?.data?.detail;
+      setErrorMsg(typeof detail === 'string' ? detail : detail?.message || 'Activation impossible.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-      <div className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-        {/* Banner Décorative Gradient */}
-        <div className="h-3 bg-gradient-to-r from-amber-500 via-indigo-600 to-purple-600" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="relative w-full max-w-xl bg-white dark:bg-dark-800 rounded-2xl shadow-2xl border border-[#E8EFF5] dark:border-dark-600 overflow-hidden">
+        <div className="h-2.5 toc-gradient" />
 
-        {/* Close Button */}
         <button
+          type="button"
           onClick={closeUpgradeModal}
-          className="absolute top-5 right-5 p-2 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+          className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-dark-700 transition"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <div className="p-6 md:p-8 space-y-6">
-          {/* Badge & Titre */}
+        <div className="p-6 space-y-5 max-h-[85vh] overflow-y-auto">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
-              <Sparkles className="w-6 h-6" />
+            <div className="w-11 h-11 rounded-xl toc-gradient flex items-center justify-center text-white shrink-0">
+              <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800">
-                <Zap className="w-3 h-3" /> AVANTAGE PRO & ENTREPRISE
+              <span className="badge-toc-purple">
+                <Zap className="w-3 h-3" /> {targetPlan?.name || 'Forfait Pro'}
               </span>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white mt-1">
-                {upgradeModalData?.title || 'Passez à la Vitesse Supérieure'}
+              <h3 className="text-lg font-extrabold text-[#1C2B3A] dark:text-white mt-1">
+                {upgradeModalData?.title || 'Passez au forfait superieur'}
               </h3>
             </div>
           </div>
 
-          {/* Message descriptif */}
-          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+          <p className="text-xs sm:text-sm text-[#5A7184] dark:text-slate-300 leading-relaxed">
             {upgradeModalData?.message ||
-              "Cette fonctionnalité fait partie des forfaits professionnels de TocManager. Débloquez-la pour développer votre réseau de vente sans contraintes."}
+              'Debloquez davantage de quotas et de modules professionnels pour votre reseau de vente.'}
           </p>
 
-          {/* Grille des Bénéfices Pro */}
-          <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-4 border border-slate-100 dark:border-slate-750 space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Ce que vous débloquez immédiatement avec le Plan Pro :
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-slate-700 dark:text-slate-200">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                <span>Jusqu'à 5 magasins & entrepôts</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                <span>Transferts de stock inter-magasins</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                <span>Rapports financiers P&L consolidés</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                <span>Gestion multi-utilisateurs & caissiers</span>
-              </div>
+          {visibleFeatures.length > 0 && (
+            <div className="bg-[#F5FAFD] dark:bg-dark-700/60 rounded-xl p-4 border border-[#E8EFF5] dark:border-dark-600 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-[#1C2B3A] dark:text-slate-200">
+              {visibleFeatures.map((f) => (
+                <div key={f.feature_code} className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#27AE60] shrink-0" />
+                  <span>
+                    {f.feature_name}
+                    {f.value_type === 'limit_number' && ` (${f.int_limit === -1 ? 'Illimite' : f.int_limit})`}
+                  </span>
+                </div>
+              ))}
             </div>
-          </div>
+          )}
 
-          {/* Message Succès Feedback */}
+          {errorMsg && (
+            <div className="p-3 rounded-xl bg-[#FDEBE9] text-[#E74C3C] text-xs font-semibold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
           {successMsg && (
-            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 text-emerald-800 dark:text-emerald-200 rounded-lg text-sm text-center font-medium animate-fadeIn">
+            <div className="p-3 rounded-xl bg-[#E8F8F0] text-[#27AE60] text-xs font-bold text-center">
               {successMsg}
             </div>
           )}
 
-          {/* Actions CTA */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-            <a
-              href="/tarifs"
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs text-indigo-600 dark:text-indigo-400 font-medium hover:underline flex items-center gap-1"
-            >
-              <span>Découvrir tous les forfaits</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </a>
-
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+          {!isOwner ? (
+            <div className="p-3.5 rounded-xl bg-[#FEF5E7] text-[#F39C12] text-xs font-semibold">
+              Seul le proprietaire de la boutique peut modifier l abonnement ou effectuer un paiement.
+            </div>
+          ) : canActivateTrial && targetPlan ? (
+            <div className="flex items-center justify-between gap-3 pt-1">
               <button
                 type="button"
-                onClick={closeUpgradeModal}
-                className="w-1/2 sm:w-auto px-4 py-2.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition"
+                onClick={() => {
+                  closeUpgradeModal();
+                  navigate('/abonnement');
+                }}
+                className="text-xs text-[#29ABE2] font-semibold hover:underline flex items-center gap-1"
               >
-                Plus tard
+                <span>Voir tous les forfaits</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
-
               <button
                 type="button"
                 disabled={loading}
                 onClick={handleStartTrial}
-                className="w-1/2 sm:w-auto px-5 py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-lg shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
+                className="btn-primary text-xs"
               >
-                {loading ? (
-                  <span>Activation en cours...</span>
-                ) : (
-                  <>
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>Activer 14j d'essai Pro</span>
-                  </>
-                )}
+                <ShieldCheck className="w-4 h-4" />
+                <span>
+                  {loading
+                    ? 'Activation...'
+                    : `Activer l essai gratuit (${targetPlan.trial_period_days}j)`}
+                </span>
               </button>
             </div>
-          </div>
+          ) : targetPlan ? (
+            <FeexPayCheckoutWidget
+              plan={targetPlan}
+              onPaymentSuccess={() => handleSuccessRefresh(`Forfait ${targetPlan.name} active.`)}
+            />
+          ) : null}
         </div>
       </div>
     </div>

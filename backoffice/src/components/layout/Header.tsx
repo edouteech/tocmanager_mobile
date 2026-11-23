@@ -198,12 +198,16 @@ export const Header: React.FC = () => {
         {/* Badge Plan & Upgrade CTA */}
         {currentPlan && (
           <button
-            onClick={() =>
-              openUpgradeModal({
-                title: 'Passer au Forfait Supérieur',
-                message: `Vous êtes actuellement sur le ${currentPlan.plan_name}. Passez au forfait Pro ou Entreprise pour étendre vos capacités.`,
-              })
-            }
+            onClick={() => {
+              if (isOwner) {
+                navigate('/abonnement');
+              } else {
+                openUpgradeModal({
+                  title: 'Passer au Forfait Supérieur',
+                  message: `Vous êtes actuellement sur le ${currentPlan.plan_name}. Passez au forfait Pro ou Entreprise pour étendre vos capacités.`,
+                });
+              }
+            }}
             className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/40 dark:to-purple-950/40 border border-indigo-200 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300 hover:shadow-sm transition"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-500" />

@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
 import {
   Home,
   Package,
@@ -15,22 +15,26 @@ import {
   ShieldCheck,
   Store,
   Sparkles,
-  ExternalLink,
+  CreditCard,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useTenantStore } from '../../stores/tenantStore';
 import { useSidebar } from '../../context/SidebarContext';
+import { useEntitlement } from '../../hooks/useEntitlement';
 
 interface NavItem {
   to: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   roles?: string[];
+  featureCode?: string;
 }
 
 export const Sidebar: React.FC = () => {
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const { currentPlan, openUpgradeModal } = useTenantStore();
+  const { currentPlan } = useTenantStore();
+  const { hasFeature, openUpgradeForFeature } = useEntitlement();
   const { close } = useSidebar();
 
   // Group 1: Navigation principale
@@ -39,15 +43,15 @@ export const Sidebar: React.FC = () => {
     { to: '/produits', label: 'Produits & Stocks', icon: Package },
     { to: '/categories', label: 'Catégories', icon: LayoutGrid },
     { to: '/clients', label: 'Clients & Créances', icon: Users },
-    { to: '/fournisseurs', label: 'Fournisseurs', icon: Building2, roles: ['owner', 'store_admin', 'merchant', 'manager'] },
+    { to: '/fournisseurs', label: 'Fournisseurs', icon: Building2, roles: ['owner', 'store_admin', 'merchant', 'manager'], featureCode: 'module_suppliers' },
   ];
 
   // Group 2: Opérations & Flux
   const operationNavItems: NavItem[] = [
-    { to: '/approvisionnements', label: 'Approvisionnements', icon: ArrowDownToLine, roles: ['owner', 'store_admin', 'merchant', 'manager'] },
+    { to: '/approvisionnements', label: 'Approvisionnements', icon: ArrowDownToLine, roles: ['owner', 'store_admin', 'merchant', 'manager'], featureCode: 'module_supplies' },
     { to: '/ventes', label: 'Ventes & Caisse', icon: ShoppingCart },
     { to: '/depenses', label: 'Décaissements', icon: Wallet },
-    { to: '/rapports', label: 'Rapports & Analytique', icon: BarChart3, roles: ['owner', 'store_admin', 'merchant', 'manager'] },
+    { to: '/rapports', label: 'Rapports & Analytique', icon: BarChart3, roles: ['owner', 'store_admin', 'merchant', 'manager'], featureCode: 'pnl_reports' },
   ];
 
   // Group 3: Paramètres & Administration
@@ -55,7 +59,8 @@ export const Sidebar: React.FC = () => {
     { to: '/magasins', label: 'Magasins & Points de Vente', icon: Store, roles: ['owner', 'store_admin', 'merchant', 'manager'] },
     { to: '/parametres', label: 'Paramètres Boutique', icon: Settings, roles: ['owner', 'store_admin', 'merchant'] },
     { to: '/utilisateurs', label: 'Utilisateurs & Rôles', icon: UserCheck, roles: ['owner', 'store_admin', 'merchant'] },
-    { to: '/audit', label: "Journal d'Audit", icon: ShieldCheck, roles: ['owner', 'store_admin', 'merchant'] },
+    { to: '/audit', label: "Journal d'Audit", icon: ShieldCheck, roles: ['owner', 'store_admin', 'merchant'], featureCode: 'module_audit_logs' },
+    { to: '/abonnement', label: 'Abonnement & Factures', icon: CreditCard, roles: ['owner', 'store_admin', 'merchant'] },
   ];
 
   const handleNavClick = () => {
@@ -74,22 +79,35 @@ export const Sidebar: React.FC = () => {
       })
       .map((item) => {
         const Icon = item.icon;
+        const isLocked = Boolean(currentPlan && item.featureCode && !hasFeature(item.featureCode));
         return (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.to === '/'}
-            onClick={handleNavClick}
+            onClick={(e) => {
+              if (isLocked && item.featureCode) {
+                e.preventDefault();
+                openUpgradeForFeature(item.featureCode, `${item.label} - Option Pro`);
+                return;
+              }
+              handleNavClick();
+            }}
             className={({ isActive }) =>
-              `flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-150 ${
-                isActive
+              `flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-150 ${
+                isActive && !isLocked
                   ? 'bg-[#E8F5FD] dark:bg-[#29ABE2]/15 text-[#29ABE2] font-semibold shadow-none'
                   : 'text-[#5A7184] dark:text-slate-400 hover:bg-[#F0F9FE] dark:hover:bg-dark-700/60 hover:text-[#1C2B3A] dark:hover:text-white'
               }`
             }
           >
-            <Icon className="w-4 h-4 shrink-0" />
-            <span className="truncate">{item.label}</span>
+            <span className="flex items-center gap-3.5 min-w-0">
+              <Icon className="w-4 h-4 shrink-0" />
+              <span className="truncate">{item.label}</span>
+            </span>
+            {isLocked && (
+              <span className="badge-toc-purple text-[9px] px-1.5 py-0.5 shrink-0">PRO</span>
+            )}
           </NavLink>
         );
       });
@@ -154,15 +172,13 @@ export const Sidebar: React.FC = () => {
                 : `${currentPlan.magasins_used} / ${currentPlan.magasins_limit} magasins utilisés`}
             </p>
             <button
-              onClick={() =>
-                openUpgradeModal({
-                  title: 'Mettre à niveau votre Formule',
-                  message: 'Débloquez plus de magasins, les transferts de stock et les exports comptables en passant au forfait Pro.',
-                })
-              }
-              className="w-full py-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 rounded-lg transition"
+              onClick={() => {
+                handleNavClick();
+                navigate('/abonnement');
+              }}
+              className="w-full py-1.5 text-[11px] font-bold text-[#29ABE2] bg-[#E8F5FD] dark:bg-[#29ABE2]/15 hover:bg-[#BAE3F9]/40 rounded-lg transition"
             >
-              Changer de forfait
+              Gerer l abonnement
             </button>
           </div>
         )}

@@ -10,10 +10,30 @@ import { UpgradePlanModal } from '../common/UpgradePlanModal';
 export const MainLayout: React.FC = () => {
   const { isOpen, close } = useSidebar();
   const initTenant = useTenantStore((s) => s.initTenant);
+  const openUpgradeModal = useTenantStore((s) => s.openUpgradeModal);
 
   useEffect(() => {
     initTenant();
   }, [initTenant]);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{
+        feature?: string;
+        recommended_plan?: string;
+        message?: string;
+      }>;
+      const detail = custom.detail || {};
+      openUpgradeModal({
+        title: 'Mise a niveau requise',
+        message: detail.message,
+        featureCode: detail.feature,
+        recommendedPlan: detail.recommended_plan || 'pro',
+      });
+    };
+    window.addEventListener('toc:plan-upgrade-required', handler);
+    return () => window.removeEventListener('toc:plan-upgrade-required', handler);
+  }, [openUpgradeModal]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F5FAFD] dark:bg-dark-900 transition-colors duration-200">
