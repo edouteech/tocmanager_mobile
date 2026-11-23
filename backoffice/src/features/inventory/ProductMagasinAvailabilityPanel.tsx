@@ -156,7 +156,7 @@ export const ProductMagasinAvailabilityPanel: React.FC<ProductMagasinAvailabilit
                 type="button"
                 disabled={updateMutation.isPending}
                 onClick={() => updateMutation.mutate({ magasinId: row.magasin_id, draft })}
-                className="btn-toc btn-outline py-1 px-3 text-xs flex items-center gap-1.5"
+                className="btn-secondary py-1 px-3 text-xs flex items-center gap-1.5"
               >
                 {savedMagId === row.magasin_id ? (
                   <>

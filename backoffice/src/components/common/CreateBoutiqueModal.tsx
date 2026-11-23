@@ -134,13 +134,13 @@ export const CreateBoutiqueModal: React.FC<CreateBoutiqueModalProps> = ({ isOpen
         )}
 
         <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="btn-toc btn-secondary text-xs">
+          <button type="button" onClick={onClose} className="btn-secondary text-xs">
             Annuler
           </button>
           <button
             type="submit"
             disabled={submitting || !name.trim()}
-            className="btn-toc btn-primary text-xs"
+            className="btn-primary text-xs"
           >
             {submitting ? 'Création...' : 'Créer la boutique'}
           </button>

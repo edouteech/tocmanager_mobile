@@ -5,6 +5,7 @@ import { queryClient } from './lib/queryClient';
 import { ThemeProvider } from './context/ThemeContext';
 import { DensityProvider } from './context/DensityContext';
 import { SidebarProvider } from './context/SidebarContext';
+import { ToastProvider } from './context/ToastContext';
 import { useAuthStore } from './stores/authStore';
 import { MainLayout } from './components/layout/MainLayout';
 import { AdminLayout } from './components/layout/AdminLayout';
@@ -87,7 +88,8 @@ export const App: React.FC = () => {
       <ThemeProvider>
         <DensityProvider>
           <SidebarProvider>
-            <BrowserRouter>
+            <ToastProvider>
+              <BrowserRouter>
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   {/* Public Marketing & Pricing Pages */}
@@ -212,6 +214,7 @@ export const App: React.FC = () => {
                 </Routes>
               </Suspense>
             </BrowserRouter>
+            </ToastProvider>
           </SidebarProvider>
         </DensityProvider>
       </ThemeProvider>

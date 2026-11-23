@@ -188,13 +188,13 @@ export const CreateTransferModal: React.FC<CreateTransferModalProps> = ({
         {error && <div className="p-2.5 rounded-xl bg-red-50 text-red-600 font-medium">{error}</div>}
 
         <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="btn-toc btn-secondary text-xs">
+          <button type="button" onClick={onClose} className="btn-secondary text-xs">
             Annuler
           </button>
           <button
             type="submit"
             disabled={submitting}
-            className="btn-toc btn-primary text-xs flex items-center gap-1.5"
+            className="btn-primary text-xs flex items-center gap-1.5"
           >
             <ArrowRightLeft className="w-3.5 h-3.5" />
             <span>{submitting ? 'Expédition...' : 'Expédier le transfert'}</span>

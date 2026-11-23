@@ -120,7 +120,7 @@ export const SupplierCard: React.FC<SupplierCardProps> = ({
           <button
             type="button"
             onClick={() => onPayment(supplier)}
-            className="btn-toc btn-primary flex items-center gap-1 py-1.5 px-3 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+            className="btn-primary flex items-center gap-1 py-1.5 px-3 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
           >
             <DollarSign className="w-3.5 h-3.5" />
             <span>Payer dette</span>

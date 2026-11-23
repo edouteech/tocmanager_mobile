@@ -5,6 +5,7 @@ import { usersApi } from '../../lib/api';
 import { UserBrief } from '../../types';
 import { useTenantStore, useTenantContextKey } from '../../stores/tenantStore';
 import { useAuthStore } from '../../stores/authStore';
+import { ConfirmModal } from '../../components/common/ConfirmModal';
 import { UserFormModal, UserFormPayload } from './UserFormModal';
 import { UsersTable } from './UsersTable';
 
@@ -16,6 +17,7 @@ export const UsersPage: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserBrief | null>(null);
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState<UserBrief | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
 
@@ -58,9 +60,11 @@ export const UsersPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setPageError(null);
+      setConfirmDeleteUser(null);
     },
     onError: (err: any) => {
       setPageError(err.response?.data?.detail || "Impossible de supprimer cet utilisateur.");
+      setConfirmDeleteUser(null);
     },
   });
 
@@ -114,10 +118,7 @@ export const UsersPage: React.FC = () => {
   };
 
   const handleDelete = (u: UserBrief) => {
-    if (window.confirm(`Confirmer la suppression définitive de "${u.full_name || u.username}" ?`)) {
-      setPageError(null);
-      deleteMutation.mutate(u.id);
-    }
+    setConfirmDeleteUser(u);
   };
 
   return (
@@ -167,6 +168,25 @@ export const UsersPage: React.FC = () => {
         isSubmitting={createMutation.isPending || updateMutation.isPending}
         externalError={formError}
         onSubmit={handleFormSubmit}
+      />
+
+      <ConfirmModal
+        isOpen={Boolean(confirmDeleteUser)}
+        onClose={() => setConfirmDeleteUser(null)}
+        onConfirm={() => {
+          if (confirmDeleteUser) {
+            setPageError(null);
+            deleteMutation.mutate(confirmDeleteUser.id);
+          }
+        }}
+        title="Supprimer l'utilisateur"
+        message={
+          confirmDeleteUser
+            ? `Confirmer la suppression définitive de "${confirmDeleteUser.full_name || confirmDeleteUser.username}" ?`
+            : ''
+        }
+        confirmLabel="Supprimer"
+        isPending={deleteMutation.isPending}
       />
     </div>
   );

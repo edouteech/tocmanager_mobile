@@ -70,13 +70,13 @@ export const RefundSaleModal: React.FC<RefundSaleModalProps> = ({
         {error && <div className="p-2.5 rounded-xl bg-red-50 text-red-600">{error}</div>}
 
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="btn-toc btn-secondary text-xs">
+          <button type="button" onClick={onClose} className="btn-secondary text-xs">
             Annuler
           </button>
           <button
             type="submit"
             disabled={submitting}
-            className="btn-toc btn-primary bg-rose-600 hover:bg-rose-700 text-xs flex items-center gap-1.5"
+            className="btn-primary bg-rose-600 hover:bg-rose-700 text-xs flex items-center gap-1.5"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>{submitting ? 'Traitement...' : 'Confirmer le remboursement'}</span>

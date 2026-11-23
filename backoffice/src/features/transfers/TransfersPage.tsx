@@ -5,6 +5,7 @@ import { transfersApi } from '../../lib/api';
 import { StockTransfer } from '../../types';
 import { useTenantContextKey } from '../../stores/tenantStore';
 import { formatDateTime } from '../../lib/formatters';
+import { ConfirmModal } from '../../components/common/ConfirmModal';
 import { CreateTransferModal } from './CreateTransferModal';
 import { StockMovementsTab } from './StockMovementsTab';
 
@@ -20,6 +21,7 @@ export const TransfersPage: React.FC = () => {
   const [boutiqueKey, magasinKey] = useTenantContextKey();
   const [activeTab, setActiveTab] = useState<'transfers' | 'movements'>('transfers');
   const [createOpen, setCreateOpen] = useState(false);
+  const [confirmCancelTransfer, setConfirmCancelTransfer] = useState<StockTransfer | null>(null);
 
   const { data: transfers = [], isLoading } = useQuery<StockTransfer[]>({
     queryKey: ['transfers', boutiqueKey, magasinKey],
@@ -41,6 +43,7 @@ export const TransfersPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['transfers'] });
       queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      setConfirmCancelTransfer(null);
     },
   });
 
@@ -58,7 +61,7 @@ export const TransfersPage: React.FC = () => {
 
         <button
           onClick={() => setCreateOpen(true)}
-          className="btn-toc btn-primary flex items-center gap-2 text-xs font-bold"
+          className="btn-primary flex items-center gap-2 text-xs font-bold"
         >
           <Plus className="w-4 h-4" />
           <span>Nouveau Transfert</span>
@@ -70,7 +73,7 @@ export const TransfersPage: React.FC = () => {
           type="button"
           onClick={() => setActiveTab('transfers')}
           className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
-            activeTab === 'transfers' ? 'bg-brand-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-700'
+            activeTab === 'transfers' ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'
           }`}
         >
           <ArrowRightLeft className="w-3.5 h-3.5" />
@@ -80,7 +83,7 @@ export const TransfersPage: React.FC = () => {
           type="button"
           onClick={() => setActiveTab('movements')}
           className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
-            activeTab === 'movements' ? 'bg-brand-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-700'
+            activeTab === 'movements' ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'
           }`}
         >
           <History className="w-3.5 h-3.5" />
@@ -130,11 +133,7 @@ export const TransfersPage: React.FC = () => {
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          if (window.confirm(`Annuler le transfert ${tr.reference} et restituer les stocks ?`)) {
-                            cancelMutation.mutate(tr.id);
-                          }
-                        }}
+                        onClick={() => setConfirmCancelTransfer(tr)}
                         disabled={cancelMutation.isPending}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition"
                       >
@@ -167,6 +166,24 @@ export const TransfersPage: React.FC = () => {
           queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
           queryClient.invalidateQueries({ queryKey: ['products'] });
         }}
+      />
+
+      <ConfirmModal
+        isOpen={Boolean(confirmCancelTransfer)}
+        onClose={() => setConfirmCancelTransfer(null)}
+        onConfirm={() => {
+          if (confirmCancelTransfer) {
+            cancelMutation.mutate(confirmCancelTransfer.id);
+          }
+        }}
+        title="Annuler le transfert"
+        message={
+          confirmCancelTransfer
+            ? `Confirmer l'annulation du transfert ${confirmCancelTransfer.reference} et le retour du stock vers le magasin source ?`
+            : ''
+        }
+        confirmLabel="Annuler le transfert"
+        isPending={cancelMutation.isPending}
       />
     </div>
   );

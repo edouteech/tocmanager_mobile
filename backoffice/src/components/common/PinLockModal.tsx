@@ -143,7 +143,7 @@ export const PinLockModal: React.FC = () => {
               key={digit}
               type="button"
               onClick={() => handleDigit(digit)}
-              className="h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-dark-700 dark:hover:bg-dark-600 text-slate-900 dark:text-white text-xl font-bold font-mono transition-all active:scale-95 shadow-xs"
+              className="h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-dark-700 dark:hover:bg-dark-600 text-slate-900 dark:text-white text-xl font-bold font-mono transition-all active:scale-95 shadow-sm"
             >
               {digit}
             </button>
@@ -158,7 +158,7 @@ export const PinLockModal: React.FC = () => {
           <button
             type="button"
             onClick={() => handleDigit('0')}
-            className="h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-dark-700 dark:hover:bg-dark-600 text-slate-900 dark:text-white text-xl font-bold font-mono transition-all active:scale-95 shadow-xs"
+            className="h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-dark-700 dark:hover:bg-dark-600 text-slate-900 dark:text-white text-xl font-bold font-mono transition-all active:scale-95 shadow-sm"
           >
             0
           </button>
@@ -176,7 +176,7 @@ export const PinLockModal: React.FC = () => {
           type="button"
           onClick={() => handleUnlock(pin)}
           disabled={pin.length < 4 || isLoading}
-          className="w-full btn-toc btn-primary py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 shadow-md shadow-brand-500/20 disabled:opacity-50"
+          className="w-full btn-primary py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 shadow-md shadow-brand-500/20 disabled:opacity-50"
         >
           <KeyRound className="w-4 h-4" />
           <span>{isLoading ? 'Vérification...' : 'Déverrouiller la caisse'}</span>

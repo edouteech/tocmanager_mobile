@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowUpDown, Calendar, ChevronDown, Check } from 'lucide-react';
+import { ArrowUpDown, ChevronDown, Check } from 'lucide-react';
 
 export interface SortOption {
   id: string;
@@ -71,7 +71,7 @@ export const FilterPeriodChips: React.FC<FilterPeriodChipsProps> = ({
               onClick={() => onSelectChip(chip.id)}
               className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all duration-150 flex items-center gap-1.5 shrink-0 ${
                 isSelected
-                  ? 'bg-brand-600 text-white shadow-xs'
+                  ? 'bg-brand-600 text-white shadow-sm'
                   : 'bg-white dark:bg-dark-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-dark-600 hover:bg-slate-50 dark:hover:bg-dark-700'
               }`}
             >
@@ -97,7 +97,7 @@ export const FilterPeriodChips: React.FC<FilterPeriodChipsProps> = ({
             onClick={onToggle}
             className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all duration-150 flex items-center gap-1.5 shrink-0 ${
               isToggleActive
-                ? 'bg-amber-500 text-white shadow-xs'
+                ? 'bg-amber-500 text-white shadow-sm'
                 : 'bg-white dark:bg-dark-800 text-amber-600 dark:text-amber-400 border border-amber-300 dark:border-amber-500/30 hover:bg-amber-50/50 dark:hover:bg-amber-500/10'
             }`}
           >
@@ -113,7 +113,7 @@ export const FilterPeriodChips: React.FC<FilterPeriodChipsProps> = ({
           <button
             type="button"
             onClick={() => setIsSortOpen((prev) => !prev)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-dark-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-dark-600 hover:bg-slate-50 dark:hover:bg-dark-700 shadow-xs transition"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-dark-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-dark-600 hover:bg-slate-50 dark:hover:bg-dark-700 shadow-sm transition"
           >
             <ArrowUpDown className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
             <span className="hidden sm:inline text-slate-400">Tri :</span>

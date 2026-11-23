@@ -6,7 +6,6 @@ import {
   Printer,
   Share2,
   Calendar,
-  CreditCard,
   AlertCircle,
   CheckCircle2,
 } from 'lucide-react';

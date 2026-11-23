@@ -17,7 +17,7 @@ export const ViewToggle: React.FC<ViewToggleProps> = ({ mode, onChange, classNam
         onClick={() => onChange('cards')}
         className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
           mode === 'cards'
-            ? 'bg-white dark:bg-dark-800 text-brand-600 dark:text-brand-400 shadow-xs'
+            ? 'bg-white dark:bg-dark-800 text-brand-600 dark:text-brand-400 shadow-sm'
             : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
         }`}
         title="Vue Cartes (Style Mobile)"
@@ -31,7 +31,7 @@ export const ViewToggle: React.FC<ViewToggleProps> = ({ mode, onChange, classNam
         onClick={() => onChange('table')}
         className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
           mode === 'table'
-            ? 'bg-white dark:bg-dark-800 text-brand-600 dark:text-brand-400 shadow-xs'
+            ? 'bg-white dark:bg-dark-800 text-brand-600 dark:text-brand-400 shadow-sm'
             : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
         }`}
         title="Vue Tableau (Style Desktop)"

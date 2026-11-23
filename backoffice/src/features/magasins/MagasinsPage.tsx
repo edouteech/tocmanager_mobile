@@ -3,9 +3,11 @@ import { Store, Plus, MapPin, Phone, Building2, Edit2, Power } from 'lucide-reac
 import { tenantApi } from '../../lib/api';
 import { Magasin } from '../../types';
 import { useTenantStore } from '../../stores/tenantStore';
+import { useToast } from '../../context/ToastContext';
 import { MagasinFormModal } from './MagasinFormModal';
 
 export const MagasinsPage: React.FC = () => {
+  const toast = useToast();
   const { currentBoutique, currentPlan, openUpgradeModal, fetchMagasins, fetchPlanStatus } =
     useTenantStore();
   const [magasins, setMagasins] = useState<Magasin[]>([]);
@@ -80,7 +82,7 @@ export const MagasinsPage: React.FC = () => {
             'Quota de magasins atteint pour votre formule.',
         });
       } else {
-        alert(err.response?.data?.detail || "Erreur lors de l'enregistrement du magasin.");
+        toast.error(err.response?.data?.detail || "Erreur lors de l'enregistrement du magasin.");
       }
     } finally {
       setSubmitting(false);
@@ -94,7 +96,7 @@ export const MagasinsPage: React.FC = () => {
       await fetchMagasins();
       await fetchPlanStatus();
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Impossible de modifier le statut de ce magasin.');
+      toast.error(err.response?.data?.detail || 'Impossible de modifier le statut de ce magasin.');
     }
   };
 

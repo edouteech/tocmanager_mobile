@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Receipt,
   Calendar,
   CreditCard,
   UserCheck,

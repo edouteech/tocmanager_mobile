@@ -1,37 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import {
-  ShieldCheck,
-  Search,
-  Filter,
-  RefreshCw,
-  ShoppingCart,
-  UserPlus,
-  CreditCard,
-  TrendingDown,
-  PackagePlus,
-  LogIn,
-  KeyRound,
-  FileText,
-  Info,
-} from 'lucide-react';
+import { ShieldCheck, Search, Filter, RefreshCw, FileText, Info } from 'lucide-react';
 import { auditApi } from '../../lib/api';
 import { formatDateTime } from '../../lib/formatters';
-import { Modal } from '../../components/common/Modal';
+import { AuditLogItem } from '../../types';
 import { PaginationControls } from '../../components/common/PaginationControls';
 import { useDensity } from '../../context/DensityContext';
 import { useTenantContextKey } from '../../stores/tenantStore';
-
-interface AuditLogItem {
-  id: string;
-  user_id?: string;
-  user_name?: string;
-  action: string;
-  entity_type?: string;
-  entity_id?: string;
-  details?: Record<string, any>;
-  created_at: string;
-}
+import { getAuditActionMeta } from './auditActionMeta';
+import { AuditLogDetailModal } from './AuditLogDetailModal';
 
 interface AuditLogResponse {
   total: number;
@@ -66,65 +43,10 @@ export const AuditLogsPage: React.FC = () => {
     placeholderData: keepPreviousData,
   });
 
-  const getActionBadge = (action: string) => {
-    switch (action) {
-      case 'SALE_CREATE':
-        return {
-          label: 'Nouvelle Vente',
-          icon: ShoppingCart,
-          bg: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40',
-        };
-      case 'CLIENT_CREATE':
-        return {
-          label: 'Nouveau Client',
-          icon: UserPlus,
-          bg: 'bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300 border-brand-200 dark:border-brand-500/30',
-        };
-      case 'DEBT_PAYMENT':
-        return {
-          label: 'Règlement Dette',
-          icon: CreditCard,
-          bg: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/40',
-        };
-      case 'EXPENSE_CREATE':
-        return {
-          label: 'Décaissement',
-          icon: TrendingDown,
-          bg: 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-900/50',
-        };
-      case 'STOCK_SUPPLY':
-        return {
-          label: 'Approvisionnement',
-          icon: PackagePlus,
-          bg: 'bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300 border-brand-200 dark:border-brand-500/30',
-        };
-      case 'LOGIN':
-        return {
-          label: 'Connexion',
-          icon: LogIn,
-          bg: 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/40',
-        };
-      case 'PIN_VERIFY':
-      case 'PIN_UNLOCK':
-        return {
-          label: 'Déverrouillage PIN',
-          icon: KeyRound,
-          bg: 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800/40',
-        };
-      default:
-        return {
-          label: action,
-          icon: FileText,
-          bg: 'bg-slate-100 dark:bg-dark-700 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-dark-600',
-        };
-    }
-  };
-
   const filteredItems = data?.items || [];
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -147,7 +69,6 @@ export const AuditLogsPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Filters Bar */}
       <div className="card-toc p-4 flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -179,7 +100,6 @@ export const AuditLogsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Audit Logs Table with Density */}
       <div className="card-toc overflow-hidden">
         {isLoading ? (
           <div className="p-12 text-center text-slate-400">
@@ -189,7 +109,9 @@ export const AuditLogsPage: React.FC = () => {
         ) : filteredItems.length === 0 ? (
           <div className="p-12 text-center text-slate-400">
             <Info className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-            <p className="text-base font-semibold text-slate-700 dark:text-slate-200">Aucun enregistrement d'audit trouvé</p>
+            <p className="text-base font-semibold text-slate-700 dark:text-slate-200">
+              Aucun enregistrement d'audit trouvé
+            </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               Les futures opérations sur le mobile et le backoffice apparaîtront ici.
             </p>
@@ -208,7 +130,7 @@ export const AuditLogsPage: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-[#E8EFF5] dark:divide-dark-600/60">
                 {filteredItems.map((item) => {
-                  const badge = getActionBadge(item.action);
+                  const badge = getAuditActionMeta(item.action);
                   const Icon = badge.icon;
                   return (
                     <tr key={item.id} className="hover:bg-brand-50/30 dark:hover:bg-dark-700/40 transition-colors">
@@ -288,64 +210,7 @@ export const AuditLogsPage: React.FC = () => {
         isFetching={isFetching}
       />
 
-      {/* Details Modal */}
-      <Modal
-        isOpen={!!selectedLog}
-        onClose={() => setSelectedLog(null)}
-        title={
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-brand-500" />
-            <span>Détails de l'Action d'Audit</span>
-          </div>
-        }
-        subtitle="Payload brut enregistré lors de l'opération"
-        footer={
-          <button
-            onClick={() => setSelectedLog(null)}
-            className="btn-secondary"
-          >
-            Fermer
-          </button>
-        }
-      >
-        {selectedLog && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3 text-xs bg-[#F5FAFD] dark:bg-dark-700/60 p-3.5 rounded-2xl border border-[#E8EFF5] dark:border-dark-600">
-              <div>
-                <span className="text-slate-400 dark:text-slate-500 block font-medium">Opérateur :</span>
-                <span className="font-bold text-slate-800 dark:text-white">
-                  {selectedLog.user_name || 'Inconnu'}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400 dark:text-slate-500 block font-medium">Action :</span>
-                <span className="font-bold text-slate-800 dark:text-white">{selectedLog.action}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 dark:text-slate-500 block font-medium">Date & Heure :</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">
-                  {formatDateTime(selectedLog.created_at)}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400 dark:text-slate-500 block font-medium">Cible :</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">
-                  {selectedLog.entity_type} {selectedLog.entity_id ? `(#${selectedLog.entity_id.substring(0, 8)})` : ''}
-                </span>
-              </div>
-            </div>
-
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1.5">
-                Données de l'événement (Payload JSON) :
-              </span>
-              <pre className="bg-slate-900 dark:bg-black/60 text-emerald-400 p-3.5 rounded-2xl text-xs font-mono overflow-x-auto max-h-60 border border-slate-800">
-                {JSON.stringify(selectedLog.details, null, 2)}
-              </pre>
-            </div>
-          </div>
-        )}
-      </Modal>
+      <AuditLogDetailModal log={selectedLog} onClose={() => setSelectedLog(null)} />
     </div>
   );
 };

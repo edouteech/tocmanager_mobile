@@ -1,55 +1,23 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Menu,
-  LogOut,
-  User as UserIcon,
-  Shield,
-  Calendar,
-  Sun,
-  Moon,
-  AlignJustify,
-  Rows,
-  Bell,
-  Lock,
-  Store,
-  ChevronDown,
-  Layers,
-  Sparkles,
-  Plus,
-} from 'lucide-react';
+import { Menu, LogOut, User as UserIcon, Sun, Moon, Bell, Lock, Sparkles } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useTenantStore, useTenantContextKey } from '../../stores/tenantStore';
 import { useTheme } from '../../context/ThemeContext';
-import { useDensity } from '../../context/DensityContext';
 import { useSidebar } from '../../context/SidebarContext';
 import { reportsApi } from '../../lib/api';
 import { DashboardStats } from '../../types';
 import { CreateBoutiqueModal } from '../common/CreateBoutiqueModal';
+import { TenantContextSelectors } from './TenantContextSelectors';
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout, lockSession } = useAuthStore();
   const { theme, toggleTheme } = useTheme();
-  const { density, toggleDensity } = useDensity();
   const { toggle: toggleSidebar } = useSidebar();
   const [boutiqueKey, magasinKey] = useTenantContextKey();
-
-  const {
-    boutiques,
-    currentBoutique,
-    selectBoutique,
-    magasins,
-    currentMagasin,
-    selectMagasin,
-    isConsolidatedView,
-    currentPlan,
-    openUpgradeModal,
-  } = useTenantStore();
-
-  const [boutiqueDropdownOpen, setBoutiqueDropdownOpen] = useState(false);
-  const [magasinDropdownOpen, setMagasinDropdownOpen] = useState(false);
+  const { currentPlan, openUpgradeModal } = useTenantStore();
   const [createBoutiqueOpen, setCreateBoutiqueOpen] = useState(false);
 
   const isOwner =
@@ -61,7 +29,6 @@ export const Header: React.FC = () => {
     user && user.role !== 'cashier' && user.role !== 'superadmin'
   );
 
-  // Query stats for stock alert notifications (disabled for cashiers)
   const { data: stats } = useQuery<DashboardStats>({
     queryKey: ['dashboard-stats', boutiqueKey, magasinKey],
     queryFn: () => reportsApi.getDashboard(),
@@ -73,9 +40,7 @@ export const Header: React.FC = () => {
 
   return (
     <header className="h-16 bg-white dark:bg-dark-800 border-b border-[#E8EFF5] dark:border-dark-600 px-3 sm:px-6 lg:px-8 flex items-center justify-between sticky top-0 z-20 shadow-none transition-colors duration-200">
-      {/* Left side: Hamburger button on mobile + Boutique & Magasin Selectors */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Mobile Hamburger toggle */}
         <button
           onClick={toggleSidebar}
           className="lg:hidden p-2 text-[#5A7184] hover:text-[#29ABE2] hover:bg-[#F0F9FE] dark:hover:bg-dark-700 rounded-xl transition"
@@ -84,135 +49,13 @@ export const Header: React.FC = () => {
           <Menu className="w-5 h-5" />
         </button>
 
-        {/* Sélecteur de Boutique */}
-        <div className="relative">
-          <button
-            onClick={() => {
-              setBoutiqueDropdownOpen(!boutiqueDropdownOpen);
-              setMagasinDropdownOpen(false);
-            }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-800 dark:text-white bg-[#F0F9FE] dark:bg-dark-700 hover:bg-[#E8F5FD] dark:hover:bg-dark-600 border border-[#E8EFF5] dark:border-dark-600 transition"
-          >
-            <Store className="w-3.5 h-3.5 text-[#29ABE2]" />
-            <span className="truncate max-w-[120px] sm:max-w-[160px]">
-              {currentBoutique?.name || 'Boutique Principale'}
-            </span>
-            <ChevronDown className="w-3 h-3 text-slate-400" />
-          </button>
-
-          {boutiqueDropdownOpen && (
-            <div className="absolute top-full left-0 mt-1.5 w-60 bg-white dark:bg-dark-800 rounded-xl shadow-soft-lg border border-[#E8EFF5] dark:border-dark-600 py-1.5 z-50 animate-fade-in">
-              <div className="px-3 py-1 text-[10px] font-bold text-[#9FB3C8] uppercase tracking-wider">
-                Vos Boutiques
-              </div>
-              {boutiques.map((b) => (
-                <button
-                  key={b.id}
-                  onClick={() => {
-                    selectBoutique(b);
-                    setBoutiqueDropdownOpen(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-[#F0F9FE] dark:hover:bg-dark-700 transition ${
-                    b.id === currentBoutique?.id ? 'text-[#29ABE2] font-bold bg-[#E8F5FD] dark:bg-[#29ABE2]/15' : 'text-[#1C2B3A] dark:text-slate-200'
-                  }`}
-                >
-                  <span className="truncate">{b.name}</span>
-                  {b.id === currentBoutique?.id && <span className="text-[10px] text-[#29ABE2]">Actif</span>}
-                </button>
-              ))}
-              {isOwner && (
-                <>
-                  <div className="my-1 border-t border-[#E8EFF5] dark:border-dark-600" />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setBoutiqueDropdownOpen(false);
-                      setCreateBoutiqueOpen(true);
-                    }}
-                    className="w-full text-left px-3 py-2 text-xs font-bold text-[#29ABE2] flex items-center gap-1.5 hover:bg-[#F0F9FE] dark:hover:bg-dark-700 transition"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Nouvelle Boutique</span>
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Sélecteur de Magasin (Point de Vente) */}
-        <div className="relative">
-          <button
-            onClick={() => {
-              setMagasinDropdownOpen(!magasinDropdownOpen);
-              setBoutiqueDropdownOpen(false);
-            }}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition border ${
-              isConsolidatedView
-                ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700'
-            }`}
-          >
-            <span className="truncate max-w-[110px] sm:max-w-[150px]">
-              {isConsolidatedView ? 'Vue Consolidée' : currentMagasin?.name || 'Magasin'}
-            </span>
-            <ChevronDown className="w-3 h-3 text-slate-400" />
-          </button>
-
-          {magasinDropdownOpen && (
-            <div className="absolute top-full left-0 mt-1.5 w-64 bg-white dark:bg-dark-800 rounded-xl shadow-soft-lg border border-[#E8EFF5] dark:border-dark-600 py-1.5 z-50 animate-fade-in">
-              {isOwner && (
-                <>
-                  <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    Pilotage Global
-                  </div>
-                  <button
-                    onClick={() => {
-                      selectMagasin(null);
-                      setMagasinDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 transition ${
-                      isConsolidatedView ? 'text-amber-600 font-bold bg-amber-50/50 dark:bg-amber-950/40' : 'text-slate-700 dark:text-slate-200'
-                    }`}
-                  >
-                    <span>Tous les Magasins (Vue Consolidée)</span>
-                    {isConsolidatedView && <span className="text-[10px] text-amber-600">Actif</span>}
-                  </button>
-                  <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
-                </>
-              )}
-
-              <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Points de Vente
-              </div>
-              {magasins.map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => {
-                    selectMagasin(m);
-                    setMagasinDropdownOpen(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-[#F0F9FE] dark:hover:bg-dark-700 transition ${
-                    !isConsolidatedView && m.id === currentMagasin?.id
-                      ? 'text-[#29ABE2] font-bold bg-[#E8F5FD] dark:bg-[#29ABE2]/15'
-                      : 'text-[#1C2B3A] dark:text-slate-200'
-                  }`}
-                >
-                  <span className="truncate">{m.name}</span>
-                  {m.is_warehouse && <span className="text-[9px] text-slate-400">(Dépôt)</span>}
-                  {!isConsolidatedView && m.id === currentMagasin?.id && (
-                    <span className="text-[10px] text-[#29ABE2]">●</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <TenantContextSelectors
+          isOwner={isOwner}
+          onOpenCreateBoutique={() => setCreateBoutiqueOpen(true)}
+        />
       </div>
 
-      {/* Right controls */}
       <div className="flex items-center gap-1.5 sm:gap-2.5">
-        {/* Badge Plan & Upgrade CTA */}
         {currentPlan && (
           <button
             onClick={() => {
@@ -237,7 +80,6 @@ export const Header: React.FC = () => {
           </button>
         )}
 
-        {/* Stock Alert Notification Bell */}
         <button
           onClick={() => navigate('/produits')}
           className="relative p-2 text-[#5A7184] dark:text-slate-300 hover:text-[#29ABE2] hover:bg-[#F0F9FE] dark:hover:bg-dark-700 rounded-xl transition"
@@ -255,7 +97,6 @@ export const Header: React.FC = () => {
           )}
         </button>
 
-        {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
           className="p-2 text-[#5A7184] dark:text-slate-300 hover:text-[#29ABE2] bg-[#F0F9FE] dark:bg-dark-700 rounded-xl border border-[#E8EFF5] dark:border-dark-600 transition"
@@ -268,7 +109,6 @@ export const Header: React.FC = () => {
           )}
         </button>
 
-        {/* Lock Screen (only when PIN is configured) */}
         {user?.has_pin ? (
           <button
             onClick={lockSession}
@@ -289,7 +129,6 @@ export const Header: React.FC = () => {
           </button>
         ) : null}
 
-        {/* User profile */}
         <div className="flex items-center gap-2 pl-1.5 sm:pl-2.5 border-l border-[#E8EFF5] dark:border-dark-600">
           <div className="w-8 h-8 rounded-xl bg-[#E8F5FD] dark:bg-[#29ABE2]/15 flex items-center justify-center text-[#29ABE2] border border-[#BAE3F9] dark:border-[#29ABE2]/30 font-bold shrink-0">
             <UserIcon className="w-4 h-4" />
@@ -302,7 +141,6 @@ export const Header: React.FC = () => {
           </div>
         </div>
 
-        {/* Logout */}
         <button
           onClick={logout}
           className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 text-xs font-semibold text-[#5A7184] dark:text-slate-400 hover:text-[#E74C3C] rounded-xl transition"
