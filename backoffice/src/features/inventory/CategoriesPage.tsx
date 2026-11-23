@@ -38,6 +38,7 @@ export const CategoriesPage: React.FC = () => {
     color: '#29ABE2',
     icon: 'Package',
   });
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Query
   const { data: categories = [], isLoading } = useQuery({
@@ -106,7 +107,11 @@ export const CategoriesPage: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) return;
+    setFormError(null);
+    if (!form.name.trim()) {
+      setFormError('Le nom de la catégorie est obligatoire.');
+      return;
+    }
 
     if (selectedCategory) {
       updateMutation.mutate({
@@ -263,9 +268,9 @@ export const CategoriesPage: React.FC = () => {
               Annuler
             </button>
             <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={createMutation.isPending || updateMutation.isPending || !form.name.trim()}
+              type="submit"
+              form="category-form"
+              disabled={createMutation.isPending || updateMutation.isPending}
               className="btn-primary"
             >
               {selectedCategory ? 'Enregistrer' : 'Créer la catégorie'}
@@ -273,7 +278,12 @@ export const CategoriesPage: React.FC = () => {
           </>
         }
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="category-form" onSubmit={handleSubmit} className="space-y-4">
+          {formError && (
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 text-rose-700 dark:text-rose-300 text-xs font-medium">
+              {formError}
+            </div>
+          )}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
               Nom de la catégorie *

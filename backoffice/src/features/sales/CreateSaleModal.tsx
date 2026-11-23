@@ -24,6 +24,7 @@ import { formatFCFA, formatDateTime } from '../../lib/formatters';
 import { Product, Client, Vente, VenteCreate } from '../../types';
 import { Modal } from '../../components/common/Modal';
 import { useEntitlement } from '../../hooks/useEntitlement';
+import { useAuthStore } from '../../stores/authStore';
 import { useTenantStore, useTenantContextKey } from '../../stores/tenantStore';
 
 interface CartItem {
@@ -46,6 +47,10 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
   const queryClient = useQueryClient();
   const [boutiqueKey, magasinKey] = useTenantContextKey();
   const { magasins, currentMagasin, isConsolidatedView } = useTenantStore();
+  const user = useAuthStore((s) => s.user);
+  const canOverridePrice = ['owner', 'store_admin', 'merchant', 'admin', 'manager'].includes(
+    user?.role || ''
+  );
   const { hasFeature, openUpgradeForFeature } = useEntitlement();
   const canCreditSales = hasFeature('module_credit_sales');
 
@@ -84,6 +89,7 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [paidAmount, setPaidAmount] = useState<number>(0);
   const [paidAmountTouched, setPaidAmountTouched] = useState(false);
+  const [userEditedPaidAmount, setUserEditedPaidAmount] = useState(false);
   const [notes, setNotes] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -177,22 +183,34 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
   };
 
   const updateQuantity = (productSyncId: string, delta: number) => {
-    setCart((prev) => {
-      return prev
+    const target = cart.find((item) => item.product.sync_id === productSyncId);
+    if (!target) return;
+    const newQty = target.quantity + delta;
+    if (newQty > target.product.stock) {
+      setErrorMessage(`Stock maximum pour "${target.product.name}" est de ${target.product.stock}.`);
+      return;
+    }
+    setErrorMessage(null);
+    setCart((prev) =>
+      prev
         .map((item) => {
           if (item.product.sync_id === productSyncId) {
-            const newQty = item.quantity + delta;
-            if (newQty > item.product.stock) {
-              setErrorMessage(`Stock maximum pour "${item.product.name}" est de ${item.product.stock}.`);
-              return item;
-            }
             return newQty > 0 ? { ...item, quantity: newQty } : null;
           }
           return item;
         })
-        .filter(Boolean) as CartItem[];
-    });
-    setErrorMessage(null);
+        .filter(Boolean) as CartItem[]
+    );
+  };
+
+  const updateUnitPrice = (productSyncId: string, unitPrice: number) => {
+    setCart((prev) =>
+      prev.map((item) =>
+        item.product.sync_id === productSyncId
+          ? { ...item, unit_price: Math.max(0, unitPrice) }
+          : item
+      )
+    );
   };
 
   const removeFromCart = (productSyncId: string) => {
@@ -206,6 +224,7 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
     setDiscountAmount(0);
     setPaidAmount(0);
     setPaidAmountTouched(false);
+    setUserEditedPaidAmount(false);
     setNotes('');
     setErrorMessage(null);
     setCompletedVente(null);
@@ -218,7 +237,9 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
       queryClient.invalidateQueries({ queryKey: ['ventes'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['recent-ventes'] });
+      queryClient.invalidateQueries({ queryKey: ['header-stock-alerts'] });
       setCompletedVente(newVente);
       if (onSaleCreated) {
         onSaleCreated(newVente);
@@ -243,7 +264,7 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
       return;
     }
 
-    if (paymentMethod === 'À crédit' && !selectedClientId) {
+    if (paymentMethod === 'Crédit' && !selectedClientId) {
       setErrorMessage('Une vente à crédit nécessite de sélectionner un client identifié.');
       return;
     }
@@ -541,9 +562,25 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
                         <p className="font-bold text-xs text-slate-900 dark:text-white truncate">
                           {item.product.name}
                         </p>
-                        <p className="text-[11px] text-slate-500 font-mono">
-                          {formatFCFA(item.unit_price)} × {item.quantity} = {formatFCFA(item.quantity * item.unit_price)}
-                        </p>
+                        {canOverridePrice ? (
+                          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-mono mt-0.5">
+                            <input
+                              type="number"
+                              min="0"
+                              value={item.unit_price}
+                              onChange={(e) =>
+                                updateUnitPrice(item.product.sync_id, Number(e.target.value) || 0)
+                              }
+                              aria-label={`Prix unitaire ${item.product.name}`}
+                              className="w-20 px-1.5 py-0.5 rounded border border-slate-200 dark:border-dark-600 bg-slate-50 dark:bg-dark-800 text-xs font-mono text-slate-900 dark:text-white"
+                            />
+                            <span>× {item.quantity} = {formatFCFA(item.quantity * item.unit_price)}</span>
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-slate-500 font-mono">
+                            {formatFCFA(item.unit_price)} × {item.quantity} = {formatFCFA(item.quantity * item.unit_price)}
+                          </p>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-1.5">
@@ -628,7 +665,8 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
                   <select
                     value={paymentMethod}
                     onChange={(e) => {
-                      if (e.target.value === 'À crédit' && !canCreditSales) {
+                      const nextMethod = e.target.value;
+                      if (nextMethod === 'Crédit' && !canCreditSales) {
                         openUpgradeForFeature(
                           'module_credit_sales',
                           'Ventes a credit verrouillees',
@@ -636,7 +674,13 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
                         );
                         return;
                       }
-                      setPaymentMethod(e.target.value);
+                      setPaymentMethod(nextMethod);
+                      if (nextMethod === 'Crédit' && !userEditedPaidAmount) {
+                        setPaidAmount(0);
+                        setPaidAmountTouched(true);
+                      } else if (nextMethod !== 'Crédit' && !userEditedPaidAmount) {
+                        setPaidAmountTouched(false);
+                      }
                     }}
                     className="input-toc text-xs py-1.5"
                   >
@@ -645,7 +689,7 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
                     <option value="Orange Money">Orange Money</option>
                     <option value="Moov Money">Moov Money</option>
                     <option value="Carte Bancaire">Carte Bancaire</option>
-                    <option value="À crédit">{canCreditSales ? 'À crédit' : 'À crédit (PRO)'}</option>
+                    <option value="Crédit">{canCreditSales ? 'Crédit' : 'Crédit (PRO)'}</option>
                   </select>
                 </div>
 
@@ -673,6 +717,7 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
                     onClick={() => {
                       setPaidAmount(totalAmount);
                       setPaidAmountTouched(true);
+                      setUserEditedPaidAmount(true);
                     }}
                     className="text-brand-600 hover:underline text-[10px]"
                   >
@@ -686,8 +731,23 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
                   onChange={(e) => {
                     setPaidAmount(Number(e.target.value) || 0);
                     setPaidAmountTouched(true);
+                    setUserEditedPaidAmount(true);
                   }}
                   className="input-toc text-sm py-1.5 font-mono font-bold"
+                />
+              </div>
+
+              {/* Notes sur la vente */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                  Notes / Référence ticket (optionnel)
+                </label>
+                <textarea
+                  rows={2}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Remarque client, bon de livraison..."
+                  className="input-toc text-xs py-1.5"
                 />
               </div>
 

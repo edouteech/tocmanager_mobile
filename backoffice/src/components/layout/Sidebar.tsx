@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import {
   Home,
@@ -37,7 +37,16 @@ export const Sidebar: React.FC = () => {
   const user = useAuthStore((s) => s.user);
   const { currentPlan } = useTenantStore();
   const { hasFeature, openUpgradeForFeature } = useEntitlement();
-  const { close } = useSidebar();
+  const { isOpen, close } = useSidebar();
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, close]);
 
   // Group 1: Navigation principale
   const mainNavItems: NavItem[] = [
@@ -118,7 +127,11 @@ export const Sidebar: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-dark-800 border-r border-[#E8EFF5] dark:border-dark-600 transition-colors duration-200">
+    <aside
+      className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200 lg:static lg:translate-x-0 ${
+        isOpen ? 'translate-x-0' : '-translate-x-full'
+      } flex flex-col h-full bg-white dark:bg-dark-800 border-r border-[#E8EFF5] dark:border-dark-600 shrink-0`}
+    >
       {/* Brand logo header */}
       <div className="h-16 px-5 border-b border-[#E8EFF5] dark:border-dark-600 flex items-center justify-between shrink-0">
         <Link to="/" className="flex items-center gap-2.5">
@@ -187,6 +200,6 @@ export const Sidebar: React.FC = () => {
           </div>
         )}
       </div>
-    </div>
+    </aside>
   );
 };

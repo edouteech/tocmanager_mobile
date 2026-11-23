@@ -298,6 +298,9 @@ export const settingsApi = {
 };
 
 export const authApi = {
+  me: () => api.get<UserBrief>('/auth/me').then((r) => r.data),
+  setPin: (currentPassword: string, pin: string) =>
+    api.post<UserBrief>('/auth/set-pin', { current_password: currentPassword, pin }).then((r) => r.data),
   verifyPin: (pin: string) => api.post<UserBrief>('/auth/verify-pin', { pin }).then((r) => r.data),
 };
 

@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
+import { authApi } from '../../lib/api';
 
 interface Props {
   children: React.ReactNode;
@@ -8,49 +10,61 @@ interface Props {
 }
 
 export const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
-  const { isAuthenticated, user, initFromStorage } = useAuthStore();
+  const { isAuthenticated, user, token, updateUser } = useAuthStore();
   const location = useLocation();
+  const hasStoredToken = Boolean(token || localStorage.getItem('toc_access_token'));
 
-  if (!isAuthenticated) {
-    // Failsafe: Check localStorage synchronously before redirecting to /login
-    const token = localStorage.getItem('toc_access_token');
-    const userJson = localStorage.getItem('toc_user');
-    if (token && userJson) {
-      initFromStorage();
-      return <>{children}</>;
+  const { data: serverUser, isLoading: isVerifyingRole } = useQuery({
+    queryKey: ['auth-me', token || localStorage.getItem('toc_access_token') || 'anon'],
+    queryFn: () => authApi.me(),
+    enabled: Boolean(isAuthenticated && hasStoredToken),
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (serverUser) {
+      updateUser(serverUser);
     }
+  }, [serverUser, updateUser]);
+
+  if (!isAuthenticated || !hasStoredToken) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (user) {
-    const isSuperAdmin = user.role === 'superadmin';
+  const effectiveUser = serverUser || user;
+  if (allowedRoles && !serverUser && isVerifyingRole && !user) {
+    return (
+      <div className="min-h-[200px] flex items-center justify-center text-xs text-[#5A7184]">
+        Vérification des droits...
+      </div>
+    );
+  }
 
-    // Règle 1: Route Super-Admin plateforme
+  if (effectiveUser) {
+    const isSuperAdmin = effectiveUser.role === 'superadmin';
+
     if (allowedRoles && allowedRoles.includes('superadmin')) {
       if (!isSuperAdmin) {
-        // Un client / employé n'a aucun accès à l'administration de la plateforme SaaS
         return <Navigate to="/" replace />;
       }
       return <>{children}</>;
     }
 
-    // Règle 2: Route Back-office Client
-    // Un administrateur de plateforme ne doit pas voir les données privées d'une boutique client en tant que tel
     if (isSuperAdmin) {
       return <Navigate to="/admin" replace />;
     }
 
-    // Règle 3: Vérification des rôles au sein de la boutique (commerçant, caissier, gérant)
     if (allowedRoles && allowedRoles.length > 0) {
       const normalizedUserRole =
-        user.role === 'merchant'
+        effectiveUser.role === 'merchant'
           ? 'owner'
-          : user.role === 'admin'
+          : effectiveUser.role === 'admin'
             ? 'store_admin'
-            : user.role;
+            : effectiveUser.role;
       const hasAllowedRole = allowedRoles.some(
         (r) =>
-          r === user.role ||
+          r === effectiveUser.role ||
           r === normalizedUserRole ||
           (normalizedUserRole === 'owner' && r === 'store_admin')
       );

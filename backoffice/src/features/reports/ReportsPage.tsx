@@ -32,12 +32,13 @@ import { useDensity } from '../../context/DensityContext';
 import { useTheme } from '../../context/ThemeContext';
 import { exportToExcel } from '../../lib/exportUtils';
 import { Modal } from '../../components/common/Modal';
-import { useTenantContextKey } from '../../stores/tenantStore';
+import { useTenantContextKey, useTenantStore } from '../../stores/tenantStore';
 
 export const ReportsPage: React.FC = () => {
   const { tableClasses } = useDensity();
   const { theme } = useTheme();
   const [boutiqueKey, magasinKey] = useTenantContextKey();
+  const openUpgradeModal = useTenantStore((s) => s.openUpgradeModal);
 
   // Period Preset State (default: 'thisMonth' matching mobile)
   const [periodPreset, setPeriodPreset] = useState<string>('thisMonth');
@@ -56,7 +57,7 @@ export const ReportsPage: React.FC = () => {
     return { preset: periodPreset };
   }, [periodPreset, customStart, customEnd]);
 
-  const { data: report, isLoading } = useQuery({
+  const { data: report, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['financial-report', boutiqueKey, magasinKey, queryParams],
     queryFn: () => reportsApi.getFinancial(queryParams),
   });
@@ -126,11 +127,57 @@ export const ReportsPage: React.FC = () => {
     exportToExcel(kpiData, `Rapport_Financier_P&L_${new Date().toISOString().slice(0, 10)}.xlsx`, 'Compte de Résultat');
   };
 
-  if (isLoading || !report) {
+  if (isLoading) {
     return (
       <div className="card-toc p-12 text-center text-slate-400 text-sm">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-brand-500 border-t-transparent mb-3" />
         <p>Génération du rapport financier et des indicateurs de rentabilité...</p>
+      </div>
+    );
+  }
+
+  if (isError || !report) {
+    const axiosErr = error as { response?: { status?: number; data?: { detail?: { error?: string; message?: string; recommended_plan?: string } | string } } } | null;
+    const status = axiosErr?.response?.status;
+    const detail = axiosErr?.response?.data?.detail;
+    const isPlanLocked = status === 403 && typeof detail === 'object' && detail?.error === 'PLAN_FEATURE_LOCKED';
+
+    return (
+      <div className="card-toc p-10 text-center space-y-4 max-w-xl mx-auto">
+        <h2 className="text-base font-bold text-[#1C2B3A] dark:text-white">
+          {isPlanLocked
+            ? 'Rapports financiers réservés aux forfaits Pro et Entreprise'
+            : 'Impossible de charger les rapports financiers'}
+        </h2>
+        <p className="text-xs text-[#5A7184] dark:text-slate-400">
+          {typeof detail === 'object'
+            ? detail?.message
+            : typeof detail === 'string'
+              ? detail
+              : 'Une erreur serveur est survenue lors du calcul des indicateurs.'}
+        </p>
+        <div className="flex items-center justify-center gap-3">
+          {isPlanLocked ? (
+            <button
+              type="button"
+              onClick={() =>
+                openUpgradeModal({
+                  title: 'Débloquer les rapports P&L',
+                  message: typeof detail === 'object' ? detail?.message : undefined,
+                  featureCode: 'pnl_reports',
+                  recommendedPlan: typeof detail === 'object' ? detail?.recommended_plan || 'pro' : 'pro',
+                })
+              }
+              className="btn-primary text-xs"
+            >
+              Passer au forfait Pro
+            </button>
+          ) : (
+            <button type="button" onClick={() => refetch()} className="btn-primary text-xs">
+              Réessayer
+            </button>
+          )}
+        </div>
       </div>
     );
   }
