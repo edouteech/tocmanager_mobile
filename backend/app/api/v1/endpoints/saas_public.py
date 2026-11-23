@@ -1,10 +1,11 @@
 import uuid
 from datetime import datetime, timezone, timedelta
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.rate_limit import limiter
 from app.core.security import get_password_hash, create_access_token
 from app.models import (
     User, Boutique, BoutiqueUserMembership, Magasin, SaasPlan, SaasSubscription
@@ -12,7 +13,7 @@ from app.models import (
 from app.schemas.saas import (
     SaasPlanOut, RegisterCredentialsRequest, ProvisionTenantRequest
 )
-from app.api.deps import get_current_user
+from app.api.deps import get_onboarding_user
 
 router = APIRouter()
 
@@ -23,7 +24,9 @@ def get_public_plans(db: Session = Depends(get_db)):
     return plans
 
 @router.post("/auth/register-credentials")
-def register_credentials(payload: RegisterCredentialsRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def register_credentials(request: Request, payload: RegisterCredentialsRequest, db: Session = Depends(get_db)):
+    _ = request
     """
     Étape 1 de l'inscription : création rapide des identifiants utilisateur.
     Renvoie un token d'onboarding permettant de compléter l'étape 2 (création boutique).
@@ -68,7 +71,7 @@ def register_credentials(payload: RegisterCredentialsRequest, db: Session = Depe
 @router.post("/tenant/provision")
 def provision_tenant(
     payload: ProvisionTenantRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_onboarding_user),
     db: Session = Depends(get_db)
 ):
     """

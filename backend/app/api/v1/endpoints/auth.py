@@ -1,30 +1,31 @@
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.api import deps
 from app.core.database import get_db
-from app.core.security import (
-    verify_password,
-    get_password_hash,
-    hash_pin,
-    verify_pin,
-    create_access_token,
-    create_refresh_token,
-)
-from app.core.config import settings
+from app.core.rate_limit import limiter
+from app.core.security import verify_password, get_password_hash, hash_pin
 from app.models import User, AuditLog
 from app.schemas.auth import (
     Token,
     LoginRequest,
     RefreshRequest,
+    LogoutRequest,
     PinVerifyRequest,
     SetPinRequest,
     UserBrief,
 )
-from jose import jwt, JWTError
+from app.services.auth_service import (
+    issue_token_pair,
+    rotate_refresh_token,
+    logout_user_sessions,
+    revoke_all_user_tokens,
+    verify_user_pin_attempt,
+)
 
 router = APIRouter()
+
 
 def _user_to_brief(user: User) -> UserBrief:
     perms = user.permissions or []
@@ -45,12 +46,8 @@ def _user_to_brief(user: User) -> UserBrief:
         has_pin=bool(user.pin_hash),
     )
 
-@router.post("/login", response_model=Token)
-def login(
-    login_data: LoginRequest,
-    db: Session = Depends(get_db)
-) -> Any:
-    """Authentification standard email ou username + mot de passe."""
+
+def _execute_login(login_data: LoginRequest, db: Session) -> Token:
     user = (
         db.query(User)
         .filter(
@@ -67,76 +64,63 @@ def login(
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Compte inactif")
 
-    access_token = create_access_token(user.id)
-    refresh_token = create_refresh_token(user.id)
-
-    # Enregistrement de l'audit de connexion
-    try:
-        db.add(AuditLog(
-            user_id=user.id,
-            user_name=user.full_name or user.username,
-            action="LOGIN",
-            entity_type="auth",
-            details={"username": user.username, "role": user.role},
-        ))
-        db.commit()
-    except Exception:
-        db.rollback()
+    access_token, refresh_tok, _ = issue_token_pair(
+        db, user, device_id=login_data.device_id
+    )
+    db.add(AuditLog(
+        user_id=user.id,
+        user_name=user.full_name or user.username,
+        action="LOGIN",
+        entity_type="auth",
+        details={"username": user.username, "role": user.role},
+    ))
+    db.commit()
 
     return Token(
         access_token=access_token,
-        refresh_token=refresh_token,
+        refresh_token=refresh_tok,
         token_type="bearer",
         user=_user_to_brief(user),
     )
 
+
+@router.post("/login", response_model=Token)
+@limiter.limit("10/minute")
+def login(
+    request: Request,
+    login_data: LoginRequest,
+    db: Session = Depends(get_db),
+) -> Any:
+    """Authentification standard email ou username + mot de passe."""
+    _ = request
+    return _execute_login(login_data, db)
+
+
 @router.post("/login/form", response_model=Token)
+@limiter.limit("10/minute")
 def login_form(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> Any:
     """OAuth2 compatible endpoint pour Swagger UI."""
-    return login(
+    _ = request
+    return _execute_login(
         LoginRequest(username_or_email=form_data.username, password=form_data.password),
-        db=db,
+        db,
     )
 
+
 @router.post("/refresh", response_model=Token)
+@limiter.limit("20/minute")
 def refresh_token(
+    request: Request,
     refresh_data: RefreshRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> Any:
-    """Rafraîchissement du JWT expiré."""
-    try:
-        payload = jwt.decode(
-            refresh_data.refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
-        user_id: str = payload.get("sub")
-        token_type: str = payload.get("type")
-        if not user_id or token_type != "refresh":
-            raise HTTPException(status_code=401, detail="Refresh token invalide")
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Refresh token invalide ou expiré")
-
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="Utilisateur inexistant ou inactif")
-
-    new_access = create_access_token(user.id)
-    new_refresh = create_refresh_token(user.id)
-
-    try:
-        db.add(AuditLog(
-            user_id=user.id,
-            user_name=user.full_name or user.username,
-            action="TOKEN_REFRESH",
-            entity_type="auth",
-            details={"type": "sliding_rotation"},
-        ))
-        db.commit()
-    except Exception:
-        db.rollback()
-
+    """Rafraîchissement du JWT expiré avec rotation et détection de réutilisation."""
+    _ = request
+    user, new_access, new_refresh = rotate_refresh_token(db, refresh_data.refresh_token)
     return Token(
         access_token=new_access,
         refresh_token=new_refresh,
@@ -144,31 +128,36 @@ def refresh_token(
         user=_user_to_brief(user),
     )
 
+
+@router.post("/logout")
+def logout(
+    logout_data: LogoutRequest = LogoutRequest(),
+    current_user: User = Depends(deps.get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Révoque le refresh token courant ou toutes les sessions de l'utilisateur."""
+    revoked = logout_user_sessions(
+        db,
+        current_user,
+        raw_refresh_token=logout_data.refresh_token,
+        all_devices=logout_data.all_devices,
+    )
+    return {"status": "success", "revoked_count": revoked}
+
+
 @router.post("/verify-pin", response_model=UserBrief)
+@limiter.limit("5/minute")
 def verify_user_pin(
+    request: Request,
     pin_data: PinVerifyRequest,
     current_user: User = Depends(deps.get_current_user),
     db: Session = Depends(get_db),
 ) -> Any:
     """Vérification du code PIN pour déverrouiller la session courante."""
-    if not current_user.pin_hash:
-        raise HTTPException(status_code=400, detail="Aucun code PIN n'a encore été configuré")
-    if not verify_pin(pin_data.pin, current_user.pin_hash):
-        raise HTTPException(status_code=400, detail="Code PIN erroné")
+    _ = request
+    verified_user = verify_user_pin_attempt(db, current_user, pin_data.pin)
+    return _user_to_brief(verified_user)
 
-    try:
-        db.add(AuditLog(
-            user_id=current_user.id,
-            user_name=current_user.full_name or current_user.username,
-            action="PIN_VERIFY",
-            entity_type="auth",
-            details={"result": "success"},
-        ))
-        db.commit()
-    except Exception:
-        db.rollback()
-
-    return _user_to_brief(current_user)
 
 @router.post("/set-pin", response_model=UserBrief)
 def set_user_pin(
@@ -183,24 +172,25 @@ def set_user_pin(
         raise HTTPException(status_code=400, detail="Le code PIN doit comporter 4 ou 6 chiffres")
 
     current_user.pin_hash = hash_pin(pin_data.pin)
-    try:
-        db.add(AuditLog(
-            user_id=current_user.id,
-            user_name=current_user.full_name or current_user.username,
-            action="PIN_SET",
-            entity_type="auth",
-            details={"pin_length": len(pin_data.pin)},
-        ))
-        db.commit()
-    except Exception:
-        db.rollback()
+    current_user.pin_failed_attempts = 0
+    current_user.pin_locked_until = None
+    revoke_all_user_tokens(db, current_user.id)
 
+    db.add(AuditLog(
+        user_id=current_user.id,
+        user_name=current_user.full_name or current_user.username,
+        action="PIN_SET",
+        entity_type="auth",
+        details={"pin_length": len(pin_data.pin)},
+    ))
+    db.commit()
     db.refresh(current_user)
     return _user_to_brief(current_user)
 
+
 @router.get("/me", response_model=UserBrief)
 def get_current_user_profile(
-    current_user: User = Depends(deps.get_current_user)
+    current_user: User = Depends(deps.get_onboarding_user),
 ) -> Any:
     """Récupère les informations du profil utilisateur connecté."""
     return _user_to_brief(current_user)

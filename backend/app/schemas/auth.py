@@ -19,6 +19,10 @@ class LoginRequest(BaseModel):
 class RefreshRequest(BaseModel):
     refresh_token: str
 
+class LogoutRequest(BaseModel):
+    refresh_token: Optional[str] = None
+    all_devices: bool = False
+
 class PinVerifyRequest(BaseModel):
     pin: str
     device_id: Optional[str] = None
