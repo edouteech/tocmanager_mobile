@@ -32,10 +32,12 @@ import { useDensity } from '../../context/DensityContext';
 import { useTheme } from '../../context/ThemeContext';
 import { exportToExcel } from '../../lib/exportUtils';
 import { Modal } from '../../components/common/Modal';
+import { useTenantContextKey } from '../../stores/tenantStore';
 
 export const ReportsPage: React.FC = () => {
   const { tableClasses } = useDensity();
   const { theme } = useTheme();
+  const [boutiqueKey, magasinKey] = useTenantContextKey();
 
   // Period Preset State (default: 'thisMonth' matching mobile)
   const [periodPreset, setPeriodPreset] = useState<string>('thisMonth');
@@ -55,7 +57,7 @@ export const ReportsPage: React.FC = () => {
   }, [periodPreset, customStart, customEnd]);
 
   const { data: report, isLoading } = useQuery({
-    queryKey: ['financial-report', queryParams],
+    queryKey: ['financial-report', boutiqueKey, magasinKey, queryParams],
     queryFn: () => reportsApi.getFinancial(queryParams),
   });
 

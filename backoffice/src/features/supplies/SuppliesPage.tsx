@@ -15,10 +15,14 @@ import { approvisionnementsApi, productsApi, suppliersApi } from '../../lib/api'
 import { formatFCFA, formatDateTime } from '../../lib/formatters';
 import { Drawer } from '../../components/common/Drawer';
 import { useDensity } from '../../context/DensityContext';
+import { useTenantStore, useTenantContextKey } from '../../stores/tenantStore';
 
 export const SuppliesPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { tableClasses } = useDensity();
+  const [boutiqueKey, magasinKey] = useTenantContextKey();
+  const { magasins, currentMagasin, isConsolidatedView } = useTenantStore();
+  const [targetMagasinId, setTargetMagasinId] = useState<string>('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Form state
@@ -33,17 +37,17 @@ export const SuppliesPage: React.FC = () => {
 
   // Queries
   const { data: supplies = [], isLoading } = useQuery({
-    queryKey: ['approvisionnements'],
+    queryKey: ['approvisionnements', boutiqueKey, magasinKey],
     queryFn: () => approvisionnementsApi.getAll(),
   });
 
   const { data: products = [] } = useQuery({
-    queryKey: ['products'],
+    queryKey: ['products', boutiqueKey, magasinKey],
     queryFn: () => productsApi.getAll(),
   });
 
   const { data: suppliers = [] } = useQuery({
-    queryKey: ['suppliers'],
+    queryKey: ['suppliers', boutiqueKey, magasinKey],
     queryFn: () => suppliersApi.getAll(),
   });
 
@@ -86,7 +90,16 @@ export const SuppliesPage: React.FC = () => {
     const prod = products.find((p) => p.sync_id === form.product_sync_id);
     const sup = suppliers.find((s) => s.sync_id === form.supplier_sync_id);
 
+    const chosenMagasinId =
+      isConsolidatedView && magasins.length > 1
+        ? targetMagasinId
+        : currentMagasin?.id;
+    if (isConsolidatedView && magasins.length > 1 && !chosenMagasinId) {
+      return;
+    }
+
     createMutation.mutate({
+      magasin_id: chosenMagasinId || undefined,
       product_sync_id: form.product_sync_id,
       product_name: prod?.name,
       supplier_sync_id: form.supplier_sync_id || undefined,
@@ -272,7 +285,12 @@ export const SuppliesPage: React.FC = () => {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={createMutation.isPending || !form.product_sync_id || form.quantity <= 0}
+              disabled={
+                createMutation.isPending ||
+                !form.product_sync_id ||
+                form.quantity <= 0 ||
+                (isConsolidatedView && magasins.length > 1 && !targetMagasinId)
+              }
               className="btn-primary"
             >
               {createMutation.isPending ? 'Enregistrement...' : 'Valider la Réception'}
@@ -281,6 +299,26 @@ export const SuppliesPage: React.FC = () => {
         }
       >
         <form onSubmit={handleSubmit} className="space-y-4">
+          {isConsolidatedView && magasins.length > 1 && (
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1.5">
+                Magasin / Entrepôt de réception *
+              </label>
+              <select
+                required
+                value={targetMagasinId}
+                onChange={(e) => setTargetMagasinId(e.target.value)}
+                className="input-toc bg-white dark:bg-dark-700"
+              >
+                <option value="">Sélectionner le magasin destinataire...</option>
+                {magasins.filter((m) => m.is_active).map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} {m.is_warehouse ? '(Entrepôt)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
               Article réceptionné *

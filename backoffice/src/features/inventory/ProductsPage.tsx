@@ -23,12 +23,16 @@ import { SummaryChipsRow, SummaryChipItem } from '../../components/common/Summar
 import { FilterPeriodChips, FilterChipItem, SortOption } from '../../components/common/FilterPeriodChips';
 import { ViewToggle, ViewMode } from '../../components/common/ViewToggle';
 import { ProductCard } from './ProductCard';
+import { ProductMagasinAvailabilityPanel } from './ProductMagasinAvailabilityPanel';
+import { useTenantContextKey } from '../../stores/tenantStore';
 
 export const ProductsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { tableClasses } = useDensity();
+  const [boutiqueKey, magasinKey] = useTenantContextKey();
   const [searchTerm, setSearchTerm] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [drawerTab, setDrawerTab] = useState<'info' | 'magasins'>('info');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [stockFilter, setStockFilter] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -47,7 +51,7 @@ export const ProductsPage: React.FC = () => {
 
   // Query products
   const { data: products = [], isLoading } = useQuery<Product[]>({
-    queryKey: ['products'],
+    queryKey: ['products', boutiqueKey, magasinKey],
     queryFn: async () => {
       const res = await api.get('/products');
       return res.data;
@@ -56,7 +60,7 @@ export const ProductsPage: React.FC = () => {
 
   // Query categories
   const { data: categories = [] } = useQuery<Category[]>({
-    queryKey: ['categories'],
+    queryKey: ['categories', boutiqueKey, magasinKey],
     queryFn: async () => {
       const res = await api.get('/categories');
       return res.data;
@@ -199,6 +203,7 @@ export const ProductsPage: React.FC = () => {
 
   const openCreateDrawer = () => {
     setEditingProduct(null);
+    setDrawerTab('info');
     setName('');
     setCategoryId(categories.length > 0 ? categories[0].sync_id : '');
     setPrice(0);
@@ -212,6 +217,7 @@ export const ProductsPage: React.FC = () => {
 
   const openEditDrawer = (p: Product) => {
     setEditingProduct(p);
+    setDrawerTab('info');
     setName(p.name);
     setCategoryId(p.category_sync_id || '');
     setPrice(p.price);
@@ -512,29 +518,70 @@ export const ProductsPage: React.FC = () => {
         title={editingProduct ? "Modifier l'Article" : "Ajouter un Nouvel Article"}
         subtitle="Renseignez les informations de prix et de stock"
         footer={
-          <div className="flex items-center justify-end gap-2.5 w-full">
-            <button
-              type="button"
-              onClick={closeDrawer}
-              className="btn-toc btn-secondary text-xs"
-            >
-              Annuler
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={createMutation.isPending || updateMutation.isPending}
-              className="btn-toc btn-primary text-xs"
-            >
-              {createMutation.isPending || updateMutation.isPending
-                ? 'Enregistrement...'
-                : editingProduct
-                ? 'Mettre à jour'
-                : "Créer l'article"}
-            </button>
-          </div>
+          drawerTab === 'info' ? (
+            <div className="flex items-center justify-end gap-2.5 w-full">
+              <button
+                type="button"
+                onClick={closeDrawer}
+                className="btn-toc btn-secondary text-xs"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={createMutation.isPending || updateMutation.isPending}
+                className="btn-toc btn-primary text-xs"
+              >
+                {createMutation.isPending || updateMutation.isPending
+                  ? 'Enregistrement...'
+                  : editingProduct
+                  ? 'Mettre à jour'
+                  : "Créer l'article"}
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-end w-full">
+              <button type="button" onClick={closeDrawer} className="btn-toc btn-secondary text-xs">
+                Fermer
+              </button>
+            </div>
+          )
         }
       >
+        {editingProduct && (
+          <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-slate-100 dark:bg-dark-700 mb-4">
+            <button
+              type="button"
+              onClick={() => setDrawerTab('info')}
+              className={`py-2 px-3 rounded-lg text-xs font-bold transition ${
+                drawerTab === 'info'
+                  ? 'bg-white dark:bg-dark-800 text-brand-600 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Informations générales
+            </button>
+            <button
+              type="button"
+              onClick={() => setDrawerTab('magasins')}
+              className={`py-2 px-3 rounded-lg text-xs font-bold transition ${
+                drawerTab === 'magasins'
+                  ? 'bg-white dark:bg-dark-800 text-brand-600 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Disponibilité & Magasins
+            </button>
+          </div>
+        )}
+
+        {editingProduct && drawerTab === 'magasins' ? (
+          <ProductMagasinAvailabilityPanel
+            productSyncId={editingProduct.sync_id}
+            cataloguePrice={editingProduct.price}
+          />
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <ImageUploadInput
             value={imagePath}
@@ -641,6 +688,7 @@ export const ProductsPage: React.FC = () => {
             </div>
           </div>
         </form>
+        )}
       </Drawer>
     </div>
   );

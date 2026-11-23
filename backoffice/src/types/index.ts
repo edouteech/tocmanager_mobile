@@ -13,12 +13,13 @@ export interface UserBrief {
 export interface VenteItemCreate {
   product_sync_id: string;
   quantity: number;
-  unit_price: number;
+  unit_price?: number;
   cost_price?: number;
   product_name?: string;
 }
 
 export interface VenteCreate {
+  magasin_id?: string | null;
   client_sync_id?: string | null;
   client_name?: string | null;
   items: VenteItemCreate[];
@@ -61,6 +62,7 @@ export interface VenteItem {
 
 export interface Vente {
   sync_id: string;
+  magasin_id?: string | null;
   ticket_number: string;
   client_sync_id?: string | null;
   client_name?: string | null;
@@ -70,6 +72,7 @@ export interface Vente {
   paid_amount: number;
   discount_amount: number;
   payment_method: string;
+  status?: string;
   notes?: string | null;
   created_at: string;
   updated_at?: string;
@@ -91,6 +94,22 @@ export interface Product {
   is_active: boolean;
   updated_at: string;
   deleted_at?: string | null;
+  custom_price?: number | null;
+  is_available?: boolean;
+  magasin_id?: string | null;
+}
+
+export interface ProductMagasinItem {
+  magasin_id: string;
+  magasin_name: string;
+  magasin_code?: string | null;
+  is_warehouse: boolean;
+  is_active: boolean;
+  is_available: boolean;
+  custom_price?: number | null;
+  effective_price: number;
+  quantity: number;
+  min_stock: number;
 }
 
 export interface Category {
@@ -135,6 +154,7 @@ export interface Supplier {
 
 export interface Approvisionnement {
   sync_id: string;
+  magasin_id?: string | null;
   supplier_sync_id?: string | null;
   supplier_name?: string | null;
   product_sync_id?: string | null;
@@ -152,6 +172,7 @@ export interface Approvisionnement {
 
 export interface Decaissement {
   sync_id: string;
+  magasin_id?: string | null;
   title: string;
   amount: number;
   category?: string | null;

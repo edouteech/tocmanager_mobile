@@ -1,21 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Store, Plus, MapPin, Phone, Building2, CheckCircle, ShieldAlert, Sparkles, Layers } from 'lucide-react';
+import { Store, Plus, MapPin, Phone, Building2, Edit2, Power } from 'lucide-react';
 import { tenantApi } from '../../lib/api';
 import { Magasin } from '../../types';
 import { useTenantStore } from '../../stores/tenantStore';
+import { MagasinFormModal } from './MagasinFormModal';
 
 export const MagasinsPage: React.FC = () => {
-  const { currentPlan, openUpgradeModal, fetchMagasins } = useTenantStore();
+  const { currentBoutique, currentPlan, openUpgradeModal, fetchMagasins, fetchPlanStatus } =
+    useTenantStore();
   const [magasins, setMagasins] = useState<Magasin[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Modal create/edit state
   const [modalOpen, setModalOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [code, setCode] = useState('');
-  const [address, setAddress] = useState('');
-  const [phone, setPhone] = useState('');
-  const [isWarehouse, setIsWarehouse] = useState(false);
+  const [editingMagasin, setEditingMagasin] = useState<Magasin | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const loadData = async () => {
@@ -32,10 +28,9 @@ export const MagasinsPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [currentBoutique?.id]);
 
   const handleOpenAddModal = () => {
-    // Vérification du quota du plan
     if (
       currentPlan &&
       currentPlan.magasins_limit !== -1 &&
@@ -48,55 +43,70 @@ export const MagasinsPage: React.FC = () => {
       });
       return;
     }
-
-    setName('');
-    setCode(`MAG-0${magasins.length + 1}`);
-    setAddress('');
-    setPhone('');
-    setIsWarehouse(false);
+    setEditingMagasin(null);
     setModalOpen(true);
   };
 
-  const handleCreateMagasin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
+  const handleOpenEditModal = (magasin: Magasin) => {
+    setEditingMagasin(magasin);
+    setModalOpen(true);
+  };
 
+  const handleSubmitModal = async (payload: {
+    name: string;
+    code?: string;
+    address?: string;
+    phone?: string;
+    is_warehouse: boolean;
+  }) => {
     setSubmitting(true);
     try {
-      await tenantApi.createMagasin({
-        name: name.trim(),
-        code: code.trim() || undefined,
-        address: address.trim() || undefined,
-        phone: phone.trim() || undefined,
-        is_warehouse: isWarehouse,
-      });
+      if (editingMagasin) {
+        await tenantApi.updateMagasin(editingMagasin.id, payload);
+      } else {
+        await tenantApi.createMagasin(payload);
+      }
       setModalOpen(false);
       await loadData();
       await fetchMagasins();
+      await fetchPlanStatus();
     } catch (err: any) {
       if (err.response?.status === 403) {
         setModalOpen(false);
         openUpgradeModal({
           title: 'Limite de Points de Vente Atteinte',
-          message: err.response.data?.detail?.message || 'Quota de magasins atteint pour votre formule.',
+          message:
+            err.response.data?.detail?.message ||
+            'Quota de magasins atteint pour votre formule.',
         });
       } else {
-        alert(err.response?.data?.detail || 'Erreur lors de la création du magasin.');
+        alert(err.response?.data?.detail || "Erreur lors de l'enregistrement du magasin.");
       }
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handleToggleActive = async (magasin: Magasin) => {
+    try {
+      await tenantApi.updateMagasin(magasin.id, { is_active: !magasin.is_active });
+      await loadData();
+      await fetchMagasins();
+      await fetchPlanStatus();
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Impossible de modifier le statut de ce magasin.');
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Header section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
             <span>Points de Vente & Magasins</span>
             <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-bold">
-              {magasins.length} {currentPlan?.magasins_limit !== -1 ? `/ ${currentPlan?.magasins_limit}` : ''}
+              {magasins.length}{' '}
+              {currentPlan?.magasins_limit !== -1 ? `/ ${currentPlan?.magasins_limit}` : ''}
             </span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
@@ -113,7 +123,6 @@ export const MagasinsPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Cartes des Magasins */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading ? (
           <div className="col-span-full py-12 text-center text-slate-400">
@@ -131,17 +140,23 @@ export const MagasinsPage: React.FC = () => {
             >
               <div className="flex items-start justify-between">
                 <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 flex items-center justify-center">
-                  {m.is_warehouse ? <Building2 className="w-5 h-5" /> : <Store className="w-5 h-5" />}
+                  {m.is_warehouse ? (
+                    <Building2 className="w-5 h-5" />
+                  ) : (
+                    <Store className="w-5 h-5" />
+                  )}
                 </div>
-                <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    m.is_warehouse
-                      ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300'
-                      : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
-                  }`}
-                >
-                  {m.is_warehouse ? 'RÉSERVE / DÉPÔT' : 'POINT DE VENTE'}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      m.is_warehouse
+                        ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300'
+                        : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
+                    }`}
+                  >
+                    {m.is_warehouse ? 'RÉSERVE / DÉPÔT' : 'POINT DE VENTE'}
+                  </span>
+                </div>
               </div>
 
               <div>
@@ -163,101 +178,42 @@ export const MagasinsPage: React.FC = () => {
                   <span>{m.phone || 'Non communiqué'}</span>
                 </div>
               </div>
+
+              <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => handleOpenEditModal(m)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  <span>Modifier</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleToggleActive(m)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    m.is_active
+                      ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300'
+                      : 'bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300'
+                  }`}
+                >
+                  <Power className="w-3.5 h-3.5" />
+                  <span>{m.is_active ? 'Actif' : 'Inactif'}</span>
+                </button>
+              </div>
             </div>
           ))
         )}
       </div>
 
-      {/* Modal Création Magasin */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Ajouter un Magasin / Point de Vente</h3>
-
-            <form onSubmit={handleCreateMagasin} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-semibold mb-1">Nom du magasin *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Succursale Plateau"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold mb-1">Code identifiant (optionnel)</label>
-                <input
-                  type="text"
-                  placeholder="MAG-02"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold mb-1">Adresse physique</label>
-                <input
-                  type="text"
-                  placeholder="Rue 14, Médina, Dakar"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold mb-1">Téléphone de contact</label>
-                <input
-                  type="tel"
-                  placeholder="+221 77 000 00 00"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                />
-              </div>
-
-              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl space-y-1">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="isWarehouse"
-                    checked={isWarehouse}
-                    onChange={(e) => setIsWarehouse(e.target.checked)}
-                    className="rounded text-indigo-600"
-                  />
-                  <label htmlFor="isWarehouse" className="font-semibold text-slate-800 dark:text-slate-200">
-                    Entrepôt de réserve / Stockage uniquement
-                  </label>
-                </div>
-                <p className="text-[11px] text-slate-400 pl-5">
-                  Cochez si cet établissement n'effectue pas de vente directe au comptoir.
-                </p>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow transition"
-                >
-                  {submitting ? 'Création...' : 'Créer le magasin'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <MagasinFormModal
+        isOpen={modalOpen}
+        editingMagasin={editingMagasin}
+        defaultCode={`MAG-0${magasins.length + 1}`}
+        submitting={submitting}
+        onClose={() => setModalOpen(false)}
+        onSubmit={handleSubmitModal}
+      />
     </div>
   );
 };

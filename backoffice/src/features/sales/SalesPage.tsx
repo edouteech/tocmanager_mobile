@@ -25,9 +25,11 @@ import { SummaryChipsRow, SummaryChipItem } from '../../components/common/Summar
 import { FilterPeriodChips, FilterChipItem, SortOption } from '../../components/common/FilterPeriodChips';
 import { ViewToggle, ViewMode } from '../../components/common/ViewToggle';
 import { VenteCard } from './VenteCard';
+import { useTenantContextKey } from '../../stores/tenantStore';
 
 export const SalesPage: React.FC = () => {
   const { tableClasses } = useDensity();
+  const [boutiqueKey, magasinKey] = useTenantContextKey();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedVente, setSelectedVente] = useState<Vente | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -37,7 +39,7 @@ export const SalesPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
 
   const { data: ventes = [], isLoading } = useQuery<Vente[]>({
-    queryKey: ['ventes'],
+    queryKey: ['ventes', boutiqueKey, magasinKey],
     queryFn: async () => {
       const res = await api.get('/ventes?limit=300');
       return res.data;

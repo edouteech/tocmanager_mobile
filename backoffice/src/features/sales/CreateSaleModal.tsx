@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ShoppingCart,
@@ -17,12 +17,14 @@ import {
   ArrowRight,
   Receipt,
   X,
+  Store,
 } from 'lucide-react';
 import { productsApi, clientsApi, categoriesApi, ventesApi } from '../../lib/api';
 import { formatFCFA, formatDateTime } from '../../lib/formatters';
 import { Product, Client, Vente, VenteCreate } from '../../types';
 import { Modal } from '../../components/common/Modal';
 import { useEntitlement } from '../../hooks/useEntitlement';
+import { useTenantStore, useTenantContextKey } from '../../stores/tenantStore';
 
 interface CartItem {
   product: Product;
@@ -42,8 +44,34 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
   onSaleCreated,
 }) => {
   const queryClient = useQueryClient();
+  const [boutiqueKey, magasinKey] = useTenantContextKey();
+  const { magasins, currentMagasin, isConsolidatedView } = useTenantStore();
   const { hasFeature, openUpgradeForFeature } = useEntitlement();
   const canCreditSales = hasFeature('module_credit_sales');
+
+  const retailMagasins = useMemo(
+    () => magasins.filter((m) => m.is_active && !m.is_warehouse),
+    [magasins]
+  );
+  const needsExplicitMagasinSelector =
+    isConsolidatedView || !currentMagasin || currentMagasin.is_warehouse;
+
+  const [targetMagasinId, setTargetMagasinId] = useState<string>('');
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!needsExplicitMagasinSelector && currentMagasin) {
+      setTargetMagasinId(currentMagasin.id);
+    } else if (retailMagasins.length === 1) {
+      setTargetMagasinId(retailMagasins[0].id);
+    } else {
+      setTargetMagasinId('');
+    }
+  }, [isOpen, needsExplicitMagasinSelector, currentMagasin, retailMagasins]);
+
+  const effectiveMagasinId = needsExplicitMagasinSelector
+    ? targetMagasinId || undefined
+    : currentMagasin?.id;
 
   // Search & Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -64,19 +92,23 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
 
   // Queries
   const { data: products = [], isLoading: isLoadingProducts } = useQuery({
-    queryKey: ['products'],
-    queryFn: () => productsApi.getAll(),
+    queryKey: ['products', boutiqueKey, effectiveMagasinId || magasinKey, 'pos-avail'],
+    queryFn: () =>
+      productsApi.getAll({
+        only_available: true,
+        magasin_id: effectiveMagasinId,
+      }),
     enabled: isOpen,
   });
 
   const { data: categories = [] } = useQuery({
-    queryKey: ['categories'],
+    queryKey: ['categories', boutiqueKey, magasinKey],
     queryFn: () => categoriesApi.getAll(),
     enabled: isOpen,
   });
 
   const { data: clients = [] } = useQuery({
-    queryKey: ['clients'],
+    queryKey: ['clients', boutiqueKey, magasinKey],
     queryFn: () => clientsApi.getAll(),
     enabled: isOpen,
   });
@@ -206,6 +238,11 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
       return;
     }
 
+    if (needsExplicitMagasinSelector && !effectiveMagasinId) {
+      setErrorMessage('Veuillez sélectionner le point de vente concerné par cette vente.');
+      return;
+    }
+
     if (paymentMethod === 'À crédit' && !selectedClientId) {
       setErrorMessage('Une vente à crédit nécessite de sélectionner un client identifié.');
       return;
@@ -217,6 +254,7 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
     }
 
     const payload: VenteCreate = {
+      magasin_id: effectiveMagasinId || null,
       client_sync_id: selectedClientId || null,
       client_name: selectedClient?.name || 'Client Occasionnel',
       items: cart.map((item) => ({
@@ -535,6 +573,31 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
                   ))
                 )}
               </div>
+
+              {/* Magasin selector required in consolidated or warehouse context */}
+              {needsExplicitMagasinSelector && (
+                <div className="space-y-1.5 pt-2 border-t border-slate-200 dark:border-dark-600">
+                  <label className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                    <Store className="w-3 h-3" />
+                    Point de vente *
+                  </label>
+                  <select
+                    value={targetMagasinId}
+                    onChange={(e) => {
+                      setTargetMagasinId(e.target.value);
+                      setCart([]);
+                    }}
+                    className="input-toc text-xs py-1.5"
+                  >
+                    <option value="">Pour quel magasin ?</option>
+                    {retailMagasins.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Client Selection */}
               <div className="space-y-1.5 pt-2 border-t border-slate-200 dark:border-dark-600">

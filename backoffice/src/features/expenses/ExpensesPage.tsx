@@ -22,6 +22,7 @@ import { exportToExcel } from '../../lib/exportUtils';
 import { SummaryChipsRow, SummaryChipItem } from '../../components/common/SummaryChipsRow';
 import { ViewToggle, ViewMode } from '../../components/common/ViewToggle';
 import { ExpenseCard } from './ExpenseCard';
+import { useTenantStore, useTenantContextKey } from '../../stores/tenantStore';
 
 const getCategoryBadgeClass = (cat: string) => {
   switch (cat.toLowerCase().trim()) {
@@ -52,6 +53,9 @@ const getCategoryBadgeClass = (cat: string) => {
 export const ExpensesPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { tableClasses } = useDensity();
+  const [boutiqueKey, magasinKey] = useTenantContextKey();
+  const { magasins, currentMagasin, isConsolidatedView } = useTenantStore();
+  const [targetMagasinId, setTargetMagasinId] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -70,13 +74,13 @@ export const ExpensesPage: React.FC = () => {
 
   // Query all expenses
   const { data: allExpenses = [], isLoading } = useQuery({
-    queryKey: ['decaissements'],
+    queryKey: ['decaissements', boutiqueKey, magasinKey],
     queryFn: () => decaissementsApi.getAll(),
   });
 
   // Query distinct server categories
   const { data: serverCategories = [] } = useQuery({
-    queryKey: ['decaissement-categories'],
+    queryKey: ['decaissement-categories', boutiqueKey, magasinKey],
     queryFn: () => decaissementsApi.getCategories({ include_defaults: true }),
   });
 
@@ -182,6 +186,10 @@ export const ExpensesPage: React.FC = () => {
         : form.category;
 
     createMutation.mutate({
+      magasin_id:
+        isConsolidatedView && magasins.length > 1
+          ? targetMagasinId || undefined
+          : currentMagasin?.id,
       title: form.title.trim(),
       amount: form.amount,
       category: finalCategory,
@@ -474,7 +482,12 @@ export const ExpensesPage: React.FC = () => {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={createMutation.isPending || !form.title.trim() || form.amount <= 0}
+              disabled={
+                createMutation.isPending ||
+                !form.title.trim() ||
+                form.amount <= 0 ||
+                (isConsolidatedView && magasins.length > 1 && !targetMagasinId)
+              }
               className="btn-toc btn-primary text-xs bg-rose-600 hover:bg-rose-700"
             >
               {createMutation.isPending ? 'Enregistrement...' : 'Valider la Dépense'}
@@ -483,6 +496,26 @@ export const ExpensesPage: React.FC = () => {
         }
       >
         <form onSubmit={handleSubmit} className="space-y-4">
+          {isConsolidatedView && magasins.length > 1 && (
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1.5">
+                Magasin imputé *
+              </label>
+              <select
+                required
+                value={targetMagasinId}
+                onChange={(e) => setTargetMagasinId(e.target.value)}
+                className="input-toc bg-white dark:bg-dark-700"
+              >
+                <option value="">Sélectionner un magasin...</option>
+                {magasins.filter((m) => m.is_active).map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} {m.is_warehouse ? '(Entrepôt)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
               Motif du décaissement *

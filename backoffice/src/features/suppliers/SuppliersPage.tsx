@@ -26,10 +26,12 @@ import { SummaryChipsRow, SummaryChipItem } from '../../components/common/Summar
 import { FilterPeriodChips, FilterChipItem, SortOption } from '../../components/common/FilterPeriodChips';
 import { ViewToggle, ViewMode } from '../../components/common/ViewToggle';
 import { SupplierCard } from './SupplierCard';
+import { useTenantContextKey } from '../../stores/tenantStore';
 
 export const SuppliersPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { tableClasses } = useDensity();
+  const [boutiqueKey, magasinKey] = useTenantContextKey();
   const [search, setSearch] = useState('');
   const [supplierFilter, setSupplierFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('name_asc');
@@ -62,7 +64,7 @@ export const SuppliersPage: React.FC = () => {
 
   // Fetch suppliers
   const { data: suppliers = [], isLoading } = useQuery({
-    queryKey: ['suppliers'],
+    queryKey: ['suppliers', boutiqueKey, magasinKey],
     queryFn: () => suppliersApi.getAll(),
   });
 

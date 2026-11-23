@@ -12,6 +12,7 @@ import { categoriesApi } from '../../lib/api';
 import { formatDateTime } from '../../lib/formatters';
 import { Category } from '../../types';
 import { Modal } from '../../components/common/Modal';
+import { useTenantContextKey } from '../../stores/tenantStore';
 
 const PRESET_COLORS = [
   '#29ABE2', // Brand Cyan TocManager
@@ -26,6 +27,7 @@ const PRESET_COLORS = [
 
 export const CategoriesPage: React.FC = () => {
   const queryClient = useQueryClient();
+  const [boutiqueKey, magasinKey] = useTenantContextKey();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
 
@@ -39,7 +41,7 @@ export const CategoriesPage: React.FC = () => {
 
   // Query
   const { data: categories = [], isLoading } = useQuery({
-    queryKey: ['categories'],
+    queryKey: ['categories', boutiqueKey, magasinKey],
     queryFn: categoriesApi.getAll,
   });
 
