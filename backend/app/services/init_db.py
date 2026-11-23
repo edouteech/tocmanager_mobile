@@ -2,6 +2,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import engine, Base
+from app.core.rls import apply_postgresql_rls
 from app.core.security import get_password_hash
 from app.models import User
 from app.services.seed_plans import seed_saas_plans
@@ -41,6 +42,9 @@ def _migrate_columns() -> None:
         for table in ("ventes", "approvisionnements", "decaissements", "sync_events"):
             add_col_if_missing(table, "magasin_id", "VARCHAR(36)")
 
+        for table in ("stocks_magasin", "product_magasin_availability"):
+            add_col_if_missing(table, "boutique_id", "VARCHAR(36)")
+
         # Rebuild legacy store_settings table under SQLite if it lacks id/boutique_id
         try:
             cols = [r[1] for r in conn.execute(text("PRAGMA table_info(store_settings)")).fetchall()]
@@ -78,6 +82,7 @@ def bootstrap_production_superadmin(db: Session) -> None:
 def init_db(db: Session) -> None:
     _migrate_columns()
     Base.metadata.create_all(bind=engine)
+    apply_postgresql_rls(engine)
     seed_saas_plans(db)
 
     if settings.ENVIRONMENT.strip().lower() == "production":
