@@ -8,8 +8,13 @@ from sqlalchemy import or_
 from app.api import deps
 from app.core.database import get_db
 from app.models import Supplier, AuditLog
+from app.schemas.cash import PaymentLedgerOut
 from app.schemas.entities import SupplierCreate, SupplierUpdate, SupplierResponse, SupplierPaymentRequest
 from app.services.entitlements import check_feature_access, check_quota_limit
+from app.services.payment_ledger_service import (
+    list_supplier_payments_svc,
+    record_supplier_payment_svc,
+)
 from app.services.tenant_context_service import TenantContext
 
 router = APIRouter()
@@ -192,6 +197,15 @@ def delete_supplier(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.get("/{sync_id}/payments", response_model=List[PaymentLedgerOut])
+def list_supplier_payments(
+    sync_id: str,
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
+    db: Session = Depends(get_db),
+):
+    return list_supplier_payments_svc(db, ctx, sync_id)
+
+
 @router.post("/{sync_id}/payments", response_model=SupplierResponse)
 def record_supplier_payment(
     sync_id: str,
@@ -199,44 +213,4 @@ def record_supplier_payment(
     ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
-    check_feature_access(db, ctx.boutique.id, "module_suppliers")
-    current_user = ctx.user
-    supplier = (
-        db.query(Supplier)
-        .filter(
-            Supplier.sync_id == sync_id,
-            Supplier.boutique_id == ctx.boutique.id,
-            Supplier.deleted_at.is_(None),
-        )
-        .first()
-    )
-    if not supplier:
-        raise HTTPException(status_code=404, detail="Fournisseur introuvable")
-
-    previous_balance = supplier.balance
-    new_balance = max(0.0, supplier.balance - payment.amount)
-    supplier.balance = new_balance
-
-    now = datetime.now(timezone.utc)
-    supplier.updated_at = now
-
-    db.add(AuditLog(
-        boutique_id=ctx.boutique.id,
-        user_id=current_user.id,
-        user_name=current_user.full_name or current_user.username,
-        action="SUPPLIER_PAYMENT",
-        entity_type="supplier",
-        entity_id=supplier.sync_id,
-        details={
-            "supplier_name": supplier.name,
-            "amount_paid": payment.amount,
-            "payment_method": payment.payment_method,
-            "previous_balance": previous_balance,
-            "new_balance": new_balance,
-            "notes": payment.notes,
-        },
-        created_at=now,
-    ))
-    db.commit()
-    db.refresh(supplier)
-    return supplier
+    return record_supplier_payment_svc(db, ctx, sync_id, payment)

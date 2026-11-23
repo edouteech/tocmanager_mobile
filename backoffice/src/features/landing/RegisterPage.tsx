@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Store, User, Mail, Lock, Phone, ArrowRight, Building, CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react';
 import { saasApi } from '../../lib/api';
+import { CANONICAL_CURRENCIES } from '../../lib/currencies';
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -271,11 +272,11 @@ export const RegisterPage: React.FC = () => {
                     onChange={(e) => setCurrency(e.target.value)}
                     className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   >
-                    <option value="XOF">FCFA (XOF - UEMOA)</option>
-                    <option value="XAF">FCFA (XAF - CEMAC)</option>
-                    <option value="EUR">Euro (€)</option>
-                    <option value="USD">Dollar ($)</option>
-                    <option value="GNF">Franc Guinéen</option>
+                    {CANONICAL_CURRENCIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

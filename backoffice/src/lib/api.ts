@@ -26,6 +26,8 @@ import {
   ProductMagasinItem,
   StockTransfer,
   StockMovement,
+  CashRegisterSession,
+  PaymentLedgerItem,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -155,6 +157,8 @@ export const clientsApi = {
   create: (data: Partial<Client>) => api.post<Client>('/clients', data).then((r) => r.data),
   update: (id: string, data: Partial<Client>) => api.put<Client>(`/clients/${id}`, data).then((r) => r.data),
   delete: (id: string) => api.delete(`/clients/${id}`).then((r) => r.data),
+  getPayments: (id: string) =>
+    api.get<PaymentLedgerItem[]>(`/clients/${id}/payments`).then((r) => r.data),
   recordPayment: (id: string, payment: { amount: number; payment_method: string; notes?: string }) =>
     api.post<Client>(`/clients/${id}/payments`, payment).then((r) => r.data),
 };
@@ -166,6 +170,8 @@ export const suppliersApi = {
   create: (data: Partial<Supplier>) => api.post<Supplier>('/suppliers', data).then((r) => r.data),
   update: (id: string, data: Partial<Supplier>) => api.put<Supplier>(`/suppliers/${id}`, data).then((r) => r.data),
   delete: (id: string) => api.delete(`/suppliers/${id}`).then((r) => r.data),
+  getPayments: (id: string) =>
+    api.get<PaymentLedgerItem[]>(`/suppliers/${id}/payments`).then((r) => r.data),
   recordPayment: (id: string, payment: { amount: number; payment_method: string; notes?: string }) =>
     api.post<Supplier>(`/suppliers/${id}/payments`, payment).then((r) => r.data),
 };
@@ -236,6 +242,22 @@ export const ventesApi = {
     api.get<Vente[]>('/ventes', { params }).then((r) => r.data),
   getById: (id: string) => api.get<Vente>(`/ventes/${id}`).then((r) => r.data),
   create: (data: VenteCreate) => api.post<Vente>('/ventes', data).then((r) => r.data),
+  refund: (id: string, data: { items?: { vente_item_sync_id: string; quantity: number }[]; reason: string }) =>
+    api.post<Vente>(`/ventes/${id}/refund`, data).then((r) => r.data),
+};
+
+export const cashSessionsApi = {
+  getAll: () => api.get<CashRegisterSession[]>('/cash-sessions').then((r) => r.data),
+  getCurrent: (magasinId?: string) =>
+    api
+      .get<CashRegisterSession | null>('/cash-sessions/current', {
+        params: magasinId ? { magasin_id: magasinId } : undefined,
+      })
+      .then((r) => r.data),
+  open: (data: { magasin_id?: string; opening_balance: number; notes?: string }) =>
+    api.post<CashRegisterSession>('/cash-sessions/open', data).then((r) => r.data),
+  close: (id: string, data: { declared_cash: number; notes?: string }) =>
+    api.post<CashRegisterSession>(`/cash-sessions/${id}/close`, data).then((r) => r.data),
 };
 
 export const usersApi = {

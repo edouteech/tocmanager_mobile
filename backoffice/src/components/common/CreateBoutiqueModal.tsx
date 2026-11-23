@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Store } from 'lucide-react';
 import { Modal } from './Modal';
 import { tenantApi } from '../../lib/api';
+import { CANONICAL_CURRENCIES } from '../../lib/currencies';
 import { useTenantStore } from '../../stores/tenantStore';
 
 interface CreateBoutiqueModalProps {
@@ -98,13 +99,11 @@ export const CreateBoutiqueModal: React.FC<CreateBoutiqueModalProps> = ({ isOpen
               onChange={(e) => setCurrency(e.target.value)}
               className="input-toc bg-white dark:bg-dark-700"
             >
-              <option value="XOF">FCFA (XOF - UEMOA)</option>
-              <option value="XAF">FCFA (XAF - CEMAC)</option>
-              <option value="EUR">Euro (EUR)</option>
-              <option value="USD">Dollar US (USD)</option>
-              <option value="GNF">Franc Guinéen (GNF)</option>
-              <option value="GHS">Cedi Ghanéen (GHS)</option>
-              <option value="NGN">Naira Nigérian (NGN)</option>
+              {CANONICAL_CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.label}
+                </option>
+              ))}
             </select>
           </div>
           <div>

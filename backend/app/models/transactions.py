@@ -24,6 +24,7 @@ class Vente(Base):
     paid_amount = Column(Float, nullable=False, default=0.0)
     discount_amount = Column(Float, nullable=False, default=0.0)
     payment_method = Column(String(50), nullable=False, default="Espèces")
+    status = Column(String(30), nullable=False, default="completed")
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=utc_now)
     updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, index=True)
@@ -43,6 +44,7 @@ class VenteItem(Base):
     unit_price = Column(Float, nullable=False, default=0.0)
     cost_price = Column(Float, nullable=False, default=0.0)
     total = Column(Float, nullable=False, default=0.0)
+    refunded_quantity = Column(Float, nullable=False, default=0.0)
 
     vente = relationship("Vente", back_populates="items")
 

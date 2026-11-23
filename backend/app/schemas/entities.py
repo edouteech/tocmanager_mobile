@@ -25,6 +25,8 @@ class DebtPaymentRequest(BaseModel):
     amount: float = Field(..., gt=0, description="Montant du remboursement")
     payment_method: str = "Espèces"
     notes: Optional[str] = None
+    allow_overpayment: bool = False
+    magasin_id: Optional[str] = None
 
 class ClientResponse(ClientBase):
     sync_id: str
@@ -61,6 +63,8 @@ class SupplierPaymentRequest(BaseModel):
     amount: float = Field(..., gt=0, description="Montant versé au fournisseur")
     payment_method: str = "Espèces"
     notes: Optional[str] = None
+    allow_overpayment: bool = False
+    magasin_id: Optional[str] = None
 
 class SupplierResponse(SupplierBase):
     sync_id: str

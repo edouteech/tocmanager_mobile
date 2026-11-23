@@ -1,8 +1,24 @@
-export function formatFCFA(amount: number): string {
-  return new Intl.NumberFormat('fr-FR', {
+import { useTenantStore } from '../stores/tenantStore';
+import { getCurrencySymbol } from './currencies';
+
+export function formatMoney(amount: number, currency?: string | null): string {
+  let activeCurrency = currency;
+  if (!activeCurrency) {
+    try {
+      activeCurrency = useTenantStore.getState().currentBoutique?.currency || 'XOF';
+    } catch {
+      activeCurrency = 'XOF';
+    }
+  }
+  const formatted = new Intl.NumberFormat('fr-FR', {
     style: 'decimal',
     maximumFractionDigits: 0,
-  }).format(amount) + ' F';
+  }).format(amount || 0);
+  return `${formatted} ${getCurrencySymbol(activeCurrency)}`;
+}
+
+export function formatFCFA(amount: number): string {
+  return formatMoney(amount);
 }
 
 export function formatDateTime(isoString: string): string {
