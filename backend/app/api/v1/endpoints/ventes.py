@@ -90,6 +90,9 @@ def create_vente(
     )
 
     current_user = ctx.user
+    v_uid = current_user.id
+    v_uname = current_user.full_name or current_user.username
+    vente_sync_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     today_str = now.strftime("%Y%m%d")
 
@@ -126,6 +129,12 @@ def create_vente(
             product=prod,
             quantity_delta=-item_in.quantity,
             enforce_sufficient=True,
+            movement_type="sale",
+            reference_type="vente",
+            reference_id=vente_sync_id,
+            reason=f"Vente {ticket_num}",
+            user_id=v_uid,
+            user_name=v_uname,
         )
 
         line_total = round(item_in.quantity * unit_price, 2)
@@ -169,10 +178,6 @@ def create_vente(
         if vente_in.paid_amount < net_total:
             target_client.balance += round(net_total - vente_in.paid_amount, 2)
             target_client.updated_at = now
-
-    v_uid = current_user.id
-    v_uname = current_user.full_name or current_user.username
-    vente_sync_id = str(uuid.uuid4())
 
     new_vente = Vente(
         sync_id=vente_sync_id,

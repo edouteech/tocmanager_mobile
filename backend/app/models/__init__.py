@@ -16,6 +16,7 @@ from app.models.catalog import Category, Product, Client, Supplier
 from app.models.transactions import Vente, VenteItem, Approvisionnement, Decaissement
 from app.models.system import AuditLog, SyncEvent, StoreSetting
 from app.models.billing import PaymentProvider, SaasPaymentTransaction, SaasInvoice
+from app.models.inventory import StockTransfer, StockTransferItem, StockMovement
 
 __all__ = [
     "generate_uuid",
@@ -45,4 +46,7 @@ __all__ = [
     "PaymentProvider",
     "SaasPaymentTransaction",
     "SaasInvoice",
+    "StockTransfer",
+    "StockTransferItem",
+    "StockMovement",
 ]

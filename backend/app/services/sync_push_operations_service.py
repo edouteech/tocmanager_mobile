@@ -81,6 +81,8 @@ def push_decaissements_approvisionnements_and_audits(
                         adjust_magasin_stock(
                             db=db, boutique_id=boutique_id, magasin_id=a_mag.id, product=prod,
                             quantity_delta=a.quantity, enforce_sufficient=False, new_unit_cost=a.unit_cost,
+                            movement_type="supply", reference_type="approvisionnement", reference_id=a.sync_id,
+                            reason=f"Sync réception {a.supplier_name or ''}".strip(), user_id=a_uid, user_name=a_uname,
                         )
             synced_uuids.append(a.sync_id)
         except Exception as exc:

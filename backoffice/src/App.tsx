@@ -23,6 +23,7 @@ import { CategoriesPage } from './features/inventory/CategoriesPage';
 import { ClientsPage } from './features/clients/ClientsPage';
 import { SuppliersPage } from './features/suppliers/SuppliersPage';
 import { SuppliesPage } from './features/supplies/SuppliesPage';
+import { TransfersPage } from './features/transfers/TransfersPage';
 import { ExpensesPage } from './features/expenses/ExpensesPage';
 import { ReportsPage } from './features/reports/ReportsPage';
 import { MagasinsPage } from './features/magasins/MagasinsPage';
@@ -107,6 +108,14 @@ export const App: React.FC = () => {
                       element={
                         <ProtectedRoute allowedRoles={['owner', 'store_admin', 'manager', 'merchant']}>
                           <SuppliesPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="transferts"
+                      element={
+                        <ProtectedRoute allowedRoles={['owner', 'store_admin', 'manager', 'merchant']}>
+                          <TransfersPage />
                         </ProtectedRoute>
                       }
                     />
