@@ -11,6 +11,8 @@ import {
   Menu,
   Rows,
   AlignJustify,
+  CreditCard,
+  ShieldAlert,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../context/ThemeContext';
@@ -34,7 +36,12 @@ const ADMIN_NAV: { group: string; items: AdminNavItem[] }[] = [
     items: [
       { to: '/admin/plans', label: 'Forfaits & Pricing', icon: Layers },
       { to: '/admin/boutiques', label: 'Boutiques Clientes', icon: Store },
+      { to: '/admin/subscriptions', label: 'Abonnements & FeexPay', icon: CreditCard },
     ],
+  },
+  {
+    group: 'Système',
+    items: [{ to: '/admin/audit', label: "Journal d'Audit", icon: ShieldAlert }],
   },
 ];
 
