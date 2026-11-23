@@ -112,6 +112,52 @@ export interface ProductMagasinItem {
   min_stock: number;
 }
 
+export interface StockTransferItem {
+  id: string;
+  product_sync_id: string;
+  product_name: string;
+  quantity_sent: number;
+  quantity_received?: number | null;
+  unit_cost: number;
+}
+
+export interface StockTransfer {
+  id: string;
+  reference: string;
+  from_magasin_id: string;
+  from_magasin_name?: string | null;
+  to_magasin_id: string;
+  to_magasin_name?: string | null;
+  status: 'draft' | 'in_transit' | 'received' | 'canceled' | string;
+  notes?: string | null;
+  created_by_user_id?: string | null;
+  created_by_name?: string | null;
+  shipped_at?: string | null;
+  received_at?: string | null;
+  received_by_name?: string | null;
+  canceled_at?: string | null;
+  created_at: string;
+  items: StockTransferItem[];
+}
+
+export interface StockMovement {
+  id: string;
+  magasin_id: string;
+  magasin_name?: string | null;
+  product_sync_id: string;
+  product_name?: string | null;
+  movement_type: string;
+  quantity_delta: number;
+  balance_before: number;
+  balance_after: number;
+  reference_type?: string | null;
+  reference_id?: string | null;
+  reason?: string | null;
+  user_id?: string | null;
+  user_name?: string | null;
+  created_at: string;
+}
+
 export interface Category {
   sync_id: string;
   name: string;

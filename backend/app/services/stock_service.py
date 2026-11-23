@@ -4,7 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.models import Magasin, Product, ProductMagasinAvailability, StockMagasin
+from app.models import Magasin, Product, ProductMagasinAvailability, StockMagasin, StockMovement
 
 
 def _row_query(query, db: Session):
@@ -90,8 +90,14 @@ def adjust_magasin_stock(
     quantity_delta: float,
     enforce_sufficient: bool = True,
     new_unit_cost: Optional[float] = None,
+    movement_type: Optional[str] = None,
+    reference_type: Optional[str] = None,
+    reference_id: Optional[str] = None,
+    reason: Optional[str] = None,
+    user_id: Optional[str] = None,
+    user_name: Optional[str] = None,
 ) -> Tuple[StockMagasin, float, float]:
-    """Atomically increment/decrement StockMagasin and refresh weighted average cost."""
+    """Atomically increment/decrement StockMagasin, log StockMovement, and refresh weighted cost."""
     row = ensure_stock_row(db, boutique_id, magasin_id, product, for_update=True)
     before = float(row.quantity or 0.0)
     after = round(before + float(quantity_delta), 4)
@@ -110,7 +116,24 @@ def adjust_magasin_stock(
         product.average_cost_price = row.average_cost_price
 
     row.quantity = max(0.0, after) if enforce_sufficient else after
-    row.last_updated_at = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
+    row.last_updated_at = now
+    if movement_type:
+        db.add(StockMovement(
+            boutique_id=boutique_id,
+            magasin_id=magasin_id,
+            product_sync_id=product.sync_id,
+            movement_type=movement_type,
+            quantity_delta=round(float(quantity_delta), 4),
+            balance_before=before,
+            balance_after=float(row.quantity),
+            reference_type=reference_type,
+            reference_id=reference_id,
+            reason=reason,
+            user_id=user_id,
+            user_name=user_name,
+            created_at=now,
+        ))
     sync_product_total_stock(db, boutique_id, product)
     return row, before, float(row.quantity)
 

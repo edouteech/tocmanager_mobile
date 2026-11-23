@@ -24,6 +24,8 @@ import {
   TransactionStatusResponse,
   SaasInvoice,
   ProductMagasinItem,
+  StockTransfer,
+  StockMovement,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -174,6 +176,36 @@ export const approvisionnementsApi = {
     api.post<Approvisionnement>('/approvisionnements', data).then((r) => r.data),
 };
 export const suppliesApi = approvisionnementsApi;
+
+export const transfersApi = {
+  getAll: (params?: { status?: string }) =>
+    api.get<StockTransfer[]>('/transfers', { params }).then((r) => r.data),
+  create: (data: {
+    from_magasin_id: string;
+    to_magasin_id: string;
+    items: { product_sync_id: string; quantity_sent: number }[];
+    notes?: string;
+    ship_immediately?: boolean;
+  }) => api.post<StockTransfer>('/transfers', data).then((r) => r.data),
+  receive: (
+    id: string,
+    payload?: { items?: { product_sync_id: string; quantity_received: number }[]; notes?: string }
+  ) => api.post<StockTransfer>(`/transfers/${id}/receive`, payload || {}).then((r) => r.data),
+  cancel: (id: string) => api.post<StockTransfer>(`/transfers/${id}/cancel`).then((r) => r.data),
+};
+
+export const stockMovementsApi = {
+  getAll: (params?: { product_sync_id?: string; magasin_id?: string; movement_type?: string }) =>
+    api.get<StockMovement[]>('/stock-movements', { params }).then((r) => r.data),
+  adjust: (data: {
+    magasin_id?: string;
+    product_sync_id: string;
+    counted_quantity?: number;
+    quantity_delta?: number;
+    movement_type?: 'adjustment' | 'loss';
+    reason: string;
+  }) => api.post<StockMovement>('/stock-movements/adjust', data).then((r) => r.data),
+};
 
 export const decaissementsApi = {
   getAll: (params?: any) => api.get<Decaissement[]>('/decaissements', { params }).then((r) => r.data),

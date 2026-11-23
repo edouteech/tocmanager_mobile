@@ -66,6 +66,8 @@ def push_boutique_changes(
                         adjust_magasin_stock(
                             db=db, boutique_id=boutique_id, magasin_id=v_mag.id, product=prod,
                             quantity_delta=-item.quantity, enforce_sufficient=False,
+                            movement_type="sale", reference_type="vente", reference_id=v.sync_id,
+                            reason=f"Sync vente {v.ticket_number}", user_id=v_uid, user_name=v_uname,
                         )
 
             if not payload.is_initial_sync and client_ref and v.paid_amount < v.total_amount:

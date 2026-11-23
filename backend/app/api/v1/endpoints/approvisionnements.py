@@ -85,6 +85,8 @@ def create_approvisionnement(
     total_cost = round(app_in.quantity * app_in.unit_cost, 2)
     now = datetime.now(timezone.utc)
     supply_date = app_in.date or now
+    appro_sync_id = str(uuid.uuid4())
+    op_uname = current_user.full_name or current_user.username
 
     adjust_magasin_stock(
         db=db,
@@ -94,6 +96,12 @@ def create_approvisionnement(
         quantity_delta=app_in.quantity,
         enforce_sufficient=False,
         new_unit_cost=app_in.unit_cost,
+        movement_type="supply",
+        reference_type="approvisionnement",
+        reference_id=appro_sync_id,
+        reason=f"Réception {supplier_name or 'fournisseur'}",
+        user_id=current_user.id,
+        user_name=op_uname,
     )
 
     if app_in.payment_status == "À crédit" and supplier:
@@ -101,7 +109,7 @@ def create_approvisionnement(
         supplier.updated_at = now
 
     appro = Approvisionnement(
-        sync_id=str(uuid.uuid4()),
+        sync_id=appro_sync_id,
         boutique_id=ctx.boutique.id,
         magasin_id=magasin.id,
         supplier_sync_id=app_in.supplier_sync_id,

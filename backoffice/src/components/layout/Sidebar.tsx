@@ -16,6 +16,7 @@ import {
   Store,
   Sparkles,
   CreditCard,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useTenantStore } from '../../stores/tenantStore';
@@ -49,6 +50,7 @@ export const Sidebar: React.FC = () => {
   // Group 2: Opérations & Flux
   const operationNavItems: NavItem[] = [
     { to: '/approvisionnements', label: 'Approvisionnements', icon: ArrowDownToLine, roles: ['owner', 'store_admin', 'merchant', 'manager'], featureCode: 'module_supplies' },
+    { to: '/transferts', label: 'Transferts & Mouvements', icon: ArrowRightLeft, roles: ['owner', 'store_admin', 'merchant', 'manager'], featureCode: 'stock_transfers' },
     { to: '/ventes', label: 'Ventes & Caisse', icon: ShoppingCart },
     { to: '/depenses', label: 'Décaissements', icon: Wallet },
     { to: '/rapports', label: 'Rapports & Analytique', icon: BarChart3, roles: ['owner', 'store_admin', 'merchant', 'manager'], featureCode: 'pnl_reports' },
