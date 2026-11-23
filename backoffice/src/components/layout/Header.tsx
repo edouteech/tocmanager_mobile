@@ -24,7 +24,7 @@ import { useTenantStore, useTenantContextKey } from '../../stores/tenantStore';
 import { useTheme } from '../../context/ThemeContext';
 import { useDensity } from '../../context/DensityContext';
 import { useSidebar } from '../../context/SidebarContext';
-import { api } from '../../lib/api';
+import { reportsApi } from '../../lib/api';
 import { DashboardStats } from '../../types';
 import { CreateBoutiqueModal } from '../common/CreateBoutiqueModal';
 
@@ -63,11 +63,8 @@ export const Header: React.FC = () => {
 
   // Query stats for stock alert notifications (disabled for cashiers)
   const { data: stats } = useQuery<DashboardStats>({
-    queryKey: ['header-stock-alerts', boutiqueKey, magasinKey],
-    queryFn: async () => {
-      const res = await api.get('/reports/dashboard');
-      return res.data;
-    },
+    queryKey: ['dashboard-stats', boutiqueKey, magasinKey],
+    queryFn: () => reportsApi.getDashboard(),
     enabled: canPollDashboardStats,
     refetchInterval: canPollDashboardStats ? 30000 : false,
   });

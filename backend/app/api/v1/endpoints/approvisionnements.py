@@ -1,7 +1,8 @@
-from typing import List, Optional
-from datetime import datetime, timezone
+from typing import Any, Optional
+from datetime import date, datetime, timezone
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.api import deps
@@ -9,6 +10,7 @@ from app.core.database import get_db
 from app.models import Approvisionnement, Product, Supplier, AuditLog
 from app.schemas.entities import ApprovisionnementCreate, ApprovisionnementResponse
 from app.services.entitlements import check_feature_access
+from app.services.pagination_service import paginate_sqlalchemy
 from app.services.stock_service import adjust_magasin_stock
 from app.services.tenant_context_service import (
     TenantContext,
@@ -19,10 +21,15 @@ from app.services.tenant_context_service import (
 router = APIRouter()
 
 
-@router.get("", response_model=List[ApprovisionnementResponse])
+@router.get("", response_model=Any)
 def list_approvisionnements(
     product_sync_id: Optional[str] = Query(None),
     supplier_sync_id: Optional[str] = Query(None),
+    q: Optional[str] = Query(None),
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    paginated: bool = False,
+    page: int = Query(1, ge=1),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
@@ -30,17 +37,56 @@ def list_approvisionnements(
 ):
     check_feature_access(db, ctx.boutique.id, "module_supplies")
     magasin_id = resolve_read_magasin_id(ctx)
-    query = db.query(Approvisionnement).filter(
+    base_query = db.query(Approvisionnement).filter(
         Approvisionnement.boutique_id == ctx.boutique.id,
         Approvisionnement.deleted_at.is_(None),
     )
     if magasin_id:
-        query = query.filter(Approvisionnement.magasin_id == magasin_id)
+        base_query = base_query.filter(Approvisionnement.magasin_id == magasin_id)
+    query = base_query
     if product_sync_id:
         query = query.filter(Approvisionnement.product_sync_id == product_sync_id)
     if supplier_sync_id:
         query = query.filter(Approvisionnement.supplier_sync_id == supplier_sync_id)
-    return query.order_by(Approvisionnement.date.desc()).offset(offset).limit(limit).all()
+    if q and q.strip():
+        term = f"%{q.strip()}%"
+        query = query.filter(
+            or_(
+                Approvisionnement.product_name.ilike(term),
+                Approvisionnement.supplier_name.ilike(term),
+            )
+        )
+    if start_date:
+        query = query.filter(func.date(Approvisionnement.date) >= start_date)
+    if end_date:
+        query = query.filter(func.date(Approvisionnement.date) <= end_date)
+
+    ordered = query.order_by(Approvisionnement.date.desc())
+    if not paginated:
+        return [
+            ApprovisionnementResponse.model_validate(a).model_dump()
+            for a in ordered.offset(offset).limit(limit).all()
+        ]
+
+    total_count, total_cost, total_qty = base_query.with_entities(
+        func.count(Approvisionnement.sync_id),
+        func.coalesce(func.sum(Approvisionnement.total_cost), 0.0),
+        func.coalesce(func.sum(Approvisionnement.quantity), 0.0),
+    ).one()
+    filtered_cost = query.with_entities(func.coalesce(func.sum(Approvisionnement.total_cost), 0.0)).scalar() or 0.0
+    summary = {
+        "total_count": int(total_count or 0),
+        "total_cost": float(total_cost or 0.0),
+        "total_quantity": float(total_qty or 0.0),
+        "filtered_cost": float(filtered_cost or 0.0),
+    }
+    return paginate_sqlalchemy(
+        ordered,
+        page=page,
+        limit=limit,
+        summary=summary,
+        serializer=lambda a: ApprovisionnementResponse.model_validate(a).model_dump(),
+    )
 
 
 @router.post("", response_model=ApprovisionnementResponse, status_code=status.HTTP_201_CREATED)

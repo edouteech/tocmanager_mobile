@@ -9,6 +9,7 @@ import {
   X,
 } from 'lucide-react';
 import { formatFCFA, formatDateTime } from '../../lib/formatters';
+import { useTenantStore } from '../../stores/tenantStore';
 import { Modal } from './Modal';
 
 export interface PaymentReceiptData {
@@ -35,7 +36,11 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
   onClose,
   data,
 }) => {
+  const { currentBoutique, currentMagasin } = useTenantStore();
   if (!data) return null;
+
+  const storeTitle = currentBoutique?.company_name || currentBoutique?.name || 'TocManager';
+  const magasinTitle = currentMagasin?.name;
 
   const isClient = data.type === 'client';
   const receiptNum = data.receiptNumber || `REC-${Date.now().toString().slice(-6)}`;
@@ -62,13 +67,13 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
       `Dette antérieure : ${formatFCFA(data.previousBalance)}\n` +
       `*Nouveau solde restant : ${formatFCFA(data.newBalance)}*\n\n` +
       `Merci pour votre confiance !\n` +
-      `_TocManager Store_`;
+      `_${storeTitle}${magasinTitle ? ` - ${magasinTitle}` : ''}_`;
 
     const url = rawPhone
       ? `https://api.whatsapp.com/send?phone=${rawPhone}&text=${encodeURIComponent(text)}`
       : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
 
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -90,12 +95,17 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
         {/* Printable Receipt Card */}
         <div
           id="payment-receipt-print"
-          className="bg-slate-50 dark:bg-dark-750 p-6 rounded-2xl border border-slate-200 dark:border-dark-600 font-mono text-xs text-slate-700 dark:text-slate-300 space-y-4 shadow-xs"
+          className="printable-area bg-slate-50 dark:bg-dark-750 p-6 rounded-2xl border border-slate-200 dark:border-dark-600 font-mono text-xs text-slate-700 dark:text-slate-300 space-y-4 shadow-xs"
         >
           <div className="text-center border-b border-dashed border-slate-300 dark:border-dark-500 pb-3">
             <h4 className="font-bold text-sm text-slate-900 dark:text-white uppercase tracking-wider font-sans">
-              TOCMANAGER STORE
+              {storeTitle}
             </h4>
+            {magasinTitle && (
+              <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                {magasinTitle}
+              </p>
+            )}
             <p className="text-[11px] text-slate-500 mt-0.5">
               REÇU DE RÈGLEMENT ({isClient ? 'CLIENT' : 'FOURNISSEUR'})
             </p>

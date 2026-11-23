@@ -1,9 +1,8 @@
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import datetime, timezone
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
 
 from app.api import deps
 from app.core.database import get_db
@@ -11,6 +10,7 @@ from app.models import Client, AuditLog
 from app.schemas.cash import PaymentLedgerOut
 from app.schemas.entities import ClientCreate, ClientUpdate, ClientResponse, DebtPaymentRequest
 from app.services.entitlements import check_feature_access, check_quota_limit
+from app.services.partner_query_service import list_partners_response
 from app.services.payment_ledger_service import (
     list_client_payments_svc,
     record_client_payment_svc,
@@ -20,26 +20,34 @@ from app.services.tenant_context_service import TenantContext
 router = APIRouter()
 
 
-@router.get("", response_model=List[ClientResponse])
+@router.get("", response_model=Any)
 def list_clients(
     q: Optional[str] = Query(None, description="Recherche par nom, téléphone ou email"),
     only_debtors: bool = Query(False, description="Filtrer uniquement les clients ayant une dette"),
+    sort: Optional[str] = Query(None),
+    paginated: bool = False,
+    page: int = Query(1, ge=1),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     ctx: TenantContext = Depends(deps.get_tenant_context),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Client).filter(
-        Client.boutique_id == ctx.boutique.id, Client.deleted_at.is_(None)
+    return list_partners_response(
+        db=db,
+        model=Client,
+        boutique_id=ctx.boutique.id,
+        search_columns=(Client.name, Client.phone, Client.email),
+        schema_cls=ClientResponse,
+        total_key="total_clients",
+        debtors_key="debtors_count",
+        q=q,
+        only_with_balance=only_debtors,
+        sort=sort,
+        paginated=paginated,
+        page=page,
+        limit=limit,
+        offset=offset,
     )
-    if q:
-        search = f"%{q.strip()}%"
-        query = query.filter(
-            or_(Client.name.ilike(search), Client.phone.ilike(search), Client.email.ilike(search))
-        )
-    if only_debtors:
-        query = query.filter(Client.balance > 0)
-    return query.order_by(Client.name.asc()).offset(offset).limit(limit).all()
 
 
 @router.post("", response_model=ClientResponse, status_code=status.HTTP_201_CREATED)

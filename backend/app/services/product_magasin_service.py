@@ -20,7 +20,8 @@ def list_products_for_context(
     """Return products enriched with magasin-level stock, availability, and custom pricing."""
     query = db.query(Product).filter(Product.boutique_id == boutique_id, Product.deleted_at.is_(None))
     if search:
-        query = query.filter(Product.name.ilike(f"%{search}%"))
+        term = f"%{search.strip()}%"
+        query = query.filter(or_(Product.name.ilike(term), Product.barcode.ilike(term)))
     if category_id:
         query = query.filter(Product.category_sync_id == category_id)
     if magasin_id and only_available:
@@ -30,7 +31,17 @@ def list_products_for_context(
             & (ProductMagasinAvailability.magasin_id == magasin_id),
         ).filter(or_(ProductMagasinAvailability.is_available.is_(None), ProductMagasinAvailability.is_available == True))
 
-    products = query.offset(skip).limit(limit).all()
+    products = query.order_by(Product.name.asc()).offset(skip).limit(limit).all()
+    return enrich_products_for_context(db, boutique_id, magasin_id, products)
+
+
+def enrich_products_for_context(
+    db: Session,
+    boutique_id: str,
+    magasin_id: Optional[str],
+    products: List[Product],
+) -> List[Dict[str, Any]]:
+    """Enrich product ORM models with active magasin stock, availability, and custom pricing."""
     if not products:
         return []
     prod_ids = [p.sync_id for p in products]

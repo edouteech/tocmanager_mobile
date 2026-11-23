@@ -1,9 +1,8 @@
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import datetime, timezone
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
 
 from app.api import deps
 from app.core.database import get_db
@@ -11,6 +10,7 @@ from app.models import Supplier, AuditLog
 from app.schemas.cash import PaymentLedgerOut
 from app.schemas.entities import SupplierCreate, SupplierUpdate, SupplierResponse, SupplierPaymentRequest
 from app.services.entitlements import check_feature_access, check_quota_limit
+from app.services.partner_query_service import list_partners_response
 from app.services.payment_ledger_service import (
     list_supplier_payments_svc,
     record_supplier_payment_svc,
@@ -20,31 +20,35 @@ from app.services.tenant_context_service import TenantContext
 router = APIRouter()
 
 
-@router.get("", response_model=List[SupplierResponse])
+@router.get("", response_model=Any)
 def list_suppliers(
     q: Optional[str] = Query(None, description="Recherche par nom, contact ou téléphone"),
     only_creditors: bool = Query(False, description="Fournisseurs à qui on doit de l'argent"),
+    sort: Optional[str] = Query(None),
+    paginated: bool = False,
+    page: int = Query(1, ge=1),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
     check_feature_access(db, ctx.boutique.id, "module_suppliers")
-    query = db.query(Supplier).filter(
-        Supplier.boutique_id == ctx.boutique.id, Supplier.deleted_at.is_(None)
+    return list_partners_response(
+        db=db,
+        model=Supplier,
+        boutique_id=ctx.boutique.id,
+        search_columns=(Supplier.name, Supplier.contact_person, Supplier.phone),
+        schema_cls=SupplierResponse,
+        total_key="total_suppliers",
+        debtors_key="creditors_count",
+        q=q,
+        only_with_balance=only_creditors,
+        sort=sort,
+        paginated=paginated,
+        page=page,
+        limit=limit,
+        offset=offset,
     )
-    if q:
-        search = f"%{q.strip()}%"
-        query = query.filter(
-            or_(
-                Supplier.name.ilike(search),
-                Supplier.contact_person.ilike(search),
-                Supplier.phone.ilike(search),
-            )
-        )
-    if only_creditors:
-        query = query.filter(Supplier.balance > 0)
-    return query.order_by(Supplier.name.asc()).offset(offset).limit(limit).all()
 
 
 @router.post("", response_model=SupplierResponse, status_code=status.HTTP_201_CREATED)

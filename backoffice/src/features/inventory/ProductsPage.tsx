@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useEffect, useState, useMemo } from 'react';
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Package,
   Plus,
@@ -12,10 +12,11 @@ import {
   FileSpreadsheet,
   Check,
 } from 'lucide-react';
-import { api } from '../../lib/api';
+import { api, categoriesApi, productsApi } from '../../lib/api';
 import { formatFCFA } from '../../lib/formatters';
 import { Product, Category } from '../../types';
 import { Drawer } from '../../components/common/Drawer';
+import { PaginationControls } from '../../components/common/PaginationControls';
 import { useDensity } from '../../context/DensityContext';
 import { exportToExcel } from '../../lib/exportUtils';
 import { ImageUploadInput } from '../../components/common/ImageUploadInput';
@@ -41,6 +42,8 @@ export const ProductsPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('name_asc');
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
 
   // Form states
   const [name, setName] = useState('');
@@ -54,23 +57,38 @@ export const ProductsPage: React.FC = () => {
   const [imagePath, setImagePath] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Query products
-  const { data: products = [], isLoading } = useQuery<Product[]>({
-    queryKey: ['products', boutiqueKey, magasinKey],
-    queryFn: async () => {
-      const res = await api.get('/products');
-      return res.data;
-    },
+  useEffect(() => {
+    setPage(1);
+  }, [boutiqueKey, magasinKey, searchTerm, selectedCategory, stockFilter, sortBy]);
+
+  // Query products (paginated)
+  const { data: productsPage, isLoading, isFetching } = useQuery({
+    queryKey: ['products', boutiqueKey, magasinKey, page, limit, searchTerm, selectedCategory, stockFilter, sortBy],
+    queryFn: () =>
+      productsApi.getPaginated({
+        page,
+        limit,
+        search: searchTerm || undefined,
+        category_id: selectedCategory,
+        stock_status: stockFilter,
+        sort: sortBy,
+      }),
+    placeholderData: keepPreviousData,
   });
+
+  const products = productsPage?.items ?? [];
+  const productSummary = productsPage?.summary;
 
   // Query categories
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ['categories', boutiqueKey, magasinKey],
-    queryFn: async () => {
-      const res = await api.get('/categories');
-      return res.data;
-    },
+    queryFn: () => categoriesApi.getAll(),
   });
+
+  const categoriesMap = useMemo(
+    () => new Map(categories.map((c) => [c.sync_id, c])),
+    [categories]
+  );
 
   // Mutations
   const createMutation = useMutation({
@@ -105,8 +123,16 @@ export const ProductsPage: React.FC = () => {
     },
   });
 
-  // Stats calculation
+  // Stats calculation (global SQL summary when available)
   const stats = useMemo(() => {
+    if (productSummary) {
+      return {
+        total: productSummary.total,
+        inStock: productSummary.in_stock,
+        lowStock: productSummary.low_stock,
+        outOfStock: productSummary.out_of_stock,
+      };
+    }
     let inStock = 0;
     let lowStock = 0;
     let outOfStock = 0;
@@ -122,7 +148,7 @@ export const ProductsPage: React.FC = () => {
     });
 
     return { total: products.length, inStock, lowStock, outOfStock };
-  }, [products]);
+  }, [productSummary, products]);
 
   // Summary chips
   const summaryChips: SummaryChipItem[] = [
@@ -278,7 +304,7 @@ export const ProductsPage: React.FC = () => {
 
   const handleExportExcel = () => {
     const exportData = filteredProducts.map((p) => {
-      const cat = categories.find((c) => c.sync_id === p.category_sync_id);
+      const cat = p.category_sync_id ? categoriesMap.get(p.category_sync_id) : undefined;
       return {
         'Désignation': p.name,
         'Catégorie': cat?.name || 'Non classé',
@@ -404,7 +430,7 @@ export const ProductsPage: React.FC = () => {
         /* Mobile Cards Grid */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
           {filteredProducts.map((p) => {
-            const cat = categories.find((c) => c.sync_id === p.category_sync_id);
+            const cat = p.category_sync_id ? categoriesMap.get(p.category_sync_id) : undefined;
             return (
               <ProductCard
                 key={p.sync_id}
@@ -441,7 +467,7 @@ export const ProductsPage: React.FC = () => {
                 {filteredProducts.map((p) => {
                   const isOut = p.stock <= 0;
                   const isLow = !isOut && p.stock <= (p.min_stock || 5);
-                  const cat = categories.find((c) => c.sync_id === p.category_sync_id);
+                  const cat = p.category_sync_id ? categoriesMap.get(p.category_sync_id) : undefined;
 
                   return (
                     <tr key={p.sync_id} className="hover:bg-brand-50/30 dark:hover:bg-dark-700/40 transition-colors">
@@ -536,6 +562,20 @@ export const ProductsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <PaginationControls
+        page={productsPage?.page || page}
+        pages={productsPage?.pages || 1}
+        total={productsPage?.total || 0}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={(nextLimit) => {
+          setLimit(nextLimit);
+          setPage(1);
+        }}
+        itemLabel="produits"
+        isFetching={isFetching}
+      />
 
       {/* Slide-over Drawer for Product Create / Edit */}
       <Drawer

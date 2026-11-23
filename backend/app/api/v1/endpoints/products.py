@@ -1,11 +1,12 @@
 from typing import Any, List, Optional
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.api import deps
 from app.core.database import get_db
 from app.models import Category, Magasin, Product
 from app.schemas.entities import ProductMagasinConfigUpdate, ProductMagasinItemOut
+from app.schemas.product import ProductCreate, ProductUpdate
 from app.schemas.sync import ProductSync
 from app.services.entitlements import check_quota_limit
 from app.services.product_magasin_service import (
@@ -13,6 +14,7 @@ from app.services.product_magasin_service import (
     list_products_for_context,
     upsert_product_magasin_config,
 )
+from app.services.product_query_service import list_products_paginated_for_context
 from app.services.stock_service import (
     ensure_stock_row,
     initialize_product_magasin_stocks,
@@ -23,35 +25,8 @@ from app.services.tenant_context_service import (
     resolve_operational_magasin,
     resolve_read_magasin_id,
 )
-from pydantic import BaseModel
 
 router = APIRouter()
-
-
-class ProductCreate(BaseModel):
-    name: str
-    category_sync_id: Optional[str] = None
-    price: float
-    cost_price: float = 0.0
-    stock: float = 0.0
-    min_stock: float = 5.0
-    barcode: Optional[str] = None
-    unit: Optional[str] = "pièce"
-    image_path: Optional[str] = None
-    magasin_id: Optional[str] = None
-
-
-class ProductUpdate(BaseModel):
-    name: Optional[str] = None
-    category_sync_id: Optional[str] = None
-    price: Optional[float] = None
-    cost_price: Optional[float] = None
-    stock: Optional[float] = None
-    min_stock: Optional[float] = None
-    barcode: Optional[str] = None
-    unit: Optional[str] = None
-    image_path: Optional[str] = None
-    is_active: Optional[bool] = None
 
 
 def _ensure_category_in_boutique(
@@ -72,17 +47,34 @@ def _ensure_category_in_boutique(
         raise HTTPException(status_code=404, detail="Catégorie introuvable dans cette boutique")
 
 
-@router.get("", response_model=List[ProductSync])
+@router.get("", response_model=Any)
 def list_products(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = Query(100, ge=1, le=500),
+    page: int = Query(1, ge=1),
+    paginated: bool = False,
     search: Optional[str] = None,
     category_id: Optional[str] = None,
+    stock_status: Optional[str] = None,
     only_available: bool = False,
+    sort: Optional[str] = None,
     ctx: TenantContext = Depends(deps.get_tenant_context),
     db: Session = Depends(get_db),
 ) -> Any:
     magasin_id = resolve_read_magasin_id(ctx)
+    if paginated:
+        return list_products_paginated_for_context(
+            db=db,
+            boutique_id=ctx.boutique.id,
+            magasin_id=magasin_id,
+            search=search,
+            category_id=category_id,
+            stock_status=stock_status,
+            only_available=only_available,
+            sort=sort,
+            page=page,
+            limit=limit,
+        )
     return list_products_for_context(
         db=db,
         boutique_id=ctx.boutique.id,

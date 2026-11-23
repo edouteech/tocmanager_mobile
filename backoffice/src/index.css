@@ -76,3 +76,40 @@
 .badge-toc-purple {
   @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#F5EEF8] text-[#8E44AD] dark:bg-[#8E44AD]/15 dark:text-[#8E44AD];
 }
+
+@media print {
+  aside,
+  header,
+  nav,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  body:has(.printable-area) * {
+    visibility: hidden;
+  }
+
+  body:has(.printable-area) .printable-area,
+  body:has(.printable-area) .printable-area * {
+    visibility: visible;
+  }
+
+  body:has(.printable-area) .printable-area {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 16px;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+}

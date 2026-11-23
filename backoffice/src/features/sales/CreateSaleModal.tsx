@@ -46,7 +46,8 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const [boutiqueKey, magasinKey] = useTenantContextKey();
-  const { magasins, currentMagasin, isConsolidatedView } = useTenantStore();
+  const { currentBoutique, magasins, currentMagasin, isConsolidatedView } = useTenantStore();
+  const storeDisplayName = currentBoutique?.company_name || currentBoutique?.name || 'TocManager';
   const user = useAuthStore((s) => s.user);
   const canOverridePrice = ['owner', 'store_admin', 'merchant', 'admin', 'manager'].includes(
     user?.role || ''
@@ -103,6 +104,7 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
       productsApi.getAll({
         only_available: true,
         magasin_id: effectiveMagasinId,
+        limit: 500,
       }),
     enabled: isOpen,
   });
@@ -332,11 +334,17 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
           </div>
 
           {/* Ticket preview card */}
-          <div className="max-w-md mx-auto bg-slate-50 dark:bg-dark-700 p-6 rounded-2xl border border-slate-200 dark:border-dark-600 space-y-4 font-mono text-xs text-slate-700 dark:text-slate-300">
+          <div className="printable-area max-w-md mx-auto bg-slate-50 dark:bg-dark-700 p-6 rounded-2xl border border-slate-200 dark:border-dark-600 space-y-4 font-mono text-xs text-slate-700 dark:text-slate-300">
             <div className="text-center border-b border-dashed border-slate-300 dark:border-dark-500 pb-3">
               <h4 className="font-bold text-sm text-slate-900 dark:text-white uppercase tracking-wider">
-                TOCMANAGER - REÇU DE CAISSE
+                {storeDisplayName}
               </h4>
+              {currentMagasin && (
+                <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                  {currentMagasin.name}
+                </p>
+              )}
+              <p className="text-[11px] text-slate-500">REÇU DE CAISSE</p>
               <p className="text-slate-500 mt-1">{formatDateTime(completedVente.created_at)}</p>
               <p className="text-slate-500">Client : {completedVente.client_name || 'Occasionnel'}</p>
               <p className="text-slate-500">Mode : {completedVente.payment_method}</p>
@@ -386,7 +394,7 @@ export const CreateSaleModal: React.FC<CreateSaleModalProps> = ({
             </div>
           </div>
 
-          <div className="flex justify-center gap-3 pt-2">
+          <div className="no-print flex justify-center gap-3 pt-2">
             <button
               onClick={handlePrintReceipt}
               className="btn-toc btn-outline flex items-center gap-2"

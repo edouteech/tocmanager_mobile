@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useEffect, useState } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   ShieldCheck,
   Search,
@@ -15,9 +15,10 @@ import {
   FileText,
   Info,
 } from 'lucide-react';
-import { api } from '../../lib/api';
+import { auditApi } from '../../lib/api';
 import { formatDateTime } from '../../lib/formatters';
 import { Modal } from '../../components/common/Modal';
+import { PaginationControls } from '../../components/common/PaginationControls';
 import { useDensity } from '../../context/DensityContext';
 import { useTenantContextKey } from '../../stores/tenantStore';
 
@@ -35,6 +36,9 @@ interface AuditLogItem {
 interface AuditLogResponse {
   total: number;
   items: AuditLogItem[];
+  page: number;
+  pages: number;
+  limit: number;
 }
 
 export const AuditLogsPage: React.FC = () => {
@@ -42,17 +46,24 @@ export const AuditLogsPage: React.FC = () => {
   const [boutiqueKey, magasinKey] = useTenantContextKey();
   const [selectedAction, setSelectedAction] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
   const [selectedLog, setSelectedLog] = useState<AuditLogItem | null>(null);
 
+  useEffect(() => {
+    setPage(1);
+  }, [boutiqueKey, magasinKey, selectedAction, searchTerm]);
+
   const { data, isLoading, refetch, isFetching } = useQuery<AuditLogResponse>({
-    queryKey: ['audit-logs', boutiqueKey, magasinKey, selectedAction],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (selectedAction) params.append('action', selectedAction);
-      params.append('limit', '100');
-      const res = await api.get(`/audit/logs?${params.toString()}`);
-      return res.data;
-    },
+    queryKey: ['audit-logs', boutiqueKey, magasinKey, selectedAction, searchTerm, page, limit],
+    queryFn: () =>
+      auditApi.getLogs({
+        action: selectedAction || undefined,
+        q: searchTerm || undefined,
+        page,
+        limit,
+      }),
+    placeholderData: keepPreviousData,
   });
 
   const getActionBadge = (action: string) => {
@@ -109,16 +120,7 @@ export const AuditLogsPage: React.FC = () => {
     }
   };
 
-  const filteredItems = (data?.items || []).filter((item) => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      (item.user_name && item.user_name.toLowerCase().includes(term)) ||
-      (item.action && item.action.toLowerCase().includes(term)) ||
-      (item.entity_type && item.entity_type.toLowerCase().includes(term)) ||
-      (item.entity_id && item.entity_id.toLowerCase().includes(term))
-    );
-  });
+  const filteredItems = data?.items || [];
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -271,6 +273,20 @@ export const AuditLogsPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      <PaginationControls
+        page={data?.page || page}
+        pages={data?.pages || 1}
+        total={data?.total || 0}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={(nextLimit) => {
+          setLimit(nextLimit);
+          setPage(1);
+        }}
+        itemLabel="événements"
+        isFetching={isFetching}
+      />
 
       {/* Details Modal */}
       <Modal

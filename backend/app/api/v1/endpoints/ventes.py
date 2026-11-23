@@ -1,8 +1,8 @@
-from typing import Any, List, Optional
-from datetime import date
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from sqlalchemy import func
+from typing import Any, Optional
+from datetime import date, datetime, timezone
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import case, func, or_
 
 from app.api import deps
 from app.core.database import get_db
@@ -10,6 +10,7 @@ from app.models import Vente
 from app.schemas.cash import SaleRefundRequest
 from app.schemas.sync import VenteSync, VenteItemSync
 from app.schemas.entities import VenteCreate
+from app.services.pagination_service import paginate_sqlalchemy
 from app.services.sale_refund_service import refund_vente
 from app.services.tenant_context_service import TenantContext, resolve_read_magasin_id
 from app.services.vente_service import create_vente_transaction
@@ -49,25 +50,79 @@ def _to_vente_sync(v: Vente) -> VenteSync:
     )
 
 
-@router.get("", response_model=List[VenteSync])
+@router.get("", response_model=Any)
 def list_ventes(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = Query(100, ge=1, le=500),
+    page: int = Query(1, ge=1),
+    paginated: bool = False,
+    q: Optional[str] = None,
+    only_credit: bool = False,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     ctx: TenantContext = Depends(deps.get_tenant_context),
     db: Session = Depends(get_db),
 ) -> Any:
     magasin_id = resolve_read_magasin_id(ctx)
-    query = db.query(Vente).filter(Vente.boutique_id == ctx.boutique.id, Vente.deleted_at.is_(None))
+    base_query = db.query(Vente).filter(
+        Vente.boutique_id == ctx.boutique.id,
+        Vente.deleted_at.is_(None),
+    )
     if magasin_id:
-        query = query.filter(Vente.magasin_id == magasin_id)
+        base_query = base_query.filter(Vente.magasin_id == magasin_id)
+
+    filtered = base_query
+    if q and q.strip():
+        term = f"%{q.strip()}%"
+        filtered = filtered.filter(
+            or_(Vente.ticket_number.ilike(term), Vente.client_name.ilike(term))
+        )
+    if only_credit:
+        filtered = filtered.filter(
+            (Vente.total_amount > Vente.paid_amount) & (Vente.status != "refunded")
+        )
     if start_date:
-        query = query.filter(func.date(Vente.created_at) >= start_date)
+        filtered = filtered.filter(func.date(Vente.created_at) >= start_date)
     if end_date:
-        query = query.filter(func.date(Vente.created_at) <= end_date)
-    ventes = query.order_by(Vente.created_at.desc()).offset(skip).limit(limit).all()
-    return [_to_vente_sync(v) for v in ventes]
+        filtered = filtered.filter(func.date(Vente.created_at) <= end_date)
+
+    ordered = filtered.options(selectinload(Vente.items)).order_by(Vente.created_at.desc())
+    if not paginated:
+        ventes = ordered.offset(skip).limit(limit).all()
+        return [_to_vente_sync(v) for v in ventes]
+
+    today = datetime.now(timezone.utc).date()
+    credit_expr = case(
+        ((Vente.total_amount > Vente.paid_amount) & (Vente.status != "refunded"), Vente.total_amount - Vente.paid_amount),
+        else_=0.0,
+    )
+    non_refunded_amount = case((Vente.status != "refunded", Vente.total_amount), else_=0.0)
+    today_expr = case(
+        ((func.date(Vente.created_at) == today) & (Vente.status != "refunded"), Vente.total_amount),
+        else_=0.0,
+    )
+    total_count, total_amount, today_amount, total_credit = base_query.with_entities(
+        func.count(Vente.sync_id),
+        func.coalesce(func.sum(non_refunded_amount), 0.0),
+        func.coalesce(func.sum(today_expr), 0.0),
+        func.coalesce(func.sum(credit_expr), 0.0),
+    ).one()
+    filtered_amount = filtered.with_entities(func.coalesce(func.sum(non_refunded_amount), 0.0)).scalar() or 0.0
+
+    summary = {
+        "total_count": int(total_count or 0),
+        "total_amount": float(total_amount or 0.0),
+        "filtered_amount": float(filtered_amount or 0.0),
+        "today_amount": float(today_amount or 0.0),
+        "total_credit": float(total_credit or 0.0),
+    }
+    return paginate_sqlalchemy(
+        ordered,
+        page=page,
+        limit=limit,
+        summary=summary,
+        serializer=lambda v: _to_vente_sync(v).model_dump(),
+    )
 
 
 @router.post("", response_model=VenteSync, status_code=status.HTTP_201_CREATED)
