@@ -20,7 +20,11 @@ def compute_dashboard_stats(
 ) -> Dict[str, float | int]:
     today = datetime.now(timezone.utc).date()
 
-    v_base = db.query(Vente).filter(Vente.boutique_id == boutique_id, Vente.deleted_at.is_(None))
+    v_base = db.query(Vente).filter(
+        Vente.boutique_id == boutique_id,
+        Vente.deleted_at.is_(None),
+        Vente.status != "refunded",
+    )
     if magasin_id:
         v_base = v_base.filter(Vente.magasin_id == magasin_id)
     total_sales = v_base.with_entities(
