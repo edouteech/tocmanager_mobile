@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:intl/intl.dart';
@@ -20,14 +20,32 @@ class DatabaseHelper {
 
   static DatabaseHelper? _instance;
   static Database? _database;
+  static Future<Database>? _initFuture;
+  static String? _testDbPath;
 
   DatabaseHelper._();
   static DatabaseHelper get instance => _instance ??= DatabaseHelper._();
 
+  @visibleForTesting
+  static Future<void> resetForTesting({String? dbPath}) async {
+    await _instance?.closeDatabase();
+    _testDbPath = dbPath;
+    _database = null;
+    _initFuture = null;
+  }
+
   Future<Database> get database async {
-    final db = _database ??= await _init();
-    await _ensureAllTablesExist(db);
-    return db;
+    if (_database != null && _database!.isOpen) {
+      return _database!;
+    }
+    _initFuture ??= _init();
+    try {
+      _database = await _initFuture!;
+      return _database!;
+    } catch (e) {
+      _initFuture = null;
+      rethrow;
+    }
   }
 
   /// Ferme proprement la base et réinitialise l'instance pour permettre réouverture/restauration
@@ -38,6 +56,7 @@ class DatabaseHelper {
       }
       _database = null;
     }
+    _initFuture = null;
   }
 
   /// Force l'écriture des journaux WAL sur le fichier principal SQLite
@@ -61,13 +80,22 @@ class DatabaseHelper {
       await txn.delete('categories');
       await txn.delete('clients');
       await txn.delete('suppliers');
+      for (final extra in ['sync_queue', 'audit_logs']) {
+        try {
+          await txn.delete(extra);
+        } catch (_) {}
+      }
       try {
-        await txn.delete('sync_queue');
+        await txn.delete(
+          'settings',
+          where: 'key = ?',
+          whereArgs: ['last_sync_timestamp'],
+        );
       } catch (_) {}
       try {
         await txn.delete(
           'sqlite_sequence',
-          where: "name IN ('vente_items', 'ventes', 'approvisionnements', 'decaissements', 'products', 'categories', 'clients', 'suppliers')",
+          where: "name IN ('vente_items', 'ventes', 'approvisionnements', 'decaissements', 'products', 'categories', 'clients', 'suppliers', 'sync_queue', 'audit_logs')",
         );
       } catch (_) {}
       await txn.execute('PRAGMA foreign_keys = ON');
@@ -75,9 +103,9 @@ class DatabaseHelper {
   }
 
   Future<Database> _init() async {
-    final dbPath = await getDatabasesPath();
+    final path = _testDbPath ?? join(await getDatabasesPath(), _dbName);
     return openDatabase(
-      join(dbPath, _dbName),
+      path,
       version: _dbVersion,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
@@ -88,6 +116,12 @@ class DatabaseHelper {
   }
 
   Future<void> _ensureAllTablesExist(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      )
+    ''');
     await _createV2Schema(db);
     await _createV3Schema(db);
     try {
@@ -103,12 +137,47 @@ class DatabaseHelper {
     await _createV12Schema(db);
     await _createV13Schema(db);
     await _createV14Schema(db);
+    await _createIndexes(db);
+  }
+
+  Future<void> _createIndexes(Database db) async {
+    const statements = [
+      'CREATE INDEX IF NOT EXISTS idx_vente_items_vente_id ON vente_items(vente_id)',
+      'CREATE INDEX IF NOT EXISTS idx_vente_items_product_id ON vente_items(product_id)',
+      'CREATE INDEX IF NOT EXISTS idx_ventes_date ON ventes(date)',
+      'CREATE INDEX IF NOT EXISTS idx_ventes_sync_id ON ventes(sync_id)',
+      'CREATE INDEX IF NOT EXISTS idx_products_sync_id ON products(sync_id)',
+      'CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id)',
+      'CREATE INDEX IF NOT EXISTS idx_clients_sync_id ON clients(sync_id)',
+      'CREATE INDEX IF NOT EXISTS idx_suppliers_sync_id ON suppliers(sync_id)',
+      'CREATE INDEX IF NOT EXISTS idx_categories_sync_id ON categories(sync_id)',
+      'CREATE INDEX IF NOT EXISTS idx_approvisionnements_product_id ON approvisionnements(product_id)',
+      'CREATE INDEX IF NOT EXISTS idx_decaissements_date ON decaissements(date)',
+      'CREATE INDEX IF NOT EXISTS idx_sync_queue_entity_uuid ON sync_queue(entity_uuid)',
+    ];
+    for (final sql in statements) {
+      try {
+        await db.execute(sql);
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _backupPreV13Once(Database db) async {
+    try {
+      final dbPath = db.path;
+      if (dbPath.isEmpty || dbPath == inMemoryDatabasePath) return;
+      final bakFile = File('$dbPath.pre_v13.bak');
+      if (await bakFile.exists()) return;
+      final originalFile = File(dbPath);
+      if (await originalFile.exists()) {
+        await originalFile.copy(bakFile.path);
+      }
+    } catch (_) {}
   }
 
   Future<void> _onCreate(Database db, int version) async {
     await _createBaseSchema(db);
     await _ensureAllTablesExist(db);
-    await _insertSampleData(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -127,7 +196,10 @@ class DatabaseHelper {
     if (oldVersion < 10) await _createV10Schema(db);
     if (oldVersion < 11) await _createV11Schema(db);
     if (oldVersion < 12) await _createV12Schema(db);
-    if (oldVersion < 13) await _createV13Schema(db);
+    if (oldVersion < 13) {
+      await _backupPreV13Once(db);
+      await _createV13Schema(db);
+    }
     if (oldVersion < 14) await _createV14Schema(db);
   }
 
@@ -174,16 +246,7 @@ class DatabaseHelper {
 
   Future<void> _createV13Schema(Database db) async {
     try {
-      // 1. Sauvegarde miroir préventive de la base de données
-      try {
-        final dbPath = db.path;
-        final originalFile = File(dbPath);
-        if (await originalFile.exists()) {
-          await originalFile.copy('$dbPath.pre_v13.bak');
-        }
-      } catch (_) {}
-
-      // 2. Création sécurisée de la table de file d'attente hors-ligne sync_queue
+      // 1. Création sécurisée de la table de file d'attente hors-ligne sync_queue
       await db.execute('''
         CREATE TABLE IF NOT EXISTS sync_queue (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -523,150 +586,6 @@ class DatabaseHelper {
         reference TEXT
       )
     ''');
-  }
-
-  Future<void> _insertSampleData(Database db) async {
-    final now = DateTime.now().toIso8601String();
-
-    final catCount = Sqflite.firstIntValue(
-      await db.rawQuery('SELECT COUNT(*) FROM categories'),
-    );
-    if (catCount == 0) {
-      await db.insert('categories', {
-        'name': 'Vêtements Homme',
-        'description': 'Chemises, pantalons, T-shirts et costumes',
-        'color': Colors.indigo.value,
-        'icon': Icons.checkroom.codePoint,
-        'created_at': now,
-      });
-      await db.insert('categories', {
-        'name': 'Vêtements Femme',
-        'description': 'Robes, jupes, ensembles et hauts',
-        'color': Colors.pink.value,
-        'icon': Icons.checkroom.codePoint,
-        'created_at': now,
-      });
-      await db.insert('categories', {
-        'name': 'Chaussures',
-        'description': 'Mocassins, talons, baskets et sandales',
-        'color': Colors.amber.value,
-        'icon': Icons.style.codePoint,
-        'created_at': now,
-      });
-      await db.insert('categories', {
-        'name': 'Accessoires & Maroquinerie',
-        'description': 'Sacs à main, ceintures et bijoux',
-        'color': Colors.teal.value,
-        'icon': Icons.shopping_bag.codePoint,
-        'created_at': now,
-      });
-
-      await db.insert('products', {
-        'category_id': 1,
-        'name': 'Chemise Homme Slim Fit L',
-        'description': 'Chemise en coton manches longues',
-        'price': 15000,
-        'cost_price': 10000,
-        'quantity': 15,
-        'unit': 'pce',
-        'barcode': '600111222333',
-        'alert_quantity': 3,
-        'created_at': now,
-        'updated_at': now,
-      });
-      await db.insert('products', {
-        'category_id': 2,
-        'name': 'Robe de Soirée Élégante M',
-        'description': 'Robe fluide imprimée chic',
-        'price': 25000,
-        'cost_price': 16000,
-        'quantity': 8,
-        'unit': 'pce',
-        'barcode': '600444555666',
-        'alert_quantity': 2,
-        'created_at': now,
-        'updated_at': now,
-      });
-      await db.insert('products', {
-        'category_id': 1,
-        'name': 'Jean Denim Classic T42',
-        'description': 'Jean droit coupe classique',
-        'price': 12500,
-        'cost_price': 8000,
-        'quantity': 20,
-        'unit': 'pce',
-        'barcode': '600777888999',
-        'alert_quantity': 5,
-        'created_at': now,
-        'updated_at': now,
-      });
-      await db.insert('products', {
-        'category_id': 3,
-        'name': 'Mocassins Cuir Noir T43',
-        'description': 'Chaussures de ville en cuir souple',
-        'price': 30000,
-        'cost_price': 20000,
-        'quantity': 4,
-        'unit': 'pce',
-        'barcode': '600123987456',
-        'alert_quantity': 2,
-        'created_at': now,
-        'updated_at': now,
-      });
-      await db.insert('products', {
-        'category_id': 4,
-        'name': 'Sac à Main Cuir Chic',
-        'description': 'Sac à main avec bandoulière amovible',
-        'price': 18000,
-        'cost_price': 11000,
-        'quantity': 6,
-        'unit': 'pce',
-        'barcode': null,
-        'alert_quantity': 2,
-        'created_at': now,
-        'updated_at': now,
-      });
-    }
-
-    final clientCount = Sqflite.firstIntValue(
-      await db.rawQuery('SELECT COUNT(*) FROM clients'),
-    );
-    if (clientCount == 0) {
-      await db.insert('clients', {
-        'name': 'Kouassi Jean',
-        'phone': '+225 0707070707',
-        'email': 'kouassi@gmail.com',
-        'address': 'Abidjan, Cocody',
-        'balance': 15000,
-        'notes': 'Client fidèle',
-        'created_at': now,
-      });
-      await db.insert('clients', {
-        'name': 'Soro Mariam',
-        'phone': '+225 0505050505',
-        'email': 'soro.m@yahoo.fr',
-        'address': 'Abidjan, Marcory',
-        'balance': 0,
-        'notes': 'Paiement toujours comptant',
-        'created_at': now,
-      });
-    }
-
-    final supplierCount = Sqflite.firstIntValue(
-      await db.rawQuery('SELECT COUNT(*) FROM suppliers'),
-    );
-    if (supplierCount == 0) {
-      await db.insert('suppliers', {
-        'name': 'Élégance Mode Gros',
-        'contact_person': 'M. Touré',
-        'phone': '+225 2720202020',
-        'email': 'contact@elegancemode.ci',
-        'address': 'Abidjan, Adjamé',
-        'balance': 50000,
-        'notes': 'Fournisseur principal prêt-à-porter',
-        'created_at': now,
-      });
-    }
   }
 
   // --- STATS ---
@@ -1102,20 +1021,24 @@ class DatabaseHelper {
   // --- VENTES (TICKETS & MULTI-ARTICLES) ---
   Future<List<Vente>> getVentes({int? productId}) async {
     final db = await database;
-    await _createV6Schema(db);
     final maps = await db.query('ventes', orderBy: 'date DESC');
-    final List<Vente> result = [];
+    if (maps.isEmpty) return [];
 
+    final allItemMaps = await db.query('vente_items');
+    final itemsByVenteId = <int, List<VenteItem>>{};
+    for (final itemMap in allItemMaps) {
+      final vId = itemMap['vente_id'] as int?;
+      if (vId == null) continue;
+      itemsByVenteId.putIfAbsent(vId, () => []).add(VenteItem.fromMap(itemMap));
+    }
+
+    final List<Vente> result = [];
     for (final map in maps) {
       final venteId = map['id'] as int;
-      final itemMaps = await db.query('vente_items', where: 'vente_id = ?', whereArgs: [venteId]);
-      final items = itemMaps.map((m) => VenteItem.fromMap(m)).toList();
-
-      if (productId != null) {
-        final matches = items.any((it) => it.productId == productId);
-        if (!matches) continue;
+      final items = itemsByVenteId[venteId] ?? const <VenteItem>[];
+      if (productId != null && !items.any((it) => it.productId == productId)) {
+        continue;
       }
-
       result.add(Vente.fromMap(map, items: items));
     }
     return result;
@@ -1172,11 +1095,13 @@ class DatabaseHelper {
       }
 
       if (v.clientId != null) {
-        final diff = v.totalAmount - v.paidAmount;
-        await txn.rawUpdate(
-          'UPDATE clients SET balance = balance + ? WHERE id = ?',
-          [diff, v.clientId],
-        );
+        final diff = v.totalAmount > v.paidAmount ? v.totalAmount - v.paidAmount : 0.0;
+        if (diff > 0) {
+          await txn.rawUpdate(
+            'UPDATE clients SET balance = balance + ? WHERE id = ?',
+            [diff, v.clientId],
+          );
+        }
       }
 
       // Ajout atomique dans la file d'attente de synchronisation hors-ligne
@@ -1357,7 +1282,6 @@ class DatabaseHelper {
   // --- CLIENTS ---
   Future<List<Client>> getClients() async {
     final db = await database;
-    await _createV5Schema(db);
     final maps = await db.query('clients', orderBy: 'name ASC');
     return maps.map((m) => Client.fromMap(m)).toList();
   }
@@ -1483,7 +1407,6 @@ class DatabaseHelper {
   // --- SUPPLIERS ---
   Future<List<Supplier>> getSuppliers() async {
     final db = await database;
-    await _createV5Schema(db);
     final maps = await db.query('suppliers', orderBy: 'name ASC');
     return maps.map((m) => Supplier.fromMap(m)).toList();
   }

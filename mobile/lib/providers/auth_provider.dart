@@ -3,8 +3,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../models/user.dart';
+import '../database/database_helper.dart';
 import '../services/secure_storage_service.dart';
 import '../services/api_client.dart';
+import '../services/network_service.dart';
 import '../services/sync_service.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -159,8 +161,32 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Déconnexion
-  Future<void> logout() async {
+  /// Déconnexion avec synchronisation best-effort et purge locale complète
+  Future<void> logout({bool trySyncFirst = true}) async {
+    if (trySyncFirst && NetworkService.instance.isOnline) {
+      try {
+        final pending = await SyncService.instance.getPendingQueueCount();
+        if (pending > 0) {
+          await SyncService.instance.syncNow();
+        }
+      } catch (_) {}
+    }
+
+    try {
+      final refreshToken = await SecureStorageService.getRefreshToken();
+      if (refreshToken != null && refreshToken.isNotEmpty) {
+        final baseUrl = await SecureStorageService.getServerUrl();
+        await http
+            .post(
+              Uri.parse('$baseUrl/auth/logout'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({'refresh_token': refreshToken}),
+            )
+            .timeout(const Duration(seconds: 5));
+      }
+    } catch (_) {}
+
+    await DatabaseHelper.instance.clearAllBusinessData();
     await SecureStorageService.clearSession();
     _currentUser = null;
     _isAuthenticated = false;
