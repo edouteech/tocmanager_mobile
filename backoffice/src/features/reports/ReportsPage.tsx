@@ -30,7 +30,7 @@ import { reportsApi } from '../../lib/api';
 import { formatFCFA } from '../../lib/formatters';
 import { useDensity } from '../../context/DensityContext';
 import { useTheme } from '../../context/ThemeContext';
-import { exportToExcel } from '../../lib/exportUtils';
+import { downloadCsvContent, exportToExcel, formatCsvCell } from '../../lib/exportUtils';
 import { Modal } from '../../components/common/Modal';
 import { useTenantContextKey, useTenantStore } from '../../stores/tenantStore';
 
@@ -74,39 +74,39 @@ export const ReportsPage: React.FC = () => {
     if (!report) return;
     const { kpis, top_products, expenses_by_category } = report;
 
-    let csvContent = 'data:text/csv;charset=utf-8,';
-    csvContent += 'COMPTE DE RESULTAT ET RENTABILITE TOCMANAGER\n';
-    csvContent += `Periode : ${periodPreset}\n\n`;
+    const rows: unknown[][] = [
+      ['COMPTE DE RESULTAT ET RENTABILITE TOCMANAGER'],
+      [`Periode : ${periodPreset}`],
+      [],
+      ['INDICATEUR FINANCIER', 'MONTANT (FCFA)', 'POURCENTAGE'],
+      ["Chiffre d'Affaires Brut", kpis.gross_sales, '100%'],
+      ['Remises commerciales accordees', -kpis.discount_amount, '-'],
+      ["Chiffre d'Affaires Net", kpis.net_sales, '100%'],
+      [
+        'Cout des marchandises vendues (COGS)',
+        -kpis.cogs,
+        `${Math.round((kpis.cogs / (kpis.net_sales || 1)) * 100)}%`,
+      ],
+      ['Marge Brute Commerciale', kpis.gross_margin, `${kpis.gross_margin_rate}%`],
+      [
+        'Total Charges et Decaissements',
+        -kpis.total_expenses,
+        `${Math.round((kpis.total_expenses / (kpis.net_sales || 1)) * 100)}%`,
+      ],
+      ['Tresorerie Nette (CA - Depenses)', kpis.net_cashflow ?? (kpis.net_sales - kpis.total_expenses), '-'],
+      ["Resultat Net d'Exploitation", kpis.net_profit, `${kpis.net_margin_rate}%`],
+      [],
+      ['TOP PRODUITS PAR CHIFFRE D AFFAIRES'],
+      ['Article', 'Quantite Vendue', "Chiffre d'Affaires", 'Marge Beneficiaire'],
+      ...top_products.map((p) => [p.product_name, p.quantity_sold, p.total_revenue, p.total_profit]),
+      [],
+      ['VENTILATION DES DEPENSES PAR CATEGORIE'],
+      ['Categorie', 'Montant (FCFA)', 'Part (%)'],
+      ...expenses_by_category.map((e) => [e.category, e.total_amount, `${e.percentage}%`]),
+    ];
 
-    csvContent += 'INDICATEUR FINANCIER,MONTANT (FCFA),POURCENTAGE\n';
-    csvContent += `Chiffre d'Affaires Brut,${kpis.gross_sales},100%\n`;
-    csvContent += `Remises commerciales accordees,-${kpis.discount_amount},-\n`;
-    csvContent += `Chiffre d'Affaires Net,${kpis.net_sales},100%\n`;
-    csvContent += `Cout des marchandises vendues (COGS),-${kpis.cogs},${Math.round((kpis.cogs / (kpis.net_sales || 1)) * 100)}%\n`;
-    csvContent += `Marge Brute Commerciale,${kpis.gross_margin},${kpis.gross_margin_rate}%\n`;
-    csvContent += `Total Charges et Decaissements,-${kpis.total_expenses},${Math.round((kpis.total_expenses / (kpis.net_sales || 1)) * 100)}%\n`;
-    csvContent += `Tresorerie Nette (CA - Depenses),${kpis.net_cashflow ?? (kpis.net_sales - kpis.total_expenses)},-\n`;
-    csvContent += `Resultat Net d'Exploitation,${kpis.net_profit},${kpis.net_margin_rate}%\n\n`;
-
-    csvContent += 'TOP PRODUITS PAR CHIFFRE D AFFAIRES\n';
-    csvContent += 'Article,Quantite Vendue,Chiffre d Affaires,Marge Beneficiaire\n';
-    top_products.forEach((p) => {
-      csvContent += `"${p.product_name}",${p.quantity_sold},${p.total_revenue},${p.total_profit}\n`;
-    });
-
-    csvContent += '\nVENTILATION DES DEPENSES PAR CATEGORIE\n';
-    csvContent += 'Categorie,Montant (FCFA),Part (%)\n';
-    expenses_by_category.forEach((e) => {
-      csvContent += `"${e.category}",${e.total_amount},${e.percentage}%\n`;
-    });
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Rapport_Financier_TocManager_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const csvBody = rows.map((row) => row.map((cell) => formatCsvCell(cell)).join(';')).join('\r\n');
+    downloadCsvContent(csvBody, `Rapport_Financier_TocManager_${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
   const exportExcel = () => {
@@ -211,7 +211,7 @@ export const ReportsPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="no-print flex flex-wrap items-center gap-2">
           <button
             onClick={exportExcel}
             className="btn-toc btn-outline flex items-center gap-1.5 py-2 px-3 text-xs font-bold"
@@ -240,7 +240,7 @@ export const ReportsPage: React.FC = () => {
       </div>
 
       {/* Period Filter Chips (Exact match with mobile reports_screen) */}
-      <div className="card-toc p-3.5 flex items-center gap-2 overflow-x-auto no-scrollbar">
+      <div className="no-print card-toc p-3.5 flex items-center gap-2 overflow-x-auto no-scrollbar">
         {periodOptions.map((opt) => {
           const isSelected = periodPreset === opt.id;
           return (

@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useEffect, useState, useMemo } from 'react';
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Truck,
   Search,
@@ -19,6 +19,7 @@ import { suppliersApi } from '../../lib/api';
 import { formatFCFA, formatDateTime } from '../../lib/formatters';
 import { Supplier } from '../../types';
 import { Modal } from '../../components/common/Modal';
+import { PaginationControls } from '../../components/common/PaginationControls';
 import { useDensity } from '../../context/DensityContext';
 import { exportToExcel } from '../../lib/exportUtils';
 import { PaymentReceiptModal, PaymentReceiptData } from '../../components/common/PaymentReceiptModal';
@@ -36,6 +37,12 @@ export const SuppliersPage: React.FC = () => {
   const [supplierFilter, setSupplierFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('name_asc');
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
+
+  useEffect(() => {
+    setPage(1);
+  }, [boutiqueKey, magasinKey, search, supplierFilter, sortBy]);
 
   // Modals state
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
@@ -64,11 +71,26 @@ export const SuppliersPage: React.FC = () => {
   const [supplierError, setSupplierError] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
-  // Fetch suppliers
-  const { data: suppliers = [], isLoading } = useQuery({
-    queryKey: ['suppliers', boutiqueKey, magasinKey],
-    queryFn: () => suppliersApi.getAll(),
+  // Fetch suppliers (paginated)
+  const { data: suppliersPage, isLoading, isFetching } = useQuery({
+    queryKey: ['suppliers', boutiqueKey, magasinKey, page, limit, search, supplierFilter, sortBy],
+    queryFn: () =>
+      suppliersApi.getPaginated({
+        page,
+        limit,
+        q: search || undefined,
+        only_creditors: supplierFilter === 'creditors',
+        sort:
+          sortBy === 'debt_desc'
+            ? 'balance_desc'
+            : sortBy === 'debt_asc'
+              ? 'balance_asc'
+              : 'name_asc',
+      }),
+    placeholderData: keepPreviousData,
   });
+  const suppliers = suppliersPage?.items ?? [];
+  const supplierSummary = suppliersPage?.summary;
 
   // Mutations
   const createMutation = useMutation({
@@ -121,8 +143,16 @@ export const SuppliersPage: React.FC = () => {
     },
   });
 
-  // Stats calculation
+  // Stats calculation (global SQL summary when available)
   const stats = useMemo(() => {
+    if (supplierSummary) {
+      return {
+        total: supplierSummary.total_suppliers,
+        creditors: supplierSummary.creditors_count,
+        upToDate: supplierSummary.settled_count,
+        totalDebt: supplierSummary.total_debt,
+      };
+    }
     let creditors = 0;
     let upToDate = 0;
     let totalDebt = 0;
@@ -137,7 +167,7 @@ export const SuppliersPage: React.FC = () => {
     });
 
     return { total: suppliers.length, creditors, upToDate, totalDebt };
-  }, [suppliers]);
+  }, [supplierSummary, suppliers]);
 
   // Summary chips
   const summaryChips: SummaryChipItem[] = [
@@ -501,6 +531,20 @@ export const SuppliersPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <PaginationControls
+        page={suppliersPage?.page || page}
+        pages={suppliersPage?.pages || 1}
+        total={suppliersPage?.total || 0}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={(nextLimit) => {
+          setLimit(nextLimit);
+          setPage(1);
+        }}
+        itemLabel="fournisseurs"
+        isFetching={isFetching}
+      />
 
       {/* Modal Création / Modification Fournisseur */}
       <Modal

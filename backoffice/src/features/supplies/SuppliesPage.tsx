@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useEffect, useState } from 'react';
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   PackagePlus,
   Plus,
@@ -14,6 +14,7 @@ import {
 import { approvisionnementsApi, productsApi, suppliersApi } from '../../lib/api';
 import { formatFCFA, formatDateTime } from '../../lib/formatters';
 import { Drawer } from '../../components/common/Drawer';
+import { PaginationControls } from '../../components/common/PaginationControls';
 import { useDensity } from '../../context/DensityContext';
 import { useTenantStore, useTenantContextKey } from '../../stores/tenantStore';
 
@@ -24,6 +25,12 @@ export const SuppliesPage: React.FC = () => {
   const { magasins, currentMagasin, isConsolidatedView } = useTenantStore();
   const [targetMagasinId, setTargetMagasinId] = useState<string>('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
+
+  useEffect(() => {
+    setPage(1);
+  }, [boutiqueKey, magasinKey]);
 
   // Form state
   const [form, setForm] = useState({
@@ -36,14 +43,17 @@ export const SuppliesPage: React.FC = () => {
   });
 
   // Queries
-  const { data: supplies = [], isLoading } = useQuery({
-    queryKey: ['approvisionnements', boutiqueKey, magasinKey],
-    queryFn: () => approvisionnementsApi.getAll(),
+  const { data: suppliesPage, isLoading, isFetching } = useQuery({
+    queryKey: ['approvisionnements', boutiqueKey, magasinKey, page, limit],
+    queryFn: () => approvisionnementsApi.getPaginated({ page, limit }),
+    placeholderData: keepPreviousData,
   });
+  const supplies = suppliesPage?.items ?? [];
+  const supplySummary = suppliesPage?.summary;
 
   const { data: products = [] } = useQuery({
-    queryKey: ['products', boutiqueKey, magasinKey],
-    queryFn: () => productsApi.getAll(),
+    queryKey: ['products', boutiqueKey, magasinKey, 'supply-select'],
+    queryFn: () => productsApi.getAll({ limit: 500 }),
   });
 
   const { data: suppliers = [] } = useQuery({
@@ -123,8 +133,9 @@ export const SuppliesPage: React.FC = () => {
     });
   };
 
-  const totalSupplyCost = supplies.reduce((sum, s) => sum + s.total_cost, 0);
-  const totalQuantity = supplies.reduce((sum, s) => sum + s.quantity, 0);
+  const totalSupplyCost = supplySummary?.total_cost ?? supplies.reduce((sum, s) => sum + s.total_cost, 0);
+  const totalQuantity = supplySummary?.total_quantity ?? supplies.reduce((sum, s) => sum + s.quantity, 0);
+  const totalSupplyCount = supplySummary?.total_count ?? supplies.length;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -182,7 +193,7 @@ export const SuppliesPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Bons de Réception</p>
-              <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">{supplies.length}</p>
+              <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">{totalSupplyCount}</p>
             </div>
             <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-100 dark:border-amber-900/50">
               <PackagePlus className="w-5 h-5" />
@@ -278,6 +289,20 @@ export const SuppliesPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      <PaginationControls
+        page={suppliesPage?.page || page}
+        pages={suppliesPage?.pages || 1}
+        total={suppliesPage?.total || 0}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={(nextLimit) => {
+          setLimit(nextLimit);
+          setPage(1);
+        }}
+        itemLabel="réceptions"
+        isFetching={isFetching}
+      />
 
       {/* Slide-over Drawer for Stock Reception */}
       <Drawer

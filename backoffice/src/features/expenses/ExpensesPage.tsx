@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useEffect, useState, useMemo } from 'react';
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Receipt,
   Plus,
@@ -17,6 +17,7 @@ import { decaissementsApi } from '../../lib/api';
 import { formatFCFA, formatDateTime } from '../../lib/formatters';
 import { Decaissement } from '../../types';
 import { Modal } from '../../components/common/Modal';
+import { PaginationControls } from '../../components/common/PaginationControls';
 import { useDensity } from '../../context/DensityContext';
 import { exportToExcel } from '../../lib/exportUtils';
 import { SummaryChipsRow, SummaryChipItem } from '../../components/common/SummaryChipsRow';
@@ -63,6 +64,12 @@ export const ExpensesPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
+
+  useEffect(() => {
+    setPage(1);
+  }, [boutiqueKey, magasinKey, selectedCategory, searchTerm]);
 
   // Form state
   const [form, setForm] = useState({
@@ -76,11 +83,20 @@ export const ExpensesPage: React.FC = () => {
   });
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Query all expenses
-  const { data: allExpenses = [], isLoading } = useQuery({
-    queryKey: ['decaissements', boutiqueKey, magasinKey],
-    queryFn: () => decaissementsApi.getAll(),
+  // Query paginated expenses
+  const { data: expensesPage, isLoading, isFetching } = useQuery({
+    queryKey: ['decaissements', boutiqueKey, magasinKey, page, limit, selectedCategory, searchTerm],
+    queryFn: () =>
+      decaissementsApi.getPaginated({
+        page,
+        limit,
+        q: searchTerm || undefined,
+        category: selectedCategory || undefined,
+      }),
+    placeholderData: keepPreviousData,
   });
+  const allExpenses = expensesPage?.items ?? [];
+  const expenseSummary = expensesPage?.summary;
 
   // Query distinct server categories
   const { data: serverCategories = [] } = useQuery({
@@ -88,16 +104,16 @@ export const ExpensesPage: React.FC = () => {
     queryFn: () => decaissementsApi.getCategories({ include_defaults: true }),
   });
 
-  // Extract all distinct real categories present in current data for filtering
+  // Extract distinct categories for filtering (server + visible items)
   const filterCategories = useMemo(() => {
-    const set = new Set<string>();
+    const set = new Set<string>(serverCategories.filter((c) => Boolean(c && c.trim())).map((c) => c.trim()));
     allExpenses.forEach((d) => {
       if (d.category && d.category.trim()) {
         set.add(d.category.trim());
       }
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
-  }, [allExpenses]);
+  }, [allExpenses, serverCategories]);
 
   // Categories available in the creation form (defaults + all existing categories)
   const formCategories = useMemo(() => {
@@ -238,10 +254,12 @@ export const ExpensesPage: React.FC = () => {
     exportToExcel(exportData, `decaissements_${new Date().toISOString().slice(0, 10)}.xlsx`, 'Décaissements');
   };
 
-  // KPIs
-  const totalExpenses = allExpenses.reduce((sum, d) => sum + d.amount, 0);
-  const avgExpense = allExpenses.length > 0 ? Math.round(totalExpenses / allExpenses.length) : 0;
-  const filteredTotal = filteredExpenses.reduce((sum, d) => sum + d.amount, 0);
+  // KPIs (global SQL summary when available)
+  const totalCount = expenseSummary?.total_count ?? allExpenses.length;
+  const totalExpenses = expenseSummary?.total_amount ?? allExpenses.reduce((sum, d) => sum + d.amount, 0);
+  const avgExpense = totalCount > 0 ? Math.round(totalExpenses / totalCount) : 0;
+  const filteredTotal =
+    expenseSummary?.filtered_amount ?? filteredExpenses.reduce((sum, d) => sum + d.amount, 0);
 
   // Summary Chips
   const summaryChips: SummaryChipItem[] = [
@@ -250,7 +268,7 @@ export const ExpensesPage: React.FC = () => {
       value: formatFCFA(totalExpenses),
       color: 'danger',
       icon: <TrendingDown className="w-4 h-4" />,
-      subtext: `${allExpenses.length} dépenses au total`,
+      subtext: `${totalCount} dépenses au total`,
     },
     {
       label: 'Dépense Moyenne',
@@ -264,7 +282,7 @@ export const ExpensesPage: React.FC = () => {
       value: formatFCFA(filteredTotal),
       color: 'purple',
       icon: <Receipt className="w-4 h-4" />,
-      subtext: `${filteredExpenses.length} dépense(s) affichée(s)`,
+      subtext: `${expensesPage?.total ?? filteredExpenses.length} dépense(s) correspondante(s)`,
     },
     {
       label: 'Catégories Actives',
@@ -485,6 +503,20 @@ export const ExpensesPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <PaginationControls
+        page={expensesPage?.page || page}
+        pages={expensesPage?.pages || 1}
+        total={expensesPage?.total || 0}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={(nextLimit) => {
+          setLimit(nextLimit);
+          setPage(1);
+        }}
+        itemLabel="dépenses"
+        isFetching={isFetching}
+      />
 
       {/* Modal Nouveau Décaissement */}
       <Modal

@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import React, { useEffect, useState, useMemo } from 'react';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Search,
   Printer,
@@ -15,10 +15,11 @@ import {
   Share2,
   RotateCcw,
 } from 'lucide-react';
-import { api } from '../../lib/api';
+import { ventesApi } from '../../lib/api';
 import { formatFCFA, formatDateTime } from '../../lib/formatters';
 import { Vente } from '../../types';
 import { Drawer } from '../../components/common/Drawer';
+import { PaginationControls } from '../../components/common/PaginationControls';
 import { useDensity } from '../../context/DensityContext';
 import { CreateSaleModal } from './CreateSaleModal';
 import { RefundSaleModal } from './RefundSaleModal';
@@ -27,13 +28,14 @@ import { SummaryChipsRow, SummaryChipItem } from '../../components/common/Summar
 import { FilterPeriodChips, FilterChipItem, SortOption } from '../../components/common/FilterPeriodChips';
 import { ViewToggle, ViewMode } from '../../components/common/ViewToggle';
 import { VenteCard } from './VenteCard';
-import { useTenantContextKey } from '../../stores/tenantStore';
+import { useTenantContextKey, useTenantStore } from '../../stores/tenantStore';
 import { useAuthStore } from '../../stores/authStore';
 
 export const SalesPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { tableClasses } = useDensity();
   const user = useAuthStore((s) => s.user);
+  const { currentBoutique, currentMagasin } = useTenantStore();
   const [boutiqueKey, magasinKey] = useTenantContextKey();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedVente, setSelectedVente] = useState<Vente | null>(null);
@@ -44,20 +46,55 @@ export const SalesPage: React.FC = () => {
   const [onlyCredit, setOnlyCredit] = useState<boolean>(false);
   const [sortBy, setSortBy] = useState<string>('recent');
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
 
-  const { data: ventes = [], isLoading } = useQuery<Vente[]>({
-    queryKey: ['ventes', boutiqueKey, magasinKey],
-    queryFn: async () => {
-      const res = await api.get('/ventes?limit=300');
-      return res.data;
-    },
+  useEffect(() => {
+    setPage(1);
+  }, [boutiqueKey, magasinKey, searchTerm, selectedPeriod, onlyCredit]);
+
+  const dateRange = useMemo(() => {
+    const now = new Date();
+    const toYmd = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const todayYmd = toYmd(now);
+    if (selectedPeriod === 'today') return { start_date: todayYmd, end_date: todayYmd };
+    if (selectedPeriod === 'week') {
+      const start = new Date(now);
+      start.setDate(now.getDate() - 7);
+      return { start_date: toYmd(start), end_date: todayYmd };
+    }
+    if (selectedPeriod === 'month') {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      return { start_date: toYmd(start), end_date: todayYmd };
+    }
+    return {};
+  }, [selectedPeriod]);
+
+  const { data: ventesPage, isLoading, isFetching } = useQuery({
+    queryKey: ['ventes', boutiqueKey, magasinKey, page, limit, searchTerm, selectedPeriod, onlyCredit],
+    queryFn: () =>
+      ventesApi.getPaginated({
+        page,
+        limit,
+        q: searchTerm || undefined,
+        only_credit: onlyCredit || undefined,
+        ...dateRange,
+      }),
+    placeholderData: keepPreviousData,
   });
 
-  // Calculate today's sales and total CA
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  const ventes = ventesPage?.items ?? [];
+  const salesSummary = ventesPage?.summary;
+
+  const todayStart = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
   const todaySalesAmount = useMemo(() => {
+    if (salesSummary) return salesSummary.today_amount;
     return ventes.reduce((sum, v) => {
       const d = new Date(v.created_at);
       if (d >= todayStart) {
@@ -65,18 +102,20 @@ export const SalesPage: React.FC = () => {
       }
       return sum;
     }, 0);
-  }, [ventes, todayStart]);
+  }, [salesSummary, ventes, todayStart]);
 
   const totalSalesAmount = useMemo(() => {
+    if (salesSummary) return salesSummary.total_amount;
     return ventes.reduce((sum, v) => sum + (v.total_amount || 0), 0);
-  }, [ventes]);
+  }, [salesSummary, ventes]);
 
   const totalCreditAmount = useMemo(() => {
+    if (salesSummary) return salesSummary.total_credit;
     return ventes.reduce((sum, v) => {
       const rem = Math.max(0, (v.total_amount || 0) - (v.paid_amount || 0));
       return sum + rem;
     }, 0);
-  }, [ventes]);
+  }, [salesSummary, ventes]);
 
   // Period Chips definition
   const periodChips: FilterChipItem[] = [
@@ -155,10 +194,10 @@ export const SalesPage: React.FC = () => {
   const summaryChips: SummaryChipItem[] = [
     {
       label: selectedPeriod !== 'all' || onlyCredit ? 'Ventes (filtre)' : 'Total ventes',
-      value: filteredVentes.length,
+      value: ventesPage?.total ?? filteredVentes.length,
       color: 'primary',
       icon: <ShoppingBag className="w-4 h-4" />,
-      subtext: `${ventes.length} transactions au total`,
+      subtext: `${salesSummary?.total_count ?? ventes.length} transactions au total`,
     },
     {
       label: "Aujourd'hui",
@@ -169,7 +208,11 @@ export const SalesPage: React.FC = () => {
     },
     {
       label: selectedPeriod !== 'all' || onlyCredit ? 'CA (filtre)' : "Chiffre d'aff.",
-      value: formatFCFA(selectedPeriod !== 'all' || onlyCredit ? filteredTotalAmount : totalSalesAmount),
+      value: formatFCFA(
+        selectedPeriod !== 'all' || onlyCredit || searchTerm
+          ? (salesSummary?.filtered_amount ?? filteredTotalAmount)
+          : totalSalesAmount
+      ),
       color: 'purple',
       icon: <DollarSign className="w-4 h-4" />,
       subtext: 'Volume total vendu',
@@ -188,15 +231,17 @@ export const SalesPage: React.FC = () => {
   };
 
   const handleShareWhatsApp = (vente: Vente) => {
+    const storeTitle = currentBoutique?.company_name || currentBoutique?.name || 'TocManager';
     const text = encodeURIComponent(
       `*REÇU DE VENTE - ${vente.ticket_number}*\n` +
+      `${storeTitle}${currentMagasin ? ` (${currentMagasin.name})` : ''}\n` +
       `Date : ${formatDateTime(vente.created_at)}\n` +
       `Client : ${vente.client_name || 'Occasionnel'}\n` +
       `Montant Total : ${formatFCFA(vente.total_amount)}\n` +
       `Mode : ${vente.payment_method}\n` +
       `Merci pour votre confiance !`
     );
-    window.open(`https://wa.me/?text=${text}`, '_blank');
+    window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer');
   };
 
   const handleExportExcel = () => {
@@ -390,6 +435,20 @@ export const SalesPage: React.FC = () => {
         </div>
       )}
 
+      <PaginationControls
+        page={ventesPage?.page || page}
+        pages={ventesPage?.pages || 1}
+        total={ventesPage?.total || 0}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={(nextLimit) => {
+          setLimit(nextLimit);
+          setPage(1);
+        }}
+        itemLabel="ventes"
+        isFetching={isFetching}
+      />
+
       {/* Mobile-Styled Slide-over Drawer for Ticket Detail */}
       <Drawer
         isOpen={!!selectedVente}
@@ -434,9 +493,13 @@ export const SalesPage: React.FC = () => {
         }
       >
         {selectedVente && (
-          <div className="space-y-5">
+          <div className="printable-area space-y-5">
             {/* Ticket Header Card */}
             <div className="p-4 rounded-2xl bg-gradient-to-br from-brand-500/10 to-brand-500/5 border border-brand-500/20 text-center">
+              <p className="text-[11px] font-extrabold uppercase tracking-widest text-slate-600 dark:text-slate-300">
+                {currentBoutique?.company_name || currentBoutique?.name || 'TocManager'}
+                {currentMagasin ? ` - ${currentMagasin.name}` : ''}
+              </p>
               <span className="font-mono text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest block mb-1">
                 Ticket N° {selectedVente.ticket_number}
               </span>

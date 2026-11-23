@@ -38,6 +38,7 @@ import {
   AdminSubscriptionsResponse,
   PlatformAuditItem,
   SaasPlanPayload,
+  PaginatedResponse,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -183,12 +184,49 @@ export const dashboardApi = {
 };
 
 export const productsApi = {
-  getAll: (params?: { search?: string; category_id?: string; only_available?: boolean; magasin_id?: string }) =>
+  getAll: (params?: {
+    search?: string;
+    category_id?: string;
+    only_available?: boolean;
+    magasin_id?: string;
+    limit?: number;
+  }) =>
     api
       .get<Product[]>('/products', {
         params: {
           search: params?.search,
           category_id: params?.category_id,
+          only_available: params?.only_available,
+          limit: params?.limit,
+        },
+        headers: params?.magasin_id ? { 'X-Magasin-Id': params.magasin_id } : undefined,
+      })
+      .then((r) => r.data),
+  getPaginated: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    category_id?: string;
+    stock_status?: string;
+    sort?: string;
+    only_available?: boolean;
+    magasin_id?: string;
+  }) =>
+    api
+      .get<
+        PaginatedResponse<
+          Product,
+          { total: number; in_stock: number; low_stock: number; out_of_stock: number }
+        >
+      >('/products', {
+        params: {
+          paginated: true,
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 50,
+          search: params?.search || undefined,
+          category_id: params?.category_id && params.category_id !== 'all' ? params.category_id : undefined,
+          stock_status: params?.stock_status && params.stock_status !== 'all' ? params.stock_status : undefined,
+          sort: params?.sort || undefined,
           only_available: params?.only_available,
         },
         headers: params?.magasin_id ? { 'X-Magasin-Id': params.magasin_id } : undefined,
@@ -224,6 +262,30 @@ export const categoriesApi = {
 export const clientsApi = {
   getAll: (params?: { q?: string; only_debtors?: boolean }) =>
     api.get<Client[]>('/clients', { params }).then((r) => r.data),
+  getPaginated: (params?: {
+    page?: number;
+    limit?: number;
+    q?: string;
+    only_debtors?: boolean;
+    sort?: string;
+  }) =>
+    api
+      .get<
+        PaginatedResponse<
+          Client,
+          { total_clients: number; debtors_count: number; settled_count: number; total_debt: number }
+        >
+      >('/clients', {
+        params: {
+          paginated: true,
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 50,
+          q: params?.q || undefined,
+          only_debtors: params?.only_debtors || undefined,
+          sort: params?.sort || undefined,
+        },
+      })
+      .then((r) => r.data),
   getById: (id: string) => api.get<Client>(`/clients/${id}`).then((r) => r.data),
   create: (data: Partial<Client>) => api.post<Client>('/clients', data).then((r) => r.data),
   update: (id: string, data: Partial<Client>) => api.put<Client>(`/clients/${id}`, data).then((r) => r.data),
@@ -237,6 +299,30 @@ export const clientsApi = {
 export const suppliersApi = {
   getAll: (params?: { q?: string; only_creditors?: boolean }) =>
     api.get<Supplier[]>('/suppliers', { params }).then((r) => r.data),
+  getPaginated: (params?: {
+    page?: number;
+    limit?: number;
+    q?: string;
+    only_creditors?: boolean;
+    sort?: string;
+  }) =>
+    api
+      .get<
+        PaginatedResponse<
+          Supplier,
+          { total_suppliers: number; creditors_count: number; settled_count: number; total_debt: number }
+        >
+      >('/suppliers', {
+        params: {
+          paginated: true,
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 50,
+          q: params?.q || undefined,
+          only_creditors: params?.only_creditors || undefined,
+          sort: params?.sort || undefined,
+        },
+      })
+      .then((r) => r.data),
   getById: (id: string) => api.get<Supplier>(`/suppliers/${id}`).then((r) => r.data),
   create: (data: Partial<Supplier>) => api.post<Supplier>('/suppliers', data).then((r) => r.data),
   update: (id: string, data: Partial<Supplier>) => api.put<Supplier>(`/suppliers/${id}`, data).then((r) => r.data),
@@ -249,6 +335,34 @@ export const suppliersApi = {
 
 export const approvisionnementsApi = {
   getAll: () => api.get<Approvisionnement[]>('/approvisionnements').then((r) => r.data),
+  getPaginated: (params?: {
+    page?: number;
+    limit?: number;
+    q?: string;
+    product_sync_id?: string;
+    supplier_sync_id?: string;
+    start_date?: string;
+    end_date?: string;
+  }) =>
+    api
+      .get<
+        PaginatedResponse<
+          Approvisionnement,
+          { total_count: number; total_cost: number; total_quantity: number; filtered_cost: number }
+        >
+      >('/approvisionnements', {
+        params: {
+          paginated: true,
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 50,
+          q: params?.q || undefined,
+          product_sync_id: params?.product_sync_id || undefined,
+          supplier_sync_id: params?.supplier_sync_id || undefined,
+          start_date: params?.start_date || undefined,
+          end_date: params?.end_date || undefined,
+        },
+      })
+      .then((r) => r.data),
   create: (data: Partial<Approvisionnement>) =>
     api.post<Approvisionnement>('/approvisionnements', data).then((r) => r.data),
 };
@@ -286,6 +400,32 @@ export const stockMovementsApi = {
 
 export const decaissementsApi = {
   getAll: (params?: any) => api.get<Decaissement[]>('/decaissements', { params }).then((r) => r.data),
+  getPaginated: (params?: {
+    page?: number;
+    limit?: number;
+    q?: string;
+    category?: string;
+    start_date?: string;
+    end_date?: string;
+  }) =>
+    api
+      .get<
+        PaginatedResponse<
+          Decaissement,
+          { total_count: number; total_amount: number; today_amount: number; filtered_amount: number }
+        >
+      >('/decaissements', {
+        params: {
+          paginated: true,
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 50,
+          q: params?.q || undefined,
+          category: params?.category && params.category !== 'all' ? params.category : undefined,
+          start_date: params?.start_date || undefined,
+          end_date: params?.end_date || undefined,
+        },
+      })
+      .then((r) => r.data),
   getCategories: (params?: { include_defaults?: boolean }) =>
     api.get<string[]>('/decaissements/categories', { params }).then((r) => r.data),
   create: (data: Partial<Decaissement>) => api.post<Decaissement>('/decaissements', data).then((r) => r.data),
@@ -311,9 +451,66 @@ export const authApi = {
   verifyPin: (pin: string) => api.post<UserBrief>('/auth/verify-pin', { pin }).then((r) => r.data),
 };
 
+export const auditApi = {
+  getLogs: (params?: {
+    page?: number;
+    limit?: number;
+    q?: string;
+    action?: string;
+    user_id?: string;
+    entity_type?: string;
+  }) =>
+    api
+      .get<{ total: number; items: any[]; page: number; pages: number; limit: number }>('/audit/logs', {
+        params: {
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 50,
+          q: params?.q || undefined,
+          action: params?.action || undefined,
+          user_id: params?.user_id || undefined,
+          entity_type: params?.entity_type || undefined,
+        },
+      })
+      .then((r) => r.data),
+};
+
 export const ventesApi = {
   getAll: (params?: { limit?: number; skip?: number; start_date?: string; end_date?: string; magasin_id?: string }) =>
     api.get<Vente[]>('/ventes', { params }).then((r) => r.data),
+  getPaginated: (params?: {
+    page?: number;
+    limit?: number;
+    q?: string;
+    only_credit?: boolean;
+    start_date?: string;
+    end_date?: string;
+    magasin_id?: string;
+  }) =>
+    api
+      .get<
+        PaginatedResponse<
+          Vente,
+          {
+            total_count: number;
+            total_amount: number;
+            filtered_amount: number;
+            today_amount: number;
+            total_credit: number;
+          }
+        >
+      >('/ventes', {
+        params: {
+          paginated: true,
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 50,
+          q: params?.q || undefined,
+          only_credit: params?.only_credit || undefined,
+          start_date: params?.start_date || undefined,
+          end_date: params?.end_date || undefined,
+          magasin_id: params?.magasin_id || undefined,
+        },
+      })
+      .then((r) => r.data),
   getById: (id: string) => api.get<Vente>(`/ventes/${id}`).then((r) => r.data),
   create: (data: VenteCreate) => api.post<Vente>('/ventes', data).then((r) => r.data),
   refund: (id: string, data: { items?: { vente_item_sync_id: string; quantity: number }[]; reason: string }) =>

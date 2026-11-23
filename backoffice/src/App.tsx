@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
@@ -10,37 +10,66 @@ import { MainLayout } from './components/layout/MainLayout';
 import { AdminLayout } from './components/layout/AdminLayout';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 
+const lazyNamed = <T extends React.ComponentType<any>>(
+  loader: () => Promise<Record<string, unknown>>,
+  exportName: string
+) =>
+  lazy(() =>
+    loader().then((module) => ({
+      default: module[exportName] as T,
+    }))
+  );
+
 // Landing & Public SaaS Pages
-import { LandingPage } from './features/landing/LandingPage';
-import { PricingPage } from './features/landing/PricingPage';
-import { ContactPage } from './features/landing/ContactPage';
-import { RegisterPage } from './features/landing/RegisterPage';
-import { LoginPage } from './features/auth/LoginPage';
+const LandingPage = lazyNamed(() => import('./features/landing/LandingPage'), 'LandingPage');
+const PricingPage = lazyNamed(() => import('./features/landing/PricingPage'), 'PricingPage');
+const ContactPage = lazyNamed(() => import('./features/landing/ContactPage'), 'ContactPage');
+const RegisterPage = lazyNamed(() => import('./features/landing/RegisterPage'), 'RegisterPage');
+const LoginPage = lazyNamed(() => import('./features/auth/LoginPage'), 'LoginPage');
 
 // Client Backoffice Pages
-import { DashboardPage } from './features/dashboard/DashboardPage';
-import { SalesPage } from './features/sales/SalesPage';
-import { CashSessionsPage } from './features/cash/CashSessionsPage';
-import { ProductsPage } from './features/inventory/ProductsPage';
-import { CategoriesPage } from './features/inventory/CategoriesPage';
-import { ClientsPage } from './features/clients/ClientsPage';
-import { SuppliersPage } from './features/suppliers/SuppliersPage';
-import { SuppliesPage } from './features/supplies/SuppliesPage';
-import { TransfersPage } from './features/transfers/TransfersPage';
-import { ExpensesPage } from './features/expenses/ExpensesPage';
-import { ReportsPage } from './features/reports/ReportsPage';
-import { MagasinsPage } from './features/magasins/MagasinsPage';
-import { UsersPage } from './features/users/UsersPage';
-import { AuditLogsPage } from './features/audit/AuditLogsPage';
-import { SettingsPage } from './features/settings/SettingsPage';
-import { SubscriptionPage } from './features/subscription/SubscriptionPage';
+const DashboardPage = lazyNamed(() => import('./features/dashboard/DashboardPage'), 'DashboardPage');
+const SalesPage = lazyNamed(() => import('./features/sales/SalesPage'), 'SalesPage');
+const CashSessionsPage = lazyNamed(() => import('./features/cash/CashSessionsPage'), 'CashSessionsPage');
+const ProductsPage = lazyNamed(() => import('./features/inventory/ProductsPage'), 'ProductsPage');
+const CategoriesPage = lazyNamed(() => import('./features/inventory/CategoriesPage'), 'CategoriesPage');
+const ClientsPage = lazyNamed(() => import('./features/clients/ClientsPage'), 'ClientsPage');
+const SuppliersPage = lazyNamed(() => import('./features/suppliers/SuppliersPage'), 'SuppliersPage');
+const SuppliesPage = lazyNamed(() => import('./features/supplies/SuppliesPage'), 'SuppliesPage');
+const TransfersPage = lazyNamed(() => import('./features/transfers/TransfersPage'), 'TransfersPage');
+const ExpensesPage = lazyNamed(() => import('./features/expenses/ExpensesPage'), 'ExpensesPage');
+const ReportsPage = lazyNamed(() => import('./features/reports/ReportsPage'), 'ReportsPage');
+const MagasinsPage = lazyNamed(() => import('./features/magasins/MagasinsPage'), 'MagasinsPage');
+const UsersPage = lazyNamed(() => import('./features/users/UsersPage'), 'UsersPage');
+const AuditLogsPage = lazyNamed(() => import('./features/audit/AuditLogsPage'), 'AuditLogsPage');
+const SettingsPage = lazyNamed(() => import('./features/settings/SettingsPage'), 'SettingsPage');
+const SubscriptionPage = lazyNamed(
+  () => import('./features/subscription/SubscriptionPage'),
+  'SubscriptionPage'
+);
 
 // Super-Admin Console Pages
-import { AdminDashboardPage } from './features/admin/AdminDashboardPage';
-import { AdminPlansPage } from './features/admin/AdminPlansPage';
-import { AdminBoutiquesPage } from './features/admin/AdminBoutiquesPage';
-import { AdminSubscriptionsPage } from './features/admin/AdminSubscriptionsPage';
-import { AdminAuditPage } from './features/admin/AdminAuditPage';
+const AdminDashboardPage = lazyNamed(
+  () => import('./features/admin/AdminDashboardPage'),
+  'AdminDashboardPage'
+);
+const AdminPlansPage = lazyNamed(() => import('./features/admin/AdminPlansPage'), 'AdminPlansPage');
+const AdminBoutiquesPage = lazyNamed(
+  () => import('./features/admin/AdminBoutiquesPage'),
+  'AdminBoutiquesPage'
+);
+const AdminSubscriptionsPage = lazyNamed(
+  () => import('./features/admin/AdminSubscriptionsPage'),
+  'AdminSubscriptionsPage'
+);
+const AdminAuditPage = lazyNamed(() => import('./features/admin/AdminAuditPage'), 'AdminAuditPage');
+
+const PageLoader: React.FC = () => (
+  <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3 text-slate-500 dark:text-slate-400">
+    <div className="w-8 h-8 border-2 border-[#29ABE2] border-t-transparent rounded-full animate-spin" />
+    <span className="text-xs font-medium">Chargement...</span>
+  </div>
+);
 
 export const App: React.FC = () => {
   const initFromStorage = useAuthStore((s) => s.initFromStorage);
@@ -59,128 +88,129 @@ export const App: React.FC = () => {
         <DensityProvider>
           <SidebarProvider>
             <BrowserRouter>
-              <Routes>
-                {/* Public Marketing & Pricing Pages */}
-                <Route path="/landing" element={<LandingPage />} />
-                <Route path="/tarifs" element={<PricingPage />} />
-                <Route path="/contact" element={<ContactPage />} />
-                <Route path="/inscription" element={<RegisterPage />} />
-                <Route path="/login" element={<LoginPage />} />
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  {/* Public Marketing & Pricing Pages */}
+                  <Route path="/landing" element={<LandingPage />} />
+                  <Route path="/tarifs" element={<PricingPage />} />
+                  <Route path="/contact" element={<ContactPage />} />
+                  <Route path="/inscription" element={<RegisterPage />} />
+                  <Route path="/login" element={<LoginPage />} />
 
-                {/* Super-Admin Platform Console */}
-                <Route
-                  path="/admin"
-                  element={
-                    <ProtectedRoute allowedRoles={['superadmin']}>
-                      <AdminLayout />
-                    </ProtectedRoute>
-                  }
-                >
-                  <Route index element={<AdminDashboardPage />} />
-                  <Route path="plans" element={<AdminPlansPage />} />
-                  <Route path="boutiques" element={<AdminBoutiquesPage />} />
-                  <Route path="subscriptions" element={<AdminSubscriptionsPage />} />
-                  <Route path="audit" element={<AdminAuditPage />} />
-                </Route>
-
-                {/* Client Backoffice (Protected Dashboard) */}
-                {isUserLoggedIn ? (
+                  {/* Super-Admin Platform Console */}
                   <Route
-                    path="/"
+                    path="/admin"
                     element={
-                      <ProtectedRoute>
-                        <MainLayout />
+                      <ProtectedRoute allowedRoles={['superadmin']}>
+                        <AdminLayout />
                       </ProtectedRoute>
                     }
                   >
-                    {/* Commerce & Caisse */}
-                    <Route index element={<DashboardPage />} />
-                    <Route path="ventes" element={<SalesPage />} />
-                    <Route path="caisse-z" element={<CashSessionsPage />} />
-                    <Route path="clients" element={<ClientsPage />} />
-
-                    {/* Catalogue, Stocks & Points de vente */}
-                    <Route path="produits" element={<ProductsPage />} />
-                    <Route path="categories" element={<CategoriesPage />} />
-                    <Route path="magasins" element={<MagasinsPage />} />
-                    <Route
-                      path="approvisionnements"
-                      element={
-                        <ProtectedRoute allowedRoles={['owner', 'store_admin', 'manager', 'merchant']}>
-                          <SuppliesPage />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="transferts"
-                      element={
-                        <ProtectedRoute allowedRoles={['owner', 'store_admin', 'manager', 'merchant']}>
-                          <TransfersPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    {/* Finances */}
-                    <Route path="depenses" element={<ExpensesPage />} />
-                    <Route
-                      path="fournisseurs"
-                      element={
-                        <ProtectedRoute allowedRoles={['owner', 'store_admin', 'manager', 'merchant']}>
-                          <SuppliersPage />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="rapports"
-                      element={
-                        <ProtectedRoute allowedRoles={['owner', 'store_admin', 'manager', 'merchant']}>
-                          <ReportsPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    {/* Administration Boutique */}
-                    <Route
-                      path="utilisateurs"
-                      element={
-                        <ProtectedRoute allowedRoles={['owner', 'store_admin', 'merchant']}>
-                          <UsersPage />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="audit"
-                      element={
-                        <ProtectedRoute allowedRoles={['owner', 'store_admin', 'merchant']}>
-                          <AuditLogsPage />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="parametres"
-                      element={
-                        <ProtectedRoute allowedRoles={['owner', 'store_admin', 'merchant']}>
-                          <SettingsPage />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="abonnement"
-                      element={
-                        <ProtectedRoute allowedRoles={['owner', 'store_admin', 'merchant']}>
-                          <SubscriptionPage />
-                        </ProtectedRoute>
-                      }
-                    />
+                    <Route index element={<AdminDashboardPage />} />
+                    <Route path="plans" element={<AdminPlansPage />} />
+                    <Route path="boutiques" element={<AdminBoutiquesPage />} />
+                    <Route path="subscriptions" element={<AdminSubscriptionsPage />} />
+                    <Route path="audit" element={<AdminAuditPage />} />
                   </Route>
-                ) : (
-                  /* Visiteur non connecté accédant à / -> Landing Page */
-                  <Route path="/" element={<LandingPage />} />
-                )}
 
-                {/* Fallback */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
+                  {/* Client Backoffice (Protected Dashboard) */}
+                  {isUserLoggedIn ? (
+                    <Route
+                      path="/"
+                      element={
+                        <ProtectedRoute>
+                          <MainLayout />
+                        </ProtectedRoute>
+                      }
+                    >
+                      {/* Commerce & Caisse */}
+                      <Route index element={<DashboardPage />} />
+                      <Route path="ventes" element={<SalesPage />} />
+                      <Route path="caisse-z" element={<CashSessionsPage />} />
+                      <Route path="clients" element={<ClientsPage />} />
+
+                      {/* Catalogue, Stocks & Points de vente */}
+                      <Route path="produits" element={<ProductsPage />} />
+                      <Route path="categories" element={<CategoriesPage />} />
+                      <Route path="magasins" element={<MagasinsPage />} />
+                      <Route
+                        path="approvisionnements"
+                        element={
+                          <ProtectedRoute allowedRoles={['owner', 'store_admin', 'manager', 'merchant']}>
+                            <SuppliesPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="transferts"
+                        element={
+                          <ProtectedRoute allowedRoles={['owner', 'store_admin', 'manager', 'merchant']}>
+                            <TransfersPage />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      {/* Finances */}
+                      <Route path="depenses" element={<ExpensesPage />} />
+                      <Route
+                        path="fournisseurs"
+                        element={
+                          <ProtectedRoute allowedRoles={['owner', 'store_admin', 'manager', 'merchant']}>
+                            <SuppliersPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="rapports"
+                        element={
+                          <ProtectedRoute allowedRoles={['owner', 'store_admin', 'manager', 'merchant']}>
+                            <ReportsPage />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      {/* Administration Boutique */}
+                      <Route
+                        path="utilisateurs"
+                        element={
+                          <ProtectedRoute allowedRoles={['owner', 'store_admin', 'merchant']}>
+                            <UsersPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="audit"
+                        element={
+                          <ProtectedRoute allowedRoles={['owner', 'store_admin', 'merchant']}>
+                            <AuditLogsPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="parametres"
+                        element={
+                          <ProtectedRoute allowedRoles={['owner', 'store_admin', 'merchant']}>
+                            <SettingsPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="abonnement"
+                        element={
+                          <ProtectedRoute allowedRoles={['owner', 'store_admin', 'merchant']}>
+                            <SubscriptionPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                    </Route>
+                  ) : (
+                    <Route path="/" element={<LandingPage />} />
+                  )}
+
+                  {/* Fallback */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Suspense>
             </BrowserRouter>
           </SidebarProvider>
         </DensityProvider>

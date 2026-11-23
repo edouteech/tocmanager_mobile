@@ -1,14 +1,16 @@
+import math
 from typing import Any, List, Optional
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, or_
 
 from app.api import deps
 from app.core.database import get_db
 from app.models import AuditLog
 from app.services.entitlements import check_feature_access, get_audit_retention_days
+from app.services.pagination_service import compute_offset
 from app.services.tenant_context_service import TenantContext
 
 router = APIRouter()
@@ -30,13 +32,18 @@ class AuditLogItem(BaseModel):
 class AuditLogListResponse(BaseModel):
     total: int
     items: List[AuditLogItem]
+    page: int = 1
+    pages: int = 1
+    limit: int = 50
     retention_days_applied: Optional[int] = None
 
 
 @router.get("/logs", response_model=AuditLogListResponse)
 def get_audit_logs(
     skip: int = Query(0, ge=0),
+    page: Optional[int] = Query(None, ge=1),
     limit: int = Query(50, ge=1, le=200),
+    q: Optional[str] = None,
     action: Optional[str] = None,
     user_id: Optional[str] = None,
     entity_type: Optional[str] = None,
@@ -51,6 +58,16 @@ def get_audit_logs(
         floor_dt = datetime.now(timezone.utc) - timedelta(days=retention_days)
         query = query.filter(AuditLog.created_at >= floor_dt)
 
+    if q and q.strip():
+        term = f"%{q.strip()}%"
+        query = query.filter(
+            or_(
+                AuditLog.user_name.ilike(term),
+                AuditLog.action.ilike(term),
+                AuditLog.entity_type.ilike(term),
+                AuditLog.entity_id.ilike(term),
+            )
+        )
     if action:
         query = query.filter(AuditLog.action == action)
     if user_id:
@@ -59,9 +76,15 @@ def get_audit_logs(
         query = query.filter(AuditLog.entity_type == entity_type)
 
     total = query.count()
-    items = query.order_by(desc(AuditLog.created_at)).offset(skip).limit(limit).all()
+    effective_page = page if page is not None else (skip // limit) + 1
+    effective_skip = compute_offset(page, limit) if page is not None else skip
+    pages = max(1, math.ceil(total / limit)) if total > 0 else 1
+    items = query.order_by(desc(AuditLog.created_at)).offset(effective_skip).limit(limit).all()
     return AuditLogListResponse(
         total=total,
         items=items,
+        page=effective_page,
+        pages=pages,
+        limit=limit,
         retention_days_applied=retention_days if retention_days > 0 else None,
     )

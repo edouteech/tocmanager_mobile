@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useEffect, useState, useMemo } from 'react';
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Users,
   Search,
@@ -18,6 +18,7 @@ import { clientsApi } from '../../lib/api';
 import { formatFCFA, formatDateTime } from '../../lib/formatters';
 import { Client } from '../../types';
 import { Modal } from '../../components/common/Modal';
+import { PaginationControls } from '../../components/common/PaginationControls';
 import { useDensity } from '../../context/DensityContext';
 import { exportToExcel } from '../../lib/exportUtils';
 import { PaymentReceiptModal, PaymentReceiptData } from '../../components/common/PaymentReceiptModal';
@@ -38,6 +39,12 @@ export const ClientsPage: React.FC = () => {
   const [clientFilter, setClientFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('name_asc');
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
+
+  useEffect(() => {
+    setPage(1);
+  }, [boutiqueKey, magasinKey, search, clientFilter, sortBy]);
 
   // Modals state
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
@@ -65,11 +72,26 @@ export const ClientsPage: React.FC = () => {
   const [clientError, setClientError] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
-  // Fetch clients
-  const { data: clients = [], isLoading } = useQuery({
-    queryKey: ['clients', boutiqueKey, magasinKey],
-    queryFn: () => clientsApi.getAll(),
+  // Fetch clients (paginated)
+  const { data: clientsPage, isLoading, isFetching } = useQuery({
+    queryKey: ['clients', boutiqueKey, magasinKey, page, limit, search, clientFilter, sortBy],
+    queryFn: () =>
+      clientsApi.getPaginated({
+        page,
+        limit,
+        q: search || undefined,
+        only_debtors: clientFilter === 'debtors',
+        sort:
+          sortBy === 'debt_desc'
+            ? 'balance_desc'
+            : sortBy === 'debt_asc'
+              ? 'balance_asc'
+              : 'name_asc',
+      }),
+    placeholderData: keepPreviousData,
   });
+  const clients = clientsPage?.items ?? [];
+  const clientSummary = clientsPage?.summary;
 
   // Mutations
   const createMutation = useMutation({
@@ -122,8 +144,16 @@ export const ClientsPage: React.FC = () => {
     },
   });
 
-  // Stats calculation
+  // Stats calculation (global SQL summary when available)
   const stats = useMemo(() => {
+    if (clientSummary) {
+      return {
+        total: clientSummary.total_clients,
+        debtors: clientSummary.debtors_count,
+        upToDate: clientSummary.settled_count,
+        totalDebt: clientSummary.total_debt,
+      };
+    }
     let debtors = 0;
     let upToDate = 0;
     let totalDebt = 0;
@@ -138,7 +168,7 @@ export const ClientsPage: React.FC = () => {
     });
 
     return { total: clients.length, debtors, upToDate, totalDebt };
-  }, [clients]);
+  }, [clientSummary, clients]);
 
   // Summary chips
   const summaryChips: SummaryChipItem[] = [
@@ -500,6 +530,20 @@ export const ClientsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <PaginationControls
+        page={clientsPage?.page || page}
+        pages={clientsPage?.pages || 1}
+        total={clientsPage?.total || 0}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={(nextLimit) => {
+          setLimit(nextLimit);
+          setPage(1);
+        }}
+        itemLabel="clients"
+        isFetching={isFetching}
+      />
 
       {/* Modal Création / Modification Client */}
       <Modal
