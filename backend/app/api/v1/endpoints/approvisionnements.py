@@ -8,6 +8,7 @@ from app.api import deps
 from app.core.database import get_db
 from app.models import Approvisionnement, Product, Supplier, AuditLog
 from app.schemas.entities import ApprovisionnementCreate, ApprovisionnementResponse
+from app.services.entitlements import check_feature_access
 from app.services.tenant_context_service import TenantContext
 
 router = APIRouter()
@@ -22,6 +23,7 @@ def list_approvisionnements(
     ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
+    check_feature_access(db, ctx.boutique.id, "module_supplies")
     query = db.query(Approvisionnement).filter(
         Approvisionnement.boutique_id == ctx.boutique.id,
         Approvisionnement.deleted_at.is_(None),
@@ -39,6 +41,7 @@ def create_approvisionnement(
     ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
+    check_feature_access(db, ctx.boutique.id, "module_supplies")
     current_user = ctx.user
     prod = (
         db.query(Product)

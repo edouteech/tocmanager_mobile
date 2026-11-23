@@ -6,9 +6,10 @@ from sqlalchemy.orm import Session
 
 from app.core.permissions import normalize_tenant_role
 from app.models import (
-    User, Boutique, BoutiqueUserMembership, Magasin, SaasPlan, SaasPlanFeature, SaasSubscription
+    User, Boutique, BoutiqueUserMembership, Magasin, SaasPlan, SaasSubscription
 )
 from app.schemas.saas import BoutiqueCreate, MagasinCreate, MagasinUpdate
+from app.services.entitlements import check_quota_limit, resolve_effective_plan
 from app.services.tenant_context_service import TenantContext
 
 
@@ -63,6 +64,43 @@ def create_boutique_for_owner(db: Session, current_user: User, payload: Boutique
             detail="Un super-administrateur ne peut pas posséder de boutique client.",
         )
 
+    existing_boutiques = db.query(Boutique).filter(
+        Boutique.owner_user_id == current_user.id, Boutique.is_active == True
+    ).all()
+    if existing_boutiques:
+        best_limit = 1
+        for eb in existing_boutiques:
+            _, _, feats = resolve_effective_plan(db, eb.id)
+            lim = int(feats.get("max_boutiques", 1))
+            if lim == -1:
+                best_limit = -1
+                break
+            if lim > best_limit:
+                best_limit = lim
+        if best_limit != -1 and len(existing_boutiques) >= best_limit:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error": "PLAN_QUOTA_EXCEEDED",
+                    "feature": "max_boutiques",
+                    "limit": best_limit,
+                    "current": len(existing_boutiques),
+                    "recommended_plan": "pro" if best_limit <= 1 else "enterprise",
+                    "message": f"Quota de boutiques atteint ({len(existing_boutiques)}/{best_limit}). Passez au forfait supérieur.",
+                },
+            )
+
+    owner_has_used_trial = any(b.has_used_trial for b in existing_boutiques)
+    requested_plan = db.query(SaasPlan).filter(SaasPlan.code == (payload.plan_code or "free")).first()
+    free_plan = db.query(SaasPlan).filter(SaasPlan.code == "free").first()
+    use_trial = bool(
+        requested_plan
+        and requested_plan.code != "free"
+        and requested_plan.trial_period_days > 0
+        and not owner_has_used_trial
+    )
+    assigned_plan = requested_plan if use_trial else (free_plan or requested_plan)
+
     base_slug = payload.name.strip().lower().replace(" ", "-")
     unique_slug = f"{base_slug}-{uuid.uuid4().hex[:6]}"
     boutique = Boutique(
@@ -75,6 +113,7 @@ def create_boutique_for_owner(db: Session, current_user: User, payload: Boutique
         email=payload.email,
         address=payload.address,
         owner_user_id=current_user.id,
+        has_used_trial=use_trial,
         is_active=True,
     )
     db.add(boutique)
@@ -97,12 +136,15 @@ def create_boutique_for_owner(db: Session, current_user: User, payload: Boutique
         is_active=True,
     ))
 
-    plan = db.query(SaasPlan).filter(SaasPlan.code == (payload.plan_code or "free")).first()
+    now = datetime.now(timezone.utc)
     db.add(SaasSubscription(
         boutique_id=boutique.id,
-        plan_id=plan.id if plan else "free",
-        status="active",
+        plan_id=assigned_plan.id if assigned_plan else "free",
+        status="trialing" if use_trial else "active",
         billing_cycle="monthly",
+        has_used_trial=use_trial,
+        trial_starts_at=now if use_trial else None,
+        trial_ends_at=(now + timedelta(days=assigned_plan.trial_period_days)) if use_trial and assigned_plan else None,
     ))
     db.commit()
     db.refresh(boutique)
@@ -138,29 +180,10 @@ def list_ctx_magasins(db: Session, ctx: TenantContext) -> List[Magasin]:
 
 def create_ctx_magasin(db: Session, ctx: TenantContext, payload: MagasinCreate) -> Magasin:
     boutique_id = ctx.boutique.id
-    sub = db.query(SaasSubscription).filter(SaasSubscription.boutique_id == boutique_id).first()
-    if sub:
-        plan = db.query(SaasPlan).filter(SaasPlan.id == sub.plan_id).first()
-        if plan:
-            feat = db.query(SaasPlanFeature).filter(
-                SaasPlanFeature.plan_id == plan.id,
-                SaasPlanFeature.feature_code == "max_magasins",
-            ).first()
-            if feat and feat.int_limit > 0:
-                current_count = db.query(Magasin).filter(
-                    Magasin.boutique_id == boutique_id, Magasin.is_active == True
-                ).count()
-                if current_count >= feat.int_limit:
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail={
-                            "error": "PLAN_QUOTA_EXCEEDED",
-                            "feature": "max_magasins",
-                            "limit": feat.int_limit,
-                            "current": current_count,
-                            "message": f"Votre plan {plan.name} est limité à {feat.int_limit} magasin(s). Passez au forfait supérieur pour ouvrir de nouveaux points de vente.",
-                        },
-                    )
+    current_count = db.query(Magasin).filter(
+        Magasin.boutique_id == boutique_id, Magasin.is_active == True
+    ).count()
+    check_quota_limit(db, boutique_id, "max_magasins", current_count)
 
     magasin = Magasin(
         boutique_id=boutique_id,

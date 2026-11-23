@@ -7,6 +7,7 @@ from app.core.security import get_password_hash, hash_pin
 from app.models import AuditLog, BoutiqueUserMembership, Magasin, User
 from app.schemas.users import UserCreate, UserUpdate
 from app.services.auth_service import revoke_all_user_tokens
+from app.services.entitlements import check_quota_limit
 from app.services.tenant_context_service import TenantContext
 
 
@@ -78,6 +79,16 @@ def list_boutique_users(db: Session, ctx: TenantContext) -> List[Dict[str, Any]]
 
 
 def create_boutique_user(db: Session, ctx: TenantContext, data: UserCreate) -> Dict[str, Any]:
+    active_users = (
+        db.query(BoutiqueUserMembership)
+        .filter(
+            BoutiqueUserMembership.boutique_id == ctx.boutique.id,
+            BoutiqueUserMembership.is_active == True,
+        )
+        .count()
+    )
+    check_quota_limit(db, ctx.boutique.id, "max_users", active_users)
+
     username = data.username.strip()
     if db.query(User).filter(User.username == username).first():
         raise HTTPException(status_code=400, detail="Ce nom d'utilisateur est déjà utilisé")

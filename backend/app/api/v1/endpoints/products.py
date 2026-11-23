@@ -4,8 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.api import deps
 from app.core.database import get_db
-from app.models import Category, Product, User
+from app.models import Category, Product
 from app.schemas.sync import ProductSync
+from app.services.entitlements import check_quota_limit
 from app.services.tenant_context_service import TenantContext
 from pydantic import BaseModel
 
@@ -81,6 +82,12 @@ def create_product(
     ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ) -> Any:
+    current_count = (
+        db.query(Product)
+        .filter(Product.boutique_id == ctx.boutique.id, Product.deleted_at.is_(None))
+        .count()
+    )
+    check_quota_limit(db, ctx.boutique.id, "max_products", current_count)
     _ensure_category_in_boutique(db, data.category_sync_id, ctx.boutique.id)
     now = datetime.now(timezone.utc)
     product = Product(

@@ -1,8 +1,10 @@
 from datetime import datetime
 from typing import List
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.models import AuditLog, Category, Client, Product, Supplier
 from app.schemas.sync import SyncPushRequest
+from app.services.entitlements import check_quota_limit
 from app.services.tenant_context_service import TenantContext
 
 
@@ -49,6 +51,9 @@ def push_master_entities(
         except Exception as exc:
             errors.append(f"Category {cat.sync_id}: {exc}")
 
+    prod_count = (
+        db.query(Product).filter(Product.boutique_id == boutique_id, Product.deleted_at.is_(None)).count()
+    )
     for prod in payload.products:
         try:
             existing = db.query(Product).filter(Product.sync_id == prod.sync_id).first()
@@ -77,6 +82,8 @@ def push_master_entities(
                 existing.is_active = prod.is_active
                 existing.updated_at = prod.updated_at or now
             else:
+                check_quota_limit(db, boutique_id, "max_products", prod_count)
+                prod_count += 1
                 db.add(Product(
                     sync_id=prod.sync_id,
                     boutique_id=boutique_id,
@@ -94,9 +101,14 @@ def push_master_entities(
                     updated_at=prod.updated_at or now,
                 ))
             synced_uuids.append(prod.sync_id)
+        except HTTPException:
+            raise
         except Exception as exc:
             errors.append(f"Product {prod.sync_id}: {exc}")
 
+    sup_count = (
+        db.query(Supplier).filter(Supplier.boutique_id == boutique_id, Supplier.deleted_at.is_(None)).count()
+    )
     for sup in payload.suppliers:
         try:
             existing = db.query(Supplier).filter(Supplier.sync_id == sup.sync_id).first()
@@ -113,6 +125,8 @@ def push_master_entities(
                 existing.notes = sup.notes
                 existing.updated_at = sup.updated_at or now
             else:
+                check_quota_limit(db, boutique_id, "max_suppliers", sup_count)
+                sup_count += 1
                 db.add(Supplier(
                     sync_id=sup.sync_id,
                     boutique_id=boutique_id,
@@ -129,9 +143,14 @@ def push_master_entities(
                     updated_at=sup.updated_at or now,
                 ))
             synced_uuids.append(sup.sync_id)
+        except HTTPException:
+            raise
         except Exception as exc:
             errors.append(f"Supplier {sup.sync_id}: {exc}")
 
+    cl_count = (
+        db.query(Client).filter(Client.boutique_id == boutique_id, Client.deleted_at.is_(None)).count()
+    )
     for cl in payload.clients:
         try:
             existing = db.query(Client).filter(Client.sync_id == cl.sync_id).first()
@@ -151,6 +170,8 @@ def push_master_entities(
                 existing.user_name = cl_uname
                 existing.updated_at = cl.updated_at or now
             else:
+                check_quota_limit(db, boutique_id, "max_clients", cl_count)
+                cl_count += 1
                 db.add(Client(
                     sync_id=cl.sync_id,
                     boutique_id=boutique_id,
@@ -177,5 +198,7 @@ def push_master_entities(
                     created_at=cl.updated_at or now,
                 ))
             synced_uuids.append(cl.sync_id)
+        except HTTPException:
+            raise
         except Exception as exc:
             errors.append(f"Client {cl.sync_id}: {exc}")
