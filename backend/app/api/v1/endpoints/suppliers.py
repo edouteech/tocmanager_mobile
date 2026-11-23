@@ -20,7 +20,7 @@ def list_suppliers(
     only_creditors: bool = Query(False, description="Fournisseurs à qui on doit de l'argent"),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    ctx: TenantContext = Depends(deps.get_tenant_context),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
     query = db.query(Supplier).filter(
@@ -43,10 +43,10 @@ def list_suppliers(
 @router.post("", response_model=SupplierResponse, status_code=status.HTTP_201_CREATED)
 def create_supplier(
     supplier_in: SupplierCreate,
-    ctx: TenantContext = Depends(deps.get_tenant_context),
-    current_user: User = Depends(deps.require_role(["admin", "manager"])),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
+    current_user = ctx.user
     now = datetime.now(timezone.utc)
     supplier = Supplier(
         sync_id=str(uuid.uuid4()),
@@ -84,7 +84,7 @@ def create_supplier(
 @router.get("/{sync_id}", response_model=SupplierResponse)
 def get_supplier(
     sync_id: str,
-    ctx: TenantContext = Depends(deps.get_tenant_context),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
     supplier = (
@@ -105,10 +105,10 @@ def get_supplier(
 def update_supplier(
     sync_id: str,
     supplier_in: SupplierUpdate,
-    ctx: TenantContext = Depends(deps.get_tenant_context),
-    current_user: User = Depends(deps.require_role(["admin", "manager"])),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
+    current_user = ctx.user
     supplier = (
         db.query(Supplier)
         .filter(
@@ -146,10 +146,10 @@ def update_supplier(
 @router.delete("/{sync_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 def delete_supplier(
     sync_id: str,
-    ctx: TenantContext = Depends(deps.get_tenant_context),
-    current_user: User = Depends(deps.require_role(["admin", "manager"])),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
+    current_user = ctx.user
     supplier = (
         db.query(Supplier)
         .filter(
@@ -184,10 +184,10 @@ def delete_supplier(
 def record_supplier_payment(
     sync_id: str,
     payment: SupplierPaymentRequest,
-    ctx: TenantContext = Depends(deps.get_tenant_context),
-    current_user: User = Depends(deps.require_role(["admin", "manager"])),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
+    current_user = ctx.user
     supplier = (
         db.query(Supplier)
         .filter(

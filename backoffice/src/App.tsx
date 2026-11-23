@@ -72,7 +72,7 @@ export const App: React.FC = () => {
                 <Route
                   path="/admin"
                   element={
-                    <ProtectedRoute allowedRoles={['superadmin', 'admin']}>
+                    <ProtectedRoute allowedRoles={['superadmin']}>
                       <AdminLayout />
                     </ProtectedRoute>
                   }
@@ -104,7 +104,7 @@ export const App: React.FC = () => {
                     <Route
                       path="approvisionnements"
                       element={
-                        <ProtectedRoute allowedRoles={['admin', 'manager', 'merchant']}>
+                        <ProtectedRoute allowedRoles={['owner', 'store_admin', 'manager', 'merchant']}>
                           <SuppliesPage />
                         </ProtectedRoute>
                       }
@@ -115,7 +115,7 @@ export const App: React.FC = () => {
                     <Route
                       path="fournisseurs"
                       element={
-                        <ProtectedRoute allowedRoles={['admin', 'manager', 'merchant']}>
+                        <ProtectedRoute allowedRoles={['owner', 'store_admin', 'manager', 'merchant']}>
                           <SuppliersPage />
                         </ProtectedRoute>
                       }
@@ -123,7 +123,7 @@ export const App: React.FC = () => {
                     <Route
                       path="rapports"
                       element={
-                        <ProtectedRoute allowedRoles={['admin', 'manager', 'merchant']}>
+                        <ProtectedRoute allowedRoles={['owner', 'store_admin', 'manager', 'merchant']}>
                           <ReportsPage />
                         </ProtectedRoute>
                       }
@@ -133,7 +133,7 @@ export const App: React.FC = () => {
                     <Route
                       path="utilisateurs"
                       element={
-                        <ProtectedRoute allowedRoles={['admin', 'merchant']}>
+                        <ProtectedRoute allowedRoles={['owner', 'store_admin', 'merchant']}>
                           <UsersPage />
                         </ProtectedRoute>
                       }
@@ -141,7 +141,7 @@ export const App: React.FC = () => {
                     <Route
                       path="audit"
                       element={
-                        <ProtectedRoute allowedRoles={['admin', 'merchant']}>
+                        <ProtectedRoute allowedRoles={['owner', 'store_admin', 'merchant']}>
                           <AuditLogsPage />
                         </ProtectedRoute>
                       }
@@ -149,7 +149,7 @@ export const App: React.FC = () => {
                     <Route
                       path="parametres"
                       element={
-                        <ProtectedRoute allowedRoles={['admin', 'merchant']}>
+                        <ProtectedRoute allowedRoles={['owner', 'store_admin', 'merchant']}>
                           <SettingsPage />
                         </ProtectedRoute>
                       }

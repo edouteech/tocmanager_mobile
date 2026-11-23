@@ -5,6 +5,7 @@ from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.permissions import normalize_tenant_role
 from app.models import User
 from app.services.tenant_context_service import TenantContext, resolve_tenant_context
 
@@ -71,15 +72,33 @@ def get_tenant_context(
     )
 
 
+def require_tenant_role(allowed_roles: List[str]) -> Callable:
+    def role_checker(ctx: TenantContext = Depends(get_tenant_context)) -> TenantContext:
+        effective_role = normalize_tenant_role(ctx.role)
+        if effective_role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permissions insuffisantes pour cette opération",
+            )
+        return ctx
+
+    return role_checker
+
+
 def require_role(allowed_roles: List[str]) -> Callable:
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
         if current_user.role == "superadmin":
-            return current_user
-        if current_user.role == "merchant" and (
-            "admin" in allowed_roles or "manager" in allowed_roles or "merchant" in allowed_roles
-        ):
-            return current_user
-        if current_user.role not in allowed_roles and current_user.role != "admin":
+            if "superadmin" in allowed_roles:
+                return current_user
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permissions insuffisantes pour cette opération",
+            )
+        effective_role = normalize_tenant_role(current_user.role)
+        normalized_allowed = {
+            r if r == "superadmin" else normalize_tenant_role(r) for r in allowed_roles
+        }
+        if effective_role not in normalized_allowed:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Permissions insuffisantes pour cette opération",

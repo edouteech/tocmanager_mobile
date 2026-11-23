@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.api import deps
 from app.core.database import get_db
-from app.models import StoreSetting, AuditLog, User
+from app.models import StoreSetting, AuditLog
 from app.schemas.entities import StoreSettings
 from app.services.tenant_context_service import TenantContext
 
@@ -64,11 +64,11 @@ def get_store_settings(
 @router.put("", response_model=StoreSettings)
 def update_store_settings(
     settings_in: StoreSettings,
-    ctx: TenantContext = Depends(deps.get_tenant_context),
-    current_user: User = Depends(deps.require_role(["admin"])),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin"])),
     db: Session = Depends(get_db),
 ) -> Any:
     """Met à jour les paramètres propres à la boutique active."""
+    current_user = ctx.user
     now = datetime.now(timezone.utc)
     in_dict = {
         "store_name": settings_in.store_name,

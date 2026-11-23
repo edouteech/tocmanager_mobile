@@ -42,8 +42,17 @@ export const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
 
     // Règle 3: Vérification des rôles au sein de la boutique (commerçant, caissier, gérant)
     if (allowedRoles && allowedRoles.length > 0) {
+      const normalizedUserRole =
+        user.role === 'merchant'
+          ? 'owner'
+          : user.role === 'admin'
+            ? 'store_admin'
+            : user.role;
       const hasAllowedRole = allowedRoles.some(
-        (r) => r === user.role || (user.role === 'merchant' && (r === 'owner' || r === 'admin'))
+        (r) =>
+          r === user.role ||
+          r === normalizedUserRole ||
+          (normalizedUserRole === 'owner' && r === 'store_admin')
       );
       if (!hasAllowedRole) {
         return <Navigate to="/" replace />;

@@ -57,7 +57,7 @@ def list_magasins(
 @router.post("/magasins", response_model=MagasinOut)
 def create_magasin(
     payload: MagasinCreate,
-    ctx: TenantContext = Depends(deps.get_tenant_context),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin"])),
     db: Session = Depends(get_db),
 ):
     return create_ctx_magasin(db, ctx, payload)
@@ -67,7 +67,7 @@ def create_magasin(
 def update_magasin(
     magasin_id: str,
     payload: MagasinUpdate,
-    ctx: TenantContext = Depends(deps.get_tenant_context),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin"])),
     db: Session = Depends(get_db),
 ):
     return update_ctx_magasin(db, ctx, magasin_id, payload)
@@ -84,7 +84,7 @@ def get_current_plan_status(
 @router.post("/upgrade-plan")
 def upgrade_plan(
     payload: dict,
-    ctx: TenantContext = Depends(deps.get_tenant_context),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner"])),
     db: Session = Depends(get_db),
 ):
     return upgrade_ctx_plan(db, ctx, payload.get("plan_code", "pro"))

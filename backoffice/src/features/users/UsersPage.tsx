@@ -27,7 +27,7 @@ export const UsersPage: React.FC = () => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'admin' | 'manager' | 'cashier'>('cashier');
+  const [role, setRole] = useState<'store_admin' | 'manager' | 'cashier'>('cashier');
   const [pin, setPin] = useState('');
   const [assignedMagasins, setAssignedMagasins] = useState<string[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
@@ -311,7 +311,7 @@ export const UsersPage: React.FC = () => {
             >
               <option value="cashier">Caissier (Ventes et caisse uniquement)</option>
               <option value="manager">Gérant de Magasin (Gestion des stocks et ventes)</option>
-              <option value="admin">Administrateur Boutique (Tous droits)</option>
+              <option value="store_admin">Administrateur Boutique (Tous droits)</option>
             </select>
           </div>
 

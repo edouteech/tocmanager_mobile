@@ -38,7 +38,7 @@ def get_audit_logs(
     action: Optional[str] = None,
     user_id: Optional[str] = None,
     entity_type: Optional[str] = None,
-    ctx: TenantContext = Depends(deps.get_tenant_context),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin"])),
     db: Session = Depends(get_db),
 ) -> Any:
     """Récupère l'historique d'audit cloisonné à la boutique active."""

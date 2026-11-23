@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.permissions import normalize_tenant_role
 from app.models import (
     User, Boutique, BoutiqueUserMembership, Magasin, SaasPlan, SaasPlanFeature, SaasSubscription
 )
@@ -130,7 +131,7 @@ def list_ctx_magasins(db: Session, ctx: TenantContext) -> List[Magasin]:
     magasins = db.query(Magasin).filter(
         Magasin.boutique_id == ctx.boutique.id, Magasin.is_active == True
     ).all()
-    if ctx.role != "owner" and ctx.assigned_magasin_ids:
+    if normalize_tenant_role(ctx.role) not in ("owner", "store_admin") and ctx.assigned_magasin_ids:
         magasins = [m for m in magasins if m.id in ctx.assigned_magasin_ids]
     return magasins
 

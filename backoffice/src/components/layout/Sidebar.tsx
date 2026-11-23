@@ -39,23 +39,23 @@ export const Sidebar: React.FC = () => {
     { to: '/produits', label: 'Produits & Stocks', icon: Package },
     { to: '/categories', label: 'Catégories', icon: LayoutGrid },
     { to: '/clients', label: 'Clients & Créances', icon: Users },
-    { to: '/fournisseurs', label: 'Fournisseurs', icon: Building2, roles: ['superadmin', 'admin', 'merchant', 'manager'] },
+    { to: '/fournisseurs', label: 'Fournisseurs', icon: Building2, roles: ['owner', 'store_admin', 'merchant', 'manager'] },
   ];
 
   // Group 2: Opérations & Flux
   const operationNavItems: NavItem[] = [
-    { to: '/approvisionnements', label: 'Approvisionnements', icon: ArrowDownToLine, roles: ['superadmin', 'admin', 'merchant', 'manager'] },
+    { to: '/approvisionnements', label: 'Approvisionnements', icon: ArrowDownToLine, roles: ['owner', 'store_admin', 'merchant', 'manager'] },
     { to: '/ventes', label: 'Ventes & Caisse', icon: ShoppingCart },
     { to: '/depenses', label: 'Décaissements', icon: Wallet },
-    { to: '/rapports', label: 'Rapports & Analytique', icon: BarChart3, roles: ['superadmin', 'admin', 'merchant', 'manager'] },
+    { to: '/rapports', label: 'Rapports & Analytique', icon: BarChart3, roles: ['owner', 'store_admin', 'merchant', 'manager'] },
   ];
 
   // Group 3: Paramètres & Administration
   const adminNavItems: NavItem[] = [
-    { to: '/magasins', label: 'Magasins & Points de Vente', icon: Store, roles: ['superadmin', 'admin', 'merchant', 'manager'] },
-    { to: '/parametres', label: 'Paramètres Boutique', icon: Settings, roles: ['superadmin', 'admin', 'merchant'] },
-    { to: '/utilisateurs', label: 'Utilisateurs & Rôles', icon: UserCheck, roles: ['superadmin', 'admin', 'merchant'] },
-    { to: '/audit', label: "Journal d'Audit", icon: ShieldCheck, roles: ['superadmin', 'admin', 'merchant'] },
+    { to: '/magasins', label: 'Magasins & Points de Vente', icon: Store, roles: ['owner', 'store_admin', 'merchant', 'manager'] },
+    { to: '/parametres', label: 'Paramètres Boutique', icon: Settings, roles: ['owner', 'store_admin', 'merchant'] },
+    { to: '/utilisateurs', label: 'Utilisateurs & Rôles', icon: UserCheck, roles: ['owner', 'store_admin', 'merchant'] },
+    { to: '/audit', label: "Journal d'Audit", icon: ShieldCheck, roles: ['owner', 'store_admin', 'merchant'] },
   ];
 
   const handleNavClick = () => {
@@ -69,7 +69,7 @@ export const Sidebar: React.FC = () => {
       .filter((item) => {
         if (!item.roles) return true;
         if (!user) return false;
-        if (user.role === 'superadmin' || user.role === 'admin' || user.role === 'merchant') return true;
+        if (user.role === 'owner' || user.role === 'store_admin' || user.role === 'admin' || user.role === 'merchant') return true;
         return item.roles.includes(user.role);
       })
       .map((item) => {

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.api import deps
 from app.core.database import get_db
-from app.models import Approvisionnement, Product, Supplier, AuditLog, User
+from app.models import Approvisionnement, Product, Supplier, AuditLog
 from app.schemas.entities import ApprovisionnementCreate, ApprovisionnementResponse
 from app.services.tenant_context_service import TenantContext
 
@@ -19,7 +19,7 @@ def list_approvisionnements(
     supplier_sync_id: Optional[str] = Query(None),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    ctx: TenantContext = Depends(deps.get_tenant_context),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
     query = db.query(Approvisionnement).filter(
@@ -36,10 +36,10 @@ def list_approvisionnements(
 @router.post("", response_model=ApprovisionnementResponse, status_code=status.HTTP_201_CREATED)
 def create_approvisionnement(
     app_in: ApprovisionnementCreate,
-    ctx: TenantContext = Depends(deps.get_tenant_context),
-    current_user: User = Depends(deps.require_role(["admin", "manager"])),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
+    current_user = ctx.user
     prod = (
         db.query(Product)
         .filter(

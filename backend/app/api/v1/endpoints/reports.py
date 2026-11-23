@@ -6,7 +6,6 @@ from pydantic import BaseModel
 
 from app.api import deps
 from app.core.database import get_db
-from app.models import User
 from app.schemas.entities import FinancialReportResponse
 from app.services.dashboard_report_service import compute_dashboard_stats
 from app.services.report_service import compute_financial_report
@@ -31,11 +30,9 @@ class DashboardStats(BaseModel):
 
 @router.get("/dashboard", response_model=DashboardStats)
 def get_dashboard_stats(
-    ctx: TenantContext = Depends(deps.get_tenant_context),
-    current_user: User = Depends(deps.require_role(["admin", "manager"])),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ) -> Any:
-    _ = current_user
     return DashboardStats(**compute_dashboard_stats(db, ctx.boutique.id))
 
 
@@ -44,11 +41,9 @@ def get_financial_report(
     preset: Optional[str] = Query(None),
     start_date: Optional[datetime] = Query(None),
     end_date: Optional[datetime] = Query(None),
-    ctx: TenantContext = Depends(deps.get_tenant_context),
-    current_user: User = Depends(deps.require_role(["admin", "manager"])),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ) -> Any:
-    _ = current_user
     return compute_financial_report(
         db=db,
         boutique_id=ctx.boutique.id,

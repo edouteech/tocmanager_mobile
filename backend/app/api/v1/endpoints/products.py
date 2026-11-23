@@ -78,11 +78,9 @@ def list_products(
 @router.post("", response_model=ProductSync)
 def create_product(
     data: ProductCreate,
-    ctx: TenantContext = Depends(deps.get_tenant_context),
-    current_user: User = Depends(deps.require_role(["admin", "manager"])),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ) -> Any:
-    _ = current_user
     _ensure_category_in_boutique(db, data.category_sync_id, ctx.boutique.id)
     now = datetime.now(timezone.utc)
     product = Product(
@@ -109,11 +107,9 @@ def create_product(
 def update_product(
     sync_id: str,
     data: ProductUpdate,
-    ctx: TenantContext = Depends(deps.get_tenant_context),
-    current_user: User = Depends(deps.require_role(["admin", "manager"])),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ) -> Any:
-    _ = current_user
     product = (
         db.query(Product)
         .filter(
@@ -142,11 +138,9 @@ def update_product(
 @router.delete("/{sync_id}")
 def delete_product(
     sync_id: str,
-    ctx: TenantContext = Depends(deps.get_tenant_context),
-    current_user: User = Depends(deps.require_role(["admin", "manager"])),
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ) -> Any:
-    _ = current_user
     product = (
         db.query(Product)
         .filter(Product.sync_id == sync_id, Product.boutique_id == ctx.boutique.id)
