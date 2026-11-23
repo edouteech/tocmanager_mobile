@@ -8,8 +8,10 @@ services:
     environment:
       - PORT=8000
       - ENVIRONMENT=production
+      - ENABLE_DEMO_SEED=false
       - DATABASE_URL=sqlite:////app/data/tocmanager.db
-      - SECRET_KEY=${SECRET_KEY:-tocmanager-super-secret-key-change-in-production-2026}
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set}
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS:-http://localhost:3000}
     volumes:
       - tocmanager_backend_data:/app/data
     ports:
