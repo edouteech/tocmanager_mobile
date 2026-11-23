@@ -13,11 +13,20 @@ export const MainLayout: React.FC = () => {
   const { isOpen, close } = useSidebar();
   const queryClient = useQueryClient();
   const initTenant = useTenantStore((s) => s.initTenant);
+  const resetTenant = useTenantStore((s) => s.resetTenant);
   const openUpgradeModal = useTenantStore((s) => s.openUpgradeModal);
 
   useEffect(() => {
     initTenant();
   }, [initTenant]);
+
+  useEffect(() => {
+    const onCleared = () => {
+      resetTenant();
+    };
+    window.addEventListener('toc:session-cleared', onCleared);
+    return () => window.removeEventListener('toc:session-cleared', onCleared);
+  }, [resetTenant]);
 
   useEffect(() => {
     const onTenantChanged = () => {

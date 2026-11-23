@@ -6,6 +6,7 @@ import { formatFCFA } from '../../lib/formatters';
 interface ProductCardProps {
   product: Product;
   categoryName?: string;
+  canManage?: boolean;
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
 }
@@ -13,6 +14,7 @@ interface ProductCardProps {
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
   categoryName,
+  canManage = true,
   onEdit,
   onDelete,
 }) => {
@@ -98,24 +100,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <span className="text-[11px] text-slate-400 font-medium">
           Alerte: min {product.min_stock || 5}
         </span>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => onEdit(product)}
-            className="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10 rounded-xl transition"
-            title="Modifier le produit"
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onDelete(product)}
-            className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition"
-            title="Supprimer le produit"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
+        {canManage && (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => onEdit(product)}
+              className="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10 rounded-xl transition"
+              title="Modifier le produit"
+            >
+              <Edit2 className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete(product)}
+              className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition"
+              title="Supprimer le produit"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

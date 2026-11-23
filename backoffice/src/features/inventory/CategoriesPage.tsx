@@ -12,6 +12,7 @@ import { categoriesApi } from '../../lib/api';
 import { formatDateTime } from '../../lib/formatters';
 import { Category } from '../../types';
 import { Modal } from '../../components/common/Modal';
+import { useAuthStore } from '../../stores/authStore';
 import { useTenantContextKey } from '../../stores/tenantStore';
 
 const PRESET_COLORS = [
@@ -27,6 +28,8 @@ const PRESET_COLORS = [
 
 export const CategoriesPage: React.FC = () => {
   const queryClient = useQueryClient();
+  const user = useAuthStore((s) => s.user);
+  const canManageCategories = user?.role !== 'cashier';
   const [boutiqueKey, magasinKey] = useTenantContextKey();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
@@ -145,13 +148,15 @@ export const CategoriesPage: React.FC = () => {
             Organisation du catalogue d'articles et gestion des rayons
           </p>
         </div>
-        <button
-          onClick={handleOpenCreate}
-          className="btn-primary"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Nouvelle Catégorie</span>
-        </button>
+        {canManageCategories && (
+          <button
+            onClick={handleOpenCreate}
+            className="btn-primary"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nouvelle Catégorie</span>
+          </button>
+        )}
       </div>
 
       {/* KPI Cards */}
@@ -216,22 +221,24 @@ export const CategoriesPage: React.FC = () => {
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => handleOpenEdit(c)}
-                      className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-dark-700 rounded-xl transition"
-                      title="Modifier"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(c)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition"
-                      title="Supprimer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                  {canManageCategories && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleOpenEdit(c)}
+                        className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-dark-700 rounded-xl transition"
+                        title="Modifier"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(c)}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {c.description && (

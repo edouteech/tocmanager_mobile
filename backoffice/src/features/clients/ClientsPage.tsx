@@ -26,10 +26,13 @@ import { FilterPeriodChips, FilterChipItem, SortOption } from '../../components/
 import { ViewToggle, ViewMode } from '../../components/common/ViewToggle';
 import { ClientCard } from './ClientCard';
 import { useTenantContextKey } from '../../stores/tenantStore';
+import { useAuthStore } from '../../stores/authStore';
 
 export const ClientsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { tableClasses } = useDensity();
+  const user = useAuthStore((s) => s.user);
+  const canModifyClients = user?.role !== 'cashier';
   const [boutiqueKey, magasinKey] = useTenantContextKey();
   const [search, setSearch] = useState('');
   const [clientFilter, setClientFilter] = useState<string>('all');
@@ -392,6 +395,7 @@ export const ClientsPage: React.FC = () => {
             <ClientCard
               key={c.sync_id}
               client={c}
+              canModify={canModifyClients}
               onEdit={handleOpenEdit}
               onDelete={handleDelete}
               onPayment={handleOpenPayment}
@@ -468,20 +472,24 @@ export const ClientsPage: React.FC = () => {
                               Régler
                             </button>
                           )}
-                          <button
-                            onClick={() => handleOpenEdit(c)}
-                            className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-dark-700 rounded-xl transition"
-                            title="Modifier"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(c)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition"
-                            title="Supprimer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {canModifyClients && (
+                            <>
+                              <button
+                                onClick={() => handleOpenEdit(c)}
+                                className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-dark-700 rounded-xl transition"
+                                title="Modifier"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(c)}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition"
+                                title="Supprimer"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { UserBrief, AuthResponse } from '../types';
+import { clearAllSessionState, revokeSessionBestEffort } from '../lib/sessionCleanup';
 
 interface AuthState {
   user: UserBrief | null;
@@ -81,10 +82,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
-    localStorage.removeItem('toc_access_token');
-    localStorage.removeItem('toc_refresh_token');
-    localStorage.removeItem('toc_user');
-    localStorage.removeItem('toc_pin_locked');
+    const accessToken = localStorage.getItem('toc_access_token');
+    const refreshToken = localStorage.getItem('toc_refresh_token');
+    revokeSessionBestEffort(accessToken, refreshToken);
+    clearAllSessionState();
     set({
       user: null,
       token: null,
@@ -114,3 +115,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
 }));
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('toc:session-cleared', () => {
+    useAuthStore.setState({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      isPinLocked: false,
+    });
+  });
+}

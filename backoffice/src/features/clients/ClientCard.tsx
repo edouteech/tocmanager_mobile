@@ -15,6 +15,7 @@ import { formatFCFA } from '../../lib/formatters';
 
 interface ClientCardProps {
   client: Client;
+  canModify?: boolean;
   onEdit: (client: Client) => void;
   onDelete: (client: Client) => void;
   onPayment: (client: Client) => void;
@@ -22,6 +23,7 @@ interface ClientCardProps {
 
 export const ClientCard: React.FC<ClientCardProps> = ({
   client,
+  canModify = true,
   onEdit,
   onDelete,
   onPayment,
@@ -124,24 +126,26 @@ export const ClientCard: React.FC<ClientCardProps> = ({
           <span className="text-[11px] text-slate-400">Aucune dette</span>
         )}
 
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => onEdit(client)}
-            className="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10 rounded-xl transition"
-            title="Modifier"
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onDelete(client)}
-            className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition"
-            title="Supprimer"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
+        {canModify && (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => onEdit(client)}
+              className="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10 rounded-xl transition"
+              title="Modifier"
+            >
+              <Edit2 className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete(client)}
+              className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition"
+              title="Supprimer"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
