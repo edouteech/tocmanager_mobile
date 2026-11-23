@@ -1,3 +1,4 @@
+from datetime import timedelta
 from sqlalchemy.orm import Session
 from app.core.security import get_password_hash, hash_pin
 from app.models import (
@@ -11,11 +12,13 @@ from app.models import (
     Boutique,
     BoutiqueUserMembership,
     Magasin,
+    StockMagasin,
+    utc_now,
 )
 
 
 def seed_demo_data(db: Session) -> None:
-    """Initialise les utilisateurs, boutique et catalogue de démonstration hors production."""
+    """Seed demo users, default boutique, initial magasin, and sample catalog once."""
     admin = db.query(User).filter(User.username == "admin").first()
     if not admin:
         admin = User(
@@ -32,7 +35,7 @@ def seed_demo_data(db: Session) -> None:
         db.flush()
     elif admin.role != "superadmin":
         admin.role = "superadmin"
-        db.commit()
+        db.flush()
 
     commercant = db.query(User).filter(User.username == "commercant").first()
     if not commercant:
@@ -106,41 +109,33 @@ def seed_demo_data(db: Session) -> None:
             assigned_magasin_ids=[main_magasin.id],
             is_active=True,
         ))
-    else:
-        if default_btq.owner_user_id == admin.id:
-            default_btq.owner_user_id = commercant.id
-            db.query(BoutiqueUserMembership).filter(
-                BoutiqueUserMembership.boutique_id == default_btq.id,
-                BoutiqueUserMembership.user_id == admin.id,
-            ).delete()
-            db.commit()
-
-        existing_comm_m = db.query(BoutiqueUserMembership).filter(
-            BoutiqueUserMembership.boutique_id == default_btq.id,
-            BoutiqueUserMembership.user_id == commercant.id,
-        ).first()
-        if not existing_comm_m:
-            first_mag = db.query(Magasin).filter(Magasin.boutique_id == default_btq.id).first()
-            db.add(BoutiqueUserMembership(
-                boutique_id=default_btq.id,
-                user_id=commercant.id,
-                role="owner",
-                assigned_magasin_ids=[first_mag.id] if first_mag else [],
-                is_active=True,
-            ))
-            db.commit()
 
         pro_plan = db.query(SaasPlan).filter(SaasPlan.code == "pro").first()
         if pro_plan:
+            now = utc_now()
             db.add(SaasSubscription(
                 boutique_id=default_btq.id,
                 plan_id=pro_plan.id,
                 status="trialing",
                 billing_cycle="monthly",
+                trial_starts_at=now,
+                trial_ends_at=now + timedelta(days=14),
             ))
 
-        cat_boisson = Category(name="Boissons", boutique_id=default_btq.id, description="Jus, eaux et sodas", color="#2196F3", icon="local_drink")
-        cat_epicerie = Category(name="Épicerie", boutique_id=default_btq.id, description="Produits alimentaires secs", color="#4CAF50", icon="shopping_basket")
+        cat_boisson = Category(
+            name="Boissons",
+            boutique_id=default_btq.id,
+            description="Jus, eaux et sodas",
+            color="#2196F3",
+            icon="local_drink",
+        )
+        cat_epicerie = Category(
+            name="Épicerie",
+            boutique_id=default_btq.id,
+            description="Produits alimentaires secs",
+            color="#4CAF50",
+            icon="shopping_basket",
+        )
         db.add_all([cat_boisson, cat_epicerie])
         db.flush()
 
@@ -178,10 +173,50 @@ def seed_demo_data(db: Session) -> None:
             unit="sac",
         )
         db.add_all([p1, p2, p3])
+        db.flush()
+
+        for prod in (p1, p2, p3):
+            db.add(StockMagasin(
+                boutique_id=default_btq.id,
+                magasin_id=main_magasin.id,
+                product_sync_id=prod.sync_id,
+                quantity=prod.stock,
+                min_stock=prod.min_stock,
+                cost_price=prod.cost_price,
+                average_cost_price=prod.average_cost_price,
+            ))
+
         db.add_all([
             Client(name="Marcelle Konan", boutique_id=default_btq.id, phone="+229 97 00 00 01", balance=0.0),
             Client(name="Occasionnel", boutique_id=default_btq.id, balance=0.0),
         ])
-        db.add(Supplier(name="SOBEBRA", boutique_id=default_btq.id, phone="+229 21 00 00 00", contact_person="Service Commercial"))
+        db.add(Supplier(
+            name="SOBEBRA",
+            boutique_id=default_btq.id,
+            phone="+229 21 00 00 00",
+            contact_person="Service Commercial",
+        ))
+    else:
+        if default_btq.owner_user_id == admin.id:
+            default_btq.owner_user_id = commercant.id
+            db.query(BoutiqueUserMembership).filter(
+                BoutiqueUserMembership.boutique_id == default_btq.id,
+                BoutiqueUserMembership.user_id == admin.id,
+            ).delete()
+            db.flush()
+
+        existing_comm_m = db.query(BoutiqueUserMembership).filter(
+            BoutiqueUserMembership.boutique_id == default_btq.id,
+            BoutiqueUserMembership.user_id == commercant.id,
+        ).first()
+        if not existing_comm_m:
+            first_mag = db.query(Magasin).filter(Magasin.boutique_id == default_btq.id).first()
+            db.add(BoutiqueUserMembership(
+                boutique_id=default_btq.id,
+                user_id=commercant.id,
+                role="owner",
+                assigned_magasin_ids=[first_mag.id] if first_mag else [],
+                is_active=True,
+            ))
 
     db.commit()
