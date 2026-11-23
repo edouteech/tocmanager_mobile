@@ -78,6 +78,14 @@ export const UsersPage: React.FC = () => {
     e.preventDefault();
     setFormError(null);
 
+    if (!username.trim()) {
+      setFormError("Le nom d'utilisateur est obligatoire.");
+      return;
+    }
+    if (!password || password.length < 6) {
+      setFormError('Le mot de passe doit comporter au moins 6 caractères.');
+      return;
+    }
     if (pin && (pin.length !== 4 && pin.length !== 6 || !/^\d+$/.test(pin))) {
       setFormError('Le code PIN doit comporter exactement 4 ou 6 chiffres numériques.');
       return;
@@ -212,8 +220,8 @@ export const UsersPage: React.FC = () => {
               Annuler
             </button>
             <button
-              type="button"
-              onClick={handleSubmit}
+              type="submit"
+              form="user-form"
               disabled={createUserMutation.isPending}
               className="btn-primary"
             >
@@ -229,7 +237,7 @@ export const UsersPage: React.FC = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="user-form" onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">

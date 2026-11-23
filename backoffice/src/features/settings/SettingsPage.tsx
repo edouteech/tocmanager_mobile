@@ -13,6 +13,7 @@ import {
 import { settingsApi } from '../../lib/api';
 import { StoreSettings } from '../../types';
 import { CANONICAL_CURRENCIES } from '../../lib/currencies';
+import { PinSecurityCard } from './PinSecurityCard';
 
 export const SettingsPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -259,6 +260,8 @@ export const SettingsPage: React.FC = () => {
           </button>
         </div>
       </form>
+
+      <PinSecurityCard />
     </div>
   );
 };

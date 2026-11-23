@@ -47,7 +47,9 @@ export const ProductsPage: React.FC = () => {
   const [stock, setStock] = useState<number>(0);
   const [minStock, setMinStock] = useState<number>(5);
   const [unit, setUnit] = useState('pièce');
+  const [barcode, setBarcode] = useState('');
   const [imagePath, setImagePath] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Query products
   const { data: products = [], isLoading } = useQuery<Product[]>({
@@ -211,7 +213,9 @@ export const ProductsPage: React.FC = () => {
     setStock(0);
     setMinStock(5);
     setUnit('pièce');
+    setBarcode('');
     setImagePath(null);
+    setFormError(null);
     setIsDrawerOpen(true);
   };
 
@@ -225,26 +229,40 @@ export const ProductsPage: React.FC = () => {
     setStock(p.stock);
     setMinStock(p.min_stock);
     setUnit(p.unit || 'pièce');
+    setBarcode(p.barcode || '');
     setImagePath(p.image_path || null);
+    setFormError(null);
     setIsDrawerOpen(true);
   };
 
   const closeDrawer = () => {
     setIsDrawerOpen(false);
     setEditingProduct(null);
+    setBarcode('');
     setImagePath(null);
+    setFormError(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+    if (!name.trim()) {
+      setFormError("Le nom de l'article est obligatoire.");
+      return;
+    }
+    if (Number(price) < 0 || Number(costPrice) < 0 || Number(stock) < 0) {
+      setFormError('Les prix et quantités ne peuvent pas être négatifs.');
+      return;
+    }
     const payload = {
-      name,
+      name: name.trim(),
       category_sync_id: categoryId || null,
       price: Number(price),
       cost_price: Number(costPrice),
       stock: Number(stock),
       min_stock: Number(minStock),
       unit,
+      barcode: barcode.trim() || null,
       image_path: imagePath,
     };
 
@@ -528,8 +546,8 @@ export const ProductsPage: React.FC = () => {
                 Annuler
               </button>
               <button
-                type="button"
-                onClick={handleSubmit}
+                type="submit"
+                form="product-form"
                 disabled={createMutation.isPending || updateMutation.isPending}
                 className="btn-toc btn-primary text-xs"
               >
@@ -582,7 +600,12 @@ export const ProductsPage: React.FC = () => {
             cataloguePrice={editingProduct.price}
           />
         ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="product-form" onSubmit={handleSubmit} className="space-y-4">
+          {formError && (
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 text-rose-700 dark:text-rose-300 text-xs font-medium">
+              {formError}
+            </div>
+          )}
           <ImageUploadInput
             value={imagePath}
             onChange={setImagePath}
@@ -686,6 +709,19 @@ export const ProductsPage: React.FC = () => {
                 className="input-toc"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+              Code-barres / EAN
+            </label>
+            <input
+              type="text"
+              value={barcode}
+              onChange={(e) => setBarcode(e.target.value)}
+              placeholder="Ex: 3017620422003 (optionnel)"
+              className="input-toc font-mono"
+            />
           </div>
         </form>
         )}

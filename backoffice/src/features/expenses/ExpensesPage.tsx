@@ -71,6 +71,7 @@ export const ExpensesPage: React.FC = () => {
     payment_method: 'Espèces',
     notes: '',
   });
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Query all expenses
   const { data: allExpenses = [], isLoading } = useQuery({
@@ -174,16 +175,31 @@ export const ExpensesPage: React.FC = () => {
       payment_method: 'Espèces',
       notes: '',
     });
+    setFormError(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title.trim() || form.amount <= 0) return;
+    setFormError(null);
+    if (!form.title.trim()) {
+      setFormError('Le motif du décaissement est obligatoire.');
+      return;
+    }
+    if (form.amount <= 0) {
+      setFormError('Le montant doit être supérieur à 0.');
+      return;
+    }
+    if (form.category === '__custom__' && !form.customCategory.trim()) {
+      setFormError('Veuillez saisir le nom de la catégorie personnalisée.');
+      return;
+    }
+    if (isConsolidatedView && magasins.length > 1 && !targetMagasinId) {
+      setFormError('Veuillez sélectionner un magasin.');
+      return;
+    }
 
     const finalCategory =
-      form.category === '__custom__' && form.customCategory.trim()
-        ? form.customCategory.trim()
-        : form.category;
+      form.category === '__custom__' ? form.customCategory.trim() : form.category;
 
     createMutation.mutate({
       magasin_id:
@@ -480,14 +496,9 @@ export const ExpensesPage: React.FC = () => {
               Annuler
             </button>
             <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={
-                createMutation.isPending ||
-                !form.title.trim() ||
-                form.amount <= 0 ||
-                (isConsolidatedView && magasins.length > 1 && !targetMagasinId)
-              }
+              type="submit"
+              form="expense-form"
+              disabled={createMutation.isPending}
               className="btn-toc btn-primary text-xs bg-rose-600 hover:bg-rose-700"
             >
               {createMutation.isPending ? 'Enregistrement...' : 'Valider la Dépense'}
@@ -495,7 +506,12 @@ export const ExpensesPage: React.FC = () => {
           </div>
         }
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="expense-form" onSubmit={handleSubmit} className="space-y-4">
+          {formError && (
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 text-rose-700 dark:text-rose-300 text-xs font-medium">
+              {formError}
+            </div>
+          )}
           {isConsolidatedView && magasins.length > 1 && (
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1.5">

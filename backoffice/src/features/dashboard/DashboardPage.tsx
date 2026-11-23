@@ -30,14 +30,18 @@ import { formatFCFA, formatDateTime } from '../../lib/formatters';
 import { DashboardStats, Vente, Category } from '../../types';
 import { useDensity } from '../../context/DensityContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuthStore } from '../../stores/authStore';
 import { useTenantContextKey } from '../../stores/tenantStore';
+import { CashierDashboardView } from './CashierDashboardView';
 import { WelcomeBanner } from './WelcomeBanner';
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { tableClasses } = useDensity();
   const { theme } = useTheme();
+  const user = useAuthStore((s) => s.user);
   const [boutiqueKey, magasinKey] = useTenantContextKey();
+  const isCashier = user?.role === 'cashier';
 
   // Query dashboard statistics
   const {
@@ -51,13 +55,15 @@ export const DashboardPage: React.FC = () => {
       const res = await api.get('/reports/dashboard');
       return res.data;
     },
-    refetchInterval: 15000,
+    enabled: !isCashier,
+    refetchInterval: isCashier ? false : 15000,
   });
 
   // Query categories for summary pill
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ['categories', boutiqueKey, magasinKey],
     queryFn: () => categoriesApi.getAll(),
+    enabled: !isCashier,
   });
 
   // Query recent ventes
@@ -67,8 +73,18 @@ export const DashboardPage: React.FC = () => {
       const res = await api.get('/ventes?limit=7');
       return res.data;
     },
-    refetchInterval: 15000,
+    enabled: !isCashier,
+    refetchInterval: isCashier ? false : 15000,
   });
+
+  if (isCashier) {
+    return (
+      <div className="space-y-6">
+        <WelcomeBanner />
+        <CashierDashboardView />
+      </div>
+    );
+  }
 
   // Prepare chart data from recent ventes
   const chartData = (recentVentes || [])
@@ -341,7 +357,7 @@ export const DashboardPage: React.FC = () => {
 
           {/* Card 4: Total Décaissements */}
           <div
-            onClick={() => navigate('/decaissements')}
+            onClick={() => navigate('/depenses')}
             className="card-toc p-4 sm:p-5 flex flex-col justify-between hover:border-rose-300 dark:hover:border-rose-500/40 transition-all cursor-pointer"
           >
             <div className="flex items-center justify-between">

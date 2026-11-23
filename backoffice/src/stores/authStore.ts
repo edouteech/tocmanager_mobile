@@ -7,6 +7,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isPinLocked: boolean;
   setAuth: (data: AuthResponse) => void;
+  updateUser: (user: UserBrief) => void;
   logout: () => void;
   lockSession: () => void;
   unlockSession: () => void;
@@ -55,7 +56,7 @@ const getInitialAuthState = (): {
 
 const initial = getInitialAuthState();
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: initial.user,
   token: initial.token,
   isAuthenticated: initial.isAuthenticated,
@@ -74,6 +75,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
   },
 
+  updateUser: (user: UserBrief) => {
+    localStorage.setItem('toc_user', JSON.stringify(user));
+    set({ user });
+  },
+
   logout: () => {
     localStorage.removeItem('toc_access_token');
     localStorage.removeItem('toc_refresh_token');
@@ -88,6 +94,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   lockSession: () => {
+    if (!get().user?.has_pin) return;
     localStorage.setItem('toc_pin_locked', 'true');
     set({ isPinLocked: true });
   },

@@ -72,7 +72,10 @@ export const SuppliesPage: React.FC = () => {
       payment_status: 'Payé',
       notes: '',
     });
+    setFormError(null);
   };
+
+  const [formError, setFormError] = useState<string | null>(null);
 
   const handleProductChange = (prodSyncId: string) => {
     const selectedProd = products.find((p) => p.sync_id === prodSyncId);
@@ -85,7 +88,15 @@ export const SuppliesPage: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.product_sync_id || form.quantity <= 0) return;
+    setFormError(null);
+    if (!form.product_sync_id) {
+      setFormError('Veuillez sélectionner un article.');
+      return;
+    }
+    if (form.quantity <= 0) {
+      setFormError('La quantité reçue doit être supérieure à 0.');
+      return;
+    }
 
     const prod = products.find((p) => p.sync_id === form.product_sync_id);
     const sup = suppliers.find((s) => s.sync_id === form.supplier_sync_id);
@@ -95,6 +106,7 @@ export const SuppliesPage: React.FC = () => {
         ? targetMagasinId
         : currentMagasin?.id;
     if (isConsolidatedView && magasins.length > 1 && !chosenMagasinId) {
+      setFormError('Veuillez sélectionner le magasin de réception.');
       return;
     }
 
@@ -283,14 +295,9 @@ export const SuppliesPage: React.FC = () => {
               Annuler
             </button>
             <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={
-                createMutation.isPending ||
-                !form.product_sync_id ||
-                form.quantity <= 0 ||
-                (isConsolidatedView && magasins.length > 1 && !targetMagasinId)
-              }
+              type="submit"
+              form="supply-form"
+              disabled={createMutation.isPending}
               className="btn-primary"
             >
               {createMutation.isPending ? 'Enregistrement...' : 'Valider la Réception'}
@@ -298,7 +305,12 @@ export const SuppliesPage: React.FC = () => {
           </>
         }
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="supply-form" onSubmit={handleSubmit} className="space-y-4">
+          {formError && (
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 text-rose-700 dark:text-rose-300 text-xs font-medium">
+              {formError}
+            </div>
+          )}
           {isConsolidatedView && magasins.length > 1 && (
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1.5">

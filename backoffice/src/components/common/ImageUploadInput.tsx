@@ -66,6 +66,7 @@ export const ImageUploadInput: React.FC<ImageUploadInputProps> = ({
     if (file) {
       processFile(file);
     }
+    e.target.value = '';
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -101,7 +102,10 @@ export const ImageUploadInput: React.FC<ImageUploadInputProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => onChange(null)}
+              onClick={() => {
+                if (fileInputRef.current) fileInputRef.current.value = '';
+                onChange(null);
+              }}
               className="p-2 rounded-xl bg-rose-600/90 text-white hover:bg-rose-600 text-xs font-bold shadow flex items-center gap-1.5"
             >
               <Trash2 className="w-3.5 h-3.5" />

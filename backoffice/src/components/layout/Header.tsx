@@ -52,23 +52,27 @@ export const Header: React.FC = () => {
   const [magasinDropdownOpen, setMagasinDropdownOpen] = useState(false);
   const [createBoutiqueOpen, setCreateBoutiqueOpen] = useState(false);
 
-  // Query stats for stock alert notifications
+  const isOwner =
+    user?.role === 'owner' ||
+    user?.role === 'merchant' ||
+    user?.role === 'store_admin' ||
+    user?.role === 'admin';
+  const canPollDashboardStats = Boolean(
+    user && user.role !== 'cashier' && user.role !== 'superadmin'
+  );
+
+  // Query stats for stock alert notifications (disabled for cashiers)
   const { data: stats } = useQuery<DashboardStats>({
     queryKey: ['header-stock-alerts', boutiqueKey, magasinKey],
     queryFn: async () => {
       const res = await api.get('/reports/dashboard');
       return res.data;
     },
-    refetchInterval: 30000,
+    enabled: canPollDashboardStats,
+    refetchInterval: canPollDashboardStats ? 30000 : false,
   });
 
   const lowStockCount = stats?.low_stock_count || 0;
-
-  const isOwner =
-    user?.role === 'owner' ||
-    user?.role === 'merchant' ||
-    user?.role === 'store_admin' ||
-    user?.role === 'admin';
 
   return (
     <header className="h-16 bg-white dark:bg-dark-800 border-b border-[#E8EFF5] dark:border-dark-600 px-3 sm:px-6 lg:px-8 flex items-center justify-between sticky top-0 z-20 shadow-none transition-colors duration-200">
@@ -267,14 +271,26 @@ export const Header: React.FC = () => {
           )}
         </button>
 
-        {/* Lock Screen */}
-        <button
-          onClick={lockSession}
-          className="p-2 text-[#5A7184] dark:text-slate-300 hover:text-amber-500 bg-[#F0F9FE] dark:bg-dark-700 rounded-xl border border-[#E8EFF5] dark:border-dark-600 transition"
-          title="Verrouiller la session"
-        >
-          <Lock className="w-4 h-4" />
-        </button>
+        {/* Lock Screen (only when PIN is configured) */}
+        {user?.has_pin ? (
+          <button
+            onClick={lockSession}
+            className="p-2 text-[#5A7184] dark:text-slate-300 hover:text-amber-500 bg-[#F0F9FE] dark:bg-dark-700 rounded-xl border border-[#E8EFF5] dark:border-dark-600 transition"
+            title="Verrouiller la session"
+          >
+            <Lock className="w-4 h-4" />
+          </button>
+        ) : isOwner ? (
+          <button
+            type="button"
+            onClick={() => navigate('/parametres')}
+            className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-[#5A7184] dark:text-slate-300 hover:text-[#29ABE2] bg-[#F0F9FE] dark:bg-dark-700 rounded-xl border border-[#E8EFF5] dark:border-dark-600 transition"
+            title="Configurer un code PIN caisse"
+          >
+            <Lock className="w-3.5 h-3.5" />
+            <span>PIN</span>
+          </button>
+        ) : null}
 
         {/* User profile */}
         <div className="flex items-center gap-2 pl-1.5 sm:pl-2.5 border-l border-[#E8EFF5] dark:border-dark-600">

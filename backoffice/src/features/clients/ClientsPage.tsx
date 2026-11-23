@@ -59,6 +59,8 @@ export const ClientsPage: React.FC = () => {
     payment_method: 'Espèces',
     notes: '',
   });
+  const [clientError, setClientError] = useState<string | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   // Fetch clients
   const { data: clients = [], isLoading } = useQuery({
@@ -265,7 +267,11 @@ export const ClientsPage: React.FC = () => {
 
   const handleClientSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clientForm.name.trim()) return;
+    setClientError(null);
+    if (!clientForm.name.trim()) {
+      setClientError('Le nom du client est obligatoire.');
+      return;
+    }
 
     if (selectedClient) {
       updateMutation.mutate({
@@ -285,7 +291,11 @@ export const ClientsPage: React.FC = () => {
 
   const handlePaymentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!paymentClient || paymentForm.amount <= 0) return;
+    setPaymentError(null);
+    if (!paymentClient || paymentForm.amount <= 0) {
+      setPaymentError('Le montant du règlement doit être supérieur à 0.');
+      return;
+    }
     paymentMutation.mutate({
       id: paymentClient.sync_id,
       data: paymentForm,
@@ -499,8 +509,8 @@ export const ClientsPage: React.FC = () => {
               Annuler
             </button>
             <button
-              type="button"
-              onClick={handleClientSubmit}
+              type="submit"
+              form="client-form"
               disabled={createMutation.isPending || updateMutation.isPending}
               className="btn-toc btn-primary text-xs"
             >
@@ -513,7 +523,12 @@ export const ClientsPage: React.FC = () => {
           </div>
         }
       >
-        <form onSubmit={handleClientSubmit} className="space-y-4">
+        <form id="client-form" onSubmit={handleClientSubmit} className="space-y-4">
+          {clientError && (
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 text-rose-700 dark:text-rose-300 text-xs font-medium">
+              {clientError}
+            </div>
+          )}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
               Nom Complet *
@@ -614,9 +629,9 @@ export const ClientsPage: React.FC = () => {
               Annuler
             </button>
             <button
-              type="button"
-              onClick={handlePaymentSubmit}
-              disabled={paymentMutation.isPending || paymentForm.amount <= 0}
+              type="submit"
+              form="client-payment-form"
+              disabled={paymentMutation.isPending}
               className="btn-toc btn-primary text-xs bg-emerald-600 hover:bg-emerald-700"
             >
               {paymentMutation.isPending ? 'Enregistrement...' : 'Valider le Règlement'}
@@ -625,7 +640,12 @@ export const ClientsPage: React.FC = () => {
         }
       >
         {paymentClient && (
-          <form onSubmit={handlePaymentSubmit} className="space-y-4">
+          <form id="client-payment-form" onSubmit={handlePaymentSubmit} className="space-y-4">
+            {paymentError && (
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 text-rose-700 dark:text-rose-300 text-xs font-medium">
+                {paymentError}
+              </div>
+            )}
             <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 flex justify-between items-center">
               <div>
                 <span className="text-xs text-amber-800 dark:text-amber-300 font-semibold block">Dette actuelle due :</span>
