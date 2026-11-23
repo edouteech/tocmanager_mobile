@@ -224,9 +224,28 @@ export interface SaasPlanFeature {
   id: string;
   feature_code: string;
   feature_name: string;
+  category?: string;
+  description?: string | null;
+  display_order?: number;
+  show_on_pricing?: boolean;
   value_type: 'boolean' | 'limit_number' | 'text';
   boolean_value: boolean;
   int_limit: number;
+}
+
+export interface FeatureCatalogItem {
+  feature_code: string;
+  feature_name: string;
+  category: string;
+  value_type: 'boolean' | 'limit_number';
+  description: string;
+  display_order: number;
+  show_on_pricing: boolean;
+  defaults: {
+    free: boolean | number;
+    pro: boolean | number;
+    enterprise: boolean | number;
+  };
 }
 
 export interface SaasPlan {
@@ -285,8 +304,76 @@ export interface CurrentPlanStatus {
   can_access_stock_transfers: boolean;
   can_access_pnl_reports: boolean;
   can_access_data_exports: boolean;
+  boutiques_used?: number;
+  boutiques_limit?: number;
   magasins_used: number;
   magasins_limit: number;
+  products_used?: number;
+  products_limit?: number;
+  users_used?: number;
+  users_limit?: number;
+  clients_used?: number;
+  clients_limit?: number;
+  suppliers_used?: number;
+  suppliers_limit?: number;
+  audit_retention_days?: number;
+  has_used_trial?: boolean;
+  billing_cycle?: 'monthly' | 'yearly' | string;
+  current_period_end?: string | null;
+}
+
+export interface PaymentCountry {
+  code: string;
+  name: string;
+  dial_code: string;
+  networks: string[];
+}
+
+export interface PaymentProviderPublic {
+  code: string;
+  name: string;
+  is_active: boolean;
+  mode: string;
+  countries: PaymentCountry[];
+}
+
+export interface CheckoutResponse {
+  transaction_id: string;
+  reference: string;
+  external_reference?: string | null;
+  flow_type: 'ussd_push' | 'redirect' | string;
+  status: string;
+  payment_url?: string | null;
+  amount: number;
+  currency: string;
+}
+
+export interface TransactionStatusResponse {
+  id: string;
+  reference: string;
+  external_reference?: string | null;
+  provider_code: string;
+  flow_type: string;
+  status: string;
+  payment_url?: string | null;
+  amount: number;
+  currency: string;
+  network: string;
+  paid_at?: string | null;
+}
+
+export interface SaasInvoice {
+  id: string;
+  invoice_number: string;
+  transaction_id: string;
+  boutique_id: string;
+  plan_name: string;
+  billing_cycle: string;
+  amount: number;
+  currency: string;
+  period_start: string;
+  period_end: string;
+  issued_at: string;
 }
 
 export interface PlatformKPIs {

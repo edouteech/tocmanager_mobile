@@ -29,6 +29,7 @@ import { MagasinsPage } from './features/magasins/MagasinsPage';
 import { UsersPage } from './features/users/UsersPage';
 import { AuditLogsPage } from './features/audit/AuditLogsPage';
 import { SettingsPage } from './features/settings/SettingsPage';
+import { SubscriptionPage } from './features/subscription/SubscriptionPage';
 
 // Super-Admin Console Pages
 import { AdminDashboardPage } from './features/admin/AdminDashboardPage';
@@ -151,6 +152,14 @@ export const App: React.FC = () => {
                       element={
                         <ProtectedRoute allowedRoles={['owner', 'store_admin', 'merchant']}>
                           <SettingsPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="abonnement"
+                      element={
+                        <ProtectedRoute allowedRoles={['owner', 'store_admin', 'merchant']}>
+                          <SubscriptionPage />
                         </ProtectedRoute>
                       }
                     />
