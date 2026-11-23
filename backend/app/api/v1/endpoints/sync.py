@@ -9,7 +9,7 @@ from app.schemas.sync import SyncPullResponse, SyncPushRequest, SyncPushResult
 from app.services.entitlements import check_feature_access
 from app.services.sync_pull_service import pull_boutique_changes
 from app.services.sync_push_service import push_boutique_changes
-from app.services.tenant_context_service import TenantContext
+from app.services.tenant_context_service import TenantContext, resolve_read_magasin_id
 
 router = APIRouter()
 
@@ -22,7 +22,10 @@ def pull_changes(
 ) -> Any:
     """Télécharge les données cloisonnées de la boutique active depuis 'since'."""
     check_feature_access(db, ctx.boutique.id, "mobile_offline_sync")
-    return pull_boutique_changes(db=db, boutique_id=ctx.boutique.id, since=since)
+    magasin_id = resolve_read_magasin_id(ctx)
+    return pull_boutique_changes(
+        db=db, boutique_id=ctx.boutique.id, since=since, magasin_id=magasin_id
+    )
 
 
 @router.post("/push", response_model=SyncPushResult)

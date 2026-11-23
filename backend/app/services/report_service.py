@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -49,20 +49,20 @@ def compute_financial_report(
     preset: Optional[str] = None,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
+    magasin_id: Optional[str] = None,
 ) -> FinancialReportResponse:
     now = datetime.now(timezone.utc)
     start_date, end_date = _resolve_period_bounds(preset, start_date, end_date, now)
 
-    ventes = (
-        db.query(Vente)
-        .filter(
-            Vente.boutique_id == boutique_id,
-            Vente.deleted_at.is_(None),
-            Vente.created_at >= start_date,
-            Vente.created_at <= end_date,
-        )
-        .all()
+    v_query = db.query(Vente).filter(
+        Vente.boutique_id == boutique_id,
+        Vente.deleted_at.is_(None),
+        Vente.created_at >= start_date,
+        Vente.created_at <= end_date,
     )
+    if magasin_id:
+        v_query = v_query.filter(Vente.magasin_id == magasin_id)
+    ventes = v_query.all()
     gross_sales = sum(v.total_amount for v in ventes)
     discount_amount = sum(v.discount_amount for v in ventes)
     net_sales = gross_sales
@@ -84,16 +84,15 @@ def compute_financial_report(
     gross_margin = round(net_sales - cogs, 2)
     gross_margin_rate = round((gross_margin / net_sales * 100), 2) if net_sales > 0 else 0.0
 
-    decaissements = (
-        db.query(Decaissement)
-        .filter(
-            Decaissement.boutique_id == boutique_id,
-            Decaissement.deleted_at.is_(None),
-            Decaissement.date >= start_date,
-            Decaissement.date <= end_date,
-        )
-        .all()
+    d_query = db.query(Decaissement).filter(
+        Decaissement.boutique_id == boutique_id,
+        Decaissement.deleted_at.is_(None),
+        Decaissement.date >= start_date,
+        Decaissement.date <= end_date,
     )
+    if magasin_id:
+        d_query = d_query.filter(Decaissement.magasin_id == magasin_id)
+    decaissements = d_query.all()
     total_expenses = round(sum(d.amount for d in decaissements), 2)
     net_profit = round(gross_margin - total_expenses, 2)
     net_margin_rate = round((net_profit / net_sales * 100), 2) if net_sales > 0 else 0.0
@@ -128,28 +127,25 @@ def compute_financial_report(
     for i in range(5, -1, -1):
         m_start = datetime(now.year, now.month, 1, tzinfo=timezone.utc) - timedelta(days=i * 30)
         m_end = m_start + timedelta(days=30)
-        m_sales = (
-            db.query(func.coalesce(func.sum(Vente.total_amount), 0.0))
-            .filter(
-                Vente.boutique_id == boutique_id,
-                Vente.deleted_at.is_(None),
-                Vente.created_at >= m_start,
-                Vente.created_at < m_end,
-            )
-            .scalar()
-            or 0.0
+        m_s_q = db.query(func.coalesce(func.sum(Vente.total_amount), 0.0)).filter(
+            Vente.boutique_id == boutique_id,
+            Vente.deleted_at.is_(None),
+            Vente.created_at >= m_start,
+            Vente.created_at < m_end,
         )
-        m_exp = (
-            db.query(func.coalesce(func.sum(Decaissement.amount), 0.0))
-            .filter(
-                Decaissement.boutique_id == boutique_id,
-                Decaissement.deleted_at.is_(None),
-                Decaissement.date >= m_start,
-                Decaissement.date < m_end,
-            )
-            .scalar()
-            or 0.0
+        if magasin_id:
+            m_s_q = m_s_q.filter(Vente.magasin_id == magasin_id)
+        m_sales = m_s_q.scalar() or 0.0
+
+        m_e_q = db.query(func.coalesce(func.sum(Decaissement.amount), 0.0)).filter(
+            Decaissement.boutique_id == boutique_id,
+            Decaissement.deleted_at.is_(None),
+            Decaissement.date >= m_start,
+            Decaissement.date < m_end,
         )
+        if magasin_id:
+            m_e_q = m_e_q.filter(Decaissement.magasin_id == magasin_id)
+        m_exp = m_e_q.scalar() or 0.0
         monthly_trend.append({
             "period": m_start.strftime("%b %Y"),
             "sales": round(float(m_sales), 2),

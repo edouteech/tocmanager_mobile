@@ -9,7 +9,11 @@ from app.core.database import get_db
 from app.models import Decaissement, AuditLog
 from app.schemas.entities import DecaissementCreate, DecaissementResponse
 from app.services.entitlements import check_feature_access
-from app.services.tenant_context_service import TenantContext
+from app.services.tenant_context_service import (
+    TenantContext,
+    resolve_operational_magasin,
+    resolve_read_magasin_id,
+)
 
 router = APIRouter()
 
@@ -25,10 +29,13 @@ def list_decaissements(
     db: Session = Depends(get_db),
 ):
     check_feature_access(db, ctx.boutique.id, "module_expenses")
+    magasin_id = resolve_read_magasin_id(ctx)
     query = db.query(Decaissement).filter(
         Decaissement.boutique_id == ctx.boutique.id,
         Decaissement.deleted_at.is_(None),
     )
+    if magasin_id:
+        query = query.filter(Decaissement.magasin_id == magasin_id)
     if category:
         query = query.filter(Decaissement.category == category)
     if start_date:
@@ -71,6 +78,9 @@ def create_decaissement(
     db: Session = Depends(get_db),
 ):
     check_feature_access(db, ctx.boutique.id, "module_expenses")
+    magasin = resolve_operational_magasin(
+        db, ctx, body_magasin_id=dec_in.magasin_id, allow_warehouse=True
+    )
     current_user = ctx.user
     now = datetime.now(timezone.utc)
     dec_date = dec_in.date or now
@@ -78,7 +88,7 @@ def create_decaissement(
     dec = Decaissement(
         sync_id=str(uuid.uuid4()),
         boutique_id=ctx.boutique.id,
-        magasin_id=ctx.requested_magasin_id,
+        magasin_id=magasin.id,
         title=dec_in.title.strip(),
         amount=round(dec_in.amount, 2),
         category=dec_in.category or "Général",

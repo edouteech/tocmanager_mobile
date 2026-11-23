@@ -9,7 +9,12 @@ from app.core.database import get_db
 from app.models import Approvisionnement, Product, Supplier, AuditLog
 from app.schemas.entities import ApprovisionnementCreate, ApprovisionnementResponse
 from app.services.entitlements import check_feature_access
-from app.services.tenant_context_service import TenantContext
+from app.services.stock_service import adjust_magasin_stock
+from app.services.tenant_context_service import (
+    TenantContext,
+    resolve_operational_magasin,
+    resolve_read_magasin_id,
+)
 
 router = APIRouter()
 
@@ -24,10 +29,13 @@ def list_approvisionnements(
     db: Session = Depends(get_db),
 ):
     check_feature_access(db, ctx.boutique.id, "module_supplies")
+    magasin_id = resolve_read_magasin_id(ctx)
     query = db.query(Approvisionnement).filter(
         Approvisionnement.boutique_id == ctx.boutique.id,
         Approvisionnement.deleted_at.is_(None),
     )
+    if magasin_id:
+        query = query.filter(Approvisionnement.magasin_id == magasin_id)
     if product_sync_id:
         query = query.filter(Approvisionnement.product_sync_id == product_sync_id)
     if supplier_sync_id:
@@ -42,6 +50,9 @@ def create_approvisionnement(
     db: Session = Depends(get_db),
 ):
     check_feature_access(db, ctx.boutique.id, "module_supplies")
+    magasin = resolve_operational_magasin(
+        db, ctx, body_magasin_id=app_in.magasin_id, allow_warehouse=True
+    )
     current_user = ctx.user
     prod = (
         db.query(Product)
@@ -75,21 +86,15 @@ def create_approvisionnement(
     now = datetime.now(timezone.utc)
     supply_date = app_in.date or now
 
-    old_stock = max(0.0, prod.stock)
-    old_pamp = prod.average_cost_price or prod.cost_price or 0.0
-    if (old_stock + app_in.quantity) > 0:
-        new_pamp = round(
-            ((old_stock * old_pamp) + (app_in.quantity * app_in.unit_cost))
-            / (old_stock + app_in.quantity),
-            2,
-        )
-    else:
-        new_pamp = app_in.unit_cost
-
-    prod.stock += app_in.quantity
-    prod.cost_price = app_in.unit_cost
-    prod.average_cost_price = new_pamp
-    prod.updated_at = now
+    adjust_magasin_stock(
+        db=db,
+        boutique_id=ctx.boutique.id,
+        magasin_id=magasin.id,
+        product=prod,
+        quantity_delta=app_in.quantity,
+        enforce_sufficient=False,
+        new_unit_cost=app_in.unit_cost,
+    )
 
     if app_in.payment_status == "À crédit" and supplier:
         supplier.balance += total_cost
@@ -98,7 +103,7 @@ def create_approvisionnement(
     appro = Approvisionnement(
         sync_id=str(uuid.uuid4()),
         boutique_id=ctx.boutique.id,
-        magasin_id=ctx.requested_magasin_id,
+        magasin_id=magasin.id,
         supplier_sync_id=app_in.supplier_sync_id,
         supplier_name=supplier_name,
         product_sync_id=prod.sync_id,

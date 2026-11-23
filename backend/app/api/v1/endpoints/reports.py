@@ -10,7 +10,7 @@ from app.schemas.entities import FinancialReportResponse
 from app.services.dashboard_report_service import compute_dashboard_stats
 from app.services.entitlements import check_feature_access
 from app.services.report_service import compute_financial_report
-from app.services.tenant_context_service import TenantContext
+from app.services.tenant_context_service import TenantContext, resolve_read_magasin_id
 
 router = APIRouter()
 
@@ -35,7 +35,8 @@ def get_dashboard_stats(
     db: Session = Depends(get_db),
 ) -> Any:
     check_feature_access(db, ctx.boutique.id, "dashboard_kpis")
-    return DashboardStats(**compute_dashboard_stats(db, ctx.boutique.id))
+    magasin_id = resolve_read_magasin_id(ctx)
+    return DashboardStats(**compute_dashboard_stats(db, ctx.boutique.id, magasin_id=magasin_id))
 
 
 @router.get("/financial", response_model=FinancialReportResponse)
@@ -47,10 +48,12 @@ def get_financial_report(
     db: Session = Depends(get_db),
 ) -> Any:
     check_feature_access(db, ctx.boutique.id, "pnl_reports")
+    magasin_id = resolve_read_magasin_id(ctx)
     return compute_financial_report(
         db=db,
         boutique_id=ctx.boutique.id,
         preset=preset,
         start_date=start_date,
         end_date=end_date,
+        magasin_id=magasin_id,
     )

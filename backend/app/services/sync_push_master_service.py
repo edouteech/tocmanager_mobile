@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.models import AuditLog, Category, Client, Product, Supplier
 from app.schemas.sync import SyncPushRequest
 from app.services.entitlements import check_quota_limit
+from app.services.stock_service import initialize_product_magasin_stocks
 from app.services.tenant_context_service import TenantContext
 
 
@@ -84,7 +85,7 @@ def push_master_entities(
             else:
                 check_quota_limit(db, boutique_id, "max_products", prod_count)
                 prod_count += 1
-                db.add(Product(
+                new_prod = Product(
                     sync_id=prod.sync_id,
                     boutique_id=boutique_id,
                     name=prod.name,
@@ -99,7 +100,16 @@ def push_master_entities(
                     is_active=prod.is_active,
                     created_at=prod.updated_at or now,
                     updated_at=prod.updated_at or now,
-                ))
+                )
+                db.add(new_prod)
+                db.flush()
+                initialize_product_magasin_stocks(
+                    db=db,
+                    boutique_id=boutique_id,
+                    product=new_prod,
+                    target_magasin_id=ctx.requested_magasin_id,
+                    initial_stock=prod.stock,
+                )
             synced_uuids.append(prod.sync_id)
         except HTTPException:
             raise

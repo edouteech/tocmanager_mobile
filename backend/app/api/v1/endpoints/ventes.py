@@ -11,7 +11,12 @@ from app.models import Vente, VenteItem, Product, Client, AuditLog
 from app.schemas.sync import VenteSync, VenteItemSync
 from app.schemas.entities import VenteCreate
 from app.services.entitlements import check_feature_access
-from app.services.tenant_context_service import TenantContext
+from app.services.stock_service import adjust_magasin_stock, check_and_get_availability
+from app.services.tenant_context_service import (
+    TenantContext,
+    resolve_operational_magasin,
+    resolve_read_magasin_id,
+)
 
 router = APIRouter()
 
@@ -19,13 +24,17 @@ router = APIRouter()
 def _to_vente_sync(v: Vente) -> VenteSync:
     return VenteSync(
         sync_id=v.sync_id,
+        magasin_id=v.magasin_id,
         ticket_number=v.ticket_number,
         client_sync_id=v.client_sync_id,
         client_name=v.client_name,
+        user_id=v.user_id,
+        user_name=v.user_name,
         total_amount=v.total_amount,
         paid_amount=v.paid_amount,
         discount_amount=v.discount_amount,
         payment_method=v.payment_method,
+        status=getattr(v, "status", "completed") or "completed",
         notes=v.notes,
         created_at=v.created_at,
         updated_at=v.updated_at,
@@ -53,9 +62,12 @@ def list_ventes(
     ctx: TenantContext = Depends(deps.get_tenant_context),
     db: Session = Depends(get_db),
 ) -> Any:
+    magasin_id = resolve_read_magasin_id(ctx)
     query = db.query(Vente).filter(
         Vente.boutique_id == ctx.boutique.id, Vente.deleted_at.is_(None)
     )
+    if magasin_id:
+        query = query.filter(Vente.magasin_id == magasin_id)
     if start_date:
         query = query.filter(func.date(Vente.created_at) >= start_date)
     if end_date:
@@ -73,6 +85,9 @@ def create_vente(
     check_feature_access(db, ctx.boutique.id, "module_pos_sales")
     if not vente_in.items:
         raise HTTPException(status_code=400, detail="La vente doit contenir au moins un article.")
+    magasin = resolve_operational_magasin(
+        db, ctx, body_magasin_id=vente_in.magasin_id, allow_warehouse=False
+    )
 
     current_user = ctx.user
     now = datetime.now(timezone.utc)
@@ -102,21 +117,24 @@ def create_vente(
             raise HTTPException(
                 status_code=404, detail=f"Produit ID {item_in.product_sync_id} introuvable"
             )
-        if prod.stock < item_in.quantity:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Stock insuffisant pour '{prod.name}' (Disponible: {prod.stock}, Demandé: {item_in.quantity})",
-            )
+        _, effective_price = check_and_get_availability(db, ctx.boutique.id, magasin.id, prod)
+        unit_price = item_in.unit_price if item_in.unit_price is not None else effective_price
+        sm, _, _ = adjust_magasin_stock(
+            db=db,
+            boutique_id=ctx.boutique.id,
+            magasin_id=magasin.id,
+            product=prod,
+            quantity_delta=-item_in.quantity,
+            enforce_sufficient=True,
+        )
 
-        line_total = round(item_in.quantity * item_in.unit_price, 2)
+        line_total = round(item_in.quantity * unit_price, 2)
         calculated_subtotal += line_total
         cost_price = (
             item_in.cost_price
             if item_in.cost_price is not None
-            else (prod.average_cost_price or prod.cost_price or 0.0)
+            else (sm.average_cost_price or sm.cost_price or prod.average_cost_price or prod.cost_price or 0.0)
         )
-        prod.stock -= item_in.quantity
-        prod.updated_at = now
 
         db_items.append(
             VenteItem(
@@ -124,7 +142,7 @@ def create_vente(
                 product_sync_id=prod.sync_id,
                 product_name=prod.name,
                 quantity=item_in.quantity,
-                unit_price=item_in.unit_price,
+                unit_price=unit_price,
                 cost_price=cost_price,
                 total=line_total,
             )
@@ -159,7 +177,7 @@ def create_vente(
     new_vente = Vente(
         sync_id=vente_sync_id,
         boutique_id=ctx.boutique.id,
-        magasin_id=ctx.requested_magasin_id,
+        magasin_id=magasin.id,
         ticket_number=ticket_num,
         client_sync_id=target_client.sync_id if target_client else None,
         client_name=client_name or "Client Occasionnel",
