@@ -23,6 +23,7 @@ from app.services.auth_service import (
     revoke_all_user_tokens,
     verify_user_pin_attempt,
 )
+from app.services.tenant_context_service import resolve_audit_boutique_id
 
 router = APIRouter()
 
@@ -68,6 +69,7 @@ def _execute_login(login_data: LoginRequest, db: Session) -> Token:
         db, user, device_id=login_data.device_id
     )
     db.add(AuditLog(
+        boutique_id=resolve_audit_boutique_id(db, user),
         user_id=user.id,
         user_name=user.full_name or user.username,
         action="LOGIN",
@@ -177,6 +179,7 @@ def set_user_pin(
     revoke_all_user_tokens(db, current_user.id)
 
     db.add(AuditLog(
+        boutique_id=resolve_audit_boutique_id(db, current_user),
         user_id=current_user.id,
         user_name=current_user.full_name or current_user.username,
         action="PIN_SET",

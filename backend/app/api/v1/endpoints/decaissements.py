@@ -8,8 +8,10 @@ from app.api import deps
 from app.core.database import get_db
 from app.models import Decaissement, AuditLog, User
 from app.schemas.entities import DecaissementCreate, DecaissementResponse
+from app.services.tenant_context_service import TenantContext
 
 router = APIRouter()
+
 
 @router.get("", response_model=List[DecaissementResponse])
 def list_decaissements(
@@ -18,52 +20,61 @@ def list_decaissements(
     end_date: Optional[datetime] = Query(None),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    current_user: User = Depends(deps.get_current_user),
+    ctx: TenantContext = Depends(deps.get_tenant_context),
     db: Session = Depends(get_db),
 ):
-    """Liste les décaissements et dépenses d'exploitation."""
-    query = db.query(Decaissement).filter(Decaissement.deleted_at.is_(None))
-
+    query = db.query(Decaissement).filter(
+        Decaissement.boutique_id == ctx.boutique.id,
+        Decaissement.deleted_at.is_(None),
+    )
     if category:
         query = query.filter(Decaissement.category == category)
     if start_date:
         query = query.filter(Decaissement.date >= start_date)
     if end_date:
         query = query.filter(Decaissement.date <= end_date)
-
     return query.order_by(Decaissement.date.desc()).offset(offset).limit(limit).all()
+
 
 @router.get("/categories", response_model=List[str])
 def list_expense_categories(
     include_defaults: bool = False,
-    current_user: User = Depends(deps.get_current_user),
+    ctx: TenantContext = Depends(deps.get_tenant_context),
     db: Session = Depends(get_db),
 ):
-    """Retourne la liste ordonnée des catégories de décaissement réellement enregistrées en base."""
     rows = (
         db.query(Decaissement.category)
-        .filter(Decaissement.deleted_at.is_(None))
+        .filter(
+            Decaissement.boutique_id == ctx.boutique.id,
+            Decaissement.deleted_at.is_(None),
+        )
         .distinct()
         .all()
     )
     db_cats = {r[0].strip() for r in rows if r[0] and r[0].strip()}
-    defaults = {"Transport", "Télécoms", "Entretien", "Consommables", "Énergie", "Loyer", "Salaires", "Fournisseur", "Divers"}
+    defaults = {
+        "Transport", "Télécoms", "Entretien", "Consommables",
+        "Énergie", "Loyer", "Salaires", "Fournisseur", "Divers",
+    }
     if include_defaults or not db_cats:
         return sorted(list(db_cats.union(defaults)))
     return sorted(list(db_cats))
 
+
 @router.post("", response_model=DecaissementResponse, status_code=status.HTTP_201_CREATED)
 def create_decaissement(
     dec_in: DecaissementCreate,
-    current_user: User = Depends(deps.get_current_user),
+    ctx: TenantContext = Depends(deps.get_tenant_context),
     db: Session = Depends(get_db),
 ):
-    """Enregistre un nouveau décaissement / dépense de caisse."""
+    current_user = ctx.user
     now = datetime.now(timezone.utc)
     dec_date = dec_in.date or now
 
     dec = Decaissement(
         sync_id=str(uuid.uuid4()),
+        boutique_id=ctx.boutique.id,
+        magasin_id=ctx.requested_magasin_id,
         title=dec_in.title.strip(),
         amount=round(dec_in.amount, 2),
         category=dec_in.category or "Général",
@@ -80,6 +91,7 @@ def create_decaissement(
     db.flush()
 
     db.add(AuditLog(
+        boutique_id=ctx.boutique.id,
         user_id=current_user.id,
         user_name=current_user.full_name or current_user.username,
         action="EXPENSE_CREATE",
@@ -98,14 +110,23 @@ def create_decaissement(
     db.refresh(dec)
     return dec
 
+
 @router.delete("/{sync_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 def delete_decaissement(
     sync_id: str,
+    ctx: TenantContext = Depends(deps.get_tenant_context),
     current_user: User = Depends(deps.require_role(["admin", "manager"])),
     db: Session = Depends(get_db),
 ):
-    """Annulation / suppression d'une dépense."""
-    dec = db.query(Decaissement).filter(Decaissement.sync_id == sync_id, Decaissement.deleted_at.is_(None)).first()
+    dec = (
+        db.query(Decaissement)
+        .filter(
+            Decaissement.sync_id == sync_id,
+            Decaissement.boutique_id == ctx.boutique.id,
+            Decaissement.deleted_at.is_(None),
+        )
+        .first()
+    )
     if not dec:
         raise HTTPException(status_code=404, detail="Dépense introuvable")
 
@@ -114,6 +135,7 @@ def delete_decaissement(
     dec.updated_at = now
 
     db.add(AuditLog(
+        boutique_id=ctx.boutique.id,
         user_id=current_user.id,
         user_name=current_user.full_name or current_user.username,
         action="EXPENSE_DELETE",

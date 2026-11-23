@@ -50,8 +50,8 @@ def test_verify_pin(client):
 
 def test_sync_pull(client):
     login_res = client.post("/api/v1/auth/login", json={
-        "username_or_email": "admin",
-        "password": "admin1234"
+        "username_or_email": "commercant",
+        "password": "commercant1234"
     })
     token = login_res.json()["access_token"]
 
@@ -113,8 +113,8 @@ def test_sync_push_idempotent_vente(client):
 
 def test_audit_logs(client):
     login_res = client.post("/api/v1/auth/login", json={
-        "username_or_email": "admin",
-        "password": "admin1234"
+        "username_or_email": "commercant",
+        "password": "commercant1234"
     })
     token = login_res.json()["access_token"]
 
@@ -124,6 +124,6 @@ def test_audit_logs(client):
     assert "items" in data
     assert "total" in data
     assert data["total"] >= 1
-    # Check that LOGIN action was recorded for admin
+    # Check that LOGIN action was recorded for commercant's boutique
     actions = [item["action"] for item in data["items"]]
     assert "LOGIN" in actions

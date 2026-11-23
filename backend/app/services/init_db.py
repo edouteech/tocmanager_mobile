@@ -41,6 +41,15 @@ def _migrate_columns() -> None:
         for table in ("ventes", "approvisionnements", "decaissements", "sync_events"):
             add_col_if_missing(table, "magasin_id", "VARCHAR(36)")
 
+        # Rebuild legacy store_settings table under SQLite if it lacks id/boutique_id
+        try:
+            cols = [r[1] for r in conn.execute(text("PRAGMA table_info(store_settings)")).fetchall()]
+            if cols and "boutique_id" not in cols:
+                conn.execute(text("DROP TABLE IF EXISTS store_settings"))
+                conn.commit()
+        except Exception:
+            pass
+
 
 def bootstrap_production_superadmin(db: Session) -> None:
     """Crée un unique superadmin initial en prod si des identifiants explicites sont fournis."""
