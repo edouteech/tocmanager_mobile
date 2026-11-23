@@ -78,6 +78,7 @@ def seed_demo_data(db: Session) -> None:
             phone="+221 77 000 00 00",
             email="contact@tocmanager.local",
             owner_user_id=commercant.id,
+            has_used_trial=True,
             is_active=True,
         )
         db.add(default_btq)
@@ -118,6 +119,7 @@ def seed_demo_data(db: Session) -> None:
                 plan_id=pro_plan.id,
                 status="trialing",
                 billing_cycle="monthly",
+                has_used_trial=True,
                 trial_starts_at=now,
                 trial_ends_at=now + timedelta(days=14),
             ))

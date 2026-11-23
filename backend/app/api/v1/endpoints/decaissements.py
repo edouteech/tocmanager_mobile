@@ -6,8 +6,9 @@ from sqlalchemy.orm import Session
 
 from app.api import deps
 from app.core.database import get_db
-from app.models import Decaissement, AuditLog, User
+from app.models import Decaissement, AuditLog
 from app.schemas.entities import DecaissementCreate, DecaissementResponse
+from app.services.entitlements import check_feature_access
 from app.services.tenant_context_service import TenantContext
 
 router = APIRouter()
@@ -23,6 +24,7 @@ def list_decaissements(
     ctx: TenantContext = Depends(deps.get_tenant_context),
     db: Session = Depends(get_db),
 ):
+    check_feature_access(db, ctx.boutique.id, "module_expenses")
     query = db.query(Decaissement).filter(
         Decaissement.boutique_id == ctx.boutique.id,
         Decaissement.deleted_at.is_(None),
@@ -42,6 +44,7 @@ def list_expense_categories(
     ctx: TenantContext = Depends(deps.get_tenant_context),
     db: Session = Depends(get_db),
 ):
+    check_feature_access(db, ctx.boutique.id, "module_expenses")
     rows = (
         db.query(Decaissement.category)
         .filter(
@@ -67,6 +70,7 @@ def create_decaissement(
     ctx: TenantContext = Depends(deps.get_tenant_context),
     db: Session = Depends(get_db),
 ):
+    check_feature_access(db, ctx.boutique.id, "module_expenses")
     current_user = ctx.user
     now = datetime.now(timezone.utc)
     dec_date = dec_in.date or now
@@ -117,6 +121,7 @@ def delete_decaissement(
     ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
+    check_feature_access(db, ctx.boutique.id, "module_expenses")
     current_user = ctx.user
     dec = (
         db.query(Decaissement)

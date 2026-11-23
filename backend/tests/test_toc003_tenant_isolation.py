@@ -21,7 +21,11 @@ def _provision_merchant(tc: TestClient, tag: str):
     prov = tc.post(
         "/api/v1/saas/tenant/provision",
         headers=onb_headers,
-        json={"boutique_name": f"Boutique {tag} {uid}", "magasin_name": f"Magasin {tag}"},
+        json={
+            "boutique_name": f"Boutique {tag} {uid}",
+            "magasin_name": f"Magasin {tag}",
+            "plan_code": "pro",
+        },
     )
     assert prov.status_code == 200
     data = prov.json()

@@ -7,8 +7,9 @@ from sqlalchemy import or_
 
 from app.api import deps
 from app.core.database import get_db
-from app.models import Supplier, AuditLog, User
+from app.models import Supplier, AuditLog
 from app.schemas.entities import SupplierCreate, SupplierUpdate, SupplierResponse, SupplierPaymentRequest
+from app.services.entitlements import check_feature_access, check_quota_limit
 from app.services.tenant_context_service import TenantContext
 
 router = APIRouter()
@@ -23,6 +24,7 @@ def list_suppliers(
     ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
+    check_feature_access(db, ctx.boutique.id, "module_suppliers")
     query = db.query(Supplier).filter(
         Supplier.boutique_id == ctx.boutique.id, Supplier.deleted_at.is_(None)
     )
@@ -46,6 +48,13 @@ def create_supplier(
     ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
+    check_feature_access(db, ctx.boutique.id, "module_suppliers")
+    current_count = (
+        db.query(Supplier)
+        .filter(Supplier.boutique_id == ctx.boutique.id, Supplier.deleted_at.is_(None))
+        .count()
+    )
+    check_quota_limit(db, ctx.boutique.id, "max_suppliers", current_count)
     current_user = ctx.user
     now = datetime.now(timezone.utc)
     supplier = Supplier(
@@ -87,6 +96,7 @@ def get_supplier(
     ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
+    check_feature_access(db, ctx.boutique.id, "module_suppliers")
     supplier = (
         db.query(Supplier)
         .filter(
@@ -108,6 +118,7 @@ def update_supplier(
     ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
+    check_feature_access(db, ctx.boutique.id, "module_suppliers")
     current_user = ctx.user
     supplier = (
         db.query(Supplier)
@@ -149,6 +160,7 @@ def delete_supplier(
     ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
+    check_feature_access(db, ctx.boutique.id, "module_suppliers")
     current_user = ctx.user
     supplier = (
         db.query(Supplier)
@@ -187,6 +199,7 @@ def record_supplier_payment(
     ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
+    check_feature_access(db, ctx.boutique.id, "module_suppliers")
     current_user = ctx.user
     supplier = (
         db.query(Supplier)

@@ -8,6 +8,7 @@ from app.api import deps
 from app.core.database import get_db
 from app.schemas.entities import FinancialReportResponse
 from app.services.dashboard_report_service import compute_dashboard_stats
+from app.services.entitlements import check_feature_access
 from app.services.report_service import compute_financial_report
 from app.services.tenant_context_service import TenantContext
 
@@ -33,6 +34,7 @@ def get_dashboard_stats(
     ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ) -> Any:
+    check_feature_access(db, ctx.boutique.id, "dashboard_kpis")
     return DashboardStats(**compute_dashboard_stats(db, ctx.boutique.id))
 
 
@@ -44,6 +46,7 @@ def get_financial_report(
     ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ) -> Any:
+    check_feature_access(db, ctx.boutique.id, "pnl_reports")
     return compute_financial_report(
         db=db,
         boutique_id=ctx.boutique.id,

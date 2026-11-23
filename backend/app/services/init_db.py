@@ -45,6 +45,13 @@ def _migrate_columns() -> None:
         for table in ("stocks_magasin", "product_magasin_availability"):
             add_col_if_missing(table, "boutique_id", "VARCHAR(36)")
 
+        add_col_if_missing("saas_plan_features", "category", "VARCHAR(50) DEFAULT 'modules'")
+        add_col_if_missing("saas_plan_features", "description", "TEXT")
+        add_col_if_missing("saas_plan_features", "display_order", "INTEGER DEFAULT 0")
+        add_col_if_missing("saas_plan_features", "show_on_pricing", "BOOLEAN DEFAULT 1")
+        add_col_if_missing("boutiques", "has_used_trial", "BOOLEAN DEFAULT 0")
+        add_col_if_missing("saas_subscriptions", "has_used_trial", "BOOLEAN DEFAULT 0")
+
         # Rebuild legacy store_settings table under SQLite if it lacks id/boutique_id
         try:
             cols = [r[1] for r in conn.execute(text("PRAGMA table_info(store_settings)")).fetchall()]

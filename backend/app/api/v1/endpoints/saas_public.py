@@ -11,8 +11,12 @@ from app.models import (
     User, Boutique, BoutiqueUserMembership, Magasin, SaasPlan, SaasSubscription
 )
 from app.schemas.saas import (
-    SaasPlanOut, RegisterCredentialsRequest, ProvisionTenantRequest
+    FeatureCatalogItemOut,
+    SaasPlanOut,
+    RegisterCredentialsRequest,
+    ProvisionTenantRequest,
 )
+from app.services.feature_catalog import serialize_feature_catalog
 from app.api.deps import get_onboarding_user
 
 router = APIRouter()
@@ -22,6 +26,12 @@ def get_public_plans(db: Session = Depends(get_db)):
     """Retourne la liste des forfaits actifs pour la page de pricing vitrine."""
     plans = db.query(SaasPlan).filter(SaasPlan.is_active == True).order_by(SaasPlan.price_monthly.asc()).all()
     return plans
+
+
+@router.get("/features-catalog", response_model=List[FeatureCatalogItemOut])
+def get_public_features_catalog():
+    """Retourne le catalogue officiel des 28 droits et quotas."""
+    return serialize_feature_catalog()
 
 @router.post("/auth/register-credentials")
 @limiter.limit("5/minute")
@@ -128,11 +138,13 @@ def provision_tenant(
     trial_days = plan.trial_period_days if plan else 0
     trial_active = trial_days > 0
 
+    boutique.has_used_trial = trial_active
     subscription = SaasSubscription(
         boutique_id=boutique.id,
         plan_id=plan.id if plan else "free",
         status="trialing" if trial_active else "active",
         billing_cycle="monthly",
+        has_used_trial=trial_active,
         trial_starts_at=now if trial_active else None,
         trial_ends_at=(now + timedelta(days=trial_days)) if trial_active else None,
         current_period_start=now,

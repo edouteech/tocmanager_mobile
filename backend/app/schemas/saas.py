@@ -1,16 +1,32 @@
 from typing import List, Optional, Any, Dict
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from datetime import datetime
+from app.services.feature_catalog import validate_plan_features
 
 class SaasPlanFeatureOut(BaseModel):
     id: str
     feature_code: str
     feature_name: str
+    category: str = "modules"
+    description: Optional[str] = None
+    display_order: int = 0
+    show_on_pricing: bool = True
     value_type: str
     boolean_value: bool
     int_limit: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class FeatureCatalogItemOut(BaseModel):
+    feature_code: str
+    feature_name: str
+    category: str
+    value_type: str
+    description: str
+    display_order: int
+    show_on_pricing: bool
+    defaults: Dict[str, Any]
 
 class SaasPlanOut(BaseModel):
     id: str
@@ -39,6 +55,12 @@ class SaasPlanCreate(BaseModel):
     is_active: bool = True
     features: Optional[List[Dict[str, Any]]] = None
 
+    @field_validator("features")
+    @classmethod
+    def check_features(cls, value: Optional[List[Dict[str, Any]]]):
+        validate_plan_features(value)
+        return value
+
 class SaasPlanUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
@@ -48,6 +70,12 @@ class SaasPlanUpdate(BaseModel):
     badge: Optional[str] = None
     is_active: Optional[bool] = None
     features: Optional[List[Dict[str, Any]]] = None
+
+    @field_validator("features")
+    @classmethod
+    def check_features(cls, value: Optional[List[Dict[str, Any]]]):
+        validate_plan_features(value)
+        return value
 
 class MagasinOut(BaseModel):
     id: str
@@ -137,5 +165,19 @@ class CurrentPlanStatusOut(BaseModel):
     can_access_stock_transfers: bool
     can_access_pnl_reports: bool
     can_access_data_exports: bool
+    boutiques_used: int = 1
+    boutiques_limit: int = 1
     magasins_used: int
     magasins_limit: int # -1 = unlimited
+    products_used: int = 0
+    products_limit: int = 100
+    users_used: int = 1
+    users_limit: int = 2
+    clients_used: int = 0
+    clients_limit: int = 50
+    suppliers_used: int = 0
+    suppliers_limit: int = 10
+    audit_retention_days: int = 3
+    has_used_trial: bool = False
+    billing_cycle: str = "monthly"
+    current_period_end: Optional[datetime] = None

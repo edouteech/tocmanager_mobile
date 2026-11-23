@@ -7,8 +7,9 @@ from sqlalchemy import or_
 
 from app.api import deps
 from app.core.database import get_db
-from app.models import Client, AuditLog, User
+from app.models import Client, AuditLog
 from app.schemas.entities import ClientCreate, ClientUpdate, ClientResponse, DebtPaymentRequest
+from app.services.entitlements import check_feature_access, check_quota_limit
 from app.services.tenant_context_service import TenantContext
 
 router = APIRouter()
@@ -42,6 +43,13 @@ def create_client(
     ctx: TenantContext = Depends(deps.get_tenant_context),
     db: Session = Depends(get_db),
 ):
+    check_feature_access(db, ctx.boutique.id, "module_clients")
+    current_count = (
+        db.query(Client)
+        .filter(Client.boutique_id == ctx.boutique.id, Client.deleted_at.is_(None))
+        .count()
+    )
+    check_quota_limit(db, ctx.boutique.id, "max_clients", current_count)
     current_user = ctx.user
     now = datetime.now(timezone.utc)
     client = Client(
@@ -103,6 +111,7 @@ def update_client(
     ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
     db: Session = Depends(get_db),
 ):
+    check_feature_access(db, ctx.boutique.id, "module_clients")
     current_user = ctx.user
     client = (
         db.query(Client)
@@ -182,6 +191,7 @@ def record_client_payment(
     ctx: TenantContext = Depends(deps.get_tenant_context),
     db: Session = Depends(get_db),
 ):
+    check_feature_access(db, ctx.boutique.id, "module_credit_sales")
     current_user = ctx.user
     client = (
         db.query(Client)

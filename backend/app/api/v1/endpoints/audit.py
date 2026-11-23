@@ -1,5 +1,5 @@
 from typing import Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -8,6 +8,7 @@ from sqlalchemy import desc
 from app.api import deps
 from app.core.database import get_db
 from app.models import AuditLog
+from app.services.entitlements import check_feature_access, get_audit_retention_days
 from app.services.tenant_context_service import TenantContext
 
 router = APIRouter()
@@ -29,6 +30,7 @@ class AuditLogItem(BaseModel):
 class AuditLogListResponse(BaseModel):
     total: int
     items: List[AuditLogItem]
+    retention_days_applied: Optional[int] = None
 
 
 @router.get("/logs", response_model=AuditLogListResponse)
@@ -42,7 +44,12 @@ def get_audit_logs(
     db: Session = Depends(get_db),
 ) -> Any:
     """Récupère l'historique d'audit cloisonné à la boutique active."""
+    check_feature_access(db, ctx.boutique.id, "module_audit_logs")
+    retention_days = get_audit_retention_days(db, ctx.boutique.id)
     query = db.query(AuditLog).filter(AuditLog.boutique_id == ctx.boutique.id)
+    if retention_days > 0:
+        floor_dt = datetime.now(timezone.utc) - timedelta(days=retention_days)
+        query = query.filter(AuditLog.created_at >= floor_dt)
 
     if action:
         query = query.filter(AuditLog.action == action)
@@ -53,4 +60,8 @@ def get_audit_logs(
 
     total = query.count()
     items = query.order_by(desc(AuditLog.created_at)).offset(skip).limit(limit).all()
-    return AuditLogListResponse(total=total, items=items)
+    return AuditLogListResponse(
+        total=total,
+        items=items,
+        retention_days_applied=retention_days if retention_days > 0 else None,
+    )

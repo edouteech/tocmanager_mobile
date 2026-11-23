@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.models import Vente, VenteItem, Product, Client, AuditLog
 from app.schemas.sync import VenteSync, VenteItemSync
 from app.schemas.entities import VenteCreate
+from app.services.entitlements import check_feature_access
 from app.services.tenant_context_service import TenantContext
 
 router = APIRouter()
@@ -69,6 +70,7 @@ def create_vente(
     ctx: TenantContext = Depends(deps.get_tenant_context),
     db: Session = Depends(get_db),
 ) -> Any:
+    check_feature_access(db, ctx.boutique.id, "module_pos_sales")
     if not vente_in.items:
         raise HTTPException(status_code=400, detail="La vente doit contenir au moins un article.")
 
@@ -129,6 +131,8 @@ def create_vente(
         )
 
     net_total = max(0.0, round(calculated_subtotal - vente_in.discount_amount, 2))
+    if vente_in.payment_method == "Crédit" or vente_in.paid_amount < net_total:
+        check_feature_access(db, ctx.boutique.id, "module_credit_sales")
     target_client = None
     client_name = vente_in.client_name
     if vente_in.client_sync_id:

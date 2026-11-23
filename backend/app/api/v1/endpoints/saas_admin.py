@@ -9,7 +9,11 @@ from app.models import (
     User, Boutique, Magasin, SaasPlan, SaasPlanFeature, SaasSubscription, Vente, PlatformAuditLog
 )
 from app.schemas.saas import (
-    SaasPlanOut, SaasPlanCreate, SaasPlanUpdate, BoutiqueOut
+    FeatureCatalogItemOut, SaasPlanOut, SaasPlanCreate, SaasPlanUpdate, BoutiqueOut
+)
+from app.services.feature_catalog import (
+    serialize_feature_catalog,
+    sync_plan_features_from_catalog,
 )
 from app.api.deps import get_current_user
 
@@ -60,6 +64,14 @@ def get_platform_kpis(
         "currency": "XOF",
     }
 
+@router.get("/features-catalog", response_model=List[FeatureCatalogItemOut])
+def admin_get_features_catalog(
+    admin: User = Depends(require_superadmin),
+):
+    _ = admin
+    return serialize_feature_catalog()
+
+
 @router.get("/plans", response_model=List[SaasPlanOut])
 def admin_list_plans(
     admin: User = Depends(require_superadmin),
@@ -93,17 +105,9 @@ def admin_create_plan(
     db.add(plan)
     db.flush()
 
-    if payload.features:
-        for f in payload.features:
-            feat = SaasPlanFeature(
-                plan_id=plan.id,
-                feature_code=f.get("feature_code"),
-                feature_name=f.get("feature_name", f.get("feature_code")),
-                value_type=f.get("value_type", "boolean"),
-                boolean_value=f.get("boolean_value", False),
-                int_limit=f.get("int_limit", 0),
-            )
-            db.add(feat)
+    sync_plan_features_from_catalog(
+        db, plan, provided_features=payload.features, use_plan_defaults=False
+    )
 
     # Log d'audit
     audit = PlatformAuditLog(
@@ -147,18 +151,9 @@ def admin_update_plan(
         plan.is_active = payload.is_active
 
     if payload.features is not None:
-        # Remplacer les features
-        db.query(SaasPlanFeature).filter(SaasPlanFeature.plan_id == plan.id).delete()
-        for f in payload.features:
-            feat = SaasPlanFeature(
-                plan_id=plan.id,
-                feature_code=f.get("feature_code"),
-                feature_name=f.get("feature_name", f.get("feature_code")),
-                value_type=f.get("value_type", "boolean"),
-                boolean_value=f.get("boolean_value", False),
-                int_limit=f.get("int_limit", 0),
-            )
-            db.add(feat)
+        sync_plan_features_from_catalog(
+            db, plan, provided_features=payload.features, use_plan_defaults=False
+        )
 
     audit = PlatformAuditLog(
         admin_user_id=admin.id,
