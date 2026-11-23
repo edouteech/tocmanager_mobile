@@ -1,11 +1,14 @@
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta, timezone
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
-from app.models import Vente, VenteItem, Product, Decaissement, Category
+from app.models import Decaissement, Vente, VenteItem
 from app.schemas.entities import (
-    FinancialReportResponse, FinancialKPIs, TopProductItem, ExpenseCategoryItem
+    ExpenseCategoryItem,
+    FinancialKPIs,
+    FinancialReportResponse,
+    TopProductItem,
 )
 
 
@@ -43,6 +46,18 @@ def _resolve_period_bounds(
     return start_date, end_date
 
 
+def _calendar_month_window(ref: datetime, months_back: int) -> Tuple[datetime, datetime]:
+    total_m = (ref.year * 12 + (ref.month - 1)) - months_back
+    year, zero_month = divmod(total_m, 12)
+    month = zero_month + 1
+    m_start = datetime(year, month, 1, 0, 0, 0, tzinfo=timezone.utc)
+    if month == 12:
+        m_end = datetime(year + 1, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    else:
+        m_end = datetime(year, month + 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    return m_start, m_end
+
+
 def compute_financial_report(
     db: Session,
     boutique_id: str,
@@ -54,103 +69,128 @@ def compute_financial_report(
     now = datetime.now(timezone.utc)
     start_date, end_date = _resolve_period_bounds(preset, start_date, end_date, now)
 
-    v_query = db.query(Vente).filter(
+    v_filters = [
         Vente.boutique_id == boutique_id,
         Vente.deleted_at.is_(None),
+        Vente.status != "refunded",
         Vente.created_at >= start_date,
         Vente.created_at <= end_date,
-    )
+    ]
     if magasin_id:
-        v_query = v_query.filter(Vente.magasin_id == magasin_id)
-    ventes = v_query.all()
-    gross_sales = sum(v.total_amount for v in ventes)
-    discount_amount = sum(v.discount_amount for v in ventes)
-    net_sales = gross_sales
+        v_filters.append(Vente.magasin_id == magasin_id)
 
-    vente_ids = [v.sync_id for v in ventes]
-    cogs = 0.0
-    top_prods_map: Dict[str, Dict[str, float]] = {}
-    if vente_ids:
-        for it in db.query(VenteItem).filter(VenteItem.vente_sync_id.in_(vente_ids)).all():
-            item_cogs = round(it.quantity * (it.cost_price or 0.0), 2)
-            cogs += item_cogs
-            entry = top_prods_map.setdefault(
-                it.product_name, {"quantity": 0.0, "revenue": 0.0, "profit": 0.0}
-            )
-            entry["quantity"] += it.quantity
-            entry["revenue"] += it.total
-            entry["profit"] += it.total - item_cogs
+    sales_agg = db.query(
+        func.coalesce(func.sum(Vente.total_amount), 0.0),
+        func.coalesce(func.sum(Vente.discount_amount), 0.0),
+    ).filter(*v_filters).first()
+    net_sales = float(sales_agg[0] or 0.0)
+    discount_amount = float(sales_agg[1] or 0.0)
+    gross_sales = round(net_sales + discount_amount, 2)
+
+    active_qty = VenteItem.quantity - func.coalesce(VenteItem.refunded_quantity, 0.0)
+    cogs = float(
+        db.query(func.coalesce(func.sum(active_qty * VenteItem.cost_price), 0.0))
+        .join(Vente, VenteItem.vente_sync_id == Vente.sync_id)
+        .filter(*v_filters)
+        .scalar()
+        or 0.0
+    )
 
     gross_margin = round(net_sales - cogs, 2)
     gross_margin_rate = round((gross_margin / net_sales * 100), 2) if net_sales > 0 else 0.0
 
-    d_query = db.query(Decaissement).filter(
+    d_filters = [
         Decaissement.boutique_id == boutique_id,
         Decaissement.deleted_at.is_(None),
         Decaissement.date >= start_date,
         Decaissement.date <= end_date,
-    )
+    ]
     if magasin_id:
-        d_query = d_query.filter(Decaissement.magasin_id == magasin_id)
-    decaissements = d_query.all()
-    total_expenses = round(sum(d.amount for d in decaissements), 2)
+        d_filters.append(Decaissement.magasin_id == magasin_id)
+
+    cat_rows = (
+        db.query(
+            func.coalesce(Decaissement.category, "Général"),
+            func.coalesce(func.sum(Decaissement.amount), 0.0),
+        )
+        .filter(*d_filters)
+        .group_by(func.coalesce(Decaissement.category, "Général"))
+        .order_by(func.sum(Decaissement.amount).desc())
+        .all()
+    )
+    total_expenses = round(sum(float(r[1] or 0.0) for r in cat_rows), 2)
+    expenses_by_category = [
+        ExpenseCategoryItem(
+            category=cat or "Général",
+            total_amount=round(float(amount or 0.0), 2),
+            percentage=round((float(amount or 0.0) / total_expenses * 100), 2) if total_expenses > 0 else 0.0,
+        )
+        for cat, amount in cat_rows
+    ]
+
     net_profit = round(gross_margin - total_expenses, 2)
     net_margin_rate = round((net_profit / net_sales * 100), 2) if net_sales > 0 else 0.0
     net_cashflow = round(net_sales - total_expenses, 2)
 
-    sorted_prods = sorted(top_prods_map.items(), key=lambda x: x[1]["revenue"], reverse=True)[:10]
+    top_rows = (
+        db.query(
+            VenteItem.product_name,
+            func.coalesce(func.sum(VenteItem.quantity), 0.0),
+            func.coalesce(func.sum(VenteItem.total), 0.0),
+            func.coalesce(func.sum(VenteItem.total - (active_qty * VenteItem.cost_price)), 0.0),
+        )
+        .join(Vente, VenteItem.vente_sync_id == Vente.sync_id)
+        .filter(*v_filters)
+        .group_by(VenteItem.product_name)
+        .order_by(func.sum(VenteItem.total).desc())
+        .limit(10)
+        .all()
+    )
     top_products = [
         TopProductItem(
-            product_name=name,
-            quantity_sold=data["quantity"],
-            total_revenue=round(data["revenue"], 2),
-            total_profit=round(data["profit"], 2),
+            product_name=row[0],
+            quantity_sold=round(float(row[1] or 0.0), 4),
+            total_revenue=round(float(row[2] or 0.0), 2),
+            total_profit=round(float(row[3] or 0.0), 2),
         )
-        for name, data in sorted_prods
+        for row in top_rows
     ]
 
-    cat_exp_map: Dict[str, float] = {}
-    for d in decaissements:
-        cat_name = d.category or "Général"
-        cat_exp_map[cat_name] = cat_exp_map.get(cat_name, 0.0) + d.amount
-
-    expenses_by_category = [
-        ExpenseCategoryItem(
-            category=cat,
-            total_amount=round(amount, 2),
-            percentage=round((amount / total_expenses * 100), 2) if total_expenses > 0 else 0.0,
-        )
-        for cat, amount in sorted(cat_exp_map.items(), key=lambda x: x[1], reverse=True)
-    ]
-
-    monthly_trend = []
+    monthly_trend: List[Dict] = []
     for i in range(5, -1, -1):
-        m_start = datetime(now.year, now.month, 1, tzinfo=timezone.utc) - timedelta(days=i * 30)
-        m_end = m_start + timedelta(days=30)
-        m_s_q = db.query(func.coalesce(func.sum(Vente.total_amount), 0.0)).filter(
+        m_start, m_end = _calendar_month_window(now, i)
+        mv_filters = [
             Vente.boutique_id == boutique_id,
             Vente.deleted_at.is_(None),
+            Vente.status != "refunded",
             Vente.created_at >= m_start,
             Vente.created_at < m_end,
-        )
-        if magasin_id:
-            m_s_q = m_s_q.filter(Vente.magasin_id == magasin_id)
-        m_sales = m_s_q.scalar() or 0.0
-
-        m_e_q = db.query(func.coalesce(func.sum(Decaissement.amount), 0.0)).filter(
+        ]
+        md_filters = [
             Decaissement.boutique_id == boutique_id,
             Decaissement.deleted_at.is_(None),
             Decaissement.date >= m_start,
             Decaissement.date < m_end,
-        )
+        ]
         if magasin_id:
-            m_e_q = m_e_q.filter(Decaissement.magasin_id == magasin_id)
-        m_exp = m_e_q.scalar() or 0.0
+            mv_filters.append(Vente.magasin_id == magasin_id)
+            md_filters.append(Decaissement.magasin_id == magasin_id)
+
+        m_sales = float(db.query(func.coalesce(func.sum(Vente.total_amount), 0.0)).filter(*mv_filters).scalar() or 0.0)
+        m_cogs = float(
+            db.query(func.coalesce(func.sum(active_qty * VenteItem.cost_price), 0.0))
+            .join(Vente, VenteItem.vente_sync_id == Vente.sync_id)
+            .filter(*mv_filters)
+            .scalar()
+            or 0.0
+        )
+        m_exp = float(db.query(func.coalesce(func.sum(Decaissement.amount), 0.0)).filter(*md_filters).scalar() or 0.0)
         monthly_trend.append({
             "period": m_start.strftime("%b %Y"),
-            "sales": round(float(m_sales), 2),
-            "expenses": round(float(m_exp), 2),
-            "profit": round(float(m_sales) - float(m_exp), 2),
+            "sales": round(m_sales, 2),
+            "cogs": round(m_cogs, 2),
+            "expenses": round(m_exp, 2),
+            "profit": round(m_sales - m_cogs - m_exp, 2),
         })
 
     return FinancialReportResponse(
