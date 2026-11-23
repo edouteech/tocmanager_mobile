@@ -27,6 +27,7 @@ class VenteSync(BaseModel):
     notes: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
+    deleted_at: Optional[datetime] = None
     items: List[VenteItemSync] = []
 
 class ProductSync(BaseModel):
@@ -109,6 +110,7 @@ class ApprovisionnementSync(BaseModel):
     quantity: float
     unit_cost: float
     total_cost: float
+    paid_amount: Optional[float] = None
     payment_status: str = "Payé"
     date: datetime
     notes: Optional[str] = None

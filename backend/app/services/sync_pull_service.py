@@ -50,6 +50,17 @@ def pull_boutique_changes(
         if since is not None:
             ctx_products = [p for p in ctx_products if p["updated_at"] and p["updated_at"] >= since]
         products = [ProductSync(**p) for p in ctx_products]
+        deleted_q = db.query(Product).filter(Product.boutique_id == boutique_id, Product.deleted_at.isnot(None))
+        if since is not None:
+            deleted_q = deleted_q.filter(Product.updated_at >= since)
+        for dp in deleted_q.all():
+            products.append(ProductSync(
+                sync_id=dp.sync_id, name=dp.name, category_sync_id=dp.category_sync_id,
+                price=dp.price, cost_price=dp.cost_price, average_cost_price=dp.average_cost_price,
+                stock=dp.stock, min_stock=dp.min_stock, barcode=dp.barcode, unit=dp.unit,
+                image_path=dp.image_path, is_active=False, updated_at=dp.updated_at,
+                deleted_at=dp.deleted_at, is_available=False, magasin_id=magasin_id,
+            ))
     else:
         prod_rows = _scoped(Product).all()
         products = [

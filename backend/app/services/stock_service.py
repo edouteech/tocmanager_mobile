@@ -44,6 +44,7 @@ def ensure_stock_row(
 
 def sync_product_total_stock(db: Session, boutique_id: str, product: Product) -> float:
     """Recompute Product.stock as sum of active magasins' StockMagasin.quantity."""
+    db.flush()
     total = (
         db.query(func.coalesce(func.sum(StockMagasin.quantity), 0.0))
         .join(Magasin, Magasin.id == StockMagasin.magasin_id)

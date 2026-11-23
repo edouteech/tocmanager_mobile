@@ -659,6 +659,55 @@ class DatabaseHelper {
     return res;
   }
 
+  // --- SYNC QUEUE HELPERS ---
+  Future<({String? userId, String? userName})> _activeUserMeta() async {
+    try {
+      final activeUser = await SecureStorageService.getUser();
+      return (
+        userId: activeUser?.id,
+        userName: activeUser?.fullName ?? activeUser?.username,
+      );
+    } catch (_) {
+      return (userId: null, userName: null);
+    }
+  }
+
+  Future<String> _resolveSyncId(DatabaseExecutor txn, String table, int id) async {
+    final rows = await txn.query(table, columns: ['sync_id'], where: 'id = ?', whereArgs: [id]);
+    if (rows.isNotEmpty) {
+      final existing = rows.first['sync_id'] as String?;
+      if (existing != null && existing.isNotEmpty) return existing;
+    }
+    final generated = const Uuid().v4();
+    await txn.update(table, {'sync_id': generated}, where: 'id = ?', whereArgs: [id]);
+    return generated;
+  }
+
+  Future<String?> _findSyncId(DatabaseExecutor txn, String table, int? id) async {
+    if (id == null || id <= 0) return null;
+    final rows = await txn.query(table, columns: ['sync_id'], where: 'id = ?', whereArgs: [id]);
+    if (rows.isEmpty) return null;
+    final val = rows.first['sync_id'] as String?;
+    return (val != null && val.isNotEmpty) ? val : null;
+  }
+
+  Future<void> _enqueueSync(
+    DatabaseExecutor txn,
+    String entityType,
+    String entityUuid,
+    String action,
+    Map<String, dynamic> payload,
+  ) async {
+    await txn.insert('sync_queue', {
+      'entity_type': entityType,
+      'entity_uuid': entityUuid,
+      'action': action,
+      'payload': jsonEncode(payload),
+      'created_at': DateTime.now().toIso8601String(),
+      'attempts': 0,
+    });
+  }
+
   // --- CATEGORIES ---
   Future<List<Category>> getCategories() async {
     final db = await database;
@@ -666,22 +715,68 @@ class DatabaseHelper {
     return maps.map((m) => Category.fromMap(m)).toList();
   }
 
+  Map<String, dynamic> _categorySyncPayload(Category cat, String syncId, String now, {String? deletedAt}) {
+    final hexColor = '#${(cat.color & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
+    return {
+      'sync_id': syncId,
+      'name': cat.name,
+      'description': cat.description,
+      'color': hexColor,
+      'icon': cat.icon.toString(),
+      'updated_at': now,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+    };
+  }
+
   Future<int> insertCategory(Category cat) async {
     final db = await database;
-    return db.insert('categories', cat.toMap());
+    return db.transaction((txn) async {
+      final now = DateTime.now().toIso8601String();
+      final syncId = const Uuid().v4();
+      final map = cat.toMap();
+      map['sync_id'] = syncId;
+      map['sync_status'] = 'pending_insert';
+      map['updated_at'] = now;
+      final id = await txn.insert('categories', map);
+      await _enqueueSync(txn, 'category', syncId, 'INSERT', _categorySyncPayload(cat, syncId, now));
+      return id;
+    });
   }
 
   Future<int> updateCategory(Category cat) async {
     final db = await database;
-    return db.update('categories', cat.toMap(),
-        where: 'id = ?', whereArgs: [cat.id]);
+    return db.transaction((txn) async {
+      final now = DateTime.now().toIso8601String();
+      final syncId = await _resolveSyncId(txn, 'categories', cat.id!);
+      final map = cat.toMap();
+      map['sync_status'] = 'pending_update';
+      map['updated_at'] = now;
+      final res = await txn.update('categories', map, where: 'id = ?', whereArgs: [cat.id]);
+      await _enqueueSync(txn, 'category', syncId, 'UPDATE', _categorySyncPayload(cat, syncId, now));
+      return res;
+    });
   }
 
   Future<int> deleteCategory(int id) async {
     final db = await database;
     return db.transaction((txn) async {
+      final existing = await txn.query('categories', where: 'id = ?', whereArgs: [id]);
       await txn.rawUpdate('UPDATE products SET category_id = NULL WHERE category_id = ?', [id]);
-      return txn.delete('categories', where: 'id = ?', whereArgs: [id]);
+      final res = await txn.delete('categories', where: 'id = ?', whereArgs: [id]);
+      if (existing.isNotEmpty) {
+        final syncId = existing.first['sync_id'] as String?;
+        if (syncId != null && syncId.isNotEmpty) {
+          final now = DateTime.now().toIso8601String();
+          await _enqueueSync(txn, 'category', syncId, 'DELETE', {
+            'sync_id': syncId,
+            'name': existing.first['name'] ?? '',
+            'description': existing.first['description'],
+            'updated_at': now,
+            'deleted_at': now,
+          });
+        }
+      }
+      return res;
     });
   }
 
@@ -746,19 +841,89 @@ class DatabaseHelper {
     return Product.fromMap(maps.first);
   }
 
+  Future<Map<String, dynamic>> _productSyncPayload(
+    DatabaseExecutor txn,
+    Product p,
+    String syncId,
+    String now, {
+    String? deletedAt,
+  }) async {
+    final catSyncId = await _findSyncId(txn, 'categories', p.categoryId);
+    return {
+      'sync_id': syncId,
+      'name': p.name,
+      'category_sync_id': catSyncId,
+      'price': p.price,
+      'cost_price': p.costPrice,
+      'average_cost_price': p.averageCostPrice ?? 0.0,
+      'stock': p.quantity,
+      'min_stock': p.alertQuantity,
+      'barcode': p.barcode,
+      'unit': p.unit,
+      'is_active': deletedAt == null,
+      'updated_at': now,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+    };
+  }
+
   Future<int> insertProduct(Product p) async {
     final db = await database;
-    return db.insert('products', p.toMap());
+    return db.transaction((txn) async {
+      final now = DateTime.now().toIso8601String();
+      final syncId = const Uuid().v4();
+      final map = p.toMap();
+      map['sync_id'] = syncId;
+      map['sync_status'] = 'pending_insert';
+      map['updated_at'] = now;
+      final id = await txn.insert('products', map);
+      await _enqueueSync(txn, 'product', syncId, 'INSERT', await _productSyncPayload(txn, p, syncId, now));
+      return id;
+    });
   }
 
   Future<int> updateProduct(Product p) async {
     final db = await database;
-    return db.update('products', p.toMap(), where: 'id = ?', whereArgs: [p.id]);
+    return db.transaction((txn) async {
+      final now = DateTime.now().toIso8601String();
+      final syncId = await _resolveSyncId(txn, 'products', p.id!);
+      final map = p.toMap();
+      map['sync_status'] = 'pending_update';
+      map['updated_at'] = now;
+      final res = await txn.update('products', map, where: 'id = ?', whereArgs: [p.id]);
+      await _enqueueSync(txn, 'product', syncId, 'UPDATE', await _productSyncPayload(txn, p, syncId, now));
+      return res;
+    });
   }
 
   Future<int> deleteProduct(int id) async {
     final db = await database;
-    return db.delete('products', where: 'id = ?', whereArgs: [id]);
+    return db.transaction((txn) async {
+      final rows = await txn.query('products', where: 'id = ?', whereArgs: [id]);
+      final res = await txn.delete('products', where: 'id = ?', whereArgs: [id]);
+      if (rows.isNotEmpty) {
+        final r = rows.first;
+        final syncId = r['sync_id'] as String?;
+        if (syncId != null && syncId.isNotEmpty) {
+          final now = DateTime.now().toIso8601String();
+          final catSyncId = await _findSyncId(txn, 'categories', r['category_id'] as int?);
+          await _enqueueSync(txn, 'product', syncId, 'DELETE', {
+            'sync_id': syncId,
+            'name': r['name'] ?? '',
+            'category_sync_id': catSyncId,
+            'price': (r['price'] as num?)?.toDouble() ?? 0.0,
+            'cost_price': (r['cost_price'] as num?)?.toDouble() ?? 0.0,
+            'stock': (r['quantity'] as num?)?.toDouble() ?? 0.0,
+            'min_stock': (r['alert_quantity'] as num?)?.toDouble() ?? 5.0,
+            'unit': r['unit'] ?? 'pièce',
+            'barcode': r['barcode'],
+            'is_active': false,
+            'updated_at': now,
+            'deleted_at': now,
+          });
+        }
+      }
+      return res;
+    });
   }
 
   // --- APPROVISIONNEMENTS ---
@@ -773,53 +938,100 @@ class DatabaseHelper {
     return maps.map((m) => Approvisionnement.fromMap(m)).toList();
   }
 
+  Future<Map<String, dynamic>> _approSyncPayload(
+    DatabaseExecutor txn,
+    Approvisionnement a,
+    String syncId,
+    String now, {
+    String? userId,
+    String? userName,
+    String? deletedAt,
+  }) async {
+    final prodRows = await txn.query('products', columns: ['sync_id', 'name'], where: 'id = ?', whereArgs: [a.productId]);
+    final prodSyncId = prodRows.isNotEmpty ? prodRows.first['sync_id'] as String? : null;
+    final prodName = prodRows.isNotEmpty ? (prodRows.first['name'] as String? ?? 'Article') : 'Article';
+    final supSyncId = await _findSyncId(txn, 'suppliers', a.supplierId);
+    return {
+      'sync_id': syncId,
+      'supplier_sync_id': supSyncId,
+      'supplier_name': a.supplier,
+      'product_sync_id': prodSyncId,
+      'product_name': prodName,
+      'quantity': a.quantity,
+      'unit_cost': a.unitPrice,
+      'total_cost': a.total,
+      'paid_amount': a.paidAmount,
+      'payment_status': a.isCredit ? 'Crédit' : 'Payé',
+      'date': a.date.toIso8601String(),
+      'notes': a.notes,
+      if (userId != null) 'user_id': userId,
+      if (userName != null) 'user_name': userName,
+      'updated_at': now,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+    };
+  }
+
   Future<int> insertApprovisionnement(Approvisionnement a) async {
     final db = await database;
-    String? userId;
-    String? userName;
-    try {
-      final activeUser = await SecureStorageService.getUser();
-      userId = activeUser?.id;
-      userName = activeUser?.fullName ?? activeUser?.username;
-    } catch (_) {}
-
-    final approMap = a.toMap();
-    if (userId != null) approMap['user_id'] = userId;
-    if (userName != null) approMap['user_name'] = userName;
+    final userMeta = await _activeUserMeta();
 
     return db.transaction((txn) async {
+      final now = DateTime.now().toIso8601String();
+      final syncId = const Uuid().v4();
+      final approMap = a.toMap();
+      approMap['sync_id'] = syncId;
+      approMap['sync_status'] = 'pending_insert';
+      approMap['updated_at'] = now;
+      if (userMeta.userId != null) approMap['user_id'] = userMeta.userId;
+      if (userMeta.userName != null) approMap['user_name'] = userMeta.userName;
+
       final id = await txn.insert('approvisionnements', approMap);
       await txn.rawUpdate(
         'UPDATE products SET quantity = quantity + ?, updated_at = ? WHERE id = ?',
-        [a.quantity, DateTime.now().toIso8601String(), a.productId],
+        [a.quantity, now, a.productId],
       );
       await _updateInformativeAverageCostPrice(txn, a.productId);
       if (a.supplierId != null) {
         await _updateSupplierBalance(txn, a.supplierId!);
       }
 
-      // Enregistrement de l'audit pour l'approvisionnement
-      try {
-        final now = DateTime.now().toIso8601String();
-        final auditSyncId = const Uuid().v4();
-        await txn.insert('audit_logs', {
-          'sync_id': auditSyncId,
-          'user_id': userId,
-          'user_name': userName,
-          'action': 'STOCK_SUPPLY',
-          'entity_type': 'approvisionnement',
-          'entity_id': id.toString(),
-          'details': jsonEncode({
-            'product_id': a.productId,
-            'quantity': a.quantity,
-            'unit_price': a.unitPrice,
-            'total': a.total,
-            'supplier': a.supplier,
-          }),
-          'created_at': now,
-          'sync_status': 'pending',
-        });
-      } catch (_) {}
+      await _enqueueSync(
+        txn,
+        'approvisionnement',
+        syncId,
+        'INSERT',
+        await _approSyncPayload(txn, a, syncId, now, userId: userMeta.userId, userName: userMeta.userName),
+      );
+
+      final auditSyncId = const Uuid().v4();
+      final auditDetails = {
+        'product_id': a.productId,
+        'quantity': a.quantity,
+        'unit_price': a.unitPrice,
+        'total': a.total,
+        'supplier': a.supplier,
+      };
+      await txn.insert('audit_logs', {
+        'sync_id': auditSyncId,
+        'user_id': userMeta.userId,
+        'user_name': userMeta.userName,
+        'action': 'STOCK_SUPPLY',
+        'entity_type': 'approvisionnement',
+        'entity_id': syncId,
+        'details': jsonEncode(auditDetails),
+        'created_at': now,
+        'sync_status': 'pending',
+      });
+      await _enqueueSync(txn, 'audit_log', auditSyncId, 'INSERT', {
+        'sync_id': auditSyncId,
+        'user_id': userMeta.userId,
+        'user_name': userMeta.userName,
+        'action': 'STOCK_SUPPLY',
+        'entity_type': 'approvisionnement',
+        'entity_id': syncId,
+        'details': auditDetails,
+        'created_at': now,
+      });
 
       return id;
     });
@@ -828,14 +1040,28 @@ class DatabaseHelper {
   Future<int> deleteApprovisionnement(Approvisionnement a) async {
     final db = await database;
     return db.transaction((txn) async {
+      final now = DateTime.now().toIso8601String();
+      final existing = await txn.query('approvisionnements', where: 'id = ?', whereArgs: [a.id]);
       await txn.rawUpdate(
         'UPDATE products SET quantity = max(0, quantity - ?), updated_at = ? WHERE id = ?',
-        [a.quantity, DateTime.now().toIso8601String(), a.productId],
+        [a.quantity, now, a.productId],
       );
       final result = await txn.delete('approvisionnements', where: 'id = ?', whereArgs: [a.id]);
       await _updateInformativeAverageCostPrice(txn, a.productId);
       if (a.supplierId != null) {
         await _updateSupplierBalance(txn, a.supplierId!);
+      }
+      if (existing.isNotEmpty) {
+        final syncId = existing.first['sync_id'] as String?;
+        if (syncId != null && syncId.isNotEmpty) {
+          await _enqueueSync(
+            txn,
+            'approvisionnement',
+            syncId,
+            'DELETE',
+            await _approSyncPayload(txn, a, syncId, now, deletedAt: now),
+          );
+        }
       }
       return result;
     });
@@ -845,6 +1071,7 @@ class DatabaseHelper {
     final db = await database;
     return db.transaction((txn) async {
       final now = DateTime.now().toIso8601String();
+      final syncId = await _resolveSyncId(txn, 'approvisionnements', newAppro.id!);
       if (oldAppro.productId == newAppro.productId) {
         final delta = newAppro.quantity - oldAppro.quantity;
         if (delta != 0) {
@@ -855,7 +1082,6 @@ class DatabaseHelper {
         }
         await _updateInformativeAverageCostPrice(txn, newAppro.productId);
       } else {
-        // Produit changé : on annule sur l'ancien, on applique sur le nouveau
         await txn.rawUpdate(
           'UPDATE products SET quantity = max(0, quantity - ?), updated_at = ? WHERE id = ?',
           [oldAppro.quantity, now, oldAppro.productId],
@@ -867,9 +1093,12 @@ class DatabaseHelper {
         await _updateInformativeAverageCostPrice(txn, oldAppro.productId);
         await _updateInformativeAverageCostPrice(txn, newAppro.productId);
       }
+      final updateMap = newAppro.toMap();
+      updateMap['sync_status'] = 'pending_update';
+      updateMap['updated_at'] = now;
       final res = await txn.update(
         'approvisionnements',
-        newAppro.toMap(),
+        updateMap,
         where: 'id = ?',
         whereArgs: [newAppro.id],
       );
@@ -878,6 +1107,13 @@ class DatabaseHelper {
       for (final sId in suppliersToUpdate) {
         await _updateSupplierBalance(txn, sId);
       }
+      await _enqueueSync(
+        txn,
+        'approvisionnement',
+        syncId,
+        'UPDATE',
+        await _approSyncPayload(txn, newAppro, syncId, now),
+      );
       return res;
     });
   }
@@ -967,55 +1203,125 @@ class DatabaseHelper {
     return maps.map((m) => Decaissement.fromMap(m)).toList();
   }
 
+  Map<String, dynamic> _decaissementSyncPayload(
+    Decaissement d,
+    String syncId,
+    String now, {
+    String? userId,
+    String? userName,
+    String? deletedAt,
+  }) =>
+      {
+        'sync_id': syncId,
+        'title': d.description,
+        'amount': d.amount,
+        'category': d.category,
+        'beneficiary': d.reference,
+        'payment_method': 'Espèces',
+        'date': d.date.toIso8601String(),
+        'notes': d.notes,
+        if (userId != null) 'user_id': userId,
+        if (userName != null) 'user_name': userName,
+        'updated_at': now,
+        if (deletedAt != null) 'deleted_at': deletedAt,
+      };
+
   Future<int> insertDecaissement(Decaissement d) async {
     final db = await database;
-    String? userId;
-    String? userName;
-    try {
-      final activeUser = await SecureStorageService.getUser();
-      userId = activeUser?.id;
-      userName = activeUser?.fullName ?? activeUser?.username;
-    } catch (_) {}
+    final userMeta = await _activeUserMeta();
 
-    final decMap = d.toMap();
-    if (userId != null) decMap['user_id'] = userId;
-    if (userName != null) decMap['user_name'] = userName;
-    final id = await db.insert('decaissements', decMap);
-
-    // Enregistrement de l'audit pour la dépense
-    try {
+    return db.transaction((txn) async {
       final now = DateTime.now().toIso8601String();
+      final syncId = const Uuid().v4();
+      final decMap = d.toMap();
+      decMap['sync_id'] = syncId;
+      decMap['sync_status'] = 'pending_insert';
+      decMap['updated_at'] = now;
+      if (userMeta.userId != null) decMap['user_id'] = userMeta.userId;
+      if (userMeta.userName != null) decMap['user_name'] = userMeta.userName;
+      final id = await txn.insert('decaissements', decMap);
+
+      await _enqueueSync(
+        txn,
+        'decaissement',
+        syncId,
+        'INSERT',
+        _decaissementSyncPayload(d, syncId, now, userId: userMeta.userId, userName: userMeta.userName),
+      );
+
       final auditSyncId = const Uuid().v4();
-      await db.insert('audit_logs', {
+      final auditDetails = {
+        'description': d.description,
+        'amount': d.amount,
+        'category': d.category,
+        'reference': d.reference,
+      };
+      await txn.insert('audit_logs', {
         'sync_id': auditSyncId,
-        'user_id': userId,
-        'user_name': userName,
+        'user_id': userMeta.userId,
+        'user_name': userMeta.userName,
         'action': 'EXPENSE_CREATE',
         'entity_type': 'decaissement',
-        'entity_id': id.toString(),
-        'details': jsonEncode({
-          'description': d.description,
-          'amount': d.amount,
-          'category': d.category,
-          'reference': d.reference,
-        }),
+        'entity_id': syncId,
+        'details': jsonEncode(auditDetails),
         'created_at': now,
         'sync_status': 'pending',
       });
-    } catch (_) {}
+      await _enqueueSync(txn, 'audit_log', auditSyncId, 'INSERT', {
+        'sync_id': auditSyncId,
+        'user_id': userMeta.userId,
+        'user_name': userMeta.userName,
+        'action': 'EXPENSE_CREATE',
+        'entity_type': 'decaissement',
+        'entity_id': syncId,
+        'details': auditDetails,
+        'created_at': now,
+      });
 
-    return id;
+      return id;
+    });
   }
 
   Future<int> updateDecaissement(Decaissement d) async {
     final db = await database;
-    return db.update('decaissements', d.toMap(),
-        where: 'id = ?', whereArgs: [d.id]);
+    return db.transaction((txn) async {
+      final now = DateTime.now().toIso8601String();
+      final syncId = await _resolveSyncId(txn, 'decaissements', d.id!);
+      final map = d.toMap();
+      map['sync_status'] = 'pending_update';
+      map['updated_at'] = now;
+      final res = await txn.update('decaissements', map, where: 'id = ?', whereArgs: [d.id]);
+      await _enqueueSync(txn, 'decaissement', syncId, 'UPDATE', _decaissementSyncPayload(d, syncId, now));
+      return res;
+    });
   }
 
   Future<int> deleteDecaissement(int id) async {
     final db = await database;
-    return db.delete('decaissements', where: 'id = ?', whereArgs: [id]);
+    return db.transaction((txn) async {
+      final rows = await txn.query('decaissements', where: 'id = ?', whereArgs: [id]);
+      final res = await txn.delete('decaissements', where: 'id = ?', whereArgs: [id]);
+      if (rows.isNotEmpty) {
+        final r = rows.first;
+        final syncId = r['sync_id'] as String?;
+        if (syncId != null && syncId.isNotEmpty) {
+          final now = DateTime.now().toIso8601String();
+          await _enqueueSync(txn, 'decaissement', syncId, 'DELETE', {
+            'sync_id': syncId,
+            'title': r['description'] ?? 'Dépense',
+            'amount': (r['amount'] as num?)?.toDouble() ?? 0.0,
+            'category': r['category'] ?? 'Divers',
+            'beneficiary': r['reference'],
+            'payment_method': 'Espèces',
+            'date': r['date'] ?? now,
+            'notes': r['notes'],
+            'updated_at': now,
+            'deleted_at': now,
+          });
+        }
+      }
+      return res;
+    });
   }
 
   // --- VENTES (TICKETS & MULTI-ARTICLES) ---
@@ -1076,6 +1382,7 @@ class DatabaseHelper {
 
       for (final item in v.items) {
         final itemSyncId = item.syncId ?? const Uuid().v4();
+        final prodSyncId = await _findSyncId(txn, 'products', item.productId);
         final itemMap = item.toMap(venteIdParam: venteId);
         itemMap['sync_id'] = itemSyncId;
         await txn.insert('vente_items', itemMap);
@@ -1086,6 +1393,7 @@ class DatabaseHelper {
 
         itemsPayload.add({
           'sync_id': itemSyncId,
+          'product_sync_id': prodSyncId,
           'product_name': item.productName,
           'quantity': item.quantity,
           'unit_price': item.unitPrice,
@@ -1098,69 +1406,124 @@ class DatabaseHelper {
         final diff = v.totalAmount > v.paidAmount ? v.totalAmount - v.paidAmount : 0.0;
         if (diff > 0) {
           await txn.rawUpdate(
-            'UPDATE clients SET balance = balance + ? WHERE id = ?',
-            [diff, v.clientId],
+            'UPDATE clients SET balance = balance + ?, updated_at = ? WHERE id = ?',
+            [diff, now.toIso8601String(), v.clientId],
           );
         }
       }
 
+      final clientSyncId = await _findSyncId(txn, 'clients', v.clientId);
+
       // Ajout atomique dans la file d'attente de synchronisation hors-ligne
-      try {
-        final queuePayload = jsonEncode({
-          'sync_id': venteSyncId,
-          'ticket_number': ticketNum,
-          'client_name': v.clientName ?? 'Occasionnel',
-          'user_id': userId,
-          'user_name': userName,
-          'total_amount': v.totalAmount,
-          'paid_amount': v.paidAmount,
-          'discount_amount': v.discountAmount,
-          'payment_method': v.paymentMethod,
-          'notes': v.notes,
-          'created_at': now.toIso8601String(),
-          'items': itemsPayload,
-        });
+      final queuePayload = {
+        'sync_id': venteSyncId,
+        'ticket_number': ticketNum,
+        'client_sync_id': clientSyncId,
+        'client_name': v.clientName ?? 'Occasionnel',
+        'user_id': userId,
+        'user_name': userName,
+        'total_amount': v.totalAmount,
+        'paid_amount': v.paidAmount,
+        'discount_amount': v.discountAmount,
+        'payment_method': v.paymentMethod,
+        'notes': v.notes,
+        'created_at': v.date.toIso8601String(),
+        'updated_at': now.toIso8601String(),
+        'items': itemsPayload,
+      };
+      await _enqueueSync(txn, 'vente', venteSyncId, 'INSERT', queuePayload);
 
-        await txn.insert('sync_queue', {
-          'entity_type': 'vente',
-          'entity_uuid': venteSyncId,
-          'action': 'INSERT',
-          'payload': queuePayload,
-          'created_at': now.toIso8601String(),
-          'attempts': 0,
-        });
-
-        // Enregistrement de l'action dans le journal d'audit local
-        final auditSyncId = const Uuid().v4();
-        await txn.insert('audit_logs', {
-          'sync_id': auditSyncId,
-          'user_id': userId,
-          'user_name': userName,
-          'action': 'SALE_CREATE',
-          'entity_type': 'vente',
-          'entity_id': venteSyncId,
-          'details': jsonEncode({
-            'ticket_number': ticketNum,
-            'total_amount': v.totalAmount,
-            'paid_amount': v.paidAmount,
-            'payment_method': v.paymentMethod,
-          }),
-          'created_at': now.toIso8601String(),
-          'sync_status': 'pending',
-        });
-      } catch (_) {}
+      // Enregistrement de l'action dans le journal d'audit local
+      final auditSyncId = const Uuid().v4();
+      final auditDetails = {
+        'ticket_number': ticketNum,
+        'total_amount': v.totalAmount,
+        'paid_amount': v.paidAmount,
+        'payment_method': v.paymentMethod,
+      };
+      await txn.insert('audit_logs', {
+        'sync_id': auditSyncId,
+        'user_id': userId,
+        'user_name': userName,
+        'action': 'SALE_CREATE',
+        'entity_type': 'vente',
+        'entity_id': venteSyncId,
+        'details': jsonEncode(auditDetails),
+        'created_at': now.toIso8601String(),
+        'sync_status': 'pending',
+      });
+      await _enqueueSync(txn, 'audit_log', auditSyncId, 'INSERT', {
+        'sync_id': auditSyncId,
+        'user_id': userId,
+        'user_name': userName,
+        'action': 'SALE_CREATE',
+        'entity_type': 'vente',
+        'entity_id': venteSyncId,
+        'details': auditDetails,
+        'created_at': now.toIso8601String(),
+      });
 
       return venteId;
     });
   }
 
+  Future<Map<String, dynamic>?> _buildVenteSyncPayloadById(
+    DatabaseExecutor txn,
+    int venteId, {
+    String status = 'completed',
+    String? deletedAt,
+  }) async {
+    final rows = await txn.query('ventes', where: 'id = ?', whereArgs: [venteId]);
+    if (rows.isEmpty) return null;
+    final row = rows.first;
+    final syncId = await _resolveSyncId(txn, 'ventes', venteId);
+    final clientSyncId = await _findSyncId(txn, 'clients', row['client_id'] as int?);
+    final itemRows = await txn.query('vente_items', where: 'vente_id = ?', whereArgs: [venteId]);
+    final items = <Map<String, dynamic>>[];
+    for (final it in itemRows) {
+      final prodSyncId = await _findSyncId(txn, 'products', it['product_id'] as int?);
+      items.add({
+        'sync_id': it['sync_id'] ?? const Uuid().v4(),
+        'product_sync_id': prodSyncId,
+        'product_name': it['product_name'] ?? 'Article',
+        'quantity': (it['quantity'] as num?)?.toDouble() ?? 1.0,
+        'unit_price': (it['unit_price'] as num?)?.toDouble() ?? 0.0,
+        'cost_price': (it['cost_price'] as num?)?.toDouble() ?? 0.0,
+        'total': (it['total'] as num?)?.toDouble() ?? 0.0,
+      });
+    }
+    return {
+      'sync_id': syncId,
+      'ticket_number': row['ticket_number'] ?? 'TICKET',
+      'client_sync_id': clientSyncId,
+      'client_name': row['client_name'] ?? 'Occasionnel',
+      'user_id': row['user_id'],
+      'user_name': row['user_name'],
+      'total_amount': (row['total_amount'] as num?)?.toDouble() ?? 0.0,
+      'paid_amount': (row['paid_amount'] as num?)?.toDouble() ?? 0.0,
+      'discount_amount': (row['discount_amount'] as num?)?.toDouble() ?? 0.0,
+      'payment_method': row['payment_method'] ?? 'Espèces',
+      'status': status,
+      'notes': row['notes'],
+      'created_at': row['date'] ?? DateTime.now().toIso8601String(),
+      'updated_at': row['updated_at'] ?? DateTime.now().toIso8601String(),
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      'items': items,
+    };
+  }
+
   Future<void> updateVentePaidAmount(int venteId, double newPaidAmount) async {
     final db = await database;
     await db.transaction((txn) async {
+      final now = DateTime.now().toIso8601String();
       await txn.rawUpdate(
-        'UPDATE ventes SET paid_amount = ? WHERE id = ?',
-        [newPaidAmount, venteId],
+        "UPDATE ventes SET paid_amount = ?, updated_at = ?, sync_status = 'pending_update' WHERE id = ?",
+        [newPaidAmount, now, venteId],
       );
+      final payload = await _buildVenteSyncPayloadById(txn, venteId);
+      if (payload != null) {
+        await _enqueueSync(txn, 'vente', payload['sync_id'] as String, 'UPDATE', payload);
+      }
     });
   }
 
@@ -1168,17 +1531,10 @@ class DatabaseHelper {
     final db = await database;
     await db.transaction((txn) async {
       final now = DateTime.now().toIso8601String();
+      final venteSyncId = await _resolveSyncId(txn, 'ventes', v.id!);
 
-      // 1. Get previous items for this vente
-      final previousItemMaps = await txn.query(
-        'vente_items',
-        where: 'vente_id = ?',
-        whereArgs: [v.id],
-      );
-      final previousItems =
-          previousItemMaps.map((m) => VenteItem.fromMap(m)).toList();
-
-      // 2. Restore stock for previously sold items
+      final previousItemMaps = await txn.query('vente_items', where: 'vente_id = ?', whereArgs: [v.id]);
+      final previousItems = previousItemMaps.map((m) => VenteItem.fromMap(m)).toList();
       for (final prev in previousItems) {
         await txn.rawUpdate(
           'UPDATE products SET quantity = quantity + ?, updated_at = ? WHERE id = ?',
@@ -1186,29 +1542,21 @@ class DatabaseHelper {
         );
       }
 
-      // 3. Delete previous vente_items
       await txn.delete('vente_items', where: 'vente_id = ?', whereArgs: [v.id]);
 
-      // 4. Insert updated items and deduct updated stock
       for (final item in v.items) {
-        await txn.insert('vente_items', item.toMap(venteIdParam: v.id));
+        final itemMap = item.toMap(venteIdParam: v.id);
+        itemMap['sync_id'] = item.syncId ?? const Uuid().v4();
+        await txn.insert('vente_items', itemMap);
         await txn.rawUpdate(
           'UPDATE products SET quantity = max(0, quantity - ?), updated_at = ? WHERE id = ?',
           [item.quantity, now, item.productId],
         );
       }
 
-      // 5. Get previous vente to know previous clientId if changed
-      final prevVenteMaps = await txn.query(
-        'ventes',
-        where: 'id = ?',
-        whereArgs: [v.id],
-      );
-      final prevClientId = prevVenteMaps.isNotEmpty
-          ? prevVenteMaps.first['client_id'] as int?
-          : null;
+      final prevVenteMaps = await txn.query('ventes', where: 'id = ?', whereArgs: [v.id]);
+      final prevClientId = prevVenteMaps.isNotEmpty ? prevVenteMaps.first['client_id'] as int? : null;
 
-      // 6. Update the vente record
       await txn.update(
         'ventes',
         {
@@ -1220,12 +1568,13 @@ class DatabaseHelper {
           'payment_method': v.paymentMethod,
           'notes': v.notes,
           'date': v.date.toIso8601String(),
+          'updated_at': now,
+          'sync_status': 'pending_update',
         },
         where: 'id = ?',
         whereArgs: [v.id],
       );
 
-      // 7. Update client balance(s)
       final clientsToUpdate = <int>{};
       if (prevClientId != null) clientsToUpdate.add(prevClientId);
       if (v.clientId != null) clientsToUpdate.add(v.clientId!);
@@ -1235,12 +1584,16 @@ class DatabaseHelper {
           'SELECT COALESCE(SUM(total_amount - paid_amount), 0) as total_debt FROM ventes WHERE client_id = ? AND paid_amount < total_amount',
           [cId],
         );
-        final newBalance =
-            (sumRes.first['total_debt'] as num?)?.toDouble() ?? 0.0;
+        final newBalance = (sumRes.first['total_debt'] as num?)?.toDouble() ?? 0.0;
         await txn.rawUpdate(
-          'UPDATE clients SET balance = ? WHERE id = ?',
-          [newBalance, cId],
+          "UPDATE clients SET balance = ?, updated_at = ?, sync_status = 'pending_update' WHERE id = ?",
+          [newBalance, now, cId],
         );
+      }
+
+      final payload = await _buildVenteSyncPayloadById(txn, v.id!);
+      if (payload != null) {
+        await _enqueueSync(txn, 'vente', venteSyncId, 'UPDATE', payload);
       }
     });
   }
@@ -1249,6 +1602,9 @@ class DatabaseHelper {
     final db = await database;
     return db.transaction((txn) async {
       final now = DateTime.now().toIso8601String();
+      final deletePayload = v.id != null
+          ? await _buildVenteSyncPayloadById(txn, v.id!, status: 'cancelled', deletedAt: now)
+          : null;
 
       final itemMaps = await txn.query('vente_items', where: 'vente_id = ?', whereArgs: [v.id]);
       final items = itemMaps.map((m) => VenteItem.fromMap(m)).toList();
@@ -1270,11 +1626,14 @@ class DatabaseHelper {
         );
         final newBalance = (sumRes.first['total_debt'] as num?)?.toDouble() ?? 0.0;
         await txn.rawUpdate(
-          'UPDATE clients SET balance = ? WHERE id = ?',
-          [newBalance, v.clientId],
+          "UPDATE clients SET balance = ?, updated_at = ?, sync_status = 'pending_update' WHERE id = ?",
+          [newBalance, now, v.clientId],
         );
       }
 
+      if (deletePayload != null) {
+        await _enqueueSync(txn, 'vente', deletePayload['sync_id'] as String, 'DELETE', deletePayload);
+      }
       return deletedCount;
     });
   }
@@ -1286,59 +1645,129 @@ class DatabaseHelper {
     return maps.map((m) => Client.fromMap(m)).toList();
   }
 
+  Map<String, dynamic> _clientSyncPayload(
+    Client client,
+    String syncId,
+    String now, {
+    String? userId,
+    String? userName,
+    String? deletedAt,
+  }) =>
+      {
+        'sync_id': syncId,
+        'name': client.name,
+        'phone': client.phone,
+        'email': client.email,
+        'address': client.address,
+        'balance': client.balance,
+        'notes': client.notes,
+        if (userId != null) 'user_id': userId,
+        if (userName != null) 'user_name': userName,
+        'updated_at': now,
+        if (deletedAt != null) 'deleted_at': deletedAt,
+      };
+
   Future<int> insertClient(Client client) async {
     final db = await database;
-    String? userId;
-    String? userName;
-    try {
-      final activeUser = await SecureStorageService.getUser();
-      userId = activeUser?.id;
-      userName = activeUser?.fullName ?? activeUser?.username;
-    } catch (_) {}
+    final userMeta = await _activeUserMeta();
 
-    final clientMap = client.toMap();
-    if (userId != null) clientMap['user_id'] = userId;
-    if (userName != null) clientMap['user_name'] = userName;
-
-    final clientId = await db.insert('clients', clientMap);
-
-    try {
-      final auditSyncId = const Uuid().v4();
+    return db.transaction((txn) async {
       final now = DateTime.now().toIso8601String();
-      await db.insert('audit_logs', {
+      final syncId = const Uuid().v4();
+      final clientMap = client.toMap();
+      clientMap['sync_id'] = syncId;
+      clientMap['sync_status'] = 'pending_insert';
+      clientMap['updated_at'] = now;
+      if (userMeta.userId != null) clientMap['user_id'] = userMeta.userId;
+      if (userMeta.userName != null) clientMap['user_name'] = userMeta.userName;
+
+      final clientId = await txn.insert('clients', clientMap);
+      await _enqueueSync(
+        txn,
+        'client',
+        syncId,
+        'INSERT',
+        _clientSyncPayload(client, syncId, now, userId: userMeta.userId, userName: userMeta.userName),
+      );
+
+      final auditSyncId = const Uuid().v4();
+      final auditDetails = {
+        'name': client.name,
+        'phone': client.phone,
+        'balance': client.balance,
+      };
+      await txn.insert('audit_logs', {
         'sync_id': auditSyncId,
-        'user_id': userId,
-        'user_name': userName,
+        'user_id': userMeta.userId,
+        'user_name': userMeta.userName,
         'action': 'CLIENT_CREATE',
         'entity_type': 'client',
-        'entity_id': clientId.toString(),
-        'details': jsonEncode({
-          'name': client.name,
-          'phone': client.phone,
-          'balance': client.balance,
-        }),
+        'entity_id': syncId,
+        'details': jsonEncode(auditDetails),
         'created_at': now,
         'sync_status': 'pending',
       });
-    } catch (_) {}
+      await _enqueueSync(txn, 'audit_log', auditSyncId, 'INSERT', {
+        'sync_id': auditSyncId,
+        'user_id': userMeta.userId,
+        'user_name': userMeta.userName,
+        'action': 'CLIENT_CREATE',
+        'entity_type': 'client',
+        'entity_id': syncId,
+        'details': auditDetails,
+        'created_at': now,
+      });
 
-    return clientId;
+      return clientId;
+    });
   }
 
   Future<int> updateClient(Client client) async {
     final db = await database;
-    return db.update('clients', client.toMap(), where: 'id = ?', whereArgs: [client.id]);
+    return db.transaction((txn) async {
+      final now = DateTime.now().toIso8601String();
+      final syncId = await _resolveSyncId(txn, 'clients', client.id!);
+      final map = client.toMap();
+      map['sync_status'] = 'pending_update';
+      map['updated_at'] = now;
+      final res = await txn.update('clients', map, where: 'id = ?', whereArgs: [client.id]);
+      await _enqueueSync(txn, 'client', syncId, 'UPDATE', _clientSyncPayload(client, syncId, now));
+      return res;
+    });
   }
 
   Future<int> deleteClient(int id) async {
     final db = await database;
-    return db.delete('clients', where: 'id = ?', whereArgs: [id]);
+    return db.transaction((txn) async {
+      final rows = await txn.query('clients', where: 'id = ?', whereArgs: [id]);
+      final res = await txn.delete('clients', where: 'id = ?', whereArgs: [id]);
+      if (rows.isNotEmpty) {
+        final r = rows.first;
+        final syncId = r['sync_id'] as String?;
+        if (syncId != null && syncId.isNotEmpty) {
+          final now = DateTime.now().toIso8601String();
+          await _enqueueSync(txn, 'client', syncId, 'DELETE', {
+            'sync_id': syncId,
+            'name': r['name'] ?? '',
+            'phone': r['phone'],
+            'email': r['email'],
+            'address': r['address'],
+            'balance': (r['balance'] as num?)?.toDouble() ?? 0.0,
+            'notes': r['notes'],
+            'updated_at': now,
+            'deleted_at': now,
+          });
+        }
+      }
+      return res;
+    });
   }
 
   Future<void> recordClientPayment(int clientId, double amount) async {
     final db = await database;
+    final userMeta = await _activeUserMeta();
     await db.transaction((txn) async {
-      // 1. Fetch all unpaid credit sales for this client (FIFO order: oldest sales first)
+      final now = DateTime.now().toIso8601String();
       final salesMaps = await txn.query(
         'ventes',
         where: 'client_id = ? AND paid_amount < total_amount',
@@ -1347,6 +1776,7 @@ class DatabaseHelper {
       );
 
       double remainingPayment = amount;
+      final updatedVenteIds = <int>[];
 
       for (final map in salesMaps) {
         if (remainingPayment <= 0) break;
@@ -1360,47 +1790,77 @@ class DatabaseHelper {
           final newPaid = paid + allocated;
           await txn.update(
             'ventes',
-            {'paid_amount': newPaid},
+            {'paid_amount': newPaid, 'updated_at': now, 'sync_status': 'pending_update'},
             where: 'id = ?',
             whereArgs: [id],
           );
+          updatedVenteIds.add(id);
           remainingPayment -= allocated;
         }
       }
 
-      // 2. Recalculate client's total balance from unpaid sales
+      for (final vId in updatedVenteIds) {
+        final vPayload = await _buildVenteSyncPayloadById(txn, vId);
+        if (vPayload != null) {
+          await _enqueueSync(txn, 'vente', vPayload['sync_id'] as String, 'UPDATE', vPayload);
+        }
+      }
+
       final sumRes = await txn.rawQuery(
         'SELECT COALESCE(SUM(total_amount - paid_amount), 0) as total_debt FROM ventes WHERE client_id = ? AND paid_amount < total_amount',
         [clientId],
       );
       final newBalance = (sumRes.first['total_debt'] as num?)?.toDouble() ?? 0.0;
 
+      final clientSyncId = await _resolveSyncId(txn, 'clients', clientId);
       await txn.rawUpdate(
-        'UPDATE clients SET balance = ? WHERE id = ?',
-        [newBalance, clientId],
+        "UPDATE clients SET balance = ?, updated_at = ?, sync_status = 'pending_update' WHERE id = ?",
+        [newBalance, now, clientId],
       );
-
-      // Audit log pour le règlement de dette
-      try {
-        final activeUser = await SecureStorageService.getUser();
-        final now = DateTime.now().toIso8601String();
-        final auditSyncId = const Uuid().v4();
-        await txn.insert('audit_logs', {
-          'sync_id': auditSyncId,
-          'user_id': activeUser?.id,
-          'user_name': activeUser?.fullName ?? activeUser?.username,
-          'action': 'DEBT_PAYMENT',
-          'entity_type': 'client',
-          'entity_id': clientId.toString(),
-          'details': jsonEncode({
-            'client_id': clientId,
-            'amount_paid': amount,
-            'new_balance': newBalance,
-          }),
-          'created_at': now,
-          'sync_status': 'pending',
+      final cRows = await txn.query('clients', where: 'id = ?', whereArgs: [clientId]);
+      if (cRows.isNotEmpty) {
+        final cr = cRows.first;
+        await _enqueueSync(txn, 'client', clientSyncId, 'UPDATE', {
+          'sync_id': clientSyncId,
+          'name': cr['name'] ?? '',
+          'phone': cr['phone'],
+          'email': cr['email'],
+          'address': cr['address'],
+          'balance': newBalance,
+          'notes': cr['notes'],
+          'user_id': cr['user_id'] ?? userMeta.userId,
+          'user_name': cr['user_name'] ?? userMeta.userName,
+          'updated_at': DateTime.now().add(const Duration(milliseconds: 1)).toIso8601String(),
         });
-      } catch (_) {}
+      }
+
+      final auditSyncId = const Uuid().v4();
+      final auditDetails = {
+        'client_id': clientSyncId,
+        'amount_paid': amount,
+        'new_balance': newBalance,
+      };
+      await txn.insert('audit_logs', {
+        'sync_id': auditSyncId,
+        'user_id': userMeta.userId,
+        'user_name': userMeta.userName,
+        'action': 'DEBT_PAYMENT',
+        'entity_type': 'client',
+        'entity_id': clientSyncId,
+        'details': jsonEncode(auditDetails),
+        'created_at': now,
+        'sync_status': 'pending',
+      });
+      await _enqueueSync(txn, 'audit_log', auditSyncId, 'INSERT', {
+        'sync_id': auditSyncId,
+        'user_id': userMeta.userId,
+        'user_name': userMeta.userName,
+        'action': 'DEBT_PAYMENT',
+        'entity_type': 'client',
+        'entity_id': clientSyncId,
+        'details': auditDetails,
+        'created_at': now,
+      });
     });
   }
 
@@ -1411,24 +1871,86 @@ class DatabaseHelper {
     return maps.map((m) => Supplier.fromMap(m)).toList();
   }
 
+  Map<String, dynamic> _supplierSyncPayload(
+    Supplier supplier,
+    String syncId,
+    String now, {
+    String? deletedAt,
+  }) =>
+      {
+        'sync_id': syncId,
+        'name': supplier.name,
+        'contact_person': supplier.contactPerson,
+        'phone': supplier.phone,
+        'email': supplier.email,
+        'address': supplier.address,
+        'balance': supplier.balance,
+        'notes': supplier.notes,
+        'updated_at': now,
+        if (deletedAt != null) 'deleted_at': deletedAt,
+      };
+
   Future<int> insertSupplier(Supplier supplier) async {
     final db = await database;
-    return db.insert('suppliers', supplier.toMap());
+    return db.transaction((txn) async {
+      final now = DateTime.now().toIso8601String();
+      final syncId = const Uuid().v4();
+      final map = supplier.toMap();
+      map['sync_id'] = syncId;
+      map['sync_status'] = 'pending_insert';
+      map['updated_at'] = now;
+      final id = await txn.insert('suppliers', map);
+      await _enqueueSync(txn, 'supplier', syncId, 'INSERT', _supplierSyncPayload(supplier, syncId, now));
+      return id;
+    });
   }
 
   Future<int> updateSupplier(Supplier supplier) async {
     final db = await database;
-    return db.update('suppliers', supplier.toMap(), where: 'id = ?', whereArgs: [supplier.id]);
+    return db.transaction((txn) async {
+      final now = DateTime.now().toIso8601String();
+      final syncId = await _resolveSyncId(txn, 'suppliers', supplier.id!);
+      final map = supplier.toMap();
+      map['sync_status'] = 'pending_update';
+      map['updated_at'] = now;
+      final res = await txn.update('suppliers', map, where: 'id = ?', whereArgs: [supplier.id]);
+      await _enqueueSync(txn, 'supplier', syncId, 'UPDATE', _supplierSyncPayload(supplier, syncId, now));
+      return res;
+    });
   }
 
   Future<int> deleteSupplier(int id) async {
     final db = await database;
-    return db.delete('suppliers', where: 'id = ?', whereArgs: [id]);
+    return db.transaction((txn) async {
+      final rows = await txn.query('suppliers', where: 'id = ?', whereArgs: [id]);
+      final res = await txn.delete('suppliers', where: 'id = ?', whereArgs: [id]);
+      if (rows.isNotEmpty) {
+        final r = rows.first;
+        final syncId = r['sync_id'] as String?;
+        if (syncId != null && syncId.isNotEmpty) {
+          final now = DateTime.now().toIso8601String();
+          await _enqueueSync(txn, 'supplier', syncId, 'DELETE', {
+            'sync_id': syncId,
+            'name': r['name'] ?? '',
+            'contact_person': r['contact_person'],
+            'phone': r['phone'],
+            'email': r['email'],
+            'address': r['address'],
+            'balance': (r['balance'] as num?)?.toDouble() ?? 0.0,
+            'notes': r['notes'],
+            'updated_at': now,
+            'deleted_at': now,
+          });
+        }
+      }
+      return res;
+    });
   }
 
   Future<void> recordSupplierPayment(int supplierId, double amount) async {
     final db = await database;
     await db.transaction((txn) async {
+      final now = DateTime.now().toIso8601String();
       final appMaps = await txn.query(
         'approvisionnements',
         where: 'supplier_id = ? AND paid_amount < total',
@@ -1437,6 +1959,7 @@ class DatabaseHelper {
       );
 
       double remainingPayment = amount;
+      final updatedApproIds = <int>[];
 
       for (final map in appMaps) {
         if (remainingPayment <= 0) break;
@@ -1450,11 +1973,39 @@ class DatabaseHelper {
           final newPaid = paid + allocated;
           await txn.update(
             'approvisionnements',
-            {'paid_amount': newPaid},
+            {'paid_amount': newPaid, 'updated_at': now, 'sync_status': 'pending_update'},
             where: 'id = ?',
             whereArgs: [id],
           );
+          updatedApproIds.add(id);
           remainingPayment -= allocated;
+        }
+      }
+
+      for (final aId in updatedApproIds) {
+        final aRows = await txn.query('approvisionnements', where: 'id = ?', whereArgs: [aId]);
+        if (aRows.isNotEmpty) {
+          final ar = aRows.first;
+          final aSyncId = await _resolveSyncId(txn, 'approvisionnements', aId);
+          final prodRows = await txn.query('products', columns: ['sync_id', 'name'], where: 'id = ?', whereArgs: [ar['product_id']]);
+          final supSyncId = await _findSyncId(txn, 'suppliers', supplierId);
+          final paidVal = (ar['paid_amount'] as num?)?.toDouble() ?? 0.0;
+          final totVal = (ar['total'] as num?)?.toDouble() ?? 0.0;
+          await _enqueueSync(txn, 'approvisionnement', aSyncId, 'UPDATE', {
+            'sync_id': aSyncId,
+            'supplier_sync_id': supSyncId,
+            'supplier_name': ar['supplier'],
+            'product_sync_id': prodRows.isNotEmpty ? prodRows.first['sync_id'] : null,
+            'product_name': prodRows.isNotEmpty ? (prodRows.first['name'] ?? 'Article') : 'Article',
+            'quantity': (ar['quantity'] as num?)?.toDouble() ?? 0.0,
+            'unit_cost': (ar['unit_price'] as num?)?.toDouble() ?? 0.0,
+            'total_cost': totVal,
+            'paid_amount': paidVal,
+            'payment_status': paidVal < totVal ? 'Crédit' : 'Payé',
+            'date': ar['date'] ?? now,
+            'notes': ar['notes'],
+            'updated_at': now,
+          });
         }
       }
 
@@ -1464,10 +2015,26 @@ class DatabaseHelper {
       );
       final newBalance = (sumRes.first['total_debt'] as num?)?.toDouble() ?? 0.0;
 
+      final supSyncId = await _resolveSyncId(txn, 'suppliers', supplierId);
       await txn.rawUpdate(
-        'UPDATE suppliers SET balance = ? WHERE id = ?',
-        [newBalance, supplierId],
+        "UPDATE suppliers SET balance = ?, updated_at = ?, sync_status = 'pending_update' WHERE id = ?",
+        [newBalance, now, supplierId],
       );
+      final sRows = await txn.query('suppliers', where: 'id = ?', whereArgs: [supplierId]);
+      if (sRows.isNotEmpty) {
+        final sr = sRows.first;
+        await _enqueueSync(txn, 'supplier', supSyncId, 'UPDATE', {
+          'sync_id': supSyncId,
+          'name': sr['name'] ?? '',
+          'contact_person': sr['contact_person'],
+          'phone': sr['phone'],
+          'email': sr['email'],
+          'address': sr['address'],
+          'balance': newBalance,
+          'notes': sr['notes'],
+          'updated_at': DateTime.now().add(const Duration(milliseconds: 1)).toIso8601String(),
+        });
+      }
     });
   }
 }
