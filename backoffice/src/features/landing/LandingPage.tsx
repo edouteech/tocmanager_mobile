@@ -46,6 +46,9 @@ export const LandingPage: React.FC = () => {
             <a href="#faq" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition">
               FAQ
             </a>
+            <Link to="/contact" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition">
+              Contact
+            </Link>
           </nav>
 
           <div className="flex items-center gap-3">
@@ -332,9 +335,9 @@ export const LandingPage: React.FC = () => {
             <span>• © 2026 Tous droits réservés</span>
           </div>
           <div className="flex items-center gap-6">
-            <Link to="/tarifs" className="hover:text-indigo-600 transition">Tarifs</Link>
-            <Link to="/login" className="hover:text-indigo-600 transition">Espace Client</Link>
-            <Link to="/admin" className="hover:text-indigo-600 transition">Portail Super-Admin</Link>
+            <Link to="/tarifs" className="hover:text-[#29ABE2] transition">Tarifs</Link>
+            <Link to="/contact" className="hover:text-[#29ABE2] transition">Contact</Link>
+            <Link to="/login" className="hover:text-[#29ABE2] transition">Espace Client</Link>
           </div>
         </div>
       </footer>

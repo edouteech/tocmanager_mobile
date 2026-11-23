@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
 import {
   AuthResponse,
   DashboardStats,
@@ -28,6 +28,8 @@ import {
   StockMovement,
   CashRegisterSession,
   PaymentLedgerItem,
+  ProvisionTenantResponse,
+  PublicContactRequest,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -38,6 +40,42 @@ export const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+const PUBLIC_AUTH_PATHS = ['/auth/login', '/auth/refresh', '/saas/auth/register-credentials'];
+
+const isPublicAuthEndpoint = (url?: string): boolean => {
+  if (!url) return false;
+  return PUBLIC_AUTH_PATHS.some((path) => url.includes(path));
+};
+
+type QueuedRequest = {
+  resolve: (token: string) => void;
+  reject: (err: unknown) => void;
+};
+
+let isRefreshing = false;
+let failedQueue: QueuedRequest[] = [];
+
+const processQueue = (error: unknown, token: string | null) => {
+  failedQueue.forEach((prom) => {
+    if (error || !token) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
+const clearAuthStorageAndRedirect = () => {
+  localStorage.removeItem('toc_access_token');
+  localStorage.removeItem('toc_refresh_token');
+  localStorage.removeItem('toc_user');
+  localStorage.removeItem('toc_pin_locked');
+  if (window.location.pathname !== '/login') {
+    window.location.href = '/login';
+  }
+};
 
 // Request interceptor to attach Bearer token and active Tenant context
 api.interceptors.request.use((config) => {
@@ -61,37 +99,63 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor to handle token expiration & automatic refresh
+// Response interceptor to handle token expiration with single-flight refresh mutex
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      const refreshToken = localStorage.getItem('toc_refresh_token');
-      if (refreshToken) {
-        try {
-          const res = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-            refresh_token: refreshToken,
-          });
-          const { access_token, refresh_token: newRefresh } = res.data;
-          localStorage.setItem('toc_access_token', access_token);
-          if (newRefresh) {
-            localStorage.setItem('toc_refresh_token', newRefresh);
-          }
-          originalRequest.headers.Authorization = `Bearer ${access_token}`;
+    const originalRequest = error.config as (AxiosRequestConfig & { _retry?: boolean }) | undefined;
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !isPublicAuthEndpoint(originalRequest.url)
+    ) {
+      if (isRefreshing) {
+        return new Promise<string>((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then((newToken) => {
+          originalRequest.headers = originalRequest.headers || {};
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
           return api(originalRequest);
-        } catch (refreshErr) {
-          localStorage.removeItem('toc_access_token');
-          localStorage.removeItem('toc_refresh_token');
-          window.location.href = '/login';
-          return Promise.reject(refreshErr);
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      const refreshToken = localStorage.getItem('toc_refresh_token');
+      if (!refreshToken) {
+        isRefreshing = false;
+        processQueue(error, null);
+        clearAuthStorageAndRedirect();
+        return Promise.reject(error);
+      }
+
+      try {
+        const res = await axios.post<AuthResponse>(`${API_BASE_URL}/auth/refresh`, {
+          refresh_token: refreshToken,
+        });
+        const { access_token, refresh_token: newRefresh, user } = res.data;
+        localStorage.setItem('toc_access_token', access_token);
+        if (newRefresh) {
+          localStorage.setItem('toc_refresh_token', newRefresh);
         }
-      } else {
-        localStorage.removeItem('toc_access_token');
-        window.location.href = '/login';
+        if (user) {
+          localStorage.setItem('toc_user', JSON.stringify(user));
+        }
+        processQueue(null, access_token);
+        originalRequest.headers = originalRequest.headers || {};
+        originalRequest.headers.Authorization = `Bearer ${access_token}`;
+        return api(originalRequest);
+      } catch (refreshErr) {
+        processQueue(refreshErr, null);
+        clearAuthStorageAndRedirect();
+        return Promise.reject(refreshErr);
+      } finally {
+        isRefreshing = false;
       }
     }
+
     if (error.response?.status === 403) {
       const detail = error.response?.data?.detail;
       if (
@@ -300,7 +364,10 @@ export const saasApi = {
     phone?: string;
     magasin_name?: string;
     plan_code?: string;
-  }) => api.post('/saas/tenant/provision', data).then((r) => r.data),
+    billing_cycle?: 'monthly' | 'yearly';
+  }) => api.post<ProvisionTenantResponse>('/saas/tenant/provision', data).then((r) => r.data),
+  sendContact: (data: PublicContactRequest) =>
+    api.post<{ success: boolean; message: string }>('/saas/contact', data).then((r) => r.data),
 };
 
 export const billingApi = {

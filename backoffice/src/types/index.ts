@@ -488,3 +488,27 @@ export interface PlatformKPIs {
   total_gmv: number;
   currency: string;
 }
+
+export interface ProvisionTenantResponse {
+  success: boolean;
+  message: string;
+  boutique_id: string;
+  boutique_name: string;
+  magasin_id: string;
+  magasin_name: string;
+  plan_name: string;
+  trial_active: boolean;
+  trial_days: number;
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  user: UserBrief;
+}
+
+export interface PublicContactRequest {
+  full_name: string;
+  email: string;
+  company?: string;
+  phone?: string;
+  message: string;
+}

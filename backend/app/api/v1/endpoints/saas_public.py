@@ -8,14 +8,16 @@ from app.core.database import get_db
 from app.core.rate_limit import limiter
 from app.core.security import get_password_hash, create_access_token
 from app.models import (
-    User, Boutique, BoutiqueUserMembership, Magasin, SaasPlan, SaasSubscription
+    User, Boutique, BoutiqueUserMembership, Magasin, SaasPlan, SaasSubscription, PlatformAuditLog
 )
 from app.schemas.saas import (
     FeatureCatalogItemOut,
+    PublicContactRequest,
     SaasPlanOut,
     RegisterCredentialsRequest,
     ProvisionTenantRequest,
 )
+from app.services.auth_service import issue_token_pair, user_to_brief
 from app.services.feature_catalog import serialize_feature_catalog
 from app.api.deps import get_onboarding_user
 
@@ -137,31 +139,34 @@ def provision_tenant(
     now = datetime.now(timezone.utc)
     trial_days = plan.trial_period_days if plan else 0
     trial_active = trial_days > 0
+    billing_cycle = payload.billing_cycle if payload.billing_cycle in ("monthly", "yearly") else "monthly"
+    period_days = trial_days if trial_active else (365 if billing_cycle == "yearly" else 30)
 
     boutique.has_used_trial = trial_active
     subscription = SaasSubscription(
         boutique_id=boutique.id,
         plan_id=plan.id if plan else "free",
         status="trialing" if trial_active else "active",
-        billing_cycle="monthly",
+        billing_cycle=billing_cycle,
         has_used_trial=trial_active,
         trial_starts_at=now if trial_active else None,
         trial_ends_at=(now + timedelta(days=trial_days)) if trial_active else None,
         current_period_start=now,
-        current_period_end=now + timedelta(days=30),
+        current_period_end=now + timedelta(days=period_days),
     )
     db.add(subscription)
-    db.commit()
+    db.flush()
 
-    # Génération du token final d'accès client
-    final_token = create_access_token(
-        data={
-            "sub": current_user.id,
+    final_token, refresh_tok, _ = issue_token_pair(
+        db,
+        current_user,
+        access_data={
             "role": current_user.role,
             "current_boutique_id": boutique.id,
-            "current_magasin_id": magasin.id
-        }
+            "current_magasin_id": magasin.id,
+        },
     )
+    db.commit()
 
     return {
         "success": True,
@@ -174,5 +179,32 @@ def provision_tenant(
         "trial_active": trial_active,
         "trial_days": trial_days,
         "access_token": final_token,
+        "refresh_token": refresh_tok,
         "token_type": "bearer",
+        "user": user_to_brief(current_user),
+    }
+
+
+@router.post("/contact")
+@limiter.limit("5/minute")
+def submit_public_contact(
+    request: Request,
+    payload: PublicContactRequest,
+    db: Session = Depends(get_db),
+):
+    """Receive a public contact / enterprise demo inquiry."""
+    _ = request
+    db.add(
+        PlatformAuditLog(
+            admin_username=payload.email,
+            action="PUBLIC_CONTACT_MESSAGE",
+            target_entity="contact",
+            target_id=None,
+            details=payload.model_dump(),
+        )
+    )
+    db.commit()
+    return {
+        "success": True,
+        "message": "Votre message a bien été reçu. Notre équipe vous contactera rapidement.",
     }

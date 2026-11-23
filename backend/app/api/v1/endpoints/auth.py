@@ -4,7 +4,6 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.api import deps
 from app.core.database import get_db
-from app.core.permissions import get_permissions_for_role
 from app.core.rate_limit import limiter
 from app.core.security import verify_password, get_password_hash, hash_pin
 from app.models import User, AuditLog
@@ -22,23 +21,12 @@ from app.services.auth_service import (
     rotate_refresh_token,
     logout_user_sessions,
     revoke_all_user_tokens,
+    user_to_brief,
     verify_user_pin_attempt,
 )
 from app.services.tenant_context_service import resolve_audit_boutique_id
 
 router = APIRouter()
-
-
-def _user_to_brief(user: User) -> UserBrief:
-    return UserBrief(
-        id=user.id,
-        username=user.username,
-        email=user.email,
-        full_name=user.full_name,
-        role=user.role,
-        permissions=get_permissions_for_role(user.role, user.permissions),
-        has_pin=bool(user.pin_hash),
-    )
 
 
 def _execute_login(login_data: LoginRequest, db: Session) -> Token:
@@ -75,7 +63,7 @@ def _execute_login(login_data: LoginRequest, db: Session) -> Token:
         access_token=access_token,
         refresh_token=refresh_tok,
         token_type="bearer",
-        user=_user_to_brief(user),
+        user=user_to_brief(user),
     )
 
 
@@ -120,7 +108,7 @@ def refresh_token(
         access_token=new_access,
         refresh_token=new_refresh,
         token_type="bearer",
-        user=_user_to_brief(user),
+        user=user_to_brief(user),
     )
 
 
@@ -151,7 +139,7 @@ def verify_user_pin(
     """Vérification du code PIN pour déverrouiller la session courante."""
     _ = request
     verified_user = verify_user_pin_attempt(db, current_user, pin_data.pin)
-    return _user_to_brief(verified_user)
+    return user_to_brief(verified_user)
 
 
 @router.post("/set-pin", response_model=UserBrief)
@@ -181,7 +169,7 @@ def set_user_pin(
     ))
     db.commit()
     db.refresh(current_user)
-    return _user_to_brief(current_user)
+    return user_to_brief(current_user)
 
 
 @router.get("/me", response_model=UserBrief)
@@ -189,4 +177,4 @@ def get_current_user_profile(
     current_user: User = Depends(deps.get_onboarding_user),
 ) -> Any:
     """Récupère les informations du profil utilisateur connecté."""
-    return _user_to_brief(current_user)
+    return user_to_brief(current_user)

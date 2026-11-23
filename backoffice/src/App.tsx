@@ -12,6 +12,7 @@ import { ProtectedRoute } from './components/layout/ProtectedRoute';
 // Landing & Public SaaS Pages
 import { LandingPage } from './features/landing/LandingPage';
 import { PricingPage } from './features/landing/PricingPage';
+import { ContactPage } from './features/landing/ContactPage';
 import { RegisterPage } from './features/landing/RegisterPage';
 import { LoginPage } from './features/auth/LoginPage';
 
@@ -68,6 +69,7 @@ export const App: React.FC = () => {
                 {/* Public Marketing & Pricing Pages */}
                 <Route path="/landing" element={<LandingPage />} />
                 <Route path="/tarifs" element={<PricingPage />} />
+                <Route path="/contact" element={<ContactPage />} />
                 <Route path="/inscription" element={<RegisterPage />} />
                 <Route path="/login" element={<LoginPage />} />
 
