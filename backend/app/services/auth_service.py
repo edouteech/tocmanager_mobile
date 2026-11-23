@@ -16,6 +16,7 @@ from app.core.security import (
     verify_pin,
 )
 from app.models import AuditLog, RefreshToken, User
+from app.services.tenant_context_service import resolve_audit_boutique_id
 
 MAX_PIN_ATTEMPTS = 5
 PIN_LOCK_MINUTES = 15
@@ -122,6 +123,7 @@ def rotate_refresh_token(db: Session, raw_refresh_token: str) -> Tuple[User, str
     stored.replaced_by_id = new_record.id
 
     db.add(AuditLog(
+        boutique_id=resolve_audit_boutique_id(db, user),
         user_id=user.id,
         user_name=user.full_name or user.username,
         action="TOKEN_REFRESH",
@@ -167,6 +169,7 @@ def logout_user_sessions(
             pass
 
     db.add(AuditLog(
+        boutique_id=resolve_audit_boutique_id(db, user),
         user_id=user.id,
         user_name=user.full_name or user.username,
         action="LOGOUT",
@@ -213,6 +216,7 @@ def verify_user_pin_attempt(db: Session, user: User, plain_pin: str) -> User:
         user.pin_hash = hash_pin(plain_pin)
 
     db.add(AuditLog(
+        boutique_id=resolve_audit_boutique_id(db, user),
         user_id=user.id,
         user_name=user.full_name or user.username,
         action="PIN_VERIFY",

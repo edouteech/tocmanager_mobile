@@ -6,8 +6,8 @@ client = TestClient(app)
 
 def get_auth_token():
     res = client.post("/api/v1/auth/login", json={
-        "username_or_email": "admin",
-        "password": "admin1234",
+        "username_or_email": "commercant",
+        "password": "commercant1234",
     })
     assert res.status_code == 200
     return res.json()["access_token"]

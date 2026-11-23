@@ -9,8 +9,10 @@ from app.api import deps
 from app.core.database import get_db
 from app.models import Supplier, AuditLog, User
 from app.schemas.entities import SupplierCreate, SupplierUpdate, SupplierResponse, SupplierPaymentRequest
+from app.services.tenant_context_service import TenantContext
 
 router = APIRouter()
+
 
 @router.get("", response_model=List[SupplierResponse])
 def list_suppliers(
@@ -18,12 +20,12 @@ def list_suppliers(
     only_creditors: bool = Query(False, description="Fournisseurs à qui on doit de l'argent"),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    current_user: User = Depends(deps.get_current_user),
+    ctx: TenantContext = Depends(deps.get_tenant_context),
     db: Session = Depends(get_db),
 ):
-    """Liste les fournisseurs avec recherche et filtre de dettes."""
-    query = db.query(Supplier).filter(Supplier.deleted_at.is_(None))
-
+    query = db.query(Supplier).filter(
+        Supplier.boutique_id == ctx.boutique.id, Supplier.deleted_at.is_(None)
+    )
     if q:
         search = f"%{q.strip()}%"
         query = query.filter(
@@ -33,22 +35,22 @@ def list_suppliers(
                 Supplier.phone.ilike(search),
             )
         )
-
     if only_creditors:
         query = query.filter(Supplier.balance > 0)
-
     return query.order_by(Supplier.name.asc()).offset(offset).limit(limit).all()
+
 
 @router.post("", response_model=SupplierResponse, status_code=status.HTTP_201_CREATED)
 def create_supplier(
     supplier_in: SupplierCreate,
+    ctx: TenantContext = Depends(deps.get_tenant_context),
     current_user: User = Depends(deps.require_role(["admin", "manager"])),
     db: Session = Depends(get_db),
 ):
-    """Enregistre un nouveau fournisseur."""
     now = datetime.now(timezone.utc)
     supplier = Supplier(
         sync_id=str(uuid.uuid4()),
+        boutique_id=ctx.boutique.id,
         name=supplier_in.name.strip(),
         contact_person=supplier_in.contact_person,
         phone=supplier_in.phone,
@@ -65,6 +67,7 @@ def create_supplier(
     db.flush()
 
     db.add(AuditLog(
+        boutique_id=ctx.boutique.id,
         user_id=current_user.id,
         user_name=current_user.full_name or current_user.username,
         action="SUPPLIER_CREATE",
@@ -77,27 +80,44 @@ def create_supplier(
     db.refresh(supplier)
     return supplier
 
+
 @router.get("/{sync_id}", response_model=SupplierResponse)
 def get_supplier(
     sync_id: str,
-    current_user: User = Depends(deps.get_current_user),
+    ctx: TenantContext = Depends(deps.get_tenant_context),
     db: Session = Depends(get_db),
 ):
-    """Détail d'un fournisseur."""
-    supplier = db.query(Supplier).filter(Supplier.sync_id == sync_id, Supplier.deleted_at.is_(None)).first()
+    supplier = (
+        db.query(Supplier)
+        .filter(
+            Supplier.sync_id == sync_id,
+            Supplier.boutique_id == ctx.boutique.id,
+            Supplier.deleted_at.is_(None),
+        )
+        .first()
+    )
     if not supplier:
         raise HTTPException(status_code=404, detail="Fournisseur introuvable")
     return supplier
+
 
 @router.put("/{sync_id}", response_model=SupplierResponse)
 def update_supplier(
     sync_id: str,
     supplier_in: SupplierUpdate,
+    ctx: TenantContext = Depends(deps.get_tenant_context),
     current_user: User = Depends(deps.require_role(["admin", "manager"])),
     db: Session = Depends(get_db),
 ):
-    """Modifie les informations d'un fournisseur."""
-    supplier = db.query(Supplier).filter(Supplier.sync_id == sync_id, Supplier.deleted_at.is_(None)).first()
+    supplier = (
+        db.query(Supplier)
+        .filter(
+            Supplier.sync_id == sync_id,
+            Supplier.boutique_id == ctx.boutique.id,
+            Supplier.deleted_at.is_(None),
+        )
+        .first()
+    )
     if not supplier:
         raise HTTPException(status_code=404, detail="Fournisseur introuvable")
 
@@ -109,6 +129,7 @@ def update_supplier(
     supplier.updated_at = now
 
     db.add(AuditLog(
+        boutique_id=ctx.boutique.id,
         user_id=current_user.id,
         user_name=current_user.full_name or current_user.username,
         action="SUPPLIER_UPDATE",
@@ -121,14 +142,23 @@ def update_supplier(
     db.refresh(supplier)
     return supplier
 
+
 @router.delete("/{sync_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 def delete_supplier(
     sync_id: str,
+    ctx: TenantContext = Depends(deps.get_tenant_context),
     current_user: User = Depends(deps.require_role(["admin", "manager"])),
     db: Session = Depends(get_db),
 ):
-    """Suppression logique d'un fournisseur."""
-    supplier = db.query(Supplier).filter(Supplier.sync_id == sync_id, Supplier.deleted_at.is_(None)).first()
+    supplier = (
+        db.query(Supplier)
+        .filter(
+            Supplier.sync_id == sync_id,
+            Supplier.boutique_id == ctx.boutique.id,
+            Supplier.deleted_at.is_(None),
+        )
+        .first()
+    )
     if not supplier:
         raise HTTPException(status_code=404, detail="Fournisseur introuvable")
 
@@ -137,6 +167,7 @@ def delete_supplier(
     supplier.updated_at = now
 
     db.add(AuditLog(
+        boutique_id=ctx.boutique.id,
         user_id=current_user.id,
         user_name=current_user.full_name or current_user.username,
         action="SUPPLIER_DELETE",
@@ -148,15 +179,24 @@ def delete_supplier(
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
+
 @router.post("/{sync_id}/payments", response_model=SupplierResponse)
 def record_supplier_payment(
     sync_id: str,
     payment: SupplierPaymentRequest,
+    ctx: TenantContext = Depends(deps.get_tenant_context),
     current_user: User = Depends(deps.require_role(["admin", "manager"])),
     db: Session = Depends(get_db),
 ):
-    """Enregistre un paiement versé au fournisseur (réduit notre dette envers lui)."""
-    supplier = db.query(Supplier).filter(Supplier.sync_id == sync_id, Supplier.deleted_at.is_(None)).first()
+    supplier = (
+        db.query(Supplier)
+        .filter(
+            Supplier.sync_id == sync_id,
+            Supplier.boutique_id == ctx.boutique.id,
+            Supplier.deleted_at.is_(None),
+        )
+        .first()
+    )
     if not supplier:
         raise HTTPException(status_code=404, detail="Fournisseur introuvable")
 
@@ -168,6 +208,7 @@ def record_supplier_payment(
     supplier.updated_at = now
 
     db.add(AuditLog(
+        boutique_id=ctx.boutique.id,
         user_id=current_user.id,
         user_name=current_user.full_name or current_user.username,
         action="SUPPLIER_PAYMENT",

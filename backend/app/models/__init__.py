@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy import (
-    Column, String, Integer, Float, Boolean, Text, ForeignKey, DateTime, JSON
+    Column, String, Integer, Float, Boolean, Text, ForeignKey, DateTime, JSON, UniqueConstraint
 )
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -220,8 +220,13 @@ class SyncEvent(Base):
 
 class StoreSetting(Base):
     __tablename__ = "store_settings"
+    __table_args__ = (
+        UniqueConstraint("boutique_id", "key", name="uq_store_settings_boutique_key"),
+    )
 
-    key = Column(String(100), primary_key=True)
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    boutique_id = Column(String(36), ForeignKey("boutiques.id", ondelete="CASCADE"), nullable=False, index=True)
+    key = Column(String(100), nullable=False, index=True)
     value = Column(Text, nullable=True)
     description = Column(String(255), nullable=True)
     updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
