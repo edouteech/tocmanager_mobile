@@ -13,6 +13,7 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 # Import SaaS & Multi-Tenant models
+from app.models.auth import RefreshToken
 from app.models.saas import (
     SaasPlan,
     SaasPlanFeature,
@@ -34,6 +35,8 @@ class User(Base):
     full_name = Column(String(255), nullable=True)
     hashed_password = Column(String(255), nullable=False)
     pin_hash = Column(String(255), nullable=True)
+    pin_failed_attempts = Column(Integer, nullable=False, default=0)
+    pin_locked_until = Column(DateTime(timezone=True), nullable=True)
     role = Column(String(50), nullable=False, default="cashier")  # superadmin, merchant, admin, manager, cashier
     permissions = Column(JSON, nullable=True)  # List of allowed permissions
     is_active = Column(Boolean, default=True)

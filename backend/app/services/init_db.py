@@ -28,6 +28,8 @@ def _migrate_columns() -> None:
             add_col_if_missing(table, "user_id", "VARCHAR(36)")
             add_col_if_missing(table, "user_name", "VARCHAR(255)")
         add_col_if_missing("ventes", "user_name", "VARCHAR(255)")
+        add_col_if_missing("users", "pin_failed_attempts", "INTEGER DEFAULT 0")
+        add_col_if_missing("users", "pin_locked_until", "DATETIME")
 
         for table in (
             "categories", "products", "clients", "suppliers",
