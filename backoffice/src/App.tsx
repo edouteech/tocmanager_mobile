@@ -39,6 +39,8 @@ import { SubscriptionPage } from './features/subscription/SubscriptionPage';
 import { AdminDashboardPage } from './features/admin/AdminDashboardPage';
 import { AdminPlansPage } from './features/admin/AdminPlansPage';
 import { AdminBoutiquesPage } from './features/admin/AdminBoutiquesPage';
+import { AdminSubscriptionsPage } from './features/admin/AdminSubscriptionsPage';
+import { AdminAuditPage } from './features/admin/AdminAuditPage';
 
 export const App: React.FC = () => {
   const initFromStorage = useAuthStore((s) => s.initFromStorage);
@@ -77,6 +79,8 @@ export const App: React.FC = () => {
                   <Route index element={<AdminDashboardPage />} />
                   <Route path="plans" element={<AdminPlansPage />} />
                   <Route path="boutiques" element={<AdminBoutiquesPage />} />
+                  <Route path="subscriptions" element={<AdminSubscriptionsPage />} />
+                  <Route path="audit" element={<AdminAuditPage />} />
                 </Route>
 
                 {/* Client Backoffice (Protected Dashboard) */}
