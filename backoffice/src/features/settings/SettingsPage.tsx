@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { settingsApi } from '../../lib/api';
 import { StoreSettings } from '../../types';
+import { CANONICAL_CURRENCIES } from '../../lib/currencies';
 
 export const SettingsPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -105,17 +106,17 @@ export const SettingsPage: React.FC = () => {
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
                 Devise Monétaire Principale *
               </label>
-              <select
-                value={form.currency}
-                onChange={(e) => setForm({ ...form, currency: e.target.value })}
-                className="input-toc bg-white dark:bg-dark-700"
-              >
-                <option value="FCFA">Franc CFA (FCFA / XOF / XAF)</option>
-                <option value="EUR">Euro (€)</option>
-                <option value="USD">Dollar US ($)</option>
-                <option value="GHS">Cedi Ghanéen (GH₵)</option>
-                <option value="NGN">Naira Nigérian (₦)</option>
-              </select>
+                <select
+                  value={form.currency === 'FCFA' ? 'XOF' : form.currency}
+                  onChange={(e) => setForm({ ...form, currency: e.target.value })}
+                  className="input-toc bg-white dark:bg-dark-700"
+                >
+                  {CANONICAL_CURRENCIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
             </div>
           </div>
 

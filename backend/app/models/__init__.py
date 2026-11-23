@@ -17,6 +17,7 @@ from app.models.transactions import Vente, VenteItem, Approvisionnement, Decaiss
 from app.models.system import AuditLog, SyncEvent, StoreSetting
 from app.models.billing import PaymentProvider, SaasPaymentTransaction, SaasInvoice
 from app.models.inventory import StockTransfer, StockTransferItem, StockMovement
+from app.models.cash import CashRegisterSession, ClientPayment, SupplierPayment
 
 __all__ = [
     "generate_uuid",
@@ -49,4 +50,7 @@ __all__ = [
     "StockTransfer",
     "StockTransferItem",
     "StockMovement",
+    "CashRegisterSession",
+    "ClientPayment",
+    "SupplierPayment",
 ]

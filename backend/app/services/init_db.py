@@ -31,6 +31,8 @@ def _migrate_columns() -> None:
             add_col_if_missing(table, "user_id", "VARCHAR(36)")
             add_col_if_missing(table, "user_name", "VARCHAR(255)")
         add_col_if_missing("ventes", "user_name", "VARCHAR(255)")
+        add_col_if_missing("ventes", "status", "VARCHAR(30) DEFAULT 'completed'")
+        add_col_if_missing("vente_items", "refunded_quantity", "FLOAT DEFAULT 0.0")
         add_col_if_missing("users", "pin_failed_attempts", "INTEGER DEFAULT 0")
         add_col_if_missing("users", "pin_locked_until", "DATETIME")
 

@@ -17,6 +17,9 @@ TENANT_RLS_TABLES = (
     "audit_logs",
     "stock_transfers",
     "stock_movements",
+    "cash_register_sessions",
+    "client_payments",
+    "supplier_payments",
     "saas_payment_transactions",
     "saas_invoices",
 )

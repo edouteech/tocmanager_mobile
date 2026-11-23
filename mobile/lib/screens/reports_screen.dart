@@ -31,9 +31,35 @@ class ReportsScreen extends StatefulWidget {
 class _ReportsScreenState extends State<ReportsScreen> {
   DateFilterPeriod _period = DateFilterPeriod.thisMonth();
 
+  String _currencySymbol(String code) {
+    switch (code.toUpperCase()) {
+      case 'XAF':
+        return 'FCFA';
+      case 'EUR':
+        return '€';
+      case 'USD':
+        return r'$';
+      case 'GHS':
+        return 'GH₵';
+      case 'NGN':
+        return '₦';
+      case 'GNF':
+        return 'GNF';
+      case 'XOF':
+      case 'FCFA':
+      default:
+        return 'F';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final formatter = NumberFormat.currency(locale: 'fr_FR', symbol: 'F', decimalDigits: 0);
+    final currencyCode = context.watch<SettingsProvider>().settings.currency;
+    final formatter = NumberFormat.currency(
+      locale: 'fr_FR',
+      symbol: _currencySymbol(currencyCode),
+      decimalDigits: 0,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -438,6 +464,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
       final venteProv = context.read<VenteProvider>();
       final decaissementProv = context.read<DecaissementProvider>();
+      final currencyCode = context.read<SettingsProvider>().settings.currency;
+      final curSym = _currencySymbol(currencyCode);
       final now = DateTime.now();
 
       final ventes = venteProv.items.where((v) => _matchPeriod(v.date, now)).toList();
@@ -464,9 +492,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   pw.SizedBox(height: 14),
                   pw.Text('Résumé des opérations :', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
                   pw.SizedBox(height: 8),
-                  pw.Bullet(text: 'Chiffre d\'Affaires (Ventes) : ${numFmt.format(ca)} FCFA'),
-                  pw.Bullet(text: 'Total Décaissements (Dépenses) : ${numFmt.format(depenses)} FCFA'),
-                  pw.Bullet(text: 'Résultat Net : ${numFmt.format(net)} FCFA'),
+                  pw.Bullet(text: 'Chiffre d\'Affaires (Ventes) : ${numFmt.format(ca)} $curSym'),
+                  pw.Bullet(text: 'Total Décaissements (Dépenses) : ${numFmt.format(depenses)} $curSym'),
+                  pw.Bullet(text: 'Résultat Net : ${numFmt.format(net)} $curSym'),
                 ],
               ),
             );
@@ -490,6 +518,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
       final venteProv = context.read<VenteProvider>();
       final decaissementProv = context.read<DecaissementProvider>();
+      final currencyCode = context.read<SettingsProvider>().settings.currency;
       final now = DateTime.now();
       final dateFmt = DateFormat('dd/MM/yyyy HH:mm');
 
@@ -500,7 +529,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       sheet.appendRow([xl.TextCellValue('Période: ${_period.label}')]);
       sheet.appendRow([xl.TextCellValue('Généré le: ${dateFmt.format(now)}')]);
       sheet.appendRow([]);
-      sheet.appendRow([xl.TextCellValue('Indicateur'), xl.TextCellValue('Montant (FCFA)')]);
+      sheet.appendRow([xl.TextCellValue('Indicateur'), xl.TextCellValue('Montant ($currencyCode)')]);
 
       final ca = ventes.fold(0.0, (sum, v) => sum + v.totalAmount);
       final depenses = decaissements.fold(0.0, (sum, d) => sum + d.amount);

@@ -8,8 +8,13 @@ from sqlalchemy import or_
 from app.api import deps
 from app.core.database import get_db
 from app.models import Client, AuditLog
+from app.schemas.cash import PaymentLedgerOut
 from app.schemas.entities import ClientCreate, ClientUpdate, ClientResponse, DebtPaymentRequest
 from app.services.entitlements import check_feature_access, check_quota_limit
+from app.services.payment_ledger_service import (
+    list_client_payments_svc,
+    record_client_payment_svc,
+)
 from app.services.tenant_context_service import TenantContext
 
 router = APIRouter()
@@ -184,6 +189,15 @@ def delete_client(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.get("/{sync_id}/payments", response_model=List[PaymentLedgerOut])
+def list_client_payments(
+    sync_id: str,
+    ctx: TenantContext = Depends(deps.get_tenant_context),
+    db: Session = Depends(get_db),
+):
+    return list_client_payments_svc(db, ctx, sync_id)
+
+
 @router.post("/{sync_id}/payments", response_model=ClientResponse)
 def record_client_payment(
     sync_id: str,
@@ -191,44 +205,4 @@ def record_client_payment(
     ctx: TenantContext = Depends(deps.get_tenant_context),
     db: Session = Depends(get_db),
 ):
-    check_feature_access(db, ctx.boutique.id, "module_credit_sales")
-    current_user = ctx.user
-    client = (
-        db.query(Client)
-        .filter(
-            Client.sync_id == sync_id,
-            Client.boutique_id == ctx.boutique.id,
-            Client.deleted_at.is_(None),
-        )
-        .first()
-    )
-    if not client:
-        raise HTTPException(status_code=404, detail="Client introuvable")
-
-    previous_balance = client.balance
-    new_balance = max(0.0, client.balance - payment.amount)
-    client.balance = new_balance
-
-    now = datetime.now(timezone.utc)
-    client.updated_at = now
-
-    db.add(AuditLog(
-        boutique_id=ctx.boutique.id,
-        user_id=current_user.id,
-        user_name=current_user.full_name or current_user.username,
-        action="DEBT_PAYMENT",
-        entity_type="client",
-        entity_id=client.sync_id,
-        details={
-            "client_name": client.name,
-            "amount_paid": payment.amount,
-            "payment_method": payment.payment_method,
-            "previous_balance": previous_balance,
-            "new_balance": new_balance,
-            "notes": payment.notes,
-        },
-        created_at=now,
-    ))
-    db.commit()
-    db.refresh(client)
-    return client
+    return record_client_payment_svc(db, ctx, sync_id, payment)

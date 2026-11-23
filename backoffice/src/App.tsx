@@ -18,6 +18,7 @@ import { LoginPage } from './features/auth/LoginPage';
 // Client Backoffice Pages
 import { DashboardPage } from './features/dashboard/DashboardPage';
 import { SalesPage } from './features/sales/SalesPage';
+import { CashSessionsPage } from './features/cash/CashSessionsPage';
 import { ProductsPage } from './features/inventory/ProductsPage';
 import { CategoriesPage } from './features/inventory/CategoriesPage';
 import { ClientsPage } from './features/clients/ClientsPage';
@@ -97,6 +98,7 @@ export const App: React.FC = () => {
                     {/* Commerce & Caisse */}
                     <Route index element={<DashboardPage />} />
                     <Route path="ventes" element={<SalesPage />} />
+                    <Route path="caisse-z" element={<CashSessionsPage />} />
                     <Route path="clients" element={<ClientsPage />} />
 
                     {/* Catalogue, Stocks & Points de vente */}

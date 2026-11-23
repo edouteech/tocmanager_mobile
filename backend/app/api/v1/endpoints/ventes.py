@@ -8,9 +8,11 @@ from sqlalchemy import func
 from app.api import deps
 from app.core.database import get_db
 from app.models import Vente, VenteItem, Product, Client, AuditLog
+from app.schemas.cash import SaleRefundRequest
 from app.schemas.sync import VenteSync, VenteItemSync
 from app.schemas.entities import VenteCreate
 from app.services.entitlements import check_feature_access
+from app.services.sale_refund_service import refund_vente
 from app.services.stock_service import adjust_magasin_stock, check_and_get_availability
 from app.services.tenant_context_service import (
     TenantContext,
@@ -202,21 +204,12 @@ def create_vente(
 
     db.add(new_vente)
     db.add(AuditLog(
-        id=f"audit-{vente_sync_id}",
-        boutique_id=ctx.boutique.id,
-        user_id=v_uid,
-        user_name=v_uname,
-        action="SALE_CREATE",
-        entity_type="vente",
-        entity_id=vente_sync_id,
+        id=f"audit-{vente_sync_id}", boutique_id=ctx.boutique.id, user_id=v_uid, user_name=v_uname,
+        action="SALE_CREATE", entity_type="vente", entity_id=vente_sync_id,
         details={
-            "ticket_number": ticket_num,
-            "total_amount": net_total,
-            "paid_amount": vente_in.paid_amount,
-            "client_name": client_name or "Client Occasionnel",
-            "payment_method": vente_in.payment_method,
-            "item_count": len(db_items),
-            "source": "backoffice",
+            "ticket_number": ticket_num, "total_amount": net_total, "paid_amount": vente_in.paid_amount,
+            "client_name": client_name or "Client Occasionnel", "payment_method": vente_in.payment_method,
+            "item_count": len(db_items), "source": "backoffice",
         },
         created_at=now,
     ))
@@ -226,16 +219,18 @@ def create_vente(
 
 
 @router.get("/{sync_id}", response_model=VenteSync)
-def get_vente(
-    sync_id: str,
-    ctx: TenantContext = Depends(deps.get_tenant_context),
-    db: Session = Depends(get_db),
-) -> Any:
-    v = (
-        db.query(Vente)
-        .filter(Vente.sync_id == sync_id, Vente.boutique_id == ctx.boutique.id)
-        .first()
-    )
+def get_vente(sync_id: str, ctx: TenantContext = Depends(deps.get_tenant_context), db: Session = Depends(get_db)) -> Any:
+    v = db.query(Vente).filter(Vente.sync_id == sync_id, Vente.boutique_id == ctx.boutique.id).first()
     if not v:
         raise HTTPException(status_code=404, detail="Vente non trouvée")
     return _to_vente_sync(v)
+
+
+@router.post("/{sync_id}/refund", response_model=VenteSync)
+def post_refund_vente(
+    sync_id: str,
+    payload: SaleRefundRequest,
+    ctx: TenantContext = Depends(deps.require_tenant_role(["owner", "store_admin", "manager"])),
+    db: Session = Depends(get_db),
+) -> Any:
+    return _to_vente_sync(refund_vente(db, ctx, sync_id, payload))

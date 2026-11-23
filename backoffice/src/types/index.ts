@@ -231,6 +231,40 @@ export interface Decaissement {
   created_at: string;
 }
 
+export interface CashRegisterSession {
+  id: string;
+  magasin_id: string;
+  magasin_name?: string | null;
+  opened_by_user_id: string;
+  opened_by_name?: string | null;
+  opened_at: string;
+  opening_balance: number;
+  status: 'open' | 'closed' | string;
+  expected_cash?: number | null;
+  expected_mobile_money?: number | null;
+  expected_card?: number | null;
+  declared_cash?: number | null;
+  discrepancy?: number | null;
+  closed_by_name?: string | null;
+  closed_at?: string | null;
+  notes?: string | null;
+}
+
+export interface PaymentLedgerItem {
+  id: string;
+  magasin_id?: string | null;
+  client_sync_id?: string | null;
+  supplier_sync_id?: string | null;
+  amount: number;
+  payment_method: string;
+  previous_balance: number;
+  new_balance: number;
+  notes?: string | null;
+  user_id?: string | null;
+  user_name?: string | null;
+  created_at: string;
+}
+
 export interface StoreSettings {
   store_name: string;
   currency: string;

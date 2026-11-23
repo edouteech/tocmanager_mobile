@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Search,
   Printer,
@@ -13,6 +13,7 @@ import {
   TrendingUp,
   AlertCircle,
   Share2,
+  RotateCcw,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { formatFCFA, formatDateTime } from '../../lib/formatters';
@@ -20,19 +21,25 @@ import { Vente } from '../../types';
 import { Drawer } from '../../components/common/Drawer';
 import { useDensity } from '../../context/DensityContext';
 import { CreateSaleModal } from './CreateSaleModal';
+import { RefundSaleModal } from './RefundSaleModal';
 import { exportToExcel } from '../../lib/exportUtils';
 import { SummaryChipsRow, SummaryChipItem } from '../../components/common/SummaryChipsRow';
 import { FilterPeriodChips, FilterChipItem, SortOption } from '../../components/common/FilterPeriodChips';
 import { ViewToggle, ViewMode } from '../../components/common/ViewToggle';
 import { VenteCard } from './VenteCard';
 import { useTenantContextKey } from '../../stores/tenantStore';
+import { useAuthStore } from '../../stores/authStore';
 
 export const SalesPage: React.FC = () => {
+  const queryClient = useQueryClient();
   const { tableClasses } = useDensity();
+  const user = useAuthStore((s) => s.user);
   const [boutiqueKey, magasinKey] = useTenantContextKey();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedVente, setSelectedVente] = useState<Vente | null>(null);
+  const [refundTarget, setRefundTarget] = useState<Vente | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const canRefund = user && user.role !== 'cashier';
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
   const [onlyCredit, setOnlyCredit] = useState<boolean>(false);
   const [sortBy, setSortBy] = useState<string>('recent');
@@ -406,6 +413,16 @@ export const SalesPage: React.FC = () => {
                 <span>WhatsApp</span>
               </button>
             )}
+            {selectedVente && canRefund && selectedVente.status !== 'refunded' && (
+              <button
+                type="button"
+                onClick={() => setRefundTarget(selectedVente)}
+                className="btn-toc btn-outline flex items-center gap-1.5 text-xs text-rose-600 border-rose-200"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>Rembourser</span>
+              </button>
+            )}
             <button
               onClick={handlePrintReceipt}
               className="btn-toc btn-primary flex items-center gap-2 text-xs"
@@ -504,6 +521,17 @@ export const SalesPage: React.FC = () => {
       <CreateSaleModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
+      />
+
+      <RefundSaleModal
+        vente={refundTarget}
+        onClose={() => setRefundTarget(null)}
+        onRefunded={(updated) => {
+          setSelectedVente(updated);
+          queryClient.invalidateQueries({ queryKey: ['ventes'] });
+          queryClient.invalidateQueries({ queryKey: ['products'] });
+          queryClient.invalidateQueries({ queryKey: ['clients'] });
+        }}
       />
     </div>
   );
