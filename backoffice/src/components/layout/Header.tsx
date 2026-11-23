@@ -96,7 +96,7 @@ export const Header: React.FC = () => {
             }}
             className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-800 dark:text-white bg-[#F0F9FE] dark:bg-dark-700 hover:bg-[#E8F5FD] dark:hover:bg-dark-600 border border-[#E8EFF5] dark:border-dark-600 transition"
           >
-            <Store className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+            <Store className="w-3.5 h-3.5 text-[#29ABE2]" />
             <span className="truncate max-w-[120px] sm:max-w-[160px]">
               {currentBoutique?.name || 'Boutique Principale'}
             </span>
@@ -104,8 +104,8 @@ export const Header: React.FC = () => {
           </button>
 
           {boutiqueDropdownOpen && (
-            <div className="absolute top-full left-0 mt-1.5 w-60 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 py-1.5 z-50 animate-fadeIn">
-              <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            <div className="absolute top-full left-0 mt-1.5 w-60 bg-white dark:bg-dark-800 rounded-xl shadow-soft-lg border border-[#E8EFF5] dark:border-dark-600 py-1.5 z-50 animate-fade-in">
+              <div className="px-3 py-1 text-[10px] font-bold text-[#9FB3C8] uppercase tracking-wider">
                 Vos Boutiques
               </div>
               {boutiques.map((b) => (
@@ -115,24 +115,24 @@ export const Header: React.FC = () => {
                     selectBoutique(b);
                     setBoutiqueDropdownOpen(false);
                   }}
-                  className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 transition ${
-                    b.id === currentBoutique?.id ? 'text-indigo-600 font-bold bg-indigo-50/50 dark:bg-indigo-950/40' : 'text-slate-700 dark:text-slate-200'
+                  className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-[#F0F9FE] dark:hover:bg-dark-700 transition ${
+                    b.id === currentBoutique?.id ? 'text-[#29ABE2] font-bold bg-[#E8F5FD] dark:bg-[#29ABE2]/15' : 'text-[#1C2B3A] dark:text-slate-200'
                   }`}
                 >
                   <span className="truncate">{b.name}</span>
-                  {b.id === currentBoutique?.id && <span className="text-[10px] text-indigo-600">Actif</span>}
+                  {b.id === currentBoutique?.id && <span className="text-[10px] text-[#29ABE2]">Actif</span>}
                 </button>
               ))}
               {isOwner && (
                 <>
-                  <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+                  <div className="my-1 border-t border-[#E8EFF5] dark:border-dark-600" />
                   <button
                     type="button"
                     onClick={() => {
                       setBoutiqueDropdownOpen(false);
                       setCreateBoutiqueOpen(true);
                     }}
-                    className="w-full text-left px-3 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5 hover:bg-indigo-50/70 dark:hover:bg-indigo-950/40 transition"
+                    className="w-full text-left px-3 py-2 text-xs font-bold text-[#29ABE2] flex items-center gap-1.5 hover:bg-[#F0F9FE] dark:hover:bg-dark-700 transition"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Nouvelle Boutique</span>
@@ -163,7 +163,7 @@ export const Header: React.FC = () => {
           </button>
 
           {magasinDropdownOpen && (
-            <div className="absolute top-full left-0 mt-1.5 w-64 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 py-1.5 z-50 animate-fadeIn">
+            <div className="absolute top-full left-0 mt-1.5 w-64 bg-white dark:bg-dark-800 rounded-xl shadow-soft-lg border border-[#E8EFF5] dark:border-dark-600 py-1.5 z-50 animate-fade-in">
               {isOwner && (
                 <>
                   <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
@@ -195,16 +195,16 @@ export const Header: React.FC = () => {
                     selectMagasin(m);
                     setMagasinDropdownOpen(false);
                   }}
-                  className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 transition ${
+                  className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-[#F0F9FE] dark:hover:bg-dark-700 transition ${
                     !isConsolidatedView && m.id === currentMagasin?.id
-                      ? 'text-indigo-600 font-bold bg-indigo-50/50 dark:bg-indigo-950/40'
-                      : 'text-slate-700 dark:text-slate-200'
+                      ? 'text-[#29ABE2] font-bold bg-[#E8F5FD] dark:bg-[#29ABE2]/15'
+                      : 'text-[#1C2B3A] dark:text-slate-200'
                   }`}
                 >
                   <span className="truncate">{m.name}</span>
                   {m.is_warehouse && <span className="text-[9px] text-slate-400">(Dépôt)</span>}
                   {!isConsolidatedView && m.id === currentMagasin?.id && (
-                    <span className="text-[10px] text-indigo-600">●</span>
+                    <span className="text-[10px] text-[#29ABE2]">●</span>
                   )}
                 </button>
               ))}
@@ -228,7 +228,7 @@ export const Header: React.FC = () => {
                 });
               }
             }}
-            className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/40 dark:to-purple-950/40 border border-indigo-200 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300 hover:shadow-sm transition"
+            className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-[#E8F5FD] dark:bg-[#29ABE2]/15 border border-[#BAE3F9] dark:border-[#29ABE2]/30 text-[#1A8FBF] dark:text-[#29ABE2] hover:shadow-sm transition"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-500" />
             <span>{currentPlan.plan_name}</span>
