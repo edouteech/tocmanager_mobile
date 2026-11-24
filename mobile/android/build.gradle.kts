@@ -1,3 +1,7 @@
+import com.android.build.api.variant.LibraryAndroidComponentsExtension
+
+val minPluginCompileSdk = 36
+
 allprojects {
     repositories {
         google()
@@ -14,6 +18,17 @@ rootProject.layout.buildDirectory.value(newBuildDir)
 subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
+}
+subprojects {
+    project.plugins.withId("com.android.library") {
+        project.extensions.configure(LibraryAndroidComponentsExtension::class.java) {
+            finalizeDsl { extension ->
+                if (extension.compileSdkPreview == null && (extension.compileSdk ?: 0) < minPluginCompileSdk) {
+                    extension.compileSdk = minPluginCompileSdk
+                }
+            }
+        }
+    }
 }
 subprojects {
     project.evaluationDependsOn(":app")
