@@ -3,17 +3,39 @@ from pathlib import Path
 import subprocess
 import sys
 
+from alembic.config import Config as AlembicConfig
+from alembic.script import ScriptDirectory
 from fastapi.testclient import TestClient
 from PIL import Image
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
 
-from app.core.database import Base, get_db
+from app.core.database import Base, get_db, normalize_database_url
 from app.core.security import create_access_token, get_password_hash
 from app.main import app
 from app.models import Boutique, BoutiqueUserMembership, Client, Magasin, Product, User, Vente, VenteItem
 from app.services import storage_service
 from scripts.migrate_sqlite_to_pg import migrate_database
+
+
+def test_normalize_database_url_maps_postgresql_schemes_to_psycopg2():
+    assert normalize_database_url("postgres://u:p@h:5432/db") == "postgresql+psycopg2://u:p@h:5432/db"
+    assert normalize_database_url("postgresql://u:p@h:5432/db") == "postgresql+psycopg2://u:p@h:5432/db"
+    assert normalize_database_url("postgresql+psycopg2://u:p@h:5432/db") == "postgresql+psycopg2://u:p@h:5432/db"
+    assert normalize_database_url("sqlite:///./tocmanager.db") == "sqlite:///./tocmanager.db"
+
+    eng = create_engine(normalize_database_url("postgresql://u:p@localhost:5432/tocmanager_ci"))
+    assert eng.dialect.driver == "psycopg2"
+
+
+def test_all_alembic_revision_ids_fit_postgresql_varchar_32():
+    backend_dir = Path(__file__).resolve().parents[1]
+    cfg = AlembicConfig(str(backend_dir / "alembic.ini"))
+    cfg.set_main_option("script_location", str(backend_dir / "alembic"))
+    revisions = list(ScriptDirectory.from_config(cfg).walk_revisions())
+    assert len(revisions) >= 3
+    for rev in revisions:
+        assert len(rev.revision) <= 32, f"Alembic revision ID too long for VARCHAR(32): {rev.revision}"
 
 
 def _make_png_bytes(width: int = 32, height: int = 32) -> bytes:

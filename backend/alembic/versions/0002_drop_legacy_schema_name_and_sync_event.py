@@ -1,6 +1,6 @@
 """Drop legacy Boutique.schema_name column and unused sync_events table.
 
-Revision ID: 0002_drop_legacy_schema_name_and_sync_event
+Revision ID: 0002_drop_legacy_fields
 Revises: 0001_initial_schema_and_rls
 Create Date: 2026-11-24
 """
@@ -9,7 +9,7 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = "0002_drop_legacy_schema_name_and_sync_event"
+revision: str = "0002_drop_legacy_fields"
 down_revision: Union[str, None] = "0001_initial_schema_and_rls"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
