@@ -50,6 +50,19 @@ class Settings(BaseSettings):
     S3_PUBLIC_BASE_URL: Optional[str] = os.getenv("S3_PUBLIC_BASE_URL")
     LOCAL_UPLOAD_DIR: str = os.getenv("LOCAL_UPLOAD_DIR", "./uploads")
 
+    # Observability & Sentry
+    SENTRY_DSN: Optional[str] = os.getenv("SENTRY_DSN")
+    SENTRY_TRACES_SAMPLE_RATE: float = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1"))
+
+    # Email notifications (Resend primary, SMTP / console fallback)
+    RESEND_API_KEY: Optional[str] = os.getenv("RESEND_API_KEY")
+    MAIL_FROM: str = os.getenv("MAIL_FROM", "TocManager <no-reply@tocmanager.locarapide.com>")
+    FRONTEND_BASE_URL: str = os.getenv("FRONTEND_BASE_URL", "http://localhost:3000")
+    SMTP_HOST: Optional[str] = os.getenv("SMTP_HOST")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER: Optional[str] = os.getenv("SMTP_USER")
+    SMTP_PASSWORD: Optional[str] = os.getenv("SMTP_PASSWORD")
+
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, value: Any) -> List[str]:

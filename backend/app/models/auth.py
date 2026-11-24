@@ -13,7 +13,7 @@ def _utc_now() -> datetime:
 
 
 class RefreshToken(Base):
-    """Jeton de rafraîchissement persistant permettant révocation et détection de réutilisation."""
+    """Persistent refresh token supporting rotation and reuse detection."""
 
     __tablename__ = "refresh_tokens"
 
@@ -25,4 +25,18 @@ class RefreshToken(Base):
     expires_at = Column(DateTime(timezone=True), nullable=False)
     revoked_at = Column(DateTime(timezone=True), nullable=True)
     replaced_by_id = Column(String(36), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=_utc_now)
+
+
+class AuthActionToken(Base):
+    """Single-use hashed token for email verification and password resets."""
+
+    __tablename__ = "auth_action_tokens"
+
+    id = Column(String(36), primary_key=True, default=_generate_uuid)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    purpose = Column(String(32), nullable=False, index=True)
+    token_hash = Column(String(64), unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=_utc_now)

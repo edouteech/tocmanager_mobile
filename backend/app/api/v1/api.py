@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from app.api.v1.endpoints import (
-    auth, sync, products, categories, ventes, users, reports, audit,
+    auth, auth_security, sync, products, categories, ventes, users, reports, audit,
     clients, suppliers, approvisionnements, decaissements, settings,
     saas_public, saas_admin, tenant, billing, transfers, stock_movements, cash_sessions, uploads
 )
@@ -22,6 +22,7 @@ api_router.include_router(billing.webhook_router, prefix="/webhooks", tags=["Web
 
 # Core Modules
 api_router.include_router(auth.router, prefix="/auth", tags=["Authentification"])
+api_router.include_router(auth_security.router, prefix="/auth", tags=["Authentification & Securite"])
 api_router.include_router(sync.router, prefix="/sync", tags=["Synchronisation Offline-First"])
 api_router.include_router(products.router, prefix="/products", tags=["Produits"])
 api_router.include_router(categories.router, prefix="/categories", tags=["Catégories"])

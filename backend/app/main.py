@@ -5,11 +5,16 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
+from app.api.v1.api import api_router
+from app.api.v1.endpoints.health import router as health_router
 from app.core.config import settings
 from app.core.database import SessionLocal
+from app.core.logging import RequestObservabilityMiddleware, configure_json_logging, init_sentry
 from app.core.rate_limit import limiter
-from app.api.v1.api import api_router
 from app.services.init_db import init_db
+
+configure_json_logging()
+init_sentry()
 
 
 @asynccontextmanager
@@ -34,6 +39,7 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+app.add_middleware(RequestObservabilityMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -43,9 +49,5 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(health_router)
 app.include_router(api_router, prefix=settings.API_V1_STR)
-
-
-@app.get("/health")
-def health_check():
-    return {"status": "ok", "app": settings.PROJECT_NAME, "version": settings.VERSION}
