@@ -54,8 +54,10 @@ jobs:
 
       - name: Build Android APK (Release)
         working-directory: mobile
+        env:
+          API_URL: ${{ vars.API_URL }}
         run: |
-          flutter build apk --release
+          flutter build apk --release --dart-define=API_URL=${API_URL:-https://api.tocmanager.locarapide.com/api/v1}
 
       - name: Préparer l'APK pour l'export
         run: |

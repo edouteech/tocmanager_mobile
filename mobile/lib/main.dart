@@ -1,41 +1,27 @@
-import 'dart:async';
-import 'services/api_client.dart';
-import 'services/sync_service.dart';
-import 'widgets/plan_upsell_dialog.dart';
-import 'providers/settings_provider.dart';
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:provider/provider.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'providers/approvisionnement_provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/category_provider.dart';
+import 'providers/client_provider.dart';
+import 'providers/decaissement_provider.dart';
+import 'providers/product_provider.dart';
+import 'providers/settings_provider.dart';
+import 'providers/supplier_provider.dart';
 import 'providers/sync_provider.dart';
 import 'providers/tenant_provider.dart';
-import 'screens/settings_screen.dart';
-import 'screens/pin_lock_screen.dart';
+import 'providers/vente_provider.dart';
 import 'screens/login_screen.dart';
+import 'screens/main_shell.dart';
+import 'screens/pin_lock_screen.dart';
 import 'screens/select_boutique_screen.dart';
 import 'screens/select_magasin_screen.dart';
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:intl/date_symbol_data_local.dart';
 import 'theme/app_theme.dart';
-import 'providers/category_provider.dart';
-import 'providers/product_provider.dart';
-import 'providers/approvisionnement_provider.dart';
-import 'providers/vente_provider.dart';
-import 'providers/decaissement_provider.dart';
-import 'providers/client_provider.dart';
-import 'providers/supplier_provider.dart';
-import 'screens/home_screen.dart';
-import 'screens/categories_screen.dart';
-import 'screens/products_screen.dart';
-import 'screens/approvisionnement_screen.dart';
-import 'screens/vente_screen.dart';
-import 'screens/decaissement_screen.dart';
-import 'screens/clients_screen.dart';
-import 'screens/suppliers_screen.dart';
-import 'screens/reports_screen.dart';
-import 'screens/users_screen.dart';
-import 'screens/audit_logs_screen.dart';
-import 'dart:io';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'widgets/app_drawer.dart';
+
+export 'screens/main_shell.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -79,37 +65,31 @@ class TocManagerApp extends StatelessWidget {
 class AppRootGate extends StatelessWidget {
   const AppRootGate({super.key});
 
+  Widget _splashLoader() {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset('assets/logo.png', height: 48),
+            const SizedBox(height: 24),
+            const CircularProgressIndicator(color: AppColors.primary),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final tenant = context.watch<TenantProvider>();
 
-    if (!auth.isInitialized) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.asset('assets/logo.png', height: 48),
-              const SizedBox(height: 24),
-              const CircularProgressIndicator(color: AppColors.primary),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (!auth.isAuthenticated) {
-      return const LoginScreen();
-    }
-
+    if (!auth.isInitialized) return _splashLoader();
+    if (!auth.isAuthenticated) return const LoginScreen();
     if (auth.isPinLocked) {
-      return PinLockScreen(
-        onUnlocked: () {
-          // Rebuilds automatically on notifyListeners()
-        },
-      );
+      return PinLockScreen(onUnlocked: () {});
     }
 
     final currentUser = auth.currentUser;
@@ -121,250 +101,11 @@ class AppRootGate extends StatelessWidget {
           }
         });
       }
-      return Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.asset('assets/logo.png', height: 48),
-              const SizedBox(height: 24),
-              const CircularProgressIndicator(color: AppColors.primary),
-            ],
-          ),
-        ),
-      );
+      return _splashLoader();
     }
 
-    if (tenant.needsBoutiqueSelection) {
-      return const SelectBoutiqueScreen();
-    }
-
-    if (tenant.needsMagasinSelection) {
-      return const SelectMagasinScreen();
-    }
-
+    if (tenant.needsBoutiqueSelection) return const SelectBoutiqueScreen();
+    if (tenant.needsMagasinSelection) return const SelectMagasinScreen();
     return const MainShell();
-  }
-}
-
-class MainShell extends StatefulWidget {
-  const MainShell({super.key});
-
-  @override
-  State<MainShell> createState() => _MainShellState();
-}
-
-class _MainShellState extends State<MainShell> {
-  final _scaffoldKey = GlobalKey<ScaffoldState>();
-  final _homeKey = GlobalKey();
-  int _currentIndex = 0;
-  StreamSubscription? _syncSub;
-  StreamSubscription? _planErrorSub;
-  bool _upsellDialogOpen = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (context.read<TenantProvider>().consumeOpenConsolidatedReports()) {
-        _navigate(9);
-      }
-    });
-    _syncSub = SyncService.onSyncCompleted.listen((_) {
-      if (mounted) {
-        context.read<CategoryProvider>().load();
-        context.read<ProductProvider>().load();
-        context.read<ClientProvider>().loadClients();
-        context.read<SupplierProvider>().loadSuppliers();
-        context.read<DecaissementProvider>().load();
-        (_homeKey.currentState as dynamic)?.reload();
-      }
-    });
-    _planErrorSub = ApiClient.onPlanLimitError.listen((err) async {
-      if (!mounted || _upsellDialogOpen) return;
-      _upsellDialogOpen = true;
-      try {
-        await PlanUpsellDialog.show(context, err);
-      } finally {
-        _upsellDialogOpen = false;
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _syncSub?.cancel();
-    _planErrorSub?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _navigate(int index, {String? statusFilter}) async {
-    final user = context.read<AuthProvider>().currentUser;
-    final canBackoffice = user?.canAccessBackofficeModules ?? false;
-    final isAdmin = user?.isAdmin ?? false;
-    final canAudit = user?.canViewAudit ?? false;
-    if ((index == 4 || index == 6 || index == 7 || index == 9) && !canBackoffice) {
-      return;
-    }
-    if (index == 11 && !isAdmin) return;
-    if (index == 12 && !canAudit) return;
-    if (index == 3) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const ClientsScreen()),
-      );
-      (_homeKey.currentState as dynamic)?.reload();
-    } else if (index == 7) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const SuppliersScreen()),
-      );
-      (_homeKey.currentState as dynamic)?.reload();
-    } else if (index == 4) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const ApprovisionScreen()),
-      );
-      (_homeKey.currentState as dynamic)?.reload();
-    } else if (index == 5) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const VenteScreen()),
-      );
-      (_homeKey.currentState as dynamic)?.reload();
-    } else if (index == 6) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const DecaissementScreen()),
-      );
-      (_homeKey.currentState as dynamic)?.reload();
-    } else if (index == 9) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const ReportsScreen()),
-      );
-      (_homeKey.currentState as dynamic)?.reload();
-    } else if (index == 10) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const SettingsScreen()),
-      );
-      (_homeKey.currentState as dynamic)?.reload();
-    } else if (index == 11) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const UsersScreen()),
-      );
-      (_homeKey.currentState as dynamic)?.reload();
-    } else if (index == 12) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const AuditLogsScreen()),
-      );
-      (_homeKey.currentState as dynamic)?.reload();
-    } else if (index < 3) {
-      setState(() => _currentIndex = index);
-      if (index == 0) {
-        (_homeKey.currentState as dynamic)?.reload();
-      } else if (index == 1 && statusFilter != null) {
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ProductsScreen(initialStatusFilter: statusFilter),
-          ),
-        );
-        (_homeKey.currentState as dynamic)?.reload();
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final screens = [
-      HomeScreen(
-        key: _homeKey,
-        onNav: _navigate,
-        onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
-      ),
-      ProductsScreen(onBackToHome: () => _navigate(0)),
-      CategoriesScreen(onBackToHome: () => _navigate(0)),
-    ];
-
-    return Scaffold(
-      key: _scaffoldKey,
-      body: IndexedStack(index: _currentIndex, children: screens),
-      drawer: AppDrawer(currentIndex: _currentIndex, onNav: _navigate),
-      bottomNavigationBar: _buildBottomNav(),
-    );
-  }
-
-  Widget _buildBottomNav() {
-    final canBackoffice =
-        context.watch<AuthProvider>().currentUser?.canAccessBackofficeModules ?? false;
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: AppColors.divider)),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 12,
-            offset: Offset(0, -4),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          children: [
-            if (canBackoffice)
-              _bottomItem(Icons.arrow_downward_outlined, 'Appro', () => _navigate(4)),
-            _bottomItem(Icons.shopping_cart_outlined, 'Ventes', () => _navigate(5)),
-            if (canBackoffice)
-              _bottomItem(Icons.account_balance_wallet_outlined, 'Dépenses', () => _navigate(6)),
-            _bottomItem(Icons.people_outline, 'Clients', () => _navigate(3)),
-            if (canBackoffice)
-              _bottomItem(Icons.bar_chart_outlined, 'Rapport', () => _navigate(9)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _bottomItem(IconData icon, String label, VoidCallback? onTap) {
-    final disabled = onTap == null;
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                color: disabled
-                    ? AppColors.textLight.withAlpha(80)
-                    : AppColors.textLight,
-                size: 22,
-              ),
-              const SizedBox(height: 3),
-              Text(
-                label,
-                style: TextStyle(
-                  color: disabled
-                      ? AppColors.textLight.withAlpha(80)
-                      : AppColors.textLight,
-                  fontSize: 10,
-                ),
-              ),
-              const SizedBox(height: 7),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
