@@ -3,9 +3,24 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+
   body {
     @apply font-sans bg-[#F5FAFD] text-[#1C2B3A] dark:bg-dark-900 dark:text-[#E2E8F0] antialiased selection:bg-[#BAE3F9] selection:text-[#134B64];
   }
+}
+
+.landing-section-deferred {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 640px;
 }
 
 /* Custom Scrollbars */

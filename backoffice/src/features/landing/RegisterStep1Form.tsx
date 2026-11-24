@@ -157,7 +157,25 @@ export const RegisterStep1Form: React.FC<RegisterStep1FormProps> = ({
           className="mt-0.5 rounded border-slate-300 text-[#29ABE2] focus:ring-[#29ABE2]"
         />
         <span>
-          J'accepte les Conditions Générales d'Utilisation et la politique de confidentialité de TocManager.
+          J'accepte les{' '}
+          <Link
+            to="/cgu"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[#29ABE2] font-semibold hover:underline"
+          >
+            Conditions Générales d'Utilisation
+          </Link>{' '}
+          et la{' '}
+          <Link
+            to="/confidentialite"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[#29ABE2] font-semibold hover:underline"
+          >
+            politique de confidentialité
+          </Link>{' '}
+          de TocManager.
         </span>
       </label>
 
