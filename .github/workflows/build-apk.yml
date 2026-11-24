@@ -83,11 +83,11 @@ jobs:
           sudo rm -rf /opt/ghc || true
           sudo rm -rf /usr/local/.ghc || true
 
-      - name: Configuration de Java 17
+      - name: Configuration de Java 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
           cache: 'gradle'
 
       - name: Configuration de Flutter (Stable)
