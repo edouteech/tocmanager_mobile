@@ -8,16 +8,66 @@ on:
       - 'mobile/**'
       - '.github/workflows/build-apk.yml'
       - '.github/scripts/**'
+  pull_request:
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/build-apk.yml'
+      - '.github/scripts/**'
   workflow_dispatch:
     inputs:
       publish_release:
-        description: "Créer également une Release GitHub"
+        description: "Creer egalement une Release GitHub"
         type: boolean
         default: false
 
 jobs:
+  mobile-quality:
+    name: Flutter Analyze, Tests & Line Limit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install SQLite dev library for FFI tests
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libsqlite3-dev
+
+      - name: Configure Flutter (Stable)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Flutter dependencies
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Enforce <= 250 lines and zero ignore comments
+        working-directory: mobile
+        run: |
+          OVER=$(find lib -name "*.dart" -exec wc -l {} + | awk '$1 > 250 && $2 != "total"' | sort -nr)
+          if [ -n "$OVER" ]; then
+            echo "Dart files exceeding 250 lines:"
+            echo "$OVER"
+            exit 1
+          fi
+          if grep -rn "// ignore" lib; then
+            echo "Forbidden // ignore comments found."
+            exit 1
+          fi
+
+      - name: Run Flutter static analysis
+        working-directory: mobile
+        run: flutter analyze --no-pub
+
+      - name: Run Flutter unit and widget tests
+        working-directory: mobile
+        run: flutter test --no-pub
+
   build-apk:
     name: Build Android APK & Google Drive Upload
+    needs: mobile-quality
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -26,7 +76,7 @@ jobs:
       - name: Checkout du code
         uses: actions/checkout@v4
 
-      - name: Libérer de l'espace disque sur le runner
+      - name: Liberer de l'espace disque sur le runner
         run: |
           sudo rm -rf /usr/share/dotnet || true
           sudo rm -rf /usr/local/share/boost || true
@@ -46,7 +96,7 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Téléchargement des dépendances Flutter
+      - name: Telechargement des dependances Flutter
         working-directory: mobile
         run: |
           flutter clean
@@ -59,19 +109,18 @@ jobs:
         run: |
           flutter build apk --release --dart-define=API_URL=${API_URL:-https://api.tocmanager.locarapide.com/api/v1}
 
-      - name: Préparer l'APK pour l'export
+      - name: Preparer l'APK pour l'export
         run: |
           if [ -f mobile/build/app/outputs/flutter-apk/app-release.apk ]; then
             cp mobile/build/app/outputs/flutter-apk/app-release.apk tocmanager.apk
           elif [ -f build/app/outputs/flutter-apk/app-release.apk ]; then
             cp build/app/outputs/flutter-apk/app-release.apk tocmanager.apk
           else
-            echo "Recherche de l'APK généré..."
             APK_PATH=$(find . -name "*release*.apk" -type f | head -n 1)
             if [ -n "$APK_PATH" ]; then
               cp "$APK_PATH" tocmanager.apk
             else
-              echo "ERREUR: Aucun APK trouvé !"
+              echo "ERREUR: Aucun APK trouve !"
               exit 1
             fi
           fi
@@ -101,7 +150,7 @@ jobs:
           fi
           python3 .github/scripts/upload_to_gdrive.py --skip-if-missing --folder-id 12WVpbRWejBpp3ckRn7i_QhlWKBCSpGkB tocmanager.apk
 
-      - name: Publier la Release GitHub (si activé)
+      - name: Publier la Release GitHub (si active)
         if: github.event.inputs.publish_release == 'true'
         uses: softprops/action-gh-release@v2
         with:
