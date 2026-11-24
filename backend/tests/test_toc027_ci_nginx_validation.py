@@ -34,8 +34,10 @@ def test_nginx_and_backoffice_dockerfile_hardening():
     nginx_conf = (ROOT / "backoffice" / "nginx.conf").read_text(encoding="utf-8")
     assert nginx_conf.count("{") == nginx_conf.count("}")
     assert "server_tokens off;" in nginx_conf
-    assert "upstream backend_api" in nginx_conf
-    assert "proxy_pass http://backend_api;" in nginx_conf
+    assert "upstream backend_api" not in nginx_conf
+    assert "resolver 127.0.0.11 valid=30s ipv6=off;" in nginx_conf
+    assert "set $backend_upstream http://backend:8000;" in nginx_conf
+    assert "proxy_pass $backend_upstream;" in nginx_conf
     assert "server_name admin.*;" in nginx_conf
     assert "location ^~ /admin" in nginx_conf
     assert "return 404;" in nginx_conf
