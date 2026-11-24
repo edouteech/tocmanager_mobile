@@ -157,3 +157,19 @@ export const stockMovementsApi = {
     reason: string;
   }) => api.post<StockMovement>('/stock-movements/adjust', data).then((r) => r.data),
 };
+
+export interface UploadImageResponse {
+  url: string;
+  key: string;
+  content_type: string;
+  size_bytes: number;
+  storage: string;
+}
+
+export const uploadsApi = {
+  uploadImage: (file: Blob | File, filename = 'product.jpg') => {
+    const formData = new FormData();
+    formData.append('file', file, filename);
+    return api.post<UploadImageResponse>('/uploads/images', formData).then((r) => r.data);
+  },
+};

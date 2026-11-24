@@ -48,6 +48,9 @@ const clearAuthStorageAndRedirect = () => {
 };
 
 api.interceptors.request.use((config) => {
+  if (config.data instanceof FormData && config.headers) {
+    delete config.headers['Content-Type'];
+  }
   const token = localStorage.getItem('toc_access_token');
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;

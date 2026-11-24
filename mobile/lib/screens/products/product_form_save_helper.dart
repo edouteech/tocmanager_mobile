@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../models/category.dart';
 import '../../models/product.dart';
 import '../../providers/category_provider.dart';
+import '../../services/media_upload_service.dart';
 import '../../theme/app_theme.dart';
 
 TextEditingController initProductNumericCtrl(double? value, {bool zeroAsEmpty = true, String fallback = ''}) {
@@ -17,7 +18,9 @@ TextEditingController initProductNumericCtrl(double? value, {bool zeroAsEmpty = 
 
 Future<String?> persistProductImageBytes(Uint8List? imageBytes, String? existingPath) async {
   if (imageBytes == null) return existingPath;
-  if (existingPath != null) {
+  final remoteUrl = await MediaUploadService.instance.uploadProductImage(imageBytes);
+  if (remoteUrl != null) return remoteUrl;
+  if (existingPath != null && !MediaUploadService.isRemoteImagePath(existingPath)) {
     try {
       await File(existingPath).delete();
     } catch (_) {}

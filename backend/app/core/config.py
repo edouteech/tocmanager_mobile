@@ -41,6 +41,15 @@ class Settings(BaseSettings):
     FEEXPAY_LIVE_API_ID: Optional[str] = os.getenv("FEEXPAY_LIVE_API_ID")
     PAYMENT_ENCRYPTION_KEY: Optional[str] = os.getenv("PAYMENT_ENCRYPTION_KEY")
 
+    # Object storage (Cloudflare R2 / S3-compatible, local dev fallback)
+    S3_ENDPOINT_URL: Optional[str] = os.getenv("S3_ENDPOINT_URL")
+    S3_REGION: str = os.getenv("S3_REGION", "auto")
+    S3_BUCKET: Optional[str] = os.getenv("S3_BUCKET")
+    S3_ACCESS_KEY_ID: Optional[str] = os.getenv("S3_ACCESS_KEY_ID")
+    S3_SECRET_ACCESS_KEY: Optional[str] = os.getenv("S3_SECRET_ACCESS_KEY")
+    S3_PUBLIC_BASE_URL: Optional[str] = os.getenv("S3_PUBLIC_BASE_URL")
+    LOCAL_UPLOAD_DIR: str = os.getenv("LOCAL_UPLOAD_DIR", "./uploads")
+
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, value: Any) -> List[str]:

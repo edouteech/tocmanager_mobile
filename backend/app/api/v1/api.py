@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     auth, sync, products, categories, ventes, users, reports, audit,
     clients, suppliers, approvisionnements, decaissements, settings,
-    saas_public, saas_admin, tenant, billing, transfers, stock_movements, cash_sessions
+    saas_public, saas_admin, tenant, billing, transfers, stock_movements, cash_sessions, uploads
 )
 
 api_router = APIRouter()
@@ -37,3 +37,4 @@ api_router.include_router(reports.router, prefix="/reports", tags=["Rapports & S
 api_router.include_router(settings.router, prefix="/settings", tags=["Paramètres"])
 api_router.include_router(users.router, prefix="/users", tags=["Utilisateurs & Rôles"])
 api_router.include_router(audit.router, prefix="/audit", tags=["Journal d'Audit & Sécurité"])
+api_router.include_router(uploads.router, prefix="/uploads", tags=["Stockage Médias"])

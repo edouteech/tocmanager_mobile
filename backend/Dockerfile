@@ -7,7 +7,7 @@ ENV PYTHONUNBUFFERED=1 \
     PORT=8000 \
     ENVIRONMENT=production
 
-# Install curl for healthcheck
+# Install curl for healthcheck and postgresql client utilities
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -15,14 +15,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Create persistent storage folder for SQLite database
-RUN mkdir -p /app/data
+# Create persistent storage folder for fallback local data/uploads
+RUN mkdir -p /app/data /app/uploads
 
 COPY . .
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:8000/health || exit 1
 
-CMD ["python", "run.py"]
+CMD ["sh", "-c", "alembic upgrade head && python run.py"]
