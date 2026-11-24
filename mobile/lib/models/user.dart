@@ -21,10 +21,13 @@ class AppUser {
     this.assignedMagasinIds = const [],
   });
 
-  bool get isAdmin => role == 'admin' || role == 'superadmin';
-  bool get isOwner => role == 'owner' || role == 'merchant' || role == 'superadmin' || role == 'admin';
-  bool get isManager => role == 'manager';
-  bool get isCashier => role == 'cashier';
+  bool get isSuperAdmin => role.toLowerCase() == 'superadmin';
+  bool get isOwner => const {'owner', 'merchant'}.contains(role.toLowerCase());
+  bool get isAdmin => const {'owner', 'merchant', 'store_admin', 'admin'}.contains(role.toLowerCase());
+  bool get isManager => role.toLowerCase() == 'manager';
+  bool get isCashier => role.toLowerCase() == 'cashier';
+  bool get canAccessBackofficeModules => !isCashier && !isSuperAdmin;
+  bool get canViewAudit => isAdmin || isManager;
 
   bool hasPermission(String perm) {
     if (isAdmin || isOwner || permissions.contains('*')) return true;

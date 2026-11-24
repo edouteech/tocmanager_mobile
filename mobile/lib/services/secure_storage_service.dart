@@ -11,6 +11,7 @@ class SecureStorageService {
   static const _kUserProfile = 'toc_user_profile';
   static const _kPinHash = 'toc_pin_hash';
   static const _kPinSalt = 'toc_pin_salt';
+  static const _kPinLength = 'toc_pin_length';
   static const _kInitialSeedDone = 'toc_initial_seed_done';
   static const _kCurrentBoutiqueId = 'toc_current_boutique_id';
   static const _kCurrentMagasinId = 'toc_current_magasin_id';
@@ -63,15 +64,34 @@ class SecureStorageService {
     }
   }
 
-  /// Hachage et enregistrement sécurisé du code PIN hors-ligne
+  /// Hachage et enregistrement sécurisé du code PIN hors-ligne (4 ou 6 chiffres)
   static Future<void> savePin(String pin) async {
-    // Génère un sel unique
+    final cleaned = pin.trim();
+    if (!RegExp(r'^\d{4}$|^\d{6}$').hasMatch(cleaned)) {
+      throw ArgumentError('Le code PIN doit comporter exactement 4 ou 6 chiffres.');
+    }
     final salt = DateTime.now().microsecondsSinceEpoch.toString();
-    final combined = '$pin:$salt:tocmanager_device_key';
+    final combined = '$cleaned:$salt:tocmanager_device_key';
     final hash = sha256.convert(utf8.encode(combined)).toString();
 
     await _storage.write(key: _kPinSalt, value: salt);
     await _storage.write(key: _kPinHash, value: hash);
+    await _storage.write(key: _kPinLength, value: cleaned.length.toString());
+  }
+
+  static Future<int> getPinLength() async {
+    final raw = await _storage.read(key: _kPinLength);
+    return raw == '6' ? 6 : 4;
+  }
+
+  static Future<void> clearPinAndTokens() async {
+    await _storage.delete(key: _kAccessToken);
+    await _storage.delete(key: _kRefreshToken);
+    await _storage.delete(key: _kUserProfile);
+    await _storage.delete(key: _kPinHash);
+    await _storage.delete(key: _kPinSalt);
+    await _storage.delete(key: _kPinLength);
+    await _storage.delete(key: _kPinLength);
   }
 
   /// Vérifie si un PIN est déjà enregistré
@@ -141,6 +161,7 @@ class SecureStorageService {
     await _storage.delete(key: _kUserProfile);
     await _storage.delete(key: _kPinHash);
     await _storage.delete(key: _kPinSalt);
+    await _storage.delete(key: _kPinLength);
     await _storage.delete(key: _kInitialSeedDone);
     await _storage.delete(key: _kCurrentBoutiqueId);
     await _storage.delete(key: _kCurrentMagasinId);

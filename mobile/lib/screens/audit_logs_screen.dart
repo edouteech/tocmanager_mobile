@@ -22,12 +22,15 @@ class _AuditLogsScreenState extends State<AuditLogsScreen> {
   final List<Map<String, String>> _actionFilters = [
     {'key': 'ALL', 'label': 'Tous'},
     {'key': 'SALE_CREATE', 'label': 'Ventes'},
-    {'key': 'APPROVISIONNEMENT_CREATE', 'label': 'Approvisionnements'},
-    {'key': 'DECAISSEMENT_CREATE', 'label': 'Décaissements'},
+    {'key': 'SALE_REFUND', 'label': 'Remboursements'},
+    {'key': 'STOCK_SUPPLY', 'label': 'Approvisionnements'},
+    {'key': 'EXPENSE_CREATE', 'label': 'Décaissements'},
+    {'key': 'DEBT_PAYMENT', 'label': 'Règlements'},
     {'key': 'USER_CREATE', 'label': 'Création Utilisateur'},
     {'key': 'USER_UPDATE', 'label': 'Modif Utilisateur'},
     {'key': 'USER_DELETE', 'label': 'Suppr Utilisateur'},
     {'key': 'LOGIN', 'label': 'Connexions'},
+    {'key': 'PIN_UNLOCK', 'label': 'Code PIN'},
   ];
 
   @override
@@ -59,6 +62,14 @@ class _AuditLogsScreenState extends State<AuditLogsScreen> {
           'color': AppColors.success,
           'bgColor': AppColors.successLight,
         };
+      case 'SALE_REFUND':
+        return {
+          'label': 'Remboursement',
+          'icon': Icons.assignment_return_rounded,
+          'color': AppColors.danger,
+          'bgColor': AppColors.dangerLight,
+        };
+      case 'STOCK_SUPPLY':
       case 'APPROVISIONNEMENT_CREATE':
         return {
           'label': 'Entrée Stock',
@@ -66,12 +77,20 @@ class _AuditLogsScreenState extends State<AuditLogsScreen> {
           'color': AppColors.primary,
           'bgColor': AppColors.primarySurface,
         };
+      case 'EXPENSE_CREATE':
       case 'DECAISSEMENT_CREATE':
         return {
           'label': 'Décaissement',
           'icon': Icons.account_balance_wallet_rounded,
           'color': AppColors.warning,
           'bgColor': AppColors.warningLight,
+        };
+      case 'DEBT_PAYMENT':
+        return {
+          'label': 'Règlement Dette',
+          'icon': Icons.payments_rounded,
+          'color': AppColors.success,
+          'bgColor': AppColors.successLight,
         };
       case 'USER_CREATE':
         return {
@@ -101,6 +120,7 @@ class _AuditLogsScreenState extends State<AuditLogsScreen> {
           'color': const Color(0xFF3498DB),
           'bgColor': const Color(0xFFEBF5FB),
         };
+      case 'PIN_UNLOCK':
       case 'PIN_VERIFY':
         return {
           'label': 'Déverrouillage PIN',
@@ -276,7 +296,7 @@ class _AuditLogsScreenState extends State<AuditLogsScreen> {
     final user = auth.currentUser;
 
     // RBAC: Seuls l'administrateur et le gérant peuvent voir le journal d'audit
-    final isAllowed = user != null && (user.isAdmin || user.isManager);
+    final isAllowed = user != null && user.canViewAudit;
     if (!isAllowed) {
       return Scaffold(
         appBar: AppBar(title: const Text('Accès restreint')),
