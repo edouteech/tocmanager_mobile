@@ -33,6 +33,23 @@ class MigrationReport:
     dry_run: bool = False
 
 
+def _fit_legacy_id(value: str) -> str:
+    """Deterministically fit legacy string IDs longer than 36 chars into UUID-length IDs."""
+    return value if len(value) <= 36 else str(uuid.uuid5(uuid.NAMESPACE_URL, f"tocmanager-legacy-id:{value}"))
+
+
+def _fit_string(col: sa.Column, value: str) -> str:
+    """Enforce PostgreSQL String(N) limits, remapping overlong ID/FK columns cleanly."""
+    max_len = getattr(col.type, "length", None)
+    if not max_len or len(value) <= max_len:
+        return value
+    if max_len == 36 and (
+        col.primary_key or col.foreign_keys or col.name in ("id", "sync_id") or col.name.endswith("_id")
+    ):
+        return _fit_legacy_id(value)
+    return value[:max_len]
+
+
 def coerce_value(col: sa.Column, value: Any) -> Any:
     """Coerce raw SQLite column value to match target SQLAlchemy/PostgreSQL column type."""
     if value is None:
@@ -43,11 +60,7 @@ def coerce_value(col: sa.Column, value: Any) -> Any:
         if isinstance(value, (int, float)):
             return bool(value)
         if isinstance(value, str):
-            norm = value.strip().lower()
-            if norm in ("1", "true", "t", "yes", "y", "on"):
-                return True
-            if norm in ("0", "false", "f", "no", "n", "off", ""):
-                return False
+            return value.strip().lower() in ("1", "true", "t", "yes", "y", "on")
         return bool(value)
     if isinstance(col.type, sa.DateTime):
         if isinstance(value, str):
@@ -62,12 +75,9 @@ def coerce_value(col: sa.Column, value: Any) -> Any:
             return value.replace(tzinfo=timezone.utc)
         return value
     if isinstance(col.type, sa.JSON):
-        if isinstance(value, str):
-            stripped = value.strip()
-            if not stripped:
-                return None
-            return json.loads(stripped)
-        return value
+        return (json.loads(value.strip()) if value.strip() else None) if isinstance(value, str) else value
+    if isinstance(col.type, sa.String):
+        return _fit_string(col, str(value))
     if isinstance(col.type, sa.Integer) and not isinstance(value, bool):
         return int(value)
     if isinstance(col.type, sa.Float) and not isinstance(value, bool):
@@ -188,33 +198,25 @@ def unique_constraint_keys(table: sa.Table, row: Dict[str, Any]) -> List[Tuple[s
 def build_tenant_context(src_conn, src_tables: set[str]) -> Dict[str, Any]:
     """Pre-scan legacy users, boutiques, magasins and memberships to resolve tenant mappings."""
     ctx: Dict[str, Any] = {
-        "default_boutique_id": None,
-        "first_user_id": None,
-        "synthesize_boutique": None,
-        "magasin_to_boutique": {},
-        "user_to_boutique": {},
+        "default_boutique_id": None, "first_user_id": None, "synthesize_boutique": None,
+        "magasin_to_boutique": {}, "user_to_boutique": {},
     }
     if "users" in src_tables:
         first_user = src_conn.execute(sa.text('SELECT id FROM "users" LIMIT 1')).mappings().first()
-        if first_user:
-            ctx["first_user_id"] = first_user["id"]
+        if first_user and first_user.get("id"):
+            ctx["first_user_id"] = _fit_legacy_id(str(first_user["id"]))
 
     if "boutiques" in src_tables:
         boutiques = src_conn.execute(sa.text('SELECT id, owner_user_id FROM "boutiques"')).mappings().all()
         if boutiques:
-            ctx["default_boutique_id"] = boutiques[0]["id"]
+            ctx["default_boutique_id"] = _fit_legacy_id(str(boutiques[0]["id"]))
             for row in boutiques:
                 if row.get("owner_user_id"):
-                    ctx["user_to_boutique"].setdefault(row["owner_user_id"], row["id"])
+                    ctx["user_to_boutique"].setdefault(_fit_legacy_id(str(row["owner_user_id"])), _fit_legacy_id(str(row["id"])))
 
     if ctx["default_boutique_id"] is None and ctx["first_user_id"]:
         tenant_tables = ("products", "categories", "clients", "suppliers", "ventes", "magasins", "store_settings")
-        has_rows = any(
-            src_conn.execute(sa.text(f'SELECT 1 FROM "{t}" LIMIT 1')).first() is not None
-            for t in tenant_tables
-            if t in src_tables
-        )
-        if has_rows:
+        if any(src_conn.execute(sa.text(f'SELECT 1 FROM "{t}" LIMIT 1')).first() is not None for t in tenant_tables if t in src_tables):
             synth_id = str(uuid.uuid4())
             ctx["default_boutique_id"] = synth_id
             ctx["synthesize_boutique"] = {
@@ -225,15 +227,13 @@ def build_tenant_context(src_conn, src_tables: set[str]) -> Dict[str, Any]:
 
     if "magasins" in src_tables:
         for row in src_conn.execute(sa.text('SELECT id, boutique_id FROM "magasins"')).mappings().all():
-            bid = row.get("boutique_id") or ctx["default_boutique_id"]
+            bid = _fit_legacy_id(str(row["boutique_id"])) if row.get("boutique_id") else ctx["default_boutique_id"]
             if row.get("id") and bid:
-                ctx["magasin_to_boutique"][row["id"]] = bid
+                ctx["magasin_to_boutique"][_fit_legacy_id(str(row["id"]))] = bid
 
     if "boutique_user_memberships" in src_tables:
-        for row in src_conn.execute(
-            sa.text('SELECT user_id, boutique_id FROM "boutique_user_memberships"')
-        ).mappings().all():
+        for row in src_conn.execute(sa.text('SELECT user_id, boutique_id FROM "boutique_user_memberships"')).mappings().all():
             if row.get("user_id") and row.get("boutique_id"):
-                ctx["user_to_boutique"].setdefault(row["user_id"], row["boutique_id"])
+                ctx["user_to_boutique"].setdefault(_fit_legacy_id(str(row["user_id"])), _fit_legacy_id(str(row["boutique_id"])))
 
     return ctx
