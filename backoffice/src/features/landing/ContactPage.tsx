@@ -3,6 +3,7 @@ import { Send, CheckCircle2, Mail, Building2, Phone, User, AlertCircle } from 'l
 import { saasApi } from '../../lib/api';
 import { PublicNavbar } from '../../components/public/PublicNavbar';
 import { PublicFooter } from '../../components/public/PublicFooter';
+import { IconInput } from '../../components/common/IconInput';
 import { usePageTitle } from './hooks/usePageTitle';
 
 export const ContactPage: React.FC = () => {
@@ -98,60 +99,48 @@ export const ContactPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold mb-1">Nom complet *</label>
-                <div className="relative">
-                  <User className="w-4 h-4 text-[#9FB3C8] absolute left-3 top-3" />
-                  <input
-                    type="text"
-                    required
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Ex: Awa Diop"
-                    className="input-toc pl-9"
-                  />
-                </div>
+                <IconInput
+                  icon={<User className="w-4 h-4" />}
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Ex: Awa Diop"
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1">Email professionnel *</label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-[#9FB3C8] absolute left-3 top-3" />
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="awa@entreprise.com"
-                    className="input-toc pl-9"
-                  />
-                </div>
+                <IconInput
+                  icon={<Mail className="w-4 h-4" />}
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="awa@entreprise.com"
+                />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold mb-1">Entreprise / Boutique</label>
-                <div className="relative">
-                  <Building2 className="w-4 h-4 text-[#9FB3C8] absolute left-3 top-3" />
-                  <input
-                    type="text"
-                    value={company}
-                    onChange={(e) => setCompany(e.target.value)}
-                    placeholder="Ex: Diop Distribution"
-                    className="input-toc pl-9"
-                  />
-                </div>
+                <IconInput
+                  icon={<Building2 className="w-4 h-4" />}
+                  type="text"
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                  placeholder="Ex: Diop Distribution"
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1">Téléphone</label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 text-[#9FB3C8] absolute left-3 top-3" />
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+221 77 000 00 00"
-                    className="input-toc pl-9"
-                  />
-                </div>
+                <IconInput
+                  icon={<Phone className="w-4 h-4" />}
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+221 77 000 00 00"
+                />
               </div>
             </div>
 

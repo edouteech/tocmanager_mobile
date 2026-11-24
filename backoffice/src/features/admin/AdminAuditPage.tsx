@@ -4,6 +4,7 @@ import { adminApi } from '../../lib/api';
 import { PlatformAuditItem } from '../../types';
 import { useDensity } from '../../context/DensityContext';
 import { formatDateTime } from '../../lib/formatters';
+import { IconInput } from '../../components/common/IconInput';
 
 export const AdminAuditPage: React.FC = () => {
   const { tableClasses } = useDensity();
@@ -45,19 +46,18 @@ export const AdminAuditPage: React.FC = () => {
       </div>
 
       <div className="card-toc p-4 flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 text-[#9FB3C8] absolute left-3.5 top-3" />
-          <input
-            type="text"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') fetchLogs();
-            }}
-            placeholder="Filtrer par admin, cible, action..."
-            className="input-toc pl-10 text-xs"
-          />
-        </div>
+        <IconInput
+          containerClassName="flex-1"
+          icon={<Search className="w-4 h-4" />}
+          type="text"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') fetchLogs();
+          }}
+          placeholder="Filtrer par admin, cible, action..."
+          className="text-xs"
+        />
         <select value={action} onChange={(e) => setAction(e.target.value)} className="input-toc sm:w-64 text-xs">
           <option value="">Toutes les actions</option>
           <option value="PLAN_UPDATE">PLAN_UPDATE</option>

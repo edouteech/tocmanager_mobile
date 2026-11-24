@@ -2,6 +2,7 @@ import React from 'react';
 import { Search, Plus } from 'lucide-react';
 import { Category, Product } from '../../types';
 import { formatFCFA } from '../../lib/formatters';
+import { IconInput } from '../../components/common/IconInput';
 
 export interface PosCartItem {
   product: Product;
@@ -36,17 +37,16 @@ export const PosProductCatalog: React.FC<PosProductCatalogProps> = ({
 }) => (
   <div className="lg:col-span-7 space-y-4">
     <div className="space-y-3">
-      <div className="relative">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Rechercher par nom de produit ou code-barres..."
-          className="input-toc pl-9 text-sm"
-          autoFocus
-        />
-      </div>
+      <IconInput
+        icon={<Search className="w-4 h-4" />}
+        iconClassName="text-slate-400"
+        type="text"
+        value={searchTerm}
+        onChange={(e) => onSearchChange(e.target.value)}
+        placeholder="Rechercher par nom de produit ou code-barres..."
+        className="text-sm"
+        autoFocus
+      />
 
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
         <button

@@ -3,6 +3,7 @@ import { Users, Truck, Search, Plus, DollarSign, AlertCircle, CheckCircle2, File
 import { Client, Supplier } from '../../types';
 import { formatFCFA } from '../../lib/formatters';
 import { ConfirmModal } from '../../components/common/ConfirmModal';
+import { IconInput } from '../../components/common/IconInput';
 import { PaginationControls } from '../../components/common/PaginationControls';
 import { PaymentReceiptModal } from '../../components/common/PaymentReceiptModal';
 import { SummaryChipsRow, SummaryChipItem } from '../../components/common/SummaryChipsRow';
@@ -97,16 +98,16 @@ export const PartnersPage: React.FC<{ kind: PartnerKind }> = ({ kind }) => {
       <SummaryChipsRow chips={summaryChips} />
 
       <div className="card-toc p-3.5 sm:p-4 space-y-3">
-        <div className="relative w-full">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          <input
-            type="text"
-            placeholder={isSupplier ? 'Rechercher raison sociale, contact, téléphone...' : 'Rechercher nom, téléphone, adresse...'}
-            value={dir.search}
-            onChange={(e) => dir.setSearch(e.target.value)}
-            className="input-toc pl-10 w-full text-xs sm:text-sm"
-          />
-        </div>
+        <IconInput
+          containerClassName="w-full"
+          icon={<Search className="w-4 h-4" />}
+          iconClassName="text-slate-400"
+          type="text"
+          placeholder={isSupplier ? 'Rechercher raison sociale, contact, téléphone...' : 'Rechercher nom, téléphone, adresse...'}
+          value={dir.search}
+          onChange={(e) => dir.setSearch(e.target.value)}
+          className="text-xs sm:text-sm"
+        />
         <FilterPeriodChips
           chips={filterChips}
           selectedChip={dir.filterMode}

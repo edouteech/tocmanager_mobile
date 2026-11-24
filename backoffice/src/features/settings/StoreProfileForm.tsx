@@ -2,6 +2,7 @@ import React from 'react';
 import { Store, Phone, Mail, MapPin, FileText, AlertTriangle, Save } from 'lucide-react';
 import { StoreSettings } from '../../types';
 import { CANONICAL_CURRENCIES } from '../../lib/currencies';
+import { IconInput } from '../../components/common/IconInput';
 
 interface StoreProfileFormProps {
   form: StoreSettings;
@@ -60,32 +61,28 @@ export const StoreProfileForm: React.FC<StoreProfileFormProps> = ({
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
             Téléphone de contact
           </label>
-          <div className="relative">
-            <Phone className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={form.phone || ''}
-              onChange={(e) => onChange({ ...form, phone: e.target.value })}
-              placeholder="+228 90 00 00 00"
-              className="input-toc pl-10"
-            />
-          </div>
+          <IconInput
+            icon={<Phone className="w-4 h-4" />}
+            iconClassName="text-slate-400"
+            type="text"
+            value={form.phone || ''}
+            onChange={(e) => onChange({ ...form, phone: e.target.value })}
+            placeholder="+228 90 00 00 00"
+          />
         </div>
 
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
             Email professionnel
           </label>
-          <div className="relative">
-            <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="email"
-              value={form.email || ''}
-              onChange={(e) => onChange({ ...form, email: e.target.value })}
-              placeholder="contact@boutique.com"
-              className="input-toc pl-10"
-            />
-          </div>
+          <IconInput
+            icon={<Mail className="w-4 h-4" />}
+            iconClassName="text-slate-400"
+            type="email"
+            value={form.email || ''}
+            onChange={(e) => onChange({ ...form, email: e.target.value })}
+            placeholder="contact@boutique.com"
+          />
         </div>
       </div>
 
@@ -93,16 +90,14 @@ export const StoreProfileForm: React.FC<StoreProfileFormProps> = ({
         <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
           Adresse géographique
         </label>
-        <div className="relative">
-          <MapPin className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={form.address || ''}
-            onChange={(e) => onChange({ ...form, address: e.target.value })}
-            placeholder="Rue, Quartier, Ville, Pays"
-            className="input-toc pl-10"
-          />
-        </div>
+        <IconInput
+          icon={<MapPin className="w-4 h-4" />}
+          iconClassName="text-slate-400"
+          type="text"
+          value={form.address || ''}
+          onChange={(e) => onChange({ ...form, address: e.target.value })}
+          placeholder="Rue, Quartier, Ville, Pays"
+        />
       </div>
     </div>
 

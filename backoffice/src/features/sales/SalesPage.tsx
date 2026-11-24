@@ -1,6 +1,7 @@
 import React from 'react';
 import { Search, ShoppingBag, Plus, FileSpreadsheet, DollarSign, TrendingUp, AlertCircle } from 'lucide-react';
 import { formatFCFA } from '../../lib/formatters';
+import { IconInput } from '../../components/common/IconInput';
 import { PaginationControls } from '../../components/common/PaginationControls';
 import { SummaryChipsRow, SummaryChipItem } from '../../components/common/SummaryChipsRow';
 import { FilterPeriodChips, FilterChipItem, SortOption } from '../../components/common/FilterPeriodChips';
@@ -97,16 +98,16 @@ export const SalesPage: React.FC = () => {
 
       <div className="card-toc p-3.5 sm:p-4 space-y-3">
         <div className="flex flex-col sm:flex-row gap-2.5">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Rechercher par ticket, client..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="input-toc pl-10 w-full text-xs sm:text-sm"
-            />
-          </div>
+          <IconInput
+            containerClassName="flex-1"
+            icon={<Search className="w-4 h-4" />}
+            iconClassName="text-slate-400"
+            type="text"
+            placeholder="Rechercher par ticket, client..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="text-xs sm:text-sm"
+          />
           <button
             type="button"
             onClick={() => setOnlyCredit((prev) => !prev)}

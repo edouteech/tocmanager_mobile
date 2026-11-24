@@ -10,6 +10,7 @@ import { ExtendTrialModal } from './ExtendTrialModal';
 import { ChangePlanModal } from './ChangePlanModal';
 import { BoutiqueDetailDrawer } from './BoutiqueDetailDrawer';
 import { AdminBoutiquesTable } from './AdminBoutiquesTable';
+import { IconInput } from '../../components/common/IconInput';
 
 export const AdminBoutiquesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -172,22 +173,21 @@ export const AdminBoutiquesPage: React.FC = () => {
       )}
 
       <div className="card-toc p-4 flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 text-[#9FB3C8] absolute left-3.5 top-3" />
-          <input
-            type="text"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                setPage(1);
-                fetchBoutiques();
-              }
-            }}
-            placeholder="Rechercher boutique, société, propriétaire, email..."
-            className="input-toc pl-10 text-xs"
-          />
-        </div>
+        <IconInput
+          containerClassName="flex-1"
+          icon={<Search className="w-4 h-4" />}
+          type="text"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              setPage(1);
+              fetchBoutiques();
+            }
+          }}
+          placeholder="Rechercher boutique, société, propriétaire, email..."
+          className="text-xs"
+        />
         <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="input-toc sm:w-44 text-xs">
           <option value="">Tous statuts</option>
           <option value="active">Abonnement actif</option>

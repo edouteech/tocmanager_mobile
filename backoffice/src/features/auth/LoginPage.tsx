@@ -4,6 +4,7 @@ import { Lock, User, AlertCircle, ArrowRight, Sun, Moon, Store } from 'lucide-re
 import { authApi } from '../../lib/api';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../context/ThemeContext';
+import { IconInput } from '../../components/common/IconInput';
 import { TwoFactorChallengeForm } from './TwoFactorChallengeForm';
 
 export const LoginPage: React.FC = () => {
@@ -116,19 +117,15 @@ export const LoginPage: React.FC = () => {
               <label className="block text-xs font-bold uppercase tracking-wider text-[#1C2B3A] dark:text-slate-300 mb-1.5">
                 Identifiant ou Email
               </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#9FB3C8]">
-                  <User className="w-4 h-4" />
-                </div>
-                <input
-                  type="text"
-                  required
-                  value={usernameOrEmail}
-                  onChange={(e) => setUsernameOrEmail(e.target.value)}
-                  placeholder="Ex: admin ou caissier1"
-                  className="w-full pl-10 pr-4 py-2.5 input-toc text-sm font-medium"
-                />
-              </div>
+              <IconInput
+                icon={<User className="w-4 h-4" />}
+                type="text"
+                required
+                value={usernameOrEmail}
+                onChange={(e) => setUsernameOrEmail(e.target.value)}
+                placeholder="Ex: admin ou caissier1"
+                className="text-sm font-medium"
+              />
             </div>
 
             <div>
@@ -140,19 +137,15 @@ export const LoginPage: React.FC = () => {
                   Mot de passe oublie ?
                 </Link>
               </div>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#9FB3C8]">
-                  <Lock className="w-4 h-4" />
-                </div>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="********"
-                  className="w-full pl-10 pr-4 py-2.5 input-toc text-sm font-medium"
-                />
-              </div>
+              <IconInput
+                icon={<Lock className="w-4 h-4" />}
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="********"
+                className="text-sm font-medium"
+              />
             </div>
 
             <button
