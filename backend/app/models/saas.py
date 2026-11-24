@@ -63,7 +63,6 @@ class Boutique(Base):
     email = Column(String(255), nullable=True)
     address = Column(Text, nullable=True)
     logo_url = Column(Text, nullable=True)
-    schema_name = Column(String(63), unique=True, nullable=True)
     owner_user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
     has_used_trial = Column(Boolean, nullable=False, default=False)
     is_active = Column(Boolean, default=True)

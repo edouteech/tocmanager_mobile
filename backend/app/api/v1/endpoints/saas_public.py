@@ -93,7 +93,6 @@ def provision_tenant(
     # Créer le slug de boutique
     base_slug = payload.boutique_name.strip().lower().replace(" ", "-")
     unique_slug = f"{base_slug}-{uuid.uuid4().hex[:6]}"
-    schema_name = f"tenant_btq_{uuid.uuid4().hex[:12]}"
 
     boutique = Boutique(
         slug=unique_slug,
@@ -102,7 +101,6 @@ def provision_tenant(
         currency=payload.currency,
         country=payload.country,
         phone=payload.phone,
-        schema_name=schema_name,
         owner_user_id=current_user.id,
         is_active=True,
     )

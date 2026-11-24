@@ -14,7 +14,7 @@ from app.models.saas import (
 )
 from app.models.catalog import Category, Product, Client, Supplier
 from app.models.transactions import Vente, VenteItem, Approvisionnement, Decaissement
-from app.models.system import AuditLog, SyncEvent, StoreSetting
+from app.models.system import AuditLog, StoreSetting
 from app.models.billing import PaymentProvider, SaasPaymentTransaction, SaasInvoice
 from app.models.inventory import StockTransfer, StockTransferItem, StockMovement
 from app.models.cash import CashRegisterSession, ClientPayment, SupplierPayment
@@ -42,7 +42,6 @@ __all__ = [
     "Approvisionnement",
     "Decaissement",
     "AuditLog",
-    "SyncEvent",
     "StoreSetting",
     "PaymentProvider",
     "SaasPaymentTransaction",
