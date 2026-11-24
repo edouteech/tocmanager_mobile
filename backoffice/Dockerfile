@@ -19,8 +19,9 @@ RUN apk add --no-cache curl
 # Copy built assets
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Copy optimized Nginx configuration
+# Copy optimized Nginx configuration and validate syntax at build time
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+RUN nginx -t
 
 EXPOSE 80
 
