@@ -3,6 +3,8 @@ from pathlib import Path
 import subprocess
 import sys
 
+from alembic.config import Config as AlembicConfig
+from alembic.script import ScriptDirectory
 from fastapi.testclient import TestClient
 from PIL import Image
 from sqlalchemy import create_engine, inspect
@@ -24,6 +26,16 @@ def test_normalize_database_url_maps_postgresql_schemes_to_psycopg2():
 
     eng = create_engine(normalize_database_url("postgresql://u:p@localhost:5432/tocmanager_ci"))
     assert eng.dialect.driver == "psycopg2"
+
+
+def test_all_alembic_revision_ids_fit_postgresql_varchar_32():
+    backend_dir = Path(__file__).resolve().parents[1]
+    cfg = AlembicConfig(str(backend_dir / "alembic.ini"))
+    cfg.set_main_option("script_location", str(backend_dir / "alembic"))
+    revisions = list(ScriptDirectory.from_config(cfg).walk_revisions())
+    assert len(revisions) >= 3
+    for rev in revisions:
+        assert len(rev.revision) <= 32, f"Alembic revision ID too long for VARCHAR(32): {rev.revision}"
 
 
 def _make_png_bytes(width: int = 32, height: int = 32) -> bytes:

@@ -1,7 +1,7 @@
 """Add user email verification, TOTP 2FA fields, and auth_action_tokens table.
 
 Revision ID: 0003_auth_tokens_and_2fa
-Revises: 0002_drop_legacy_schema_name_and_sync_event
+Revises: 0002_drop_legacy_fields
 Create Date: 2026-11-24
 """
 from typing import Sequence, Union
@@ -10,7 +10,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision: str = "0003_auth_tokens_and_2fa"
-down_revision: Union[str, None] = "0002_drop_legacy_schema_name_and_sync_event"
+down_revision: Union[str, None] = "0002_drop_legacy_fields"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
