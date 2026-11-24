@@ -104,5 +104,6 @@ class SecureStorageService {
     await _storage.delete(key: _kUserProfile);
     await _storage.delete(key: _kPinHash);
     await _storage.delete(key: _kPinSalt);
+    await _storage.delete(key: _kInitialSeedDone);
   }
 }
