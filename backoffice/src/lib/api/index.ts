@@ -6,6 +6,7 @@ export {
   approvisionnementsApi,
   transfersApi,
   stockMovementsApi,
+  uploadsApi,
 } from './catalog.api';
 export { ventesApi, cashSessionsApi } from './sales.api';
 export { clientsApi, suppliersApi } from './partners.api';

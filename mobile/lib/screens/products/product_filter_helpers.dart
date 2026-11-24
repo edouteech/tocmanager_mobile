@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../models/product.dart';
+import '../../services/media_upload_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/category_icon_helper.dart';
 
@@ -38,12 +39,24 @@ List<Product> filterAndSortProducts(
 }
 
 Widget buildProductThumb(Product p, Color catColor, dynamic cat, {double size = 40}) {
-  if (p.imagePath != null) {
-    final file = File(p.imagePath!);
+  if (p.imagePath != null && p.imagePath!.isNotEmpty) {
+    final radius = BorderRadius.circular(size > 44 ? 12 : 8);
+    if (MediaUploadService.isRemoteImagePath(p.imagePath)) {
+      return ClipRRect(
+        borderRadius: radius,
+        child: Image.network(
+          MediaUploadService.resolveDisplayImageUrl(p.imagePath!),
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => buildProductCategoryIcon(catColor, cat, size: size),
+        ),
+      );
+    }
     return ClipRRect(
-      borderRadius: BorderRadius.circular(size > 44 ? 12 : 8),
+      borderRadius: radius,
       child: Image.file(
-        file,
+        File(p.imagePath!),
         width: size,
         height: size,
         fit: BoxFit.cover,

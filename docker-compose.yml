@@ -1,19 +1,49 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tocmanager_postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-tocmanager}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      - POSTGRES_DB=${POSTGRES_DB:-tocmanager}
+    volumes:
+      - tocmanager_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tocmanager} -d ${POSTGRES_DB:-tocmanager}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: tocmanager_backend
     restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       - PORT=8000
       - ENVIRONMENT=production
       - ENABLE_DEMO_SEED=false
-      - DATABASE_URL=sqlite:////app/data/tocmanager.db
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-tocmanager}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-tocmanager}
       - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set}
       - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS:-http://localhost:3000}
+      - S3_ENDPOINT_URL=${S3_ENDPOINT_URL:-}
+      - S3_REGION=${S3_REGION:-auto}
+      - S3_BUCKET=${S3_BUCKET:-}
+      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID:-}
+      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-}
+      - S3_PUBLIC_BASE_URL=${S3_PUBLIC_BASE_URL:-}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - MAIL_FROM=${MAIL_FROM:-TocManager <no-reply@tocmanager.locarapide.com>}
+      - FRONTEND_BASE_URL=${FRONTEND_BASE_URL:-http://localhost:3000}
+      - SENTRY_DSN=${SENTRY_DSN:-}
     volumes:
-      - tocmanager_backend_data:/app/data
+      - tocmanager_backend_uploads:/app/uploads
     ports:
       - "8000:8000"
     healthcheck:
@@ -21,12 +51,14 @@ services:
       interval: 15s
       timeout: 5s
       retries: 3
-      start_period: 5s
+      start_period: 15s
 
   backoffice:
     build:
       context: ./backoffice
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api/v1}
     container_name: tocmanager_backoffice
     restart: always
     depends_on:
@@ -35,12 +67,14 @@ services:
     ports:
       - "3000:80"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1/health"]
       interval: 15s
       timeout: 5s
       retries: 3
       start_period: 5s
 
 volumes:
-  tocmanager_backend_data:
+  tocmanager_pg_data:
+    driver: local
+  tocmanager_backend_uploads:
     driver: local

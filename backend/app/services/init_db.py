@@ -1,4 +1,3 @@
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import engine, Base
@@ -11,63 +10,8 @@ from app.services.seed_demo import seed_demo_data
 from app.services.stock_service import backfill_product_stocks_to_main_magasin
 
 
-def _migrate_columns() -> None:
-    """Ajoute de façon non destructive les nouvelles colonnes sous SQLite."""
-    if not settings.DATABASE_URL.startswith("sqlite"):
-        return
-
-    with engine.connect() as conn:
-        def add_col_if_missing(table: str, col: str, col_type: str):
-            try:
-                res = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
-                existing = [r[1] for r in res]
-                if existing and col not in existing:
-                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
-                    conn.commit()
-            except Exception:
-                pass
-
-        for table in ("clients", "suppliers", "approvisionnements", "decaissements"):
-            add_col_if_missing(table, "user_id", "VARCHAR(36)")
-            add_col_if_missing(table, "user_name", "VARCHAR(255)")
-        add_col_if_missing("ventes", "user_name", "VARCHAR(255)")
-        add_col_if_missing("ventes", "status", "VARCHAR(30) DEFAULT 'completed'")
-        add_col_if_missing("vente_items", "refunded_quantity", "FLOAT DEFAULT 0.0")
-        add_col_if_missing("users", "pin_failed_attempts", "INTEGER DEFAULT 0")
-        add_col_if_missing("users", "pin_locked_until", "DATETIME")
-
-        for table in (
-            "categories", "products", "clients", "suppliers",
-            "ventes", "approvisionnements", "decaissements",
-            "audit_logs", "sync_events",
-        ):
-            add_col_if_missing(table, "boutique_id", "VARCHAR(36)")
-
-        for table in ("ventes", "approvisionnements", "decaissements", "sync_events"):
-            add_col_if_missing(table, "magasin_id", "VARCHAR(36)")
-
-        for table in ("stocks_magasin", "product_magasin_availability"):
-            add_col_if_missing(table, "boutique_id", "VARCHAR(36)")
-
-        add_col_if_missing("saas_plan_features", "category", "VARCHAR(50) DEFAULT 'modules'")
-        add_col_if_missing("saas_plan_features", "description", "TEXT")
-        add_col_if_missing("saas_plan_features", "display_order", "INTEGER DEFAULT 0")
-        add_col_if_missing("saas_plan_features", "show_on_pricing", "BOOLEAN DEFAULT 1")
-        add_col_if_missing("boutiques", "has_used_trial", "BOOLEAN DEFAULT 0")
-        add_col_if_missing("saas_subscriptions", "has_used_trial", "BOOLEAN DEFAULT 0")
-
-        # Rebuild legacy store_settings table under SQLite if it lacks id/boutique_id
-        try:
-            cols = [r[1] for r in conn.execute(text("PRAGMA table_info(store_settings)")).fetchall()]
-            if cols and "boutique_id" not in cols:
-                conn.execute(text("DROP TABLE IF EXISTS store_settings"))
-                conn.commit()
-        except Exception:
-            pass
-
-
 def bootstrap_production_superadmin(db: Session) -> None:
-    """Crée un unique superadmin initial en prod si des identifiants explicites sont fournis."""
+    """Create initial superadmin in production only when explicit credentials are configured."""
     existing_superadmin = db.query(User).filter(User.role == "superadmin").first()
     if existing_superadmin:
         return
@@ -104,7 +48,7 @@ def _migrate_legacy_admin_roles(db: Session) -> None:
 
 
 def init_db(db: Session) -> None:
-    _migrate_columns()
+    """Ensure schema creation, PostgreSQL RLS, base SaaS seed and environment bootstrap."""
     Base.metadata.create_all(bind=engine)
     apply_postgresql_rls(engine)
     _migrate_legacy_admin_roles(db)

@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:croppy/croppy.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../services/media_upload_service.dart';
 import '../../theme/app_theme.dart';
 
 class ProductFormImageTile extends StatelessWidget {
@@ -43,6 +44,18 @@ class ProductFormImageTile extends StatelessWidget {
       );
     }
     if (imagePath != null) {
+      if (MediaUploadService.isRemoteImagePath(imagePath)) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(13),
+          child: Image.network(
+            MediaUploadService.resolveDisplayImageUrl(imagePath!),
+            fit: BoxFit.cover,
+            width: 76,
+            height: 76,
+            errorBuilder: (_, __, ___) => _placeholder(),
+          ),
+        );
+      }
       return ClipRRect(
         borderRadius: BorderRadius.circular(13),
         child: Image.file(
