@@ -31,6 +31,7 @@ class UserService {
     String? email,
     required String role,
     String? pin,
+    List<String>? assignedMagasinIds,
   }) async {
     final baseUrl = await SecureStorageService.getServerUrl();
     final url = Uri.parse('$baseUrl/users');
@@ -42,6 +43,7 @@ class UserService {
       'email': email?.trim().isNotEmpty == true ? email!.trim() : null,
       'role': role,
       'pin': pin?.trim().isNotEmpty == true ? pin!.trim() : null,
+      if (assignedMagasinIds != null) 'assigned_magasin_ids': assignedMagasinIds,
     };
 
     final response = await ApiClient.instance.post(
@@ -66,6 +68,7 @@ class UserService {
     String? password,
     String? pin,
     bool? isActive,
+    List<String>? assignedMagasinIds,
   }) async {
     final baseUrl = await SecureStorageService.getServerUrl();
     final url = Uri.parse('$baseUrl/users/$userId');
@@ -77,6 +80,7 @@ class UserService {
     if (password != null && password.isNotEmpty) payload['password'] = password;
     if (pin != null) payload['pin'] = pin.trim();
     if (isActive != null) payload['is_active'] = isActive;
+    if (assignedMagasinIds != null) payload['assigned_magasin_ids'] = assignedMagasinIds;
 
     final response = await ApiClient.instance.put(
       url,

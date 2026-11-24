@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../models/user.dart';
+import '../providers/tenant_provider.dart';
 import '../services/user_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_toast.dart';
@@ -33,11 +35,23 @@ class _UserFormModalState extends State<UserFormModal> {
   late TextEditingController _pinController;
 
   late String _selectedRole;
+  late Set<String> _selectedMagasinIds;
   late bool _isActive;
   bool _obscurePassword = true;
   bool _isLoading = false;
 
   bool get isEditing => widget.user != null;
+
+  static String _normalizeRole(String? raw) {
+    final lower = (raw ?? 'cashier').toLowerCase();
+    if (lower == 'admin' || lower == 'owner' || lower == 'merchant') {
+      return 'store_admin';
+    }
+    if (const {'cashier', 'manager', 'store_admin'}.contains(lower)) {
+      return lower;
+    }
+    return 'cashier';
+  }
 
   @override
   void initState() {
@@ -49,7 +63,8 @@ class _UserFormModalState extends State<UserFormModal> {
     _passwordController = TextEditingController();
     _pinController = TextEditingController();
 
-    _selectedRole = u?.role ?? 'cashier';
+    _selectedRole = _normalizeRole(u?.role);
+    _selectedMagasinIds = Set<String>.from(u?.assignedMagasinIds ?? const <String>[]);
     _isActive = u?.isActive ?? true;
   }
 
@@ -74,6 +89,10 @@ class _UserFormModalState extends State<UserFormModal> {
 
     setState(() => _isLoading = true);
 
+    final assignedIds = _selectedRole == 'store_admin'
+        ? const <String>[]
+        : _selectedMagasinIds.toList();
+
     try {
       if (isEditing) {
         final updatedUser = await UserService.instance.updateUser(
@@ -86,6 +105,7 @@ class _UserFormModalState extends State<UserFormModal> {
               : null,
           pin: pinText.isNotEmpty ? pinText : null,
           isActive: _isActive,
+          assignedMagasinIds: assignedIds,
         );
         if (mounted) {
           AppToast.showSuccess(context, 'Utilisateur modifié avec succès.');
@@ -99,6 +119,7 @@ class _UserFormModalState extends State<UserFormModal> {
           email: _emailController.text.trim(),
           role: _selectedRole,
           pin: pinText.isNotEmpty ? pinText : null,
+          assignedMagasinIds: assignedIds,
         );
         if (mounted) {
           AppToast.showSuccess(context, 'Utilisateur créé avec succès.');
@@ -351,12 +372,12 @@ class _UserFormModalState extends State<UserFormModal> {
                               ),
                             ),
                             DropdownMenuItem(
-                              value: 'admin',
+                              value: 'store_admin',
                               child: Row(
                                 children: [
                                   Icon(Icons.shield_rounded, color: AppColors.purple, size: 20),
                                   SizedBox(width: 8),
-                                  Text('Administrateur (Accès total & gestion)', style: TextStyle(fontSize: 13)),
+                                  Text('Administrateur Boutique (Accès total)', style: TextStyle(fontSize: 13)),
                                 ],
                               ),
                             ),
@@ -368,6 +389,43 @@ class _UserFormModalState extends State<UserFormModal> {
                       ),
                     ),
                     const SizedBox(height: 14),
+                    if (_selectedRole != 'store_admin' &&
+                        context.watch<TenantProvider>().allBoutiqueMagasins.isNotEmpty) ...[
+                      const Text(
+                        'Magasins assignés (vide = tous)',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: context
+                            .watch<TenantProvider>()
+                            .allBoutiqueMagasins
+                            .map((m) {
+                              final selected = _selectedMagasinIds.contains(m.id);
+                              return FilterChip(
+                                label: Text(m.name, style: const TextStyle(fontSize: 12)),
+                                selected: selected,
+                                onSelected: (checked) {
+                                  setState(() {
+                                    if (checked) {
+                                      _selectedMagasinIds.add(m.id);
+                                    } else {
+                                      _selectedMagasinIds.remove(m.id);
+                                    }
+                                  });
+                                },
+                              );
+                            })
+                            .toList(),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
 
                     // Password
                     Text(

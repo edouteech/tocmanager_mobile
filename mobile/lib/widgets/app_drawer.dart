@@ -55,7 +55,8 @@ class AppDrawer extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
     final tenant = context.watch<TenantProvider>();
     final isAdmin = auth.currentUser?.isAdmin ?? false;
-    final isManagerOrAdmin = isAdmin || (auth.currentUser?.isManager ?? false);
+    final canAccessBackoffice = auth.currentUser?.canAccessBackofficeModules ?? false;
+    final canViewAudit = auth.currentUser?.canViewAudit ?? false;
     final canSwitchMagasin =
         tenant.canConsolidate || tenant.magasins.length > 1 || tenant.boutiques.length > 1;
     final activeScopeLabel = tenant.isConsolidatedMode
@@ -138,33 +139,37 @@ class AppDrawer extends StatelessWidget {
                   index: 3, icon: Icons.people_outline, activeIcon: Icons.people,
                   label: 'Clients', current: currentIndex, onTap: onNav,
                 ),
-                _NavItem(
-                  index: 7, icon: Icons.business_outlined, activeIcon: Icons.business,
-                  label: 'Fournisseurs', current: currentIndex, onTap: onNav,
-                ),
+                if (canAccessBackoffice)
+                  _NavItem(
+                    index: 7, icon: Icons.business_outlined, activeIcon: Icons.business,
+                    label: 'Fournisseurs', current: currentIndex, onTap: onNav,
+                  ),
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Divider(color: AppColors.divider),
                 ),
-                _NavItem(
-                  index: 4, icon: Icons.arrow_downward_outlined,
-                  activeIcon: Icons.arrow_downward,
-                  label: 'Approvisionnements', current: currentIndex, onTap: onNav,
-                ),
+                if (canAccessBackoffice)
+                  _NavItem(
+                    index: 4, icon: Icons.arrow_downward_outlined,
+                    activeIcon: Icons.arrow_downward,
+                    label: 'Approvisionnements', current: currentIndex, onTap: onNav,
+                  ),
                 _NavItem(
                   index: 5, icon: Icons.shopping_cart_outlined,
                   activeIcon: Icons.shopping_cart,
                   label: 'Ventes', current: currentIndex, onTap: onNav,
                 ),
-                _NavItem(
-                  index: 6, icon: Icons.account_balance_wallet_outlined,
-                  activeIcon: Icons.account_balance_wallet,
-                  label: 'Décaissements', current: currentIndex, onTap: onNav,
-                ),
-                _NavItem(
-                  index: 9, icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart,
-                  label: 'Rapports & Analytique', current: currentIndex, onTap: onNav,
-                ),
+                if (canAccessBackoffice) ...[
+                  _NavItem(
+                    index: 6, icon: Icons.account_balance_wallet_outlined,
+                    activeIcon: Icons.account_balance_wallet,
+                    label: 'Décaissements', current: currentIndex, onTap: onNav,
+                  ),
+                  _NavItem(
+                    index: 9, icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart,
+                    label: 'Rapports & Analytique', current: currentIndex, onTap: onNav,
+                  ),
+                ],
                 if (isAdmin)
                   _NavItem(
                     index: 11,
@@ -174,7 +179,7 @@ class AppDrawer extends StatelessWidget {
                     current: currentIndex,
                     onTap: onNav,
                   ),
-                if (isManagerOrAdmin)
+                if (canViewAudit)
                   _NavItem(
                     index: 12,
                     icon: Icons.shield_outlined,

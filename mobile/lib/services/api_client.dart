@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../models/plan_limit_error.dart';
 import '../utils/jwt_helper.dart';
 import 'secure_storage_service.dart';
 
@@ -16,6 +17,19 @@ class ApiClient {
   final http.Client _httpClient = http.Client();
 
   Completer<bool>? _refreshCompleter;
+
+  static final StreamController<PlanLimitError> _planLimitController =
+      StreamController<PlanLimitError>.broadcast();
+  static Stream<PlanLimitError> get onPlanLimitError => _planLimitController.stream;
+
+  @visibleForTesting
+  static PlanLimitError? inspectResponseForPlanError(http.Response response) {
+    final parsed = PlanLimitError.tryParse(response.statusCode, response.body);
+    if (parsed != null) {
+      _planLimitController.add(parsed);
+    }
+    return parsed;
+  }
 
   /// Vérifie proactivement l'état des jetons et déclenche un renouvellement si nécessaire :
   /// - Access Token : rafraîchi si expiration dans < 5 heures
@@ -208,6 +222,7 @@ class ApiClient {
       }
     }
 
+    inspectResponseForPlanError(response);
     return response;
   }
 }

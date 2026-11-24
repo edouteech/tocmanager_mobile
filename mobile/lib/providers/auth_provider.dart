@@ -10,6 +10,10 @@ import '../services/network_service.dart';
 import '../services/sync_service.dart';
 
 class AuthProvider extends ChangeNotifier {
+  final http.Client? _httpClient;
+
+  AuthProvider({http.Client? httpClient}) : _httpClient = httpClient;
+
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
 
@@ -24,6 +28,10 @@ class AuthProvider extends ChangeNotifier {
 
   int _pinAttemptsRemaining = 3;
   int get pinAttemptsRemaining => _pinAttemptsRemaining;
+  bool get isPinBlocked => _pinAttemptsRemaining <= 0;
+
+  int _expectedPinLength = 4;
+  int get expectedPinLength => _expectedPinLength;
 
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
@@ -42,11 +50,19 @@ class AuthProvider extends ChangeNotifier {
       final hasPin = await SecureStorageService.hasPinConfigured();
 
       if (user != null && token != null) {
-        _currentUser = user;
-        _isAuthenticated = true;
-        _isPinLocked = hasPin; // Verrouillé par PIN au démarrage si configuré
-        unawaited(ApiClient.instance.checkAndProactiveRefresh());
-        unawaited(SyncService.instance.syncNow());
+        if (user.isSuperAdmin) {
+          await SecureStorageService.clearSession();
+          _isAuthenticated = false;
+          _isPinLocked = false;
+          _currentUser = null;
+        } else {
+          _currentUser = user;
+          _isAuthenticated = true;
+          _expectedPinLength = await SecureStorageService.getPinLength();
+          _isPinLocked = hasPin;
+          unawaited(ApiClient.instance.checkAndProactiveRefresh());
+          unawaited(SyncService.instance.syncNow());
+        }
       } else {
         _isAuthenticated = false;
         _isPinLocked = false;
@@ -64,6 +80,12 @@ class AuthProvider extends ChangeNotifier {
 
   /// Déverrouillage local hors-ligne avec le code PIN
   Future<bool> unlockWithPin(String pin) async {
+    if (_pinAttemptsRemaining <= 0) {
+      _errorMessage = 'Trop de tentatives erronées. Veuillez vous reconnecter avec votre mot de passe.';
+      notifyListeners();
+      return false;
+    }
+
     _errorMessage = null;
 
     final isValid = await SecureStorageService.verifyPin(pin);
@@ -72,16 +94,14 @@ class AuthProvider extends ChangeNotifier {
       _pinAttemptsRemaining = 3;
       notifyListeners();
 
-      // Contrôle proactif au déverrouillage PIN :
-      // - Si access token expire dans < 5h : rafraîchi
-      // - Si refresh token expire dans < 10h : renouvelé
       unawaited(ApiClient.instance.checkAndProactiveRefresh());
       unawaited(SyncService.instance.syncNow());
 
       return true;
     } else {
-      _pinAttemptsRemaining--;
-      if (_pinAttemptsRemaining <= 0) {
+      _pinAttemptsRemaining = (_pinAttemptsRemaining - 1).clamp(0, 3);
+      if (_pinAttemptsRemaining == 0) {
+        await SecureStorageService.clearPinAndTokens();
         _errorMessage = 'Trop de tentatives erronées. Veuillez vous reconnecter avec votre mot de passe.';
       } else {
         _errorMessage = 'Code PIN incorrect ($_pinAttemptsRemaining tentative(s) restante(s)).';
@@ -108,20 +128,39 @@ class AuthProvider extends ChangeNotifier {
       }
 
       final uri = Uri.parse('$baseUrl/auth/login');
-      final response = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'username_or_email': usernameOrEmail.trim(),
-          'password': password,
-        }),
-      ).timeout(const Duration(seconds: 10));
+      final client = _httpClient;
+      final postFuture = client != null
+          ? client.post(
+              uri,
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({
+                'username_or_email': usernameOrEmail.trim(),
+                'password': password,
+              }),
+            )
+          : http.post(
+              uri,
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({
+                'username_or_email': usernameOrEmail.trim(),
+                'password': password,
+              }),
+            );
+      final response = await postFuture.timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final user = AppUser.fromMap(data['user'] as Map<String, dynamic>);
+
+        if (user.isSuperAdmin) {
+          _errorMessage = 'Les comptes SuperAdmin doivent utiliser l\'interface web /admin.';
+          _isLoading = false;
+          notifyListeners();
+          return false;
+        }
+
         final accessToken = data['access_token'] as String;
         final refreshToken = data['refresh_token'] as String;
-        final user = AppUser.fromMap(data['user'] as Map<String, dynamic>);
 
         await SecureStorageService.saveTokens(
           accessToken: accessToken,
@@ -133,10 +172,10 @@ class AuthProvider extends ChangeNotifier {
         _isAuthenticated = true;
         _isPinLocked = false;
         _pinAttemptsRemaining = 3;
+        _expectedPinLength = await SecureStorageService.getPinLength();
         _isLoading = false;
         notifyListeners();
 
-        // Lancement immédiat de la synchronisation après connexion réussie
         unawaited(SyncService.instance.syncNow());
 
         return true;
@@ -158,6 +197,7 @@ class AuthProvider extends ChangeNotifier {
   /// Enregistrement du code PIN
   Future<void> setLocalPin(String pin) async {
     await SecureStorageService.savePin(pin);
+    _expectedPinLength = pin.trim().length;
     notifyListeners();
   }
 
@@ -176,13 +216,14 @@ class AuthProvider extends ChangeNotifier {
       final refreshToken = await SecureStorageService.getRefreshToken();
       if (refreshToken != null && refreshToken.isNotEmpty) {
         final baseUrl = await SecureStorageService.getServerUrl();
-        await http
-            .post(
-              Uri.parse('$baseUrl/auth/logout'),
-              headers: {'Content-Type': 'application/json'},
-              body: jsonEncode({'refresh_token': refreshToken}),
-            )
-            .timeout(const Duration(seconds: 5));
+        final uri = Uri.parse('$baseUrl/auth/logout');
+        final headers = {'Content-Type': 'application/json'};
+        final payload = jsonEncode({'refresh_token': refreshToken});
+        final client = _httpClient;
+        final logoutFuture = client != null
+            ? client.post(uri, headers: headers, body: payload)
+            : http.post(uri, headers: headers, body: payload);
+        await logoutFuture.timeout(const Duration(seconds: 5));
       }
     } catch (_) {}
 
@@ -192,6 +233,7 @@ class AuthProvider extends ChangeNotifier {
     _isAuthenticated = false;
     _isPinLocked = false;
     _pinAttemptsRemaining = 3;
+    _expectedPinLength = 4;
     _errorMessage = null;
     notifyListeners();
   }

@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'services/api_client.dart';
 import 'services/sync_service.dart';
+import 'widgets/plan_upsell_dialog.dart';
 import 'providers/settings_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/sync_provider.dart';
@@ -158,6 +160,8 @@ class _MainShellState extends State<MainShell> {
   final _homeKey = GlobalKey();
   int _currentIndex = 0;
   StreamSubscription? _syncSub;
+  StreamSubscription? _planErrorSub;
+  bool _upsellDialogOpen = false;
 
   @override
   void initState() {
@@ -178,15 +182,34 @@ class _MainShellState extends State<MainShell> {
         (_homeKey.currentState as dynamic)?.reload();
       }
     });
+    _planErrorSub = ApiClient.onPlanLimitError.listen((err) async {
+      if (!mounted || _upsellDialogOpen) return;
+      _upsellDialogOpen = true;
+      try {
+        await PlanUpsellDialog.show(context, err);
+      } finally {
+        _upsellDialogOpen = false;
+      }
+    });
   }
 
   @override
   void dispose() {
     _syncSub?.cancel();
+    _planErrorSub?.cancel();
     super.dispose();
   }
 
   Future<void> _navigate(int index, {String? statusFilter}) async {
+    final user = context.read<AuthProvider>().currentUser;
+    final canBackoffice = user?.canAccessBackofficeModules ?? false;
+    final isAdmin = user?.isAdmin ?? false;
+    final canAudit = user?.canViewAudit ?? false;
+    if ((index == 4 || index == 6 || index == 7 || index == 9) && !canBackoffice) {
+      return;
+    }
+    if (index == 11 && !isAdmin) return;
+    if (index == 12 && !canAudit) return;
     if (index == 3) {
       await Navigator.push(
         context,
@@ -278,6 +301,8 @@ class _MainShellState extends State<MainShell> {
   }
 
   Widget _buildBottomNav() {
+    final canBackoffice =
+        context.watch<AuthProvider>().currentUser?.canAccessBackofficeModules ?? false;
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -294,11 +319,14 @@ class _MainShellState extends State<MainShell> {
         top: false,
         child: Row(
           children: [
-            _bottomItem(Icons.arrow_downward_outlined, 'Appro', () => _navigate(4)),
+            if (canBackoffice)
+              _bottomItem(Icons.arrow_downward_outlined, 'Appro', () => _navigate(4)),
             _bottomItem(Icons.shopping_cart_outlined, 'Ventes', () => _navigate(5)),
-            _bottomItem(Icons.account_balance_wallet_outlined, 'Dépenses', () => _navigate(6)),
+            if (canBackoffice)
+              _bottomItem(Icons.account_balance_wallet_outlined, 'Dépenses', () => _navigate(6)),
             _bottomItem(Icons.people_outline, 'Clients', () => _navigate(3)),
-            _bottomItem(Icons.bar_chart_outlined, 'Rapport', () => _navigate(9)),
+            if (canBackoffice)
+              _bottomItem(Icons.bar_chart_outlined, 'Rapport', () => _navigate(9)),
           ],
         ),
       ),

@@ -19,7 +19,7 @@ void main() {
       expect(user.id, 'usr-admin-1');
       expect(user.username, 'admin_boss');
       expect(user.isAdmin, isTrue);
-      expect(user.isOwner, isTrue);
+      expect(user.isOwner, isFalse);
       expect(user.isManager, isFalse);
       expect(user.isCashier, isFalse);
       expect(user.hasPin, isTrue);
