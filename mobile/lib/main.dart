@@ -3,9 +3,12 @@ import 'services/sync_service.dart';
 import 'providers/settings_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/sync_provider.dart';
+import 'providers/tenant_provider.dart';
 import 'screens/settings_screen.dart';
 import 'screens/pin_lock_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/select_boutique_screen.dart';
+import 'screens/select_magasin_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -50,6 +53,7 @@ class TocManagerApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()..checkInitialSession()),
+        ChangeNotifierProvider(create: (_) => TenantProvider()),
         ChangeNotifierProvider(create: (_) => SyncProvider()),
         ChangeNotifierProvider(create: (_) => CategoryProvider()..load()),
         ChangeNotifierProvider(create: (_) => ProductProvider()..load()),
@@ -76,6 +80,7 @@ class AppRootGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final tenant = context.watch<TenantProvider>();
 
     if (!auth.isInitialized) {
       return Scaffold(
@@ -105,6 +110,38 @@ class AppRootGate extends StatelessWidget {
       );
     }
 
+    final currentUser = auth.currentUser;
+    if (currentUser != null && !tenant.isInitialized) {
+      if (!tenant.isLoading) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) {
+            context.read<TenantProvider>().initializeForUser(currentUser);
+          }
+        });
+      }
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset('assets/logo.png', height: 48),
+              const SizedBox(height: 24),
+              const CircularProgressIndicator(color: AppColors.primary),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (tenant.needsBoutiqueSelection) {
+      return const SelectBoutiqueScreen();
+    }
+
+    if (tenant.needsMagasinSelection) {
+      return const SelectMagasinScreen();
+    }
+
     return const MainShell();
   }
 }
@@ -125,6 +162,12 @@ class _MainShellState extends State<MainShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (context.read<TenantProvider>().consumeOpenConsolidatedReports()) {
+        _navigate(9);
+      }
+    });
     _syncSub = SyncService.onSyncCompleted.listen((_) {
       if (mounted) {
         context.read<CategoryProvider>().load();

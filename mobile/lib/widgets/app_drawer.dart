@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/tenant_provider.dart';
+import '../screens/select_magasin_screen.dart';
 import '../services/sync_service.dart';
 import '../theme/app_theme.dart';
 
@@ -12,6 +14,7 @@ class AppDrawer extends StatelessWidget {
 
   Future<void> _handleLogout(BuildContext context) async {
     final auth = context.read<AuthProvider>();
+    final tenant = context.read<TenantProvider>();
     final pendingCount = await SyncService.instance.getPendingQueueCount();
     if (!context.mounted) return;
 
@@ -44,19 +47,77 @@ class AppDrawer extends StatelessWidget {
 
     Navigator.of(context).pop();
     await auth.logout();
+    tenant.reset();
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final tenant = context.watch<TenantProvider>();
     final isAdmin = auth.currentUser?.isAdmin ?? false;
     final isManagerOrAdmin = isAdmin || (auth.currentUser?.isManager ?? false);
+    final canSwitchMagasin =
+        tenant.canConsolidate || tenant.magasins.length > 1 || tenant.boutiques.length > 1;
+    final activeScopeLabel = tenant.isConsolidatedMode
+        ? 'Vue Consolidée'
+        : (tenant.currentMagasin?.name ?? 'Aucun magasin');
 
     return Drawer(
       backgroundColor: Colors.white,
       child: Column(
         children: [
           _DrawerHeader(),
+          if (tenant.currentBoutique != null)
+            Material(
+              color: AppColors.primaryLight.withAlpha(110),
+              child: InkWell(
+                onTap: canSwitchMagasin
+                    ? () {
+                        final nav = Navigator.of(context);
+                        nav.pop();
+                        nav.push(
+                          MaterialPageRoute(
+                            builder: (_) => const SelectMagasinScreen(allowBackPop: true),
+                          ),
+                        );
+                      }
+                    : null,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.storefront_rounded, size: 18, color: AppColors.primary),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              tenant.currentBoutique!.displayName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textDark,
+                              ),
+                            ),
+                            Text(
+                              activeScopeLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 11, color: AppColors.primary),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (canSwitchMagasin)
+                        const Icon(Icons.swap_horiz_rounded, size: 18, color: AppColors.primary),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.only(top: 8),

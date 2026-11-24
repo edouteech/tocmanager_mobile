@@ -12,6 +12,9 @@ class SecureStorageService {
   static const _kPinHash = 'toc_pin_hash';
   static const _kPinSalt = 'toc_pin_salt';
   static const _kInitialSeedDone = 'toc_initial_seed_done';
+  static const _kCurrentBoutiqueId = 'toc_current_boutique_id';
+  static const _kCurrentMagasinId = 'toc_current_magasin_id';
+  static const _kConsolidatedMode = 'toc_consolidated_mode';
 
   /// URL unique et définitive de l'API en production sur Coolify
   static const String apiUrl = 'https://api.tocmanager.locarapide.com/api/v1';
@@ -97,6 +100,40 @@ class SecureStorageService {
     // URL fixe et non modifiable
   }
 
+  static Future<void> saveTenantContext({
+    String? boutiqueId,
+    String? magasinId,
+    bool isConsolidated = false,
+  }) async {
+    if (boutiqueId != null && boutiqueId.isNotEmpty) {
+      await _storage.write(key: _kCurrentBoutiqueId, value: boutiqueId);
+    } else {
+      await _storage.delete(key: _kCurrentBoutiqueId);
+    }
+    if (!isConsolidated && magasinId != null && magasinId.isNotEmpty) {
+      await _storage.write(key: _kCurrentMagasinId, value: magasinId);
+    } else {
+      await _storage.delete(key: _kCurrentMagasinId);
+    }
+    await _storage.write(
+      key: _kConsolidatedMode,
+      value: isConsolidated ? 'true' : 'false',
+    );
+  }
+
+  static Future<String?> getCurrentBoutiqueId() async {
+    return _storage.read(key: _kCurrentBoutiqueId);
+  }
+
+  static Future<String?> getCurrentMagasinId() async {
+    return _storage.read(key: _kCurrentMagasinId);
+  }
+
+  static Future<bool> isConsolidatedMode() async {
+    final val = await _storage.read(key: _kConsolidatedMode);
+    return val == 'true';
+  }
+
   /// Déconnexion / purge de session
   static Future<void> clearSession() async {
     await _storage.delete(key: _kAccessToken);
@@ -105,5 +142,8 @@ class SecureStorageService {
     await _storage.delete(key: _kPinHash);
     await _storage.delete(key: _kPinSalt);
     await _storage.delete(key: _kInitialSeedDone);
+    await _storage.delete(key: _kCurrentBoutiqueId);
+    await _storage.delete(key: _kCurrentMagasinId);
+    await _storage.delete(key: _kConsolidatedMode);
   }
 }

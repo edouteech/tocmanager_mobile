@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/tenant_provider.dart';
 import '../services/audit_service.dart';
 import '../theme/app_theme.dart';
-import 'select_magasin_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -50,93 +50,14 @@ class _LoginScreenState extends State<LoginScreen> {
         entityType: 'auth',
         details: {'username': username},
       );
-    }
-
-    if (success && mounted) {
-      final auth = context.read<AuthProvider>();
-      if (auth.currentUser != null) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => SelectMagasinScreen(user: auth.currentUser!),
-          ),
-        );
-      } else {
-        _promptSetupPinIfNeeded();
+      final user = auth.currentUser;
+      if (user != null && mounted) {
+        await context.read<TenantProvider>().initializeForUser(user);
+      }
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.of(context).pop();
       }
     }
-  }
-
-  void _promptSetupPinIfNeeded() {
-    final pinController = TextEditingController();
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.shield_outlined, color: AppColors.primary),
-            SizedBox(width: 8),
-            Text(
-              'Code PIN Hors-Ligne',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Définissez un code PIN à 4 chiffres pour déverrouiller rapidement la caisse sans connexion Internet.',
-              style: TextStyle(fontSize: 13, color: AppColors.textMedium),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: pinController,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
-              obscureText: true,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 22, letterSpacing: 8, fontWeight: FontWeight.bold),
-              decoration: InputDecoration(
-                hintText: '••••',
-                counterText: '',
-                filled: true,
-                fillColor: AppColors.primaryLight,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              Navigator.pop(context);
-            },
-            child: const Text('Plus tard'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () async {
-              final pin = pinController.text.trim();
-              if (pin.length == 4) {
-                await context.read<AuthProvider>().setLocalPin(pin);
-                if (ctx.mounted) Navigator.pop(ctx);
-                if (mounted) Navigator.pop(context);
-              }
-            },
-            child: const Text('Enregistrer'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override

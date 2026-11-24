@@ -6,8 +6,10 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/category_provider.dart';
 import '../providers/product_provider.dart';
+import '../providers/tenant_provider.dart';
 import '../database/database_helper.dart';
 import '../theme/app_theme.dart';
+import 'select_magasin_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final void Function(int, {String? statusFilter})? onNav;
@@ -170,6 +172,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final hour = DateTime.now().hour;
     final greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
     final dateStr = DateFormat("EEEE d MMMM yyyy", 'fr_FR').format(DateTime.now());
+    final tenant = context.watch<TenantProvider>();
+    final boutiqueName = tenant.currentBoutique?.displayName;
+    final magasinLabel = tenant.isConsolidatedMode
+        ? 'Vue Consolidée'
+        : tenant.currentMagasin?.name;
+    final canSwitch =
+        tenant.canConsolidate || tenant.magasins.length > 1 || tenant.boutiques.length > 1;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -207,7 +216,55 @@ class _HomeScreenState extends State<HomeScreen> {
                   dateStr,
                   style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
-                const SizedBox(height: 14),
+                if (boutiqueName != null) ...[
+                  const SizedBox(height: 8),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: canSwitch
+                        ? () async {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const SelectMagasinScreen(allowBackPop: true),
+                              ),
+                            );
+                            if (mounted) {
+                              _loadData();
+                            }
+                          }
+                        : null,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(40),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.store_mall_directory_outlined, color: Colors.white, size: 14),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              magasinLabel != null ? '$boutiqueName · $magasinLabel' : boutiqueName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          if (canSwitch) ...[
+                            const SizedBox(width: 4),
+                            const Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 14),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(

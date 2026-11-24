@@ -14,6 +14,8 @@ import '../widgets/period_filter_modal.dart';
 import '../providers/vente_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/client_provider.dart';
+import '../providers/tenant_provider.dart';
+import '../widgets/select_operational_magasin_modal.dart';
 import '../theme/app_theme.dart';
 import 'products_screen.dart';
 
@@ -906,7 +908,16 @@ class _VenteScreenState extends State<VenteScreen> {
     _confirmDeleteVenteModal(context, vente, venteProvider, productProvider);
   }
 
-  void _showForm(BuildContext context, {Vente? initialVente}) {
+  Future<void> _showForm(BuildContext context, {Vente? initialVente}) async {
+    if (initialVente == null) {
+      final tenant = context.read<TenantProvider>();
+      if (tenant.needsOperationalMagasin(isSale: true)) {
+        final chosen = await SelectOperationalMagasinModal.show(context, isSale: true);
+        if (chosen == null || !context.mounted) return;
+        await tenant.selectMagasin(chosen);
+        if (!context.mounted) return;
+      }
+    }
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
