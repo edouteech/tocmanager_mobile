@@ -12,6 +12,7 @@ import {
 import { adminApi } from '../../lib/api';
 import { PlatformKPIs } from '../../types';
 import { AdminChartsSection } from './AdminChartsSection';
+import { SuperAdmin2faCard } from './SuperAdmin2faCard';
 
 const formatCurrencyBreakdown = (map?: Record<string, number>) => {
   if (!map || Object.keys(map).length === 0) return null;
@@ -159,6 +160,8 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <SuperAdmin2faCard />
     </div>
   );
 };

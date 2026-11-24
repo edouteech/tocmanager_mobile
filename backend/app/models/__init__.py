@@ -1,5 +1,5 @@
 from app.models.common import generate_uuid, utc_now
-from app.models.auth import RefreshToken
+from app.models.auth import AuthActionToken, RefreshToken
 from app.models.user import User
 from app.models.saas import (
     SaasPlan,
@@ -22,6 +22,7 @@ from app.models.cash import CashRegisterSession, ClientPayment, SupplierPayment
 __all__ = [
     "generate_uuid",
     "utc_now",
+    "AuthActionToken",
     "RefreshToken",
     "User",
     "SaasPlan",

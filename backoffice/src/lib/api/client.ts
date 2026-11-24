@@ -12,7 +12,15 @@ export const api = axios.create({
   },
 });
 
-const PUBLIC_AUTH_PATHS = ['/auth/login', '/auth/refresh', '/saas/auth/register-credentials'];
+const PUBLIC_AUTH_PATHS = [
+  '/auth/login',
+  '/auth/refresh',
+  '/auth/verify-2fa',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/verify-email',
+  '/saas/auth/register-credentials',
+];
 
 const isPublicAuthEndpoint = (url?: string): boolean => {
   if (!url) return false;

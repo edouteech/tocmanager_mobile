@@ -31,6 +31,8 @@ def user_to_brief(user: User) -> UserBrief:
         role=user.role,
         permissions=get_permissions_for_role(user.role, user.permissions),
         has_pin=bool(user.pin_hash),
+        email_verified=bool(user.email_verified_at),
+        totp_enabled=bool(user.totp_enabled),
     )
 
 MAX_PIN_ATTEMPTS = 5

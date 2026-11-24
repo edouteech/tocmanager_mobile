@@ -14,6 +14,9 @@ class User(Base):
     pin_hash = Column(String(255), nullable=True)
     pin_failed_attempts = Column(Integer, nullable=False, default=0)
     pin_locked_until = Column(DateTime(timezone=True), nullable=True)
+    email_verified_at = Column(DateTime(timezone=True), nullable=True)
+    totp_secret = Column(String(64), nullable=True)
+    totp_enabled = Column(Boolean, nullable=False, default=False)
     role = Column(String(50), nullable=False, default="cashier")  # superadmin, owner, merchant, store_admin, manager, cashier
     permissions = Column(JSON, nullable=True)
     is_active = Column(Boolean, default=True)

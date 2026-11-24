@@ -27,6 +27,18 @@ const PricingPage = lazyNamed(() => import('./features/landing/PricingPage'), 'P
 const ContactPage = lazyNamed(() => import('./features/landing/ContactPage'), 'ContactPage');
 const RegisterPage = lazyNamed(() => import('./features/landing/RegisterPage'), 'RegisterPage');
 const LoginPage = lazyNamed(() => import('./features/auth/LoginPage'), 'LoginPage');
+const ForgotPasswordPage = lazyNamed(
+  () => import('./features/auth/ForgotPasswordPage'),
+  'ForgotPasswordPage'
+);
+const ResetPasswordPage = lazyNamed(
+  () => import('./features/auth/ResetPasswordPage'),
+  'ResetPasswordPage'
+);
+const VerifyEmailPage = lazyNamed(
+  () => import('./features/auth/VerifyEmailPage'),
+  'VerifyEmailPage'
+);
 
 // Client Backoffice Pages
 const DashboardPage = lazyNamed(() => import('./features/dashboard/DashboardPage'), 'DashboardPage');
@@ -98,6 +110,9 @@ export const App: React.FC = () => {
                   <Route path="/contact" element={<ContactPage />} />
                   <Route path="/inscription" element={<RegisterPage />} />
                   <Route path="/login" element={<LoginPage />} />
+                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                  <Route path="/reset-password" element={<ResetPasswordPage />} />
+                  <Route path="/verify-email" element={<VerifyEmailPage />} />
 
                   {/* Super-Admin Platform Console */}
                   <Route

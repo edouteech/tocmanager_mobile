@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Lock, User, AlertCircle, ArrowRight, Sun, Moon, Store } from 'lucide-react';
 import { authApi } from '../../lib/api';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../context/ThemeContext';
+import { TwoFactorChallengeForm } from './TwoFactorChallengeForm';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -13,16 +14,14 @@ export const LoginPage: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      if (user.role === 'superadmin') {
-        navigate('/admin', { replace: true });
-      } else {
-        navigate('/', { replace: true });
-      }
+      navigate(user.role === 'superadmin' ? '/admin' : '/', { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
 
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [challengeToken, setChallengeToken] = useState<string | null>(null);
+  const [challengeUser, setChallengeUser] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -36,20 +35,36 @@ export const LoginPage: React.FC = () => {
     try {
       const authData = await authApi.login({
         username_or_email: usernameOrEmail,
-        password: password,
+        password,
       });
 
-      setAuth(authData);
-      if (authData.user.role === 'superadmin') {
-        navigate('/admin', { replace: true });
-      } else {
-        navigate('/', { replace: true });
+      if (authData.requires_2fa && authData.challenge_token) {
+        setChallengeToken(authData.challenge_token);
+        setChallengeUser(authData.user.username);
+        return;
       }
-    } catch (err: any) {
-      const msg =
-        err.response?.data?.detail ||
-        "Identifiants incorrects ou serveur indisponible.";
-      setErrorMessage(msg);
+
+      setAuth(authData);
+      navigate(authData.user.role === 'superadmin' ? '/admin' : '/', { replace: true });
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setErrorMessage(detail || 'Identifiants incorrects ou serveur indisponible.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerify2fa = async (code: string) => {
+    if (!challengeToken) return;
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      const authData = await authApi.verify2faChallenge(challengeToken, code);
+      setAuth(authData);
+      navigate(authData.user.role === 'superadmin' ? '/admin' : '/', { replace: true });
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setErrorMessage(detail || 'Code TOTP invalide ou expire.');
     } finally {
       setIsLoading(false);
     }
@@ -57,38 +72,27 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F5FAFD] dark:bg-dark-900 flex items-center justify-center p-6 select-none transition-colors duration-300 relative">
-      {/* Top right theme toggle */}
       <div className="absolute top-6 right-6">
         <button
           onClick={toggleTheme}
           className="p-2.5 rounded-xl bg-white dark:bg-dark-800 border border-[#E8EFF5] dark:border-dark-600 text-[#5A7184] dark:text-slate-300 shadow-soft hover:shadow-soft-md transition"
           title={theme === 'dark' ? 'Mode Clair' : 'Mode Sombre'}
         >
-          {theme === 'dark' ? (
-            <Sun className="w-4 h-4 text-amber-400" />
-          ) : (
-            <Moon className="w-4 h-4 text-[#1C2B3A]" />
-          )}
+          {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-[#1C2B3A]" />}
         </button>
       </div>
 
       <div className="w-full max-w-md bg-white dark:bg-dark-800 rounded-3xl shadow-soft p-8 sm:p-10 border border-[#E8EFF5] dark:border-dark-600 animate-fade-in transition-colors duration-200">
-        {/* Brand header calqué sur LoginScreen mobile */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-3">
             <div className="w-16 h-16 rounded-2xl bg-[#E8F5FD] dark:bg-[#29ABE2]/20 flex items-center justify-center text-[#29ABE2]">
               <Store className="w-8 h-8" />
             </div>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#1C2B3A] dark:text-white tracking-tight">
-            TocManager
-          </h2>
-          <p className="text-xs text-[#5A7184] dark:text-slate-400 mt-1">
-            Portail d'Administration Central
-          </p>
+          <h2 className="text-xl sm:text-2xl font-bold text-[#1C2B3A] dark:text-white tracking-tight">TocManager</h2>
+          <p className="text-xs text-[#5A7184] dark:text-slate-400 mt-1">Portail d'Administration Central</p>
         </div>
 
-        {/* Error Alert */}
         {errorMessage && (
           <div className="mb-6 p-3.5 bg-[#FDEBE9] dark:bg-[#E74C3C]/20 border border-[#E74C3C]/30 rounded-2xl flex items-start gap-3 text-[#E74C3C] text-xs animate-fade-in font-medium">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -96,63 +100,77 @@ export const LoginPage: React.FC = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-[#1C2B3A] dark:text-slate-300 mb-1.5">
-              Identifiant ou Email
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#9FB3C8]">
-                <User className="w-4 h-4" />
+        {challengeToken ? (
+          <TwoFactorChallengeForm
+            username={challengeUser}
+            isLoading={isLoading}
+            onVerify={handleVerify2fa}
+            onCancel={() => {
+              setChallengeToken(null);
+              setErrorMessage(null);
+            }}
+          />
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#1C2B3A] dark:text-slate-300 mb-1.5">
+                Identifiant ou Email
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#9FB3C8]">
+                  <User className="w-4 h-4" />
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={usernameOrEmail}
+                  onChange={(e) => setUsernameOrEmail(e.target.value)}
+                  placeholder="Ex: admin ou caissier1"
+                  className="w-full pl-10 pr-4 py-2.5 input-toc text-sm font-medium"
+                />
               </div>
-              <input
-                type="text"
-                required
-                value={usernameOrEmail}
-                onChange={(e) => setUsernameOrEmail(e.target.value)}
-                placeholder="Ex: admin ou caissier1"
-                className="w-full pl-10 pr-4 py-2.5 input-toc text-sm font-medium"
-              />
             </div>
-          </div>
 
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-[#1C2B3A] dark:text-slate-300 mb-1.5">
-              Mot de passe
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#9FB3C8]">
-                <Lock className="w-4 h-4" />
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#1C2B3A] dark:text-slate-300">
+                  Mot de passe
+                </label>
+                <Link to="/forgot-password" className="text-xs font-semibold text-[#29ABE2] hover:underline">
+                  Mot de passe oublie ?
+                </Link>
               </div>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-2.5 input-toc text-sm font-medium"
-              />
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#9FB3C8]">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="********"
+                  className="w-full pl-10 pr-4 py-2.5 input-toc text-sm font-medium"
+                />
+              </div>
             </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full mt-3 py-3 px-4 btn-primary font-bold text-sm rounded-xl transition flex items-center justify-center gap-2"
-          >
-            {isLoading ? (
-              <span className="inline-flex items-center gap-2">
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full mt-3 py-3 px-4 btn-primary font-bold text-sm rounded-xl transition flex items-center justify-center gap-2"
+            >
+              {isLoading ? (
                 <span>Connexion en cours...</span>
-              </span>
-            ) : (
-              <>
-                <span>Se connecter</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
-        </form>
+              ) : (
+                <>
+                  <span>Se connecter</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </form>
+        )}
 
         <div className="mt-8 pt-5 border-t border-[#E8EFF5] dark:border-dark-600 text-center text-[11px] text-[#9FB3C8] font-medium">
           tocmanager v1.0.0

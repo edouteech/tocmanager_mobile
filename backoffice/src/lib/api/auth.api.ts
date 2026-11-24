@@ -1,9 +1,31 @@
 import { api } from './client';
-import type { AuthResponse, UserBrief } from '../../types';
+import type { AuthResponse, TwoFactorSetupResponse, UserBrief } from '../../types';
 
 export const authApi = {
   login: (credentials: { username_or_email: string; password: string }) =>
     api.post<AuthResponse>('/auth/login', credentials).then((r) => r.data),
+  verify2faChallenge: (challengeToken: string, code: string) =>
+    api
+      .post<AuthResponse>('/auth/verify-2fa', { challenge_token: challengeToken, code })
+      .then((r) => r.data),
+  setup2fa: () => api.post<TwoFactorSetupResponse>('/auth/2fa/setup').then((r) => r.data),
+  confirm2fa: (code: string) =>
+    api.post<UserBrief>('/auth/2fa/confirm', { code }).then((r) => r.data),
+  disable2fa: (password: string, code: string) =>
+    api.post<UserBrief>('/auth/2fa/disable', { password, code }).then((r) => r.data),
+  forgotPassword: (email: string) =>
+    api.post<{ status: string; message: string }>('/auth/forgot-password', { email }).then((r) => r.data),
+  resetPassword: (token: string, newPassword: string) =>
+    api
+      .post<{ status: string; message: string }>('/auth/reset-password', {
+        token,
+        new_password: newPassword,
+      })
+      .then((r) => r.data),
+  requestEmailVerification: () =>
+    api.post<{ status: string; channel: string }>('/auth/request-email-verification').then((r) => r.data),
+  verifyEmail: (token: string) =>
+    api.post<UserBrief>('/auth/verify-email', { token }).then((r) => r.data),
   me: () => api.get<UserBrief>('/auth/me').then((r) => r.data),
   setPin: (currentPassword: string, pin: string) =>
     api

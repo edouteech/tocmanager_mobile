@@ -96,3 +96,15 @@ def create_refresh_token(
         "jti": jti or generate_jti(),
     }
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def create_2fa_challenge_token(subject: str, expires_minutes: int = 5) -> str:
+    """Issue a short-lived intermediate JWT requiring TOTP verification before API access."""
+    expire = datetime.now(timezone.utc) + timedelta(minutes=expires_minutes)
+    payload = {
+        "exp": expire,
+        "sub": str(subject),
+        "type": "2fa_challenge",
+        "scope": "2fa_challenge",
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)

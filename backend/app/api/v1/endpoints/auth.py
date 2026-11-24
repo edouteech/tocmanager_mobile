@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.api import deps
 from app.core.database import get_db
 from app.core.rate_limit import limiter
-from app.core.security import verify_password, get_password_hash, hash_pin
+from app.core.security import create_2fa_challenge_token, verify_password, get_password_hash, hash_pin
 from app.models import User, AuditLog
 from app.schemas.auth import (
     Token,
@@ -45,6 +45,17 @@ def _execute_login(login_data: LoginRequest, db: Session) -> Token:
         )
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Compte inactif")
+
+    if user.role == "superadmin" and user.totp_enabled and user.totp_secret:
+        challenge_tok = create_2fa_challenge_token(user.id)
+        return Token(
+            access_token="",
+            refresh_token="",
+            token_type="bearer",
+            requires_2fa=True,
+            challenge_token=challenge_tok,
+            user=user_to_brief(user),
+        )
 
     access_token, refresh_tok, _ = issue_token_pair(
         db, user, device_id=login_data.device_id
