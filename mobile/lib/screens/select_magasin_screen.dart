@@ -1,251 +1,119 @@
 import 'package:flutter/material.dart';
-import '../models/user.dart';
+import 'package:provider/provider.dart';
+import '../models/tenant.dart';
+import '../providers/auth_provider.dart';
+import '../providers/tenant_provider.dart';
 import '../theme/app_theme.dart';
-import 'home_screen.dart';
-import 'reports_screen.dart';
 
-class SelectMagasinScreen extends StatefulWidget {
-  final AppUser user;
+class SelectMagasinScreen extends StatelessWidget {
+  final bool allowBackPop;
 
-  const SelectMagasinScreen({super.key, required this.user});
+  const SelectMagasinScreen({super.key, this.allowBackPop = false});
 
-  @override
-  State<SelectMagasinScreen> createState() => _SelectMagasinScreenState();
-}
-
-class _SelectMagasinScreenState extends State<SelectMagasinScreen> {
-  // Liste des magasins simulés ou synchronisés localement
-  List<Map<String, dynamic>> _magasins = [];
-  bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadMagasins();
-  }
-
-  void _loadMagasins() {
-    setState(() {
-      _isLoading = true;
-    });
-
-    // Exemple de magasins de la boutique
-    _magasins = [
-      {
-        'id': 'mag-01',
-        'name': 'Magasin Principal / Caisse Centrale',
-        'address': 'Plateau, Centre-Ville',
-        'is_warehouse': false,
-      },
-      {
-        'id': 'mag-02',
-        'name': 'Succursale Almadies',
-        'address': 'Route des Almadies',
-        'is_warehouse': false,
-      },
-      {
-        'id': 'mag-03',
-        'name': 'Entrepôt Central Réserve',
-        'address': 'Zone Industrielle',
-        'is_warehouse': true,
-      },
-    ];
-
-    // Si l'utilisateur n'est pas propriétaire et a des magasins assignés, filtrer
-    if (!widget.user.isOwner && widget.user.assignedMagasinIds.isNotEmpty) {
-      _magasins = _magasins
-          .where((m) => widget.user.assignedMagasinIds.contains(m['id']))
-          .toList();
+  Future<void> _onSelectMagasin(BuildContext context, MagasinModel m) async {
+    await context.read<TenantProvider>().selectMagasin(m);
+    if (allowBackPop && context.mounted && Navigator.canPop(context)) {
+      Navigator.of(context).pop();
     }
-
-    setState(() {
-      _isLoading = false;
-    });
   }
 
-  void _onSelectMagasin(Map<String, dynamic> magasin) {
-    // Naviguer vers la caisse principale avec ce magasin
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => const HomeScreen(),
-      ),
-    );
-  }
-
-  void _onSkipToConsolidatedFinancial() {
-    // Bouton "Passer" exclusif pour le propriétaire -> accès direct aux états financiers
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => const ReportsScreen(),
-      ),
-    );
+  Future<void> _onPasser(BuildContext context) async {
+    await context.read<TenantProvider>().enterConsolidatedMode(openReports: true);
+    if (allowBackPop && context.mounted && Navigator.canPop(context)) {
+      Navigator.of(context).pop();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isOwner = widget.user.isOwner;
+    final tenant = context.watch<TenantProvider>();
+    final magasins = tenant.magasins;
+    final canConsolidate = tenant.canConsolidate;
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
-          'Choix du Point de Vente',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        title: Text(
+          tenant.currentBoutique?.displayName ?? 'Choix du Point de Vente',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         actions: [
-          // Le bouton "Passer" pour le propriétaire
-          if (isOwner)
+          if (canConsolidate)
             TextButton.icon(
-              onPressed: _onSkipToConsolidatedFinancial,
+              onPressed: () => _onPasser(context),
               icon: const Icon(Icons.skip_next_rounded, color: AppColors.primary),
               label: const Text(
                 'Passer',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 14),
               ),
+            ),
+          if (!allowBackPop)
+            IconButton(
+              tooltip: 'Déconnexion',
+              icon: const Icon(Icons.logout_rounded, color: AppColors.danger),
+              onPressed: () async {
+                final tenant = context.read<TenantProvider>();
+                await context.read<AuthProvider>().logout();
+                tenant.reset();
+              },
             ),
         ],
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header Card
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryLight,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.store_mall_directory_rounded, color: AppColors.primary),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            isOwner ? 'Vue Propriétaire' : 'Session Collaborateur',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                          Text(
-                            isOwner
-                              ? 'Sélectionnez une caisse ou cliquez sur « Passer » pour voir les finances consolidées.'
-                              : 'Veuillez sélectionner le point de vente actif pour ce terminal.',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _HeaderCard(canConsolidate: canConsolidate),
               const SizedBox(height: 20),
-
               const Text(
                 'MAGASINS DISPONIBLES',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey,
+                  color: AppColors.textLight,
                   letterSpacing: 1,
                 ),
               ),
               const SizedBox(height: 10),
-
-              // Magasins List
               Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
+                child: magasins.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.store_mall_directory_outlined, size: 48, color: AppColors.textLight),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Aucun point de vente attribué à ce compte.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: AppColors.textMedium, fontSize: 13),
+                            ),
+                            if (tenant.boutiques.length > 1) ...[
+                              const SizedBox(height: 12),
+                              TextButton(
+                                onPressed: () => tenant.reset(),
+                                child: const Text('Revenir'),
+                              ),
+                            ],
+                          ],
+                        ),
+                      )
                     : ListView.separated(
-                        itemCount: _magasins.length,
+                        itemCount: magasins.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 10),
                         itemBuilder: (ctx, idx) {
-                          final m = _magasins[idx];
-                          final isWarehouse = m['is_warehouse'] == true;
-
-                          return InkWell(
-                            onTap: () => _onSelectMagasin(m),
-                            borderRadius: BorderRadius.circular(16),
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.grey.shade200),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      color: isWarehouse ? Colors.purple.shade50 : Colors.blue.shade50,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Icon(
-                                      isWarehouse ? Icons.warehouse_rounded : Icons.point_of_sale_rounded,
-                                      color: isWarehouse ? Colors.purple : Colors.blue,
-                                      size: 22,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          m['name'] as String,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.black87,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          m['address'] as String,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey.shade500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
-                                ],
-                              ),
-                            ),
+                          final m = magasins[idx];
+                          return _MagasinCard(
+                            magasin: m,
+                            isSelected: tenant.currentMagasin?.id == m.id,
+                            onTap: () => _onSelectMagasin(context, m),
                           );
                         },
                       ),
               ),
-
-              // Action Passer en bas si propriétaire
-              if (isOwner)
+              if (canConsolidate)
                 Padding(
                   padding: const EdgeInsets.only(top: 10),
                   child: OutlinedButton.icon(
@@ -254,7 +122,7 @@ class _SelectMagasinScreenState extends State<SelectMagasinScreen> {
                       side: const BorderSide(color: AppColors.primary),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
-                    onPressed: _onSkipToConsolidatedFinancial,
+                    onPressed: () => _onPasser(context),
                     icon: const Icon(Icons.trending_up_rounded, color: AppColors.primary),
                     label: const Text(
                       'Passer à la Vue Financière Consolidée',
@@ -264,6 +132,107 @@ class _SelectMagasinScreenState extends State<SelectMagasinScreen> {
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderCard extends StatelessWidget {
+  final bool canConsolidate;
+  const _HeaderCard({required this.canConsolidate});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.store_mall_directory_rounded, color: AppColors.primary),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  canConsolidate ? 'Vue Propriétaire' : 'Session Collaborateur',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  canConsolidate
+                      ? 'Sélectionnez une caisse ou appuyez sur Passer pour consulter les rapports consolidés.'
+                      : 'Veuillez sélectionner le point de vente actif pour ce terminal.',
+                  style: const TextStyle(fontSize: 12, color: AppColors.textMedium),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MagasinCard extends StatelessWidget {
+  final MagasinModel magasin;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _MagasinCard({required this.magasin, required this.isSelected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final iconColor = magasin.isWarehouse ? AppColors.purple : AppColors.primary;
+    final bgColor = magasin.isWarehouse ? AppColors.purpleLight : AppColors.primaryLight;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: isSelected ? AppColors.primary : AppColors.divider, width: isSelected ? 1.5 : 1),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(10)),
+              child: Icon(magasin.isWarehouse ? Icons.warehouse_rounded : Icons.point_of_sale_rounded, color: iconColor, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(magasin.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textDark)),
+                  if ((magasin.address ?? '').isNotEmpty)
+                    Text(magasin.address!, style: const TextStyle(fontSize: 12, color: AppColors.textMedium)),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.textLight),
+          ],
         ),
       ),
     );

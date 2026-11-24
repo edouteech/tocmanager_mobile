@@ -143,10 +143,35 @@ class ApiClient {
     );
   }
 
-  /// Construit les headers par défaut en injectant le Bearer token
+  /// Construit les headers multi-tenant (X-Boutique-Id / X-Magasin-Id)
+  static Map<String, String> buildTenantHeaders({
+    String? boutiqueId,
+    String? magasinId,
+    bool isConsolidated = false,
+  }) {
+    final headers = <String, String>{};
+    if (boutiqueId != null && boutiqueId.isNotEmpty) {
+      headers['X-Boutique-Id'] = boutiqueId;
+    }
+    if (!isConsolidated && magasinId != null && magasinId.isNotEmpty) {
+      headers['X-Magasin-Id'] = magasinId;
+    }
+    return headers;
+  }
+
+  /// Construit les headers par défaut en injectant le Bearer token et le contexte tenant
   Future<Map<String, String>> _buildHeaders(Map<String, String>? customHeaders) async {
+    final boutiqueId = await SecureStorageService.getCurrentBoutiqueId();
+    final magasinId = await SecureStorageService.getCurrentMagasinId();
+    final isConsolidated = await SecureStorageService.isConsolidatedMode();
+
     final headers = <String, String>{
       'Content-Type': 'application/json',
+      ...buildTenantHeaders(
+        boutiqueId: boutiqueId,
+        magasinId: magasinId,
+        isConsolidated: isConsolidated,
+      ),
       ...?customHeaders,
     };
 

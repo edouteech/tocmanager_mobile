@@ -12,11 +12,12 @@ import '../models/decaissement.dart';
 import '../models/vente.dart';
 import '../models/client.dart';
 import '../models/supplier.dart';
+import '../models/tenant.dart';
 import '../services/secure_storage_service.dart';
 
 class DatabaseHelper {
   static const _dbName = 'tocmanager.db';
-  static const _dbVersion = 14;
+  static const _dbVersion = 15;
 
   static DatabaseHelper? _instance;
   static Database? _database;
@@ -80,7 +81,7 @@ class DatabaseHelper {
       await txn.delete('categories');
       await txn.delete('clients');
       await txn.delete('suppliers');
-      for (final extra in ['sync_queue', 'audit_logs']) {
+      for (final extra in ['sync_queue', 'audit_logs', 'magasins', 'boutiques']) {
         try {
           await txn.delete(extra);
         } catch (_) {}
@@ -137,6 +138,7 @@ class DatabaseHelper {
     await _createV12Schema(db);
     await _createV13Schema(db);
     await _createV14Schema(db);
+    await _createV15Schema(db);
     await _createIndexes(db);
   }
 
@@ -154,6 +156,11 @@ class DatabaseHelper {
       'CREATE INDEX IF NOT EXISTS idx_approvisionnements_product_id ON approvisionnements(product_id)',
       'CREATE INDEX IF NOT EXISTS idx_decaissements_date ON decaissements(date)',
       'CREATE INDEX IF NOT EXISTS idx_sync_queue_entity_uuid ON sync_queue(entity_uuid)',
+      'CREATE INDEX IF NOT EXISTS idx_magasins_boutique_id ON magasins(boutique_id)',
+      'CREATE INDEX IF NOT EXISTS idx_products_tenant ON products(boutique_id, magasin_id)',
+      'CREATE INDEX IF NOT EXISTS idx_ventes_tenant ON ventes(boutique_id, magasin_id)',
+      'CREATE INDEX IF NOT EXISTS idx_appros_tenant ON approvisionnements(boutique_id, magasin_id)',
+      'CREATE INDEX IF NOT EXISTS idx_decs_tenant ON decaissements(boutique_id, magasin_id)',
     ];
     for (final sql in statements) {
       try {
@@ -201,6 +208,61 @@ class DatabaseHelper {
       await _createV13Schema(db);
     }
     if (oldVersion < 14) await _createV14Schema(db);
+    if (oldVersion < 15) await _createV15Schema(db);
+  }
+
+  Future<void> _createV15Schema(Database db) async {
+    try {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS boutiques (
+          id TEXT PRIMARY KEY,
+          slug TEXT,
+          name TEXT NOT NULL,
+          company_name TEXT,
+          currency TEXT DEFAULT 'XOF',
+          country TEXT DEFAULT 'Sénégal',
+          owner_user_id TEXT,
+          user_role TEXT,
+          assigned_magasin_ids TEXT,
+          is_active INTEGER DEFAULT 1
+        )
+      ''');
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS magasins (
+          id TEXT PRIMARY KEY,
+          boutique_id TEXT NOT NULL,
+          name TEXT NOT NULL,
+          code TEXT,
+          address TEXT,
+          phone TEXT,
+          is_warehouse INTEGER DEFAULT 0,
+          is_active INTEGER DEFAULT 1
+        )
+      ''');
+
+      const scopedTables = [
+        'products',
+        'ventes',
+        'approvisionnements',
+        'decaissements',
+        'audit_logs',
+      ];
+      for (final table in scopedTables) {
+        try {
+          final info = await db.rawQuery('PRAGMA table_info($table)');
+          if (info.isEmpty) continue;
+          if (!info.any((c) => c['name'] == 'boutique_id')) {
+            await db.execute('ALTER TABLE $table ADD COLUMN boutique_id TEXT');
+          }
+          if (!info.any((c) => c['name'] == 'magasin_id')) {
+            await db.execute('ALTER TABLE $table ADD COLUMN magasin_id TEXT');
+          }
+        } catch (_) {}
+      }
+    } catch (e) {
+      debugPrint('V15 migration notice: $e');
+    }
   }
 
   Future<void> _createV14Schema(Database db) async {
@@ -672,6 +734,109 @@ class DatabaseHelper {
     }
   }
 
+  Future<({String? boutiqueId, String? magasinId})> _activeTenantMeta() async {
+    try {
+      final bId = await SecureStorageService.getCurrentBoutiqueId();
+      final mId = await SecureStorageService.getCurrentMagasinId();
+      return (boutiqueId: bId, magasinId: mId);
+    } catch (_) {
+      return (boutiqueId: null, magasinId: null);
+    }
+  }
+
+  Future<void> saveBoutiquesAndMagasins(List<BoutiqueModel> boutiques) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('magasins');
+      await txn.delete('boutiques');
+      for (final b in boutiques) {
+        await txn.insert(
+          'boutiques',
+          {
+            'id': b.id,
+            'slug': b.slug,
+            'name': b.name,
+            'company_name': b.companyName,
+            'currency': b.currency,
+            'country': b.country,
+            'owner_user_id': b.ownerUserId,
+            'user_role': b.userRole,
+            'assigned_magasin_ids': jsonEncode(b.assignedMagasinIds),
+            'is_active': b.isActive ? 1 : 0,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+        for (final m in b.magasins) {
+          await txn.insert(
+            'magasins',
+            m.toSqlMap(b.id),
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+      }
+    });
+  }
+
+  Future<List<BoutiqueModel>> getCachedBoutiques() async {
+    final db = await database;
+    final bRows = await db.query('boutiques');
+    if (bRows.isEmpty) return [];
+    final mRows = await db.query('magasins');
+    final magByBoutique = <String, List<MagasinModel>>{};
+    for (final m in mRows) {
+      final bId = m['boutique_id'] as String?;
+      if (bId != null) {
+        magByBoutique.putIfAbsent(bId, () => []).add(MagasinModel.fromMap(m));
+      }
+    }
+    return bRows.map((b) {
+      List<String> assigned = const [];
+      final rawAssigned = b['assigned_magasin_ids'] as String?;
+      if (rawAssigned != null && rawAssigned.isNotEmpty) {
+        try {
+          assigned = (jsonDecode(rawAssigned) as List<dynamic>).map((e) => e.toString()).toList();
+        } catch (_) {}
+      }
+      return BoutiqueModel(
+        id: b['id'] as String,
+        slug: (b['slug'] as String?) ?? '',
+        name: (b['name'] as String?) ?? 'Boutique',
+        companyName: b['company_name'] as String?,
+        currency: (b['currency'] as String?) ?? 'XOF',
+        country: (b['country'] as String?) ?? 'Sénégal',
+        ownerUserId: (b['owner_user_id'] as String?) ?? '',
+        isActive: (b['is_active'] as int?) != 0,
+        userRole: b['user_role'] as String?,
+        assignedMagasinIds: assigned,
+        magasins: magByBoutique[b['id'] as String] ?? const [],
+      );
+    }).toList();
+  }
+
+  Future<void> backfillTenantIds(String boutiqueId, String? magasinId) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      const tables = ['products', 'ventes', 'approvisionnements', 'decaissements', 'audit_logs'];
+      for (final table in tables) {
+        await txn.rawUpdate(
+          "UPDATE $table SET boutique_id = ? WHERE boutique_id IS NULL OR boutique_id = ''",
+          [boutiqueId],
+        );
+        if (magasinId != null && magasinId.isNotEmpty) {
+          await txn.rawUpdate(
+            "UPDATE $table SET magasin_id = ? WHERE (magasin_id IS NULL OR magasin_id = '') AND boutique_id = ?",
+            [magasinId, boutiqueId],
+          );
+        }
+      }
+    });
+  }
+
+  Future<void> clearSyncCursor() async {
+    final db = await database;
+    await db.delete('settings', where: 'key = ?', whereArgs: ['last_sync_timestamp']);
+  }
+
   Future<String> _resolveSyncId(DatabaseExecutor txn, String table, int id) async {
     final rows = await txn.query(table, columns: ['sync_id'], where: 'id = ?', whereArgs: [id]);
     if (rows.isNotEmpty) {
@@ -783,6 +948,7 @@ class DatabaseHelper {
   // --- PRODUCTS ---
   Future<List<Product>> getProducts({int? categoryId, String? search}) async {
     final db = await database;
+    final tenant = await _activeTenantMeta();
     String sql = '''
       SELECT 
         p.*,
@@ -799,6 +965,11 @@ class DatabaseHelper {
 
     List<String> conditions = [];
     List<dynamic> args = [];
+
+    if (tenant.magasinId != null) {
+      conditions.add('(p.magasin_id = ? OR p.magasin_id IS NULL)');
+      args.add(tenant.magasinId);
+    }
 
     if (categoryId != null && search != null && search.isNotEmpty) {
       conditions.add('p.category_id = ? AND (p.name LIKE ? OR p.barcode LIKE ?)');
@@ -868,6 +1039,7 @@ class DatabaseHelper {
 
   Future<int> insertProduct(Product p) async {
     final db = await database;
+    final tenant = await _activeTenantMeta();
     return db.transaction((txn) async {
       final now = DateTime.now().toIso8601String();
       final syncId = const Uuid().v4();
@@ -875,6 +1047,8 @@ class DatabaseHelper {
       map['sync_id'] = syncId;
       map['sync_status'] = 'pending_insert';
       map['updated_at'] = now;
+      if (tenant.boutiqueId != null) map['boutique_id'] = tenant.boutiqueId;
+      if (tenant.magasinId != null) map['magasin_id'] = tenant.magasinId;
       final id = await txn.insert('products', map);
       await _enqueueSync(txn, 'product', syncId, 'INSERT', await _productSyncPayload(txn, p, syncId, now));
       return id;
@@ -929,10 +1103,21 @@ class DatabaseHelper {
   // --- APPROVISIONNEMENTS ---
   Future<List<Approvisionnement>> getApprovisionnements({int? productId}) async {
     final db = await database;
+    final tenant = await _activeTenantMeta();
+    final conditions = <String>[];
+    final args = <dynamic>[];
+    if (productId != null) {
+      conditions.add('product_id = ?');
+      args.add(productId);
+    }
+    if (tenant.magasinId != null) {
+      conditions.add('(magasin_id = ? OR magasin_id IS NULL)');
+      args.add(tenant.magasinId);
+    }
     final maps = await db.query(
       'approvisionnements',
-      where: productId != null ? 'product_id = ?' : null,
-      whereArgs: productId != null ? [productId] : null,
+      where: conditions.isEmpty ? null : conditions.join(' AND '),
+      whereArgs: args.isEmpty ? null : args,
       orderBy: 'date DESC',
     );
     return maps.map((m) => Approvisionnement.fromMap(m)).toList();
@@ -974,6 +1159,7 @@ class DatabaseHelper {
   Future<int> insertApprovisionnement(Approvisionnement a) async {
     final db = await database;
     final userMeta = await _activeUserMeta();
+    final tenant = await _activeTenantMeta();
 
     return db.transaction((txn) async {
       final now = DateTime.now().toIso8601String();
@@ -984,6 +1170,8 @@ class DatabaseHelper {
       approMap['updated_at'] = now;
       if (userMeta.userId != null) approMap['user_id'] = userMeta.userId;
       if (userMeta.userName != null) approMap['user_name'] = userMeta.userName;
+      if (tenant.boutiqueId != null) approMap['boutique_id'] = tenant.boutiqueId;
+      if (tenant.magasinId != null) approMap['magasin_id'] = tenant.magasinId;
 
       final id = await txn.insert('approvisionnements', approMap);
       await txn.rawUpdate(
@@ -995,13 +1183,11 @@ class DatabaseHelper {
         await _updateSupplierBalance(txn, a.supplierId!);
       }
 
-      await _enqueueSync(
-        txn,
-        'approvisionnement',
-        syncId,
-        'INSERT',
-        await _approSyncPayload(txn, a, syncId, now, userId: userMeta.userId, userName: userMeta.userName),
+      final approPayload = await _approSyncPayload(
+        txn, a, syncId, now, userId: userMeta.userId, userName: userMeta.userName,
       );
+      if (tenant.magasinId != null) approPayload['magasin_id'] = tenant.magasinId;
+      await _enqueueSync(txn, 'approvisionnement', syncId, 'INSERT', approPayload);
 
       final auditSyncId = const Uuid().v4();
       final auditDetails = {
@@ -1199,7 +1385,13 @@ class DatabaseHelper {
   // --- DECAISSEMENTS ---
   Future<List<Decaissement>> getDecaissements() async {
     final db = await database;
-    final maps = await db.query('decaissements', orderBy: 'date DESC');
+    final tenant = await _activeTenantMeta();
+    final maps = await db.query(
+      'decaissements',
+      where: tenant.magasinId != null ? '(magasin_id = ? OR magasin_id IS NULL)' : null,
+      whereArgs: tenant.magasinId != null ? [tenant.magasinId] : null,
+      orderBy: 'date DESC',
+    );
     return maps.map((m) => Decaissement.fromMap(m)).toList();
   }
 
@@ -1229,6 +1421,7 @@ class DatabaseHelper {
   Future<int> insertDecaissement(Decaissement d) async {
     final db = await database;
     final userMeta = await _activeUserMeta();
+    final tenant = await _activeTenantMeta();
 
     return db.transaction((txn) async {
       final now = DateTime.now().toIso8601String();
@@ -1239,15 +1432,15 @@ class DatabaseHelper {
       decMap['updated_at'] = now;
       if (userMeta.userId != null) decMap['user_id'] = userMeta.userId;
       if (userMeta.userName != null) decMap['user_name'] = userMeta.userName;
+      if (tenant.boutiqueId != null) decMap['boutique_id'] = tenant.boutiqueId;
+      if (tenant.magasinId != null) decMap['magasin_id'] = tenant.magasinId;
       final id = await txn.insert('decaissements', decMap);
 
-      await _enqueueSync(
-        txn,
-        'decaissement',
-        syncId,
-        'INSERT',
-        _decaissementSyncPayload(d, syncId, now, userId: userMeta.userId, userName: userMeta.userName),
+      final decPayload = _decaissementSyncPayload(
+        d, syncId, now, userId: userMeta.userId, userName: userMeta.userName,
       );
+      if (tenant.magasinId != null) decPayload['magasin_id'] = tenant.magasinId;
+      await _enqueueSync(txn, 'decaissement', syncId, 'INSERT', decPayload);
 
       final auditSyncId = const Uuid().v4();
       final auditDetails = {
@@ -1327,7 +1520,13 @@ class DatabaseHelper {
   // --- VENTES (TICKETS & MULTI-ARTICLES) ---
   Future<List<Vente>> getVentes({int? productId}) async {
     final db = await database;
-    final maps = await db.query('ventes', orderBy: 'date DESC');
+    final tenant = await _activeTenantMeta();
+    final maps = await db.query(
+      'ventes',
+      where: tenant.magasinId != null ? '(magasin_id = ? OR magasin_id IS NULL)' : null,
+      whereArgs: tenant.magasinId != null ? [tenant.magasinId] : null,
+      orderBy: 'date DESC',
+    );
     if (maps.isEmpty) return [];
 
     final allItemMaps = await db.query('vente_items');
@@ -1352,13 +1551,10 @@ class DatabaseHelper {
 
   Future<int> insertVente(Vente v) async {
     final db = await database;
-    String? userId;
-    String? userName;
-    try {
-      final activeUser = await SecureStorageService.getUser();
-      userId = activeUser?.id;
-      userName = activeUser?.fullName ?? activeUser?.username;
-    } catch (_) {}
+    final userMeta = await _activeUserMeta();
+    final tenant = await _activeTenantMeta();
+    final userId = userMeta.userId;
+    final userName = userMeta.userName;
 
     return db.transaction((txn) async {
       final now = DateTime.now();
@@ -1375,6 +1571,8 @@ class DatabaseHelper {
       venteMap['updated_at'] = now.toIso8601String();
       if (userId != null) venteMap['user_id'] = userId;
       if (userName != null) venteMap['user_name'] = userName;
+      if (tenant.boutiqueId != null) venteMap['boutique_id'] = tenant.boutiqueId;
+      if (tenant.magasinId != null) venteMap['magasin_id'] = tenant.magasinId;
 
       final venteId = await txn.insert('ventes', venteMap);
 
@@ -1417,6 +1615,7 @@ class DatabaseHelper {
       // Ajout atomique dans la file d'attente de synchronisation hors-ligne
       final queuePayload = {
         'sync_id': venteSyncId,
+        if (tenant.magasinId != null) 'magasin_id': tenant.magasinId,
         'ticket_number': ticketNum,
         'client_sync_id': clientSyncId,
         'client_name': v.clientName ?? 'Occasionnel',

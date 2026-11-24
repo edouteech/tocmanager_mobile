@@ -236,6 +236,7 @@ class SyncService {
       'decaissements': decRows.map((d) {
         return {
           'sync_id': resolveRowSyncId(d),
+          if (d['magasin_id'] != null) 'magasin_id': d['magasin_id'],
           'title': d['description'] ?? 'Dépense',
           'amount': (d['amount'] as num?)?.toDouble() ?? 0.0,
           'category': d['category'] ?? 'Divers',
@@ -255,6 +256,7 @@ class SyncService {
         final paidVal = (a['paid_amount'] as num?)?.toDouble() ?? totalVal;
         return {
           'sync_id': resolveRowSyncId(a),
+          if (a['magasin_id'] != null) 'magasin_id': a['magasin_id'],
           'supplier_sync_id': sid != null ? supSyncById[sid] : null,
           'supplier_name': a['supplier'],
           'product_sync_id': pid != null ? prodSyncById[pid] : null,
@@ -277,6 +279,7 @@ class SyncService {
         final rawItems = itemsByVente[vid] ?? const [];
         return {
           'sync_id': resolveRowSyncId(v),
+          if (v['magasin_id'] != null) 'magasin_id': v['magasin_id'],
           'ticket_number': v['ticket_number'] ?? 'TICKET',
           'client_sync_id': cid != null ? clientSyncById[cid] : null,
           'client_name': v['client_name'] ?? 'Occasionnel',
@@ -635,6 +638,7 @@ class SyncService {
       }
       final values = {
         'sync_id': syncId,
+        'magasin_id': dMap['magasin_id'],
         'description': dMap['title'] ?? 'Dépense',
         'amount': (dMap['amount'] as num).toDouble(),
         'category': dMap['category'] ?? 'Divers',
@@ -681,6 +685,7 @@ class SyncService {
 
       final values = {
         'sync_id': syncId,
+        'magasin_id': aMap['magasin_id'],
         'product_id': localProdId ?? 0,
         'quantity': (aMap['quantity'] as num).toDouble(),
         'unit_price': (aMap['unit_cost'] as num).toDouble(),
@@ -726,6 +731,7 @@ class SyncService {
 
       final values = {
         'sync_id': syncId,
+        'magasin_id': vMap['magasin_id'],
         'ticket_number': vMap['ticket_number'] ?? 'TK-${DateTime.now().millisecondsSinceEpoch}',
         'client_id': localClientId,
         'client_name': vMap['client_name'] ?? 'Occasionnel',

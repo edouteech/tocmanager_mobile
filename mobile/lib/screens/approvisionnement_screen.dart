@@ -7,6 +7,8 @@ import '../providers/approvisionnement_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/supplier_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/tenant_provider.dart';
+import '../widgets/select_operational_magasin_modal.dart';
 import '../services/approvisionnement_export_service.dart';
 import '../theme/app_theme.dart';
 
@@ -948,7 +950,16 @@ class _ApprovisionScreenState extends State<ApprovisionScreen> {
     );
   }
 
-  void _showForm(BuildContext context, {Approvisionnement? approvisionnement}) {
+  Future<void> _showForm(BuildContext context, {Approvisionnement? approvisionnement}) async {
+    if (approvisionnement == null) {
+      final tenant = context.read<TenantProvider>();
+      if (tenant.needsOperationalMagasin(isSale: false)) {
+        final chosen = await SelectOperationalMagasinModal.show(context, isSale: false);
+        if (chosen == null || !context.mounted) return;
+        await tenant.selectMagasin(chosen);
+        if (!context.mounted) return;
+      }
+    }
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
