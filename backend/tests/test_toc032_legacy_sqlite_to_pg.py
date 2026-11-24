@@ -2,6 +2,7 @@ from pathlib import Path
 import sqlite3
 import subprocess
 import sys
+import uuid
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -465,3 +466,58 @@ def test_migrate_refuses_non_empty_target_without_truncate_and_succeeds_with_tru
 
     rerun = migrate_database_with_report(src_url, dst_url, ensure_schema=False, truncate_target=True)
     assert rerun.copied["products"] == 2
+
+
+def test_migrate_remaps_overlong_legacy_ids_and_truncates_strings(tmp_path):
+    legacy_db = tmp_path / "legacy_long_ids.db"
+    target_db = tmp_path / "target_long_ids.db"
+    _create_legacy_43e7954_sqlite(legacy_db)
+
+    raw_audit_id = f"audit-{uuid.uuid4()}"
+    raw_client_id = f"client-{uuid.uuid4()}"
+    assert len(raw_audit_id) == 42
+    assert len(raw_client_id) == 43
+
+    conn = sqlite3.connect(str(legacy_db))
+    try:
+        ts = "2026-11-10T10:15:00"
+        conn.execute(
+            "INSERT INTO clients VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (raw_client_id, "btq-1", "Awa Kane", "770001122", None, None, 0.0, None, "usr-owner", "Mamadou Diop", ts, ts, None),
+        )
+        conn.execute(
+            "INSERT INTO ventes VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("vnt-long", "btq-1", "mag-1", "VNT-LONG", raw_client_id, "Awa Kane", "usr-owner", "Mamadou Diop", 1000.0, 1000.0, 0.0, "x" * 80, None, ts, ts, None),
+        )
+        conn.execute(
+            "INSERT INTO audit_logs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (raw_audit_id, "btq-1", "usr-owner", "Mamadou Diop", "CLIENT_CREATE", "client", raw_client_id, "{}", ts),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    dst_url = _prepare_alembic_target(target_db)
+    report = migrate_database_with_report(f"sqlite:///{legacy_db}", dst_url, ensure_schema=False)
+    assert report.skipped_orphans == {"vente_items": 1}
+    assert report.nulled_fks == {"products": 1}
+
+    dst_engine = create_engine(dst_url, connect_args={"check_same_thread": False})
+    Session = sessionmaker(bind=dst_engine)
+    db = Session()
+    try:
+        expected_audit_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"tocmanager-legacy-id:{raw_audit_id}"))
+        expected_client_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"tocmanager-legacy-id:{raw_client_id}"))
+        assert len(expected_audit_id) == 36
+        assert len(expected_client_id) == 36
+
+        migrated_audit = db.query(AuditLog).filter_by(id=expected_audit_id).one()
+        assert len(migrated_audit.id) == 36
+
+        migrated_client = db.query(Client).filter_by(sync_id=expected_client_id).one()
+        migrated_vente = db.query(Vente).filter_by(sync_id="vnt-long").one()
+        assert migrated_client.sync_id == migrated_vente.client_sync_id
+        assert len(migrated_client.sync_id) == 36
+        assert len(migrated_vente.payment_method) == 50
+    finally:
+        db.close()
