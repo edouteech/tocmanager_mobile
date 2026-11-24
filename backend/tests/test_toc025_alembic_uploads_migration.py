@@ -8,12 +8,22 @@ from PIL import Image
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
 
-from app.core.database import Base, get_db
+from app.core.database import Base, get_db, normalize_database_url
 from app.core.security import create_access_token, get_password_hash
 from app.main import app
 from app.models import Boutique, BoutiqueUserMembership, Client, Magasin, Product, User, Vente, VenteItem
 from app.services import storage_service
 from scripts.migrate_sqlite_to_pg import migrate_database
+
+
+def test_normalize_database_url_maps_postgresql_schemes_to_psycopg2():
+    assert normalize_database_url("postgres://u:p@h:5432/db") == "postgresql+psycopg2://u:p@h:5432/db"
+    assert normalize_database_url("postgresql://u:p@h:5432/db") == "postgresql+psycopg2://u:p@h:5432/db"
+    assert normalize_database_url("postgresql+psycopg2://u:p@h:5432/db") == "postgresql+psycopg2://u:p@h:5432/db"
+    assert normalize_database_url("sqlite:///./tocmanager.db") == "sqlite:///./tocmanager.db"
+
+    eng = create_engine(normalize_database_url("postgresql://u:p@localhost:5432/tocmanager_ci"))
+    assert eng.dialect.driver == "psycopg2"
 
 
 def _make_png_bytes(width: int = 32, height: int = 32) -> bytes:

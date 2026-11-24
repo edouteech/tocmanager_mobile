@@ -9,7 +9,7 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from app.core.database import Base  # noqa: E402
+from app.core.database import Base, normalize_database_url  # noqa: E402
 from app.core.rls import apply_postgresql_rls  # noqa: E402
 import app.models  # noqa: F401, E402
 
@@ -38,6 +38,8 @@ def migrate_database(
     chunk_size: int = 500,
 ) -> Dict[str, int]:
     """Copy all TocManager rows from source SQLite/DB to target PostgreSQL preserving PKs and sync_id."""
+    source_url = normalize_database_url(source_url)
+    target_url = normalize_database_url(target_url)
     src_args = {"check_same_thread": False} if source_url.startswith("sqlite") else {}
     dst_args = {"check_same_thread": False} if target_url.startswith("sqlite") else {}
     src_engine = create_engine(source_url, connect_args=src_args)
