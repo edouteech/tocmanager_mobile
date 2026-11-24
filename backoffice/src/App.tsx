@@ -25,6 +25,8 @@ const lazyNamed = <T extends React.ComponentType<any>>(
 const LandingPage = lazyNamed(() => import('./features/landing/LandingPage'), 'LandingPage');
 const PricingPage = lazyNamed(() => import('./features/landing/PricingPage'), 'PricingPage');
 const ContactPage = lazyNamed(() => import('./features/landing/ContactPage'), 'ContactPage');
+const TermsPage = lazyNamed(() => import('./features/landing/TermsPage'), 'TermsPage');
+const PrivacyPage = lazyNamed(() => import('./features/landing/PrivacyPage'), 'PrivacyPage');
 const RegisterPage = lazyNamed(() => import('./features/landing/RegisterPage'), 'RegisterPage');
 const LoginPage = lazyNamed(() => import('./features/auth/LoginPage'), 'LoginPage');
 const ForgotPasswordPage = lazyNamed(
@@ -108,6 +110,8 @@ export const App: React.FC = () => {
                   <Route path="/landing" element={<LandingPage />} />
                   <Route path="/tarifs" element={<PricingPage />} />
                   <Route path="/contact" element={<ContactPage />} />
+                  <Route path="/cgu" element={<TermsPage />} />
+                  <Route path="/confidentialite" element={<PrivacyPage />} />
                   <Route path="/inscription" element={<RegisterPage />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/forgot-password" element={<ForgotPasswordPage />} />

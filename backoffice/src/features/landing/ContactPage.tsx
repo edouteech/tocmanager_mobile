@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Store, Send, CheckCircle2, Mail, Building2, Phone, User, AlertCircle } from 'lucide-react';
+import { Send, CheckCircle2, Mail, Building2, Phone, User, AlertCircle } from 'lucide-react';
 import { saasApi } from '../../lib/api';
+import { PublicNavbar } from '../../components/public/PublicNavbar';
+import { PublicFooter } from '../../components/public/PublicFooter';
+import { usePageTitle } from './hooks/usePageTitle';
 
 export const ContactPage: React.FC = () => {
   const [fullName, setFullName] = useState('');
@@ -12,6 +14,11 @@ export const ContactPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sentMessage, setSentMessage] = useState<string | null>(null);
+
+  usePageTitle(
+    'Contact & Démo Entreprise — TocManager',
+    'Contactez l’équipe TocManager pour un déploiement multi-magasins ou une question commerciale.'
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,8 +53,8 @@ export const ContactPage: React.FC = () => {
       setCompany('');
       setPhone('');
       setMessage('');
-    } catch (err: any) {
-      const detail = err.response?.data?.detail;
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       setError(
         typeof detail === 'string'
           ? detail
@@ -59,36 +66,13 @@ export const ContactPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5FAFD] dark:bg-dark-900 text-[#1C2B3A] dark:text-slate-100 flex flex-col font-sans">
-      <header className="sticky top-0 z-40 bg-white/90 dark:bg-dark-800/90 backdrop-blur-md border-b border-[#E8EFF5] dark:border-dark-600">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl toc-gradient flex items-center justify-center text-white shadow-soft">
-              <Store className="w-6 h-6" />
-            </div>
-            <span className="text-xl font-black text-[#1C2B3A] dark:text-white">
-              Toc<span className="text-[#29ABE2]">Manager</span>
-            </span>
-          </Link>
+    <div className="min-h-screen bg-[#F5FAFD] dark:bg-dark-900 text-[#1C2B3A] dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
+      <PublicNavbar />
 
-          <div className="flex items-center gap-4">
-            <Link to="/tarifs" className="text-sm font-medium text-[#5A7184] hover:text-[#29ABE2]">
-              Tarifs
-            </Link>
-            <Link to="/login" className="text-sm font-medium hover:text-[#29ABE2]">
-              Connexion
-            </Link>
-            <Link to="/inscription" className="btn-primary py-2 text-xs sm:text-sm">
-              Créer un compte
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 max-w-3xl w-full mx-auto px-4 py-12 space-y-6">
+      <main id="main-content" className="flex-1 max-w-3xl w-full mx-auto px-4 py-12 space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-extrabold text-[#1C2B3A] dark:text-white">
-            Contactez l'équipe TocManager
+            Contactez l’équipe TocManager
           </h1>
           <p className="text-sm text-[#5A7184] dark:text-slate-300">
             Déploiement multi-magasins, accompagnement Entreprise ou question technique : écrivez-nous.
@@ -190,6 +174,8 @@ export const ContactPage: React.FC = () => {
           </form>
         </div>
       </main>
+
+      <PublicFooter />
     </div>
   );
 };
