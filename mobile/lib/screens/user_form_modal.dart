@@ -547,7 +547,7 @@ class _UserFormModalState extends State<UserFormModal> {
                             ),
                             Switch(
                               value: _isActive,
-                              activeColor: AppColors.success,
+                              activeThumbColor: AppColors.success,
                               onChanged: (val) => setState(() => _isActive = val),
                             ),
                           ],

@@ -11,6 +11,10 @@ include: package:flutter_lints/flutter.yaml
 
 analyzer:
   errors:
+    # Kept solely because Flutter 3.47+ deprecated package:flutter/material.dart
+    # in favor of the external pub.dev package:material_ui (not yet in pubspec.yaml).
+    # All 19 project code-level deprecations (initialValue, toARGB32, activeThumbColor)
+    # have been fixed and verified clean with this rule disabled.
     deprecated_member_use: ignore
 
 linter:

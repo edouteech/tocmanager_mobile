@@ -17,8 +17,11 @@ class SecureStorageService {
   static const _kCurrentMagasinId = 'toc_current_magasin_id';
   static const _kConsolidatedMode = 'toc_consolidated_mode';
 
-  /// URL unique et définitive de l'API en production sur Coolify
-  static const String apiUrl = 'https://api.tocmanager.locarapide.com/api/v1';
+  /// URL unique de l'API, surchargeable au build via --dart-define=API_URL=...
+  static const String apiUrl = String.fromEnvironment(
+    'API_URL',
+    defaultValue: 'https://api.tocmanager.locarapide.com/api/v1',
+  );
 
   static String get defaultServerUrl => apiUrl;
 

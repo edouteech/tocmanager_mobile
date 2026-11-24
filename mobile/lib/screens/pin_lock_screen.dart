@@ -59,11 +59,11 @@ class _PinLockScreenState extends State<PinLockScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28.0),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 20.0),
           child: Column(
             children: [
-              const Spacer(flex: 2),
+              const SizedBox(height: 16),
 
               // En-tête / Cadenas
               Container(
@@ -139,12 +139,12 @@ class _PinLockScreenState extends State<PinLockScreen> {
                   ),
                 ),
 
-              const Spacer(flex: 3),
+              const SizedBox(height: 28),
 
               // Pavé numérique sur-mesure (0-9)
               _buildKeypad(disabled: isBlocked),
 
-              const Spacer(flex: 1),
+              const SizedBox(height: 16),
 
               // Bouton Fallback Mot de passe
               TextButton.icon(

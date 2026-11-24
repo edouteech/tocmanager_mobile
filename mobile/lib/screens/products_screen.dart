@@ -543,7 +543,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                 const SizedBox(height: 6),
                 DropdownButtonFormField<int?>(
-                  value: _pendingCategoryId,
+                  key: ValueKey(_pendingCategoryId),
+                  initialValue: _pendingCategoryId,
                   decoration: InputDecoration(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
@@ -560,7 +561,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                 const SizedBox(height: 6),
                 DropdownButtonFormField<String?>(
-                  value: _pendingStatut,
+                  key: ValueKey(_pendingStatut),
+                  initialValue: _pendingStatut,
                   decoration: InputDecoration(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
@@ -1855,7 +1857,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
           final color = palette[newCatsCreated % palette.length];
           final newCat = Category(
             name: rawCatName,
-            color: color.value,
+            color: color.toARGB32(),
             icon: Icons.category.codePoint,
             createdAt: DateTime.now(),
           );
@@ -2117,7 +2119,7 @@ class _ProductFormModalState extends State<ProductFormModal> {
               if (name.isNotEmpty) {
                 final newCat = Category(
                   name: name,
-                  color: AppColors.primary.value,
+                  color: AppColors.primary.toARGB32(),
                   icon: Icons.category.codePoint,
                   createdAt: DateTime.now(),
                 );
@@ -2364,7 +2366,8 @@ class _ProductFormModalState extends State<ProductFormModal> {
               builder: (context, suppProvider, _) {
                 final validSupplierId = suppProvider.suppliers.any((s) => s.id == _supplierId) ? _supplierId : null;
                 return DropdownButtonFormField<int?>(
-                  value: validSupplierId,
+                  key: ValueKey(validSupplierId),
+                  initialValue: validSupplierId,
                   decoration: InputDecoration(
                     labelText: 'Fournisseur (facultatif)',
                     prefixIcon: const Icon(Icons.business_outlined, size: 20),
@@ -2615,7 +2618,7 @@ class _ProductFormModalState extends State<ProductFormModal> {
         } else {
           final newCat = Category(
             name: catText,
-            color: AppColors.primary.value,
+            color: AppColors.primary.toARGB32(),
             icon: Icons.category.codePoint,
             createdAt: now,
           );

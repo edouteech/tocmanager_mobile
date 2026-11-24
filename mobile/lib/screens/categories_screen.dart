@@ -841,7 +841,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       final newCat = Category(
         name: r['name']!.trim(),
         description: r['description']?.isNotEmpty == true ? r['description'] : null,
-        color: color.value,
+        color: color.toARGB32(),
         icon: Icons.category.codePoint,
         createdAt: DateTime.now(),
       );
@@ -913,7 +913,7 @@ class _CategoryFormState extends State<_CategoryForm> {
   late final _descCtrl =
       TextEditingController(text: widget.category?.description ?? '');
   late int _color =
-      widget.category?.color ?? widget.palette.first.value;
+      widget.category?.color ?? widget.palette.first.toARGB32();
   late int _icon = widget.category?.icon ?? widget.icons.first.codePoint;
   bool _saving = false;
 
@@ -995,9 +995,9 @@ class _CategoryFormState extends State<_CategoryForm> {
               spacing: 10,
               runSpacing: 10,
               children: widget.palette.map((c) {
-                final selected = _color == c.value;
+                final selected = _color == c.toARGB32();
                 return GestureDetector(
-                  onTap: () => setState(() => _color = c.value),
+                  onTap: () => setState(() => _color = c.toARGB32()),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
                     width: 38,

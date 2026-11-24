@@ -1101,7 +1101,8 @@ class _ApprovisionFormState extends State<_ApprovisionForm> {
                 builder: (context, provider, child) {
                   final validProductId = provider.products.any((p) => p.id == _productId) ? _productId : null;
                   return DropdownButtonFormField<int?>(
-                    value: validProductId,
+                    key: ValueKey(validProductId),
+                    initialValue: validProductId,
                     decoration: InputDecoration(
                       labelText: 'Produit *',
                       filled: true,
@@ -1189,7 +1190,8 @@ class _ApprovisionFormState extends State<_ApprovisionForm> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       DropdownButtonFormField<int?>(
-                        value: validSupplierId,
+                        key: ValueKey(validSupplierId),
+                        initialValue: validSupplierId,
                         decoration: InputDecoration(
                           labelText: 'Sélectionner un Fournisseur',
                           filled: true,

@@ -1088,7 +1088,7 @@ class _DecaissementFormState extends State<_DecaissementForm> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _category,
+                    initialValue: _category,
                     decoration: InputDecoration(
                       labelText: 'Catégorie',
                       filled: true,

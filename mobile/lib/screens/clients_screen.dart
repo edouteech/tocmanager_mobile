@@ -890,7 +890,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
                 const Text('Mode de règlement :', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textMedium)),
                 const SizedBox(height: 6),
                 DropdownButtonFormField<String>(
-                  value: paymentMethod,
+                  initialValue: paymentMethod,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                     contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -993,7 +993,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
                 const Text('Mode de règlement :', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textMedium)),
                 const SizedBox(height: 6),
                 DropdownButtonFormField<String>(
-                  value: paymentMethod,
+                  initialValue: paymentMethod,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                     contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1094,7 +1094,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
                 const Text('Mode de versement :', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textMedium)),
                 const SizedBox(height: 6),
                 DropdownButtonFormField<String>(
-                  value: paymentMethod,
+                  initialValue: paymentMethod,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                     contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1591,7 +1591,7 @@ class _ClientFormState extends State<_ClientForm> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _clientType,
+                initialValue: _clientType,
                 decoration: const InputDecoration(
                   labelText: 'Type de tarif attribué',
                   border: OutlineInputBorder(),

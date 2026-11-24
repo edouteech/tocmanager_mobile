@@ -225,7 +225,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           'Mise à jour du coût à chaque ajout ou modification d\'approvisionnement',
                           style: TextStyle(fontSize: 12, color: AppColors.textMedium),
                         ),
-                        activeColor: AppColors.primary,
+                        activeThumbColor: AppColors.primary,
                         contentPadding: EdgeInsets.zero,
                       ),
                       const SizedBox(height: 8),

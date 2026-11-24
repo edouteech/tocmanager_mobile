@@ -1,15 +1,11 @@
-import 'dart:io';
 import 'package:excel/excel.dart' as xl;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 import '../models/client.dart';
 import '../providers/settings_provider.dart';
-import '../widgets/app_toast.dart';
+import 'export_helper.dart';
 
 class ClientExportService {
   static Future<void> exportClientsExcel(
@@ -18,11 +14,9 @@ class ClientExportService {
     String periodName,
   ) async {
     final excel = xl.Excel.createExcel();
-    final xl.Sheet sheet = excel['Clients'];
-
+    final sheet = excel['Clients'];
     sheet.appendRow([xl.TextCellValue('REGISTRE DES CLIENTS & CRÉANCES - $periodName')]);
     sheet.appendRow([xl.TextCellValue('')]);
-
     sheet.appendRow([
       xl.TextCellValue('ID'),
       xl.TextCellValue('Nom du Client'),
@@ -34,7 +28,6 @@ class ClientExportService {
     ]);
 
     double totalDebt = 0;
-
     for (final c in clients) {
       totalDebt += c.balance;
       sheet.appendRow([
@@ -59,27 +52,12 @@ class ClientExportService {
       xl.TextCellValue(''),
     ]);
 
-    Directory? downloadsDir;
-    if (Platform.isAndroid) {
-      downloadsDir = Directory('/storage/emulated/0/Download');
-      if (!await downloadsDir.exists()) {
-        downloadsDir = await getExternalStorageDirectory();
-      }
-    } else {
-      downloadsDir = await getApplicationDocumentsDirectory();
-    }
-
-    final fileBytes = excel.save();
-    if (fileBytes != null) {
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final file = File('${downloadsDir!.path}/Registre_Clients_$timestamp.xlsx');
-      await file.writeAsBytes(fileBytes);
-
-      if (context.mounted) {
-        AppToast.showSuccess(context, 'Fichier Excel généré : ${file.path.split('/').last}');
-        await Share.shareXFiles([XFile(file.path)], text: 'Registre des Clients & Créances');
-      }
-    }
+    await ExportHelper.saveExcelAndShare(
+      context,
+      excel: excel,
+      fileName: 'Registre_Clients_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+      shareText: 'Registre des Clients & Créances',
+    );
   }
 
   static Future<void> exportClientsPdfReport(
@@ -90,62 +68,38 @@ class ClientExportService {
   ) async {
     final pdf = pw.Document();
     final formatter = NumberFormat.currency(locale: 'fr_FR', symbol: 'F', decimalDigits: 0);
-
-    final double totalDebt = clients.fold(0.0, (sum, c) => sum + (c.balance > 0 ? c.balance : 0));
+    final totalDebt = clients.fold(0.0, (sum, c) => sum + (c.balance > 0 ? c.balance : 0));
     final debtClientsCount = clients.where((c) => c.balance > 0).length;
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(24),
-        build: (pw.Context ctx) => [
+        build: (_) => [
+          ExportHelper.buildPdfStoreHeader(
+            settings,
+            title: 'RAPPORT CLIENTS & CRÉANCES',
+            subtitle: 'Filtre : $periodName',
+          ),
           pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(settings.name.toUpperCase(), style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16)),
-                  if (settings.phone.isNotEmpty) pw.Text('Tél: ${settings.phone}', style: const pw.TextStyle(fontSize: 10)),
-                  if (settings.address.isNotEmpty) pw.Text(settings.address, style: const pw.TextStyle(fontSize: 10)),
-                ],
-              ),
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.end,
-                children: [
-                  pw.Text('RAPPORT CLIENTS & CRÉANCES', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12, color: PdfColors.blue900)),
-                  pw.Text('Filtre : $periodName', style: const pw.TextStyle(fontSize: 10)),
-                  pw.Text('Édité le : ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
-                ],
-              ),
+              ExportHelper.buildPdfMetricCard('Nombre Total Clients', '${clients.length}', PdfColors.blue800),
+              pw.SizedBox(width: 10),
+              ExportHelper.buildPdfMetricCard('Clients Endettés', '$debtClientsCount', PdfColors.orange800),
+              pw.SizedBox(width: 10),
+              ExportHelper.buildPdfMetricCard('Total Créances Dues', formatter.format(totalDebt), PdfColors.red800),
             ],
           ),
           pw.SizedBox(height: 16),
-          pw.Divider(thickness: 1),
-          pw.SizedBox(height: 12),
-
-          pw.Row(
-            children: [
-              _pdfMetricCard('Nombre Total Clients', '${clients.length}', PdfColors.blue800),
-              pw.SizedBox(width: 10),
-              _pdfMetricCard('Clients Endettés', '$debtClientsCount', PdfColors.orange800),
-              pw.SizedBox(width: 10),
-              _pdfMetricCard('Total Créances Dues', formatter.format(totalDebt), PdfColors.red800),
-            ],
-          ),
-          pw.SizedBox(height: 16),
-
           pw.TableHelper.fromTextArray(
             headers: ['Client', 'Téléphone', 'Email', 'Statut', 'Solde Créance (F)'],
-            data: clients.map((c) {
-              return [
-                c.name,
-                c.phone ?? '—',
-                c.email ?? '—',
-                c.balance > 0 ? 'Créance en cours' : 'À jour',
-                c.balance > 0 ? formatter.format(c.balance) : '0 F',
-              ];
-            }).toList(),
+            data: clients.map((c) => [
+              c.name,
+              c.phone ?? '—',
+              c.email ?? '—',
+              c.balance > 0 ? 'Créance en cours' : 'À jour',
+              c.balance > 0 ? formatter.format(c.balance) : '0 F',
+            ]).toList(),
             headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white, fontSize: 9),
             headerDecoration: const pw.BoxDecoration(color: PdfColors.blue800),
             rowDecoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5))),
@@ -154,31 +108,6 @@ class ClientExportService {
         ],
       ),
     );
-
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
-      name: 'Rapport_Clients_Creances.pdf',
-    );
-  }
-
-  static pw.Widget _pdfMetricCard(String label, String value, PdfColor color) {
-    return pw.Expanded(
-      child: pw.Container(
-        padding: const pw.EdgeInsets.all(10),
-        decoration: pw.BoxDecoration(
-          color: PdfColors.grey100,
-          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
-          border: pw.Border.all(color: color, width: 1),
-        ),
-        child: pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Text(label, style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
-            pw.SizedBox(height: 4),
-            pw.Text(value, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: color)),
-          ],
-        ),
-      ),
-    );
+    await ExportHelper.layoutPdf(pdf, 'Rapport_Clients_Creances.pdf');
   }
 }
