@@ -4,6 +4,7 @@ import { ShieldCheck, Search, Filter, RefreshCw, FileText, Info } from 'lucide-r
 import { auditApi } from '../../lib/api';
 import { formatDateTime } from '../../lib/formatters';
 import { AuditLogItem } from '../../types';
+import { IconInput } from '../../components/common/IconInput';
 import { PaginationControls } from '../../components/common/PaginationControls';
 import { useDensity } from '../../context/DensityContext';
 import { useTenantContextKey } from '../../stores/tenantStore';
@@ -70,16 +71,15 @@ export const AuditLogsPage: React.FC = () => {
       </div>
 
       <div className="card-toc p-4 flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Rechercher par opérateur, entité ou référence..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="input-toc pl-10"
-          />
-        </div>
+        <IconInput
+          containerClassName="flex-1"
+          icon={<Search className="w-4 h-4" />}
+          iconClassName="text-slate-400"
+          type="text"
+          placeholder="Rechercher par opérateur, entité ou référence..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Filter className="w-4 h-4 text-slate-400 shrink-0" />

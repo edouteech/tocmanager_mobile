@@ -2,6 +2,7 @@ import React from 'react';
 import { Store, Building2, CheckCircle2, ShieldCheck, ArrowLeft, Sparkles } from 'lucide-react';
 import { CANONICAL_CURRENCIES } from '../../lib/currencies';
 import { SaasPlan } from '../../types';
+import { IconInput } from '../../components/common/IconInput';
 
 interface RegisterStep2FormProps {
   boutiqueName: string;
@@ -75,33 +76,27 @@ export const RegisterStep2Form: React.FC<RegisterStep2FormProps> = ({
           <label className="block text-xs font-semibold text-[#1C2B3A] dark:text-slate-300 mb-1">
             Nom de la Boutique *
           </label>
-          <div className="relative">
-            <Store className="w-4 h-4 text-[#9FB3C8] absolute left-3 top-3" />
-            <input
-              type="text"
-              required
-              placeholder="Ex: Boutique Élégance Dakar"
-              value={boutiqueName}
-              onChange={(e) => setBoutiqueName(e.target.value)}
-              className="input-toc pl-9"
-            />
-          </div>
+          <IconInput
+            icon={<Store className="w-4 h-4" />}
+            type="text"
+            required
+            placeholder="Ex: Boutique Élégance Dakar"
+            value={boutiqueName}
+            onChange={(e) => setBoutiqueName(e.target.value)}
+          />
         </div>
 
         <div>
           <label className="block text-xs font-semibold text-[#1C2B3A] dark:text-slate-300 mb-1">
             Raison Sociale / Entreprise
           </label>
-          <div className="relative">
-            <Building2 className="w-4 h-4 text-[#9FB3C8] absolute left-3 top-3" />
-            <input
-              type="text"
-              placeholder="Ex: Élégance SARL (optionnel)"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              className="input-toc pl-9"
-            />
-          </div>
+          <IconInput
+            icon={<Building2 className="w-4 h-4" />}
+            type="text"
+            placeholder="Ex: Élégance SARL (optionnel)"
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+          />
         </div>
       </div>
 

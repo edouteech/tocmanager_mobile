@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { User, Mail, Lock, Phone, ArrowRight } from 'lucide-react';
+import { IconInput } from '../../components/common/IconInput';
 
 interface RegisterStep1FormProps {
   fullName: string;
@@ -60,50 +61,41 @@ export const RegisterStep1Form: React.FC<RegisterStep1FormProps> = ({
         <label className="block text-xs font-semibold text-[#1C2B3A] dark:text-slate-300 mb-1">
           Nom complet *
         </label>
-        <div className="relative">
-          <User className="w-4 h-4 text-[#9FB3C8] absolute left-3 top-3" />
-          <input
-            type="text"
-            required
-            placeholder="Ex: Amadou Diallo"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            className="input-toc pl-9"
-          />
-        </div>
+        <IconInput
+          icon={<User className="w-4 h-4" />}
+          type="text"
+          required
+          placeholder="Ex: Amadou Diallo"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+        />
       </div>
 
       <div>
         <label className="block text-xs font-semibold text-[#1C2B3A] dark:text-slate-300 mb-1">
           Email ou Identifiant de connexion *
         </label>
-        <div className="relative">
-          <Mail className="w-4 h-4 text-[#9FB3C8] absolute left-3 top-3" />
-          <input
-            type="text"
-            required
-            placeholder="amadou@boutique.com"
-            value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
-            className="input-toc pl-9"
-          />
-        </div>
+        <IconInput
+          icon={<Mail className="w-4 h-4" />}
+          type="text"
+          required
+          placeholder="amadou@boutique.com"
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
+        />
       </div>
 
       <div>
         <label className="block text-xs font-semibold text-[#1C2B3A] dark:text-slate-300 mb-1">
           Numéro de téléphone mobile
         </label>
-        <div className="relative">
-          <Phone className="w-4 h-4 text-[#9FB3C8] absolute left-3 top-3" />
-          <input
-            type="tel"
-            placeholder="+221 77 000 00 00"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="input-toc pl-9"
-          />
-        </div>
+        <IconInput
+          icon={<Phone className="w-4 h-4" />}
+          type="tel"
+          placeholder="+221 77 000 00 00"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
       </div>
 
       <div>
@@ -117,24 +109,23 @@ export const RegisterStep1Form: React.FC<RegisterStep1FormProps> = ({
             </span>
           )}
         </div>
-        <div className="relative">
-          <Lock className="w-4 h-4 text-[#9FB3C8] absolute left-3 top-3" />
-          <input
-            type={showPwd ? 'text' : 'password'}
-            required
-            placeholder="Minimum 6 caractères"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="input-toc pl-9 pr-16"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPwd((v) => !v)}
-            className="absolute right-3 top-2.5 text-[11px] font-semibold text-[#29ABE2] hover:text-[#1A8FBF]"
-          >
-            {showPwd ? 'Masquer' : 'Afficher'}
-          </button>
-        </div>
+        <IconInput
+          icon={<Lock className="w-4 h-4" />}
+          type={showPwd ? 'text' : 'password'}
+          required
+          placeholder="Minimum 6 caractères"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          rightSlot={
+            <button
+              type="button"
+              onClick={() => setShowPwd((v) => !v)}
+              className="text-[11px] font-semibold text-[#29ABE2] hover:text-[#1A8FBF]"
+            >
+              {showPwd ? 'Masquer' : 'Afficher'}
+            </button>
+          }
+        />
         {password && (
           <div className="grid grid-cols-4 gap-1 mt-2">
             {[1, 2, 3, 4].map((bar) => (

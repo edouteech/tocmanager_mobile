@@ -1,6 +1,7 @@
 import React from 'react';
 import { Package, Plus, Search, AlertTriangle, CheckCircle, FileSpreadsheet } from 'lucide-react';
 import { ConfirmModal } from '../../components/common/ConfirmModal';
+import { IconInput } from '../../components/common/IconInput';
 import { PaginationControls } from '../../components/common/PaginationControls';
 import { SummaryChipsRow, SummaryChipItem } from '../../components/common/SummaryChipsRow';
 import { FilterPeriodChips, FilterChipItem, SortOption } from '../../components/common/FilterPeriodChips';
@@ -72,16 +73,16 @@ export const ProductsPage: React.FC = () => {
 
       <div className="card-toc p-3.5 sm:p-4 space-y-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Rechercher par nom, code-barres..."
-              className="input-toc pl-10 w-full text-xs sm:text-sm"
-            />
-          </div>
+          <IconInput
+            containerClassName="flex-1"
+            icon={<Search className="w-4 h-4" />}
+            iconClassName="text-slate-400"
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Rechercher par nom, code-barres..."
+            className="text-xs sm:text-sm"
+          />
           {categories.length > 0 && (
             <div className="w-full sm:w-56">
               <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="input-toc bg-white dark:bg-dark-800 text-xs sm:text-sm">

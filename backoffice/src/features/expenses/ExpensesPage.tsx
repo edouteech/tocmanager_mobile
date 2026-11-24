@@ -2,6 +2,7 @@ import React from 'react';
 import { Receipt, Plus, DollarSign, TrendingDown, Tag, Search, FileSpreadsheet } from 'lucide-react';
 import { formatFCFA } from '../../lib/formatters';
 import { ConfirmModal } from '../../components/common/ConfirmModal';
+import { IconInput } from '../../components/common/IconInput';
 import { PaginationControls } from '../../components/common/PaginationControls';
 import { SummaryChipsRow, SummaryChipItem } from '../../components/common/SummaryChipsRow';
 import { ViewToggle } from '../../components/common/ViewToggle';
@@ -54,16 +55,16 @@ export const ExpensesPage: React.FC = () => {
       <SummaryChipsRow chips={summaryChips} />
 
       <div className="card-toc p-3.5 sm:p-4 space-y-3">
-        <div className="relative w-full">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Rechercher motif, bénéficiaire, mode..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="input-toc pl-10 w-full text-xs sm:text-sm"
-          />
-        </div>
+        <IconInput
+          containerClassName="w-full"
+          icon={<Search className="w-4 h-4" />}
+          iconClassName="text-slate-400"
+          type="text"
+          placeholder="Rechercher motif, bénéficiaire, mode..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="text-xs sm:text-sm"
+        />
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 text-xs">
           <button
             type="button"
