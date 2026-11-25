@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { User, Mail, Lock, Phone, ArrowRight } from 'lucide-react';
 import { IconInput } from '../../components/common/IconInput';
+import { SurfaceLink } from '../../components/common/SurfaceLink';
 
 interface RegisterStep1FormProps {
   fullName: string;
@@ -149,23 +150,25 @@ export const RegisterStep1Form: React.FC<RegisterStep1FormProps> = ({
         />
         <span>
           J'accepte les{' '}
-          <Link
+          <SurfaceLink
+            surface="public"
             to="/cgu"
             target="_blank"
             rel="noopener noreferrer"
             className="text-[#29ABE2] font-semibold hover:underline"
           >
             Conditions Générales d'Utilisation
-          </Link>{' '}
+          </SurfaceLink>{' '}
           et la{' '}
-          <Link
+          <SurfaceLink
+            surface="public"
             to="/confidentialite"
             target="_blank"
             rel="noopener noreferrer"
             className="text-[#29ABE2] font-semibold hover:underline"
           >
             politique de confidentialité
-          </Link>{' '}
+          </SurfaceLink>{' '}
           de TocManager.
         </span>
       </label>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, Layers, RefreshCw, Smartphone, Store, Users } from 'lucide-react';
+import { SurfaceLink } from '../../../components/common/SurfaceLink';
 import type { EcosystemStoreId } from '../data/landingContent';
 import { ECOSYSTEM_STORES } from '../data/landingDetailsContent';
 
@@ -21,13 +21,14 @@ export const LandingEcosystemSection: React.FC = () => {
               <Layers className="w-3.5 h-3.5" />
               <span>Réseau Commercial Évolutif</span>
             </span>
-            <Link
+            <SurfaceLink
+              surface="app"
               to="/inscription"
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#E8F8F0] text-[#27AE60] dark:bg-[#27AE60]/15 border border-[#27AE60]/30 hover:opacity-90 transition"
             >
               <Smartphone className="w-3.5 h-3.5" />
               <span>Application Android incluse dans votre espace</span>
-            </Link>
+            </SurfaceLink>
           </div>
 
           <h2 className="text-3xl sm:text-4xl font-extrabold text-[#1C2B3A] dark:text-white leading-tight">
@@ -54,10 +55,10 @@ export const LandingEcosystemSection: React.FC = () => {
           </ul>
 
           <div className="flex flex-wrap items-center gap-3 pt-1">
-            <Link to="/inscription" className="btn-primary px-6 py-3 text-sm">
+            <SurfaceLink surface="app" to="/inscription" className="btn-primary px-6 py-3 text-sm">
               <span>Configurer ma première boutique</span>
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </SurfaceLink>
             <a href="#captures" className="btn-secondary px-5 py-3 text-sm">
               Voir les captures Web & Mobile
             </a>

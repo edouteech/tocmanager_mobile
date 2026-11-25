@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Menu, Moon, Sun } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuthStore } from '../../stores/authStore';
+import { resolveAppSurface } from '../../lib/domainRouting';
 import { BrandLogo } from '../common/BrandLogo';
+import { SurfaceLink } from '../common/SurfaceLink';
 import { PublicMobileMenu } from './PublicMobileMenu';
 
 export const PublicNavbar: React.FC = () => {
@@ -11,8 +13,10 @@ export const PublicNavbar: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const user = useAuthStore((s) => s.user);
+  const activeSurface = resolveAppSurface();
+  const showWorkspaceCta = isAuthenticated && activeSurface === 'all';
 
-  const landingBase = isAuthenticated ? '/landing' : '/';
+  const landingBase = showWorkspaceCta ? '/landing' : '/';
   const workspacePath = user?.role === 'superadmin' ? '/admin' : '/';
 
   const navLinks = [
@@ -70,23 +74,24 @@ export const PublicNavbar: React.FC = () => {
             </button>
 
             <div className="hidden md:flex items-center gap-2.5">
-              {isAuthenticated ? (
+              {showWorkspaceCta ? (
                 <Link to={workspacePath} className="btn-primary py-2 text-xs sm:text-sm">
                   <span>Accéder à mon espace</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               ) : (
                 <>
-                  <Link
+                  <SurfaceLink
+                    surface="app"
                     to="/login"
                     className="px-3.5 py-2 text-sm font-semibold text-[#1C2B3A] dark:text-slate-200 hover:text-[#29ABE2] transition"
                   >
                     Connexion
-                  </Link>
-                  <Link to="/inscription" className="btn-primary py-2 text-xs sm:text-sm">
+                  </SurfaceLink>
+                  <SurfaceLink surface="app" to="/inscription" className="btn-primary py-2 text-xs sm:text-sm">
                     <span>Essai gratuit</span>
                     <ArrowRight className="w-4 h-4" />
-                  </Link>
+                  </SurfaceLink>
                 </>
               )}
             </div>
@@ -111,7 +116,7 @@ export const PublicNavbar: React.FC = () => {
         navLinks={navLinks}
         theme={theme}
         onToggleTheme={toggleTheme}
-        isAuthenticated={isAuthenticated}
+        isAuthenticated={showWorkspaceCta}
         workspacePath={workspacePath}
       />
     </>

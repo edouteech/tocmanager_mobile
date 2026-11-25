@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import { SurfaceLink } from '../../../components/common/SurfaceLink';
 import { PRODUCT_PILLARS, type ProductPillarId } from '../data/landingContent';
 import { ProductPreviewPanel } from './ProductPreviewPanel';
 
@@ -98,10 +98,14 @@ export const LandingProductShowcase: React.FC = () => {
           </ul>
 
           <div className="pt-2">
-            <Link to={activePillar.ctaTo} className="btn-primary inline-flex px-6 py-3 text-sm">
+            <SurfaceLink
+              surface={activePillar.ctaTo.startsWith('/inscription') ? 'app' : 'public'}
+              to={activePillar.ctaTo}
+              className="btn-primary inline-flex px-6 py-3 text-sm"
+            >
               <span>{activePillar.ctaLabel}</span>
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </SurfaceLink>
           </div>
         </div>
 

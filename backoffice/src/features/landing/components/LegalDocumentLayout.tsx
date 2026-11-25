@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, FileText } from 'lucide-react';
+import { SurfaceLink } from '../../../components/common/SurfaceLink';
 import { PublicNavbar } from '../../../components/public/PublicNavbar';
 import { PublicFooter } from '../../../components/public/PublicFooter';
 import type { LegalSection } from '../data/termsContent';
@@ -119,10 +120,10 @@ export const LegalDocumentLayout: React.FC<LegalDocumentLayoutProps> = ({
                 <Link to="/contact" className="btn-secondary text-xs py-2.5 px-4">
                   Contact
                 </Link>
-                <Link to="/inscription" className="btn-primary text-xs py-2.5 px-4">
+                <SurfaceLink surface="app" to="/inscription" className="btn-primary text-xs py-2.5 px-4">
                   <span>Créer un compte</span>
                   <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
+                </SurfaceLink>
               </div>
             </div>
           </div>

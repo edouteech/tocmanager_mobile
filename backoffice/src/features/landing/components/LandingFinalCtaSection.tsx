@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, MessageSquare } from 'lucide-react';
+import { SurfaceLink } from '../../../components/common/SurfaceLink';
 
 export const LandingFinalCtaSection: React.FC = () => {
   return (
@@ -18,13 +19,14 @@ export const LandingFinalCtaSection: React.FC = () => {
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-2">
-          <Link
+          <SurfaceLink
+            surface="app"
             to="/inscription"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 text-sm sm:text-base font-bold text-[#1A8FBF] bg-white hover:bg-[#F0F9FE] rounded-xl shadow-soft transition"
           >
             <span>Créer mon compte gratuitement</span>
             <ArrowRight className="w-4 h-4" />
-          </Link>
+          </SurfaceLink>
           <Link
             to="/contact"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 text-sm sm:text-base font-bold text-white bg-white/15 hover:bg-white/25 border border-white/30 rounded-xl transition"

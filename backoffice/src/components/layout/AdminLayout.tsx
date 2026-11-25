@@ -19,6 +19,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useDensity } from '../../context/DensityContext';
 import { useSidebar } from '../../context/SidebarContext';
 import { BrandLogo } from '../common/BrandLogo';
+import { SurfaceLink } from '../common/SurfaceLink';
 
 interface AdminNavItem {
   to: string;
@@ -136,14 +137,15 @@ export const AdminLayout: React.FC = () => {
         </div>
 
         <div className="p-4 border-t border-[#E8EFF5] dark:border-dark-600 space-y-3">
-          <Link
-            to="/landing"
+          <SurfaceLink
+            surface="public"
+            to="/"
             onClick={handleNavClick}
             className="flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-xl bg-[#F0F9FE] dark:bg-dark-700 hover:bg-[#E8F5FD] dark:hover:bg-dark-600 text-[#29ABE2] transition"
           >
             <span>Site Public</span>
             <ExternalLink className="w-3.5 h-3.5" />
-          </Link>
+          </SurfaceLink>
 
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-2.5 min-w-0">

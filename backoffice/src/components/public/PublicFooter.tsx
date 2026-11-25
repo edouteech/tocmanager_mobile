@@ -2,11 +2,13 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ShieldCheck, Smartphone, WifiOff } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import { resolveAppSurface } from '../../lib/domainRouting';
 import { BrandLogo } from '../common/BrandLogo';
+import { SurfaceLink } from '../common/SurfaceLink';
 
 export const PublicFooter: React.FC = () => {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const landingBase = isAuthenticated ? '/landing' : '/';
+  const landingBase = isAuthenticated && resolveAppSurface() === 'all' ? '/landing' : '/';
 
   return (
     <footer className="bg-white dark:bg-dark-900 border-t border-[#E8EFF5] dark:border-dark-600 text-[#5A7184] dark:text-slate-400">
@@ -82,9 +84,9 @@ export const PublicFooter: React.FC = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/login" className="hover:text-[#29ABE2] transition">
+                <SurfaceLink surface="app" to="/login" className="hover:text-[#29ABE2] transition">
                   Connexion Espace Client
-                </Link>
+                </SurfaceLink>
               </li>
             </ul>
           </div>
@@ -95,14 +97,14 @@ export const PublicFooter: React.FC = () => {
             </h3>
             <ul className="space-y-2.5 text-xs">
               <li>
-                <Link to="/inscription?plan=pro" className="hover:text-[#29ABE2] transition">
+                <SurfaceLink surface="app" to="/inscription?plan=pro" className="hover:text-[#29ABE2] transition">
                   Essai Pro 14 jours offert
-                </Link>
+                </SurfaceLink>
               </li>
               <li>
-                <Link to="/inscription?plan=free" className="hover:text-[#29ABE2] transition">
+                <SurfaceLink surface="app" to="/inscription?plan=free" className="hover:text-[#29ABE2] transition">
                   Démarrer avec le Plan Gratuit
-                </Link>
+                </SurfaceLink>
               </li>
               <li>
                 <Link to="/cgu" className="hover:text-[#29ABE2] transition">

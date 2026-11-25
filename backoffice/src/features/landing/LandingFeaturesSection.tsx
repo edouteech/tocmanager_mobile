@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { SurfaceLink } from '../../components/common/SurfaceLink';
 import {
   Store,
   WifiOff,
@@ -104,10 +104,10 @@ export const LandingFeaturesSection: React.FC = () => (
               <span>Consultation financière directe multi-magasins</span>
             </li>
           </ul>
-          <Link to="/inscription" className="btn-primary inline-flex px-6 py-3">
+          <SurfaceLink surface="app" to="/inscription" className="btn-primary inline-flex px-6 py-3">
             <span>Configurer ma première boutique</span>
             <ArrowRight className="w-4 h-4" />
-          </Link>
+          </SurfaceLink>
         </div>
 
         <div className="card-toc p-6 shadow-soft-lg space-y-4">

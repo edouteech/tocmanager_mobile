@@ -1,6 +1,6 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { ArrowRight, Clock } from 'lucide-react';
+import { SurfaceLink } from '../../../components/common/SurfaceLink';
 import { ONBOARDING_STEPS } from '../data/landingDetailsContent';
 
 export const LandingHowItWorksSection: React.FC = () => {
@@ -49,10 +49,10 @@ export const LandingHowItWorksSection: React.FC = () => {
         </div>
 
         <div className="text-center">
-          <Link to="/inscription" className="btn-primary inline-flex px-7 py-3.5 text-sm sm:text-base">
+          <SurfaceLink surface="app" to="/inscription" className="btn-primary inline-flex px-7 py-3.5 text-sm sm:text-base">
             <span>Créer ma boutique en 2 minutes</span>
             <ArrowRight className="w-4 h-4" />
-          </Link>
+          </SurfaceLink>
         </div>
       </div>
     </section>
