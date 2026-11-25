@@ -66,39 +66,48 @@ class DatabaseHelper {
     } catch (_) {}
   }
 
-  Future<void> clearAllBusinessData() async {
+  Future<void> clearAllBusinessData({bool keepTenants = false}) async {
     final db = await database;
-    await db.transaction((txn) async {
-      await txn.execute('PRAGMA foreign_keys = OFF');
-      for (final table in const [
-        'vente_items',
-        'ventes',
-        'approvisionnements',
-        'decaissements',
-        'products',
-        'categories',
-        'clients',
-        'suppliers',
-        'sync_queue',
-        'audit_logs',
-        'magasins',
-        'boutiques',
-      ]) {
+    final fkRows = await db.rawQuery('PRAGMA foreign_keys');
+    final fkWasEnabled = fkRows.isNotEmpty && (fkRows.first.values.first == 1);
+    if (fkWasEnabled) {
+      await db.execute('PRAGMA foreign_keys = OFF');
+    }
+    try {
+      await db.transaction((txn) async {
+        final tables = [
+          'vente_items',
+          'ventes',
+          'approvisionnements',
+          'decaissements',
+          'products',
+          'categories',
+          'clients',
+          'suppliers',
+          'sync_queue',
+          'audit_logs',
+          if (!keepTenants) ...const ['magasins', 'boutiques'],
+        ];
+        for (final table in tables) {
+          try {
+            await txn.delete(table);
+          } catch (_) {}
+        }
         try {
-          await txn.delete(table);
+          await txn.delete('settings', where: 'key = ?', whereArgs: ['last_sync_timestamp']);
         } catch (_) {}
+        try {
+          await txn.delete(
+            'sqlite_sequence',
+            where: "name IN ('vente_items', 'ventes', 'approvisionnements', 'decaissements', 'products', 'categories', 'clients', 'suppliers', 'sync_queue', 'audit_logs')",
+          );
+        } catch (_) {}
+      });
+    } finally {
+      if (fkWasEnabled) {
+        await db.execute('PRAGMA foreign_keys = ON');
       }
-      try {
-        await txn.delete('settings', where: 'key = ?', whereArgs: ['last_sync_timestamp']);
-      } catch (_) {}
-      try {
-        await txn.delete(
-          'sqlite_sequence',
-          where: "name IN ('vente_items', 'ventes', 'approvisionnements', 'decaissements', 'products', 'categories', 'clients', 'suppliers', 'sync_queue', 'audit_logs')",
-        );
-      } catch (_) {}
-      await txn.execute('PRAGMA foreign_keys = ON');
-    });
+    }
   }
 
   Future<Database> _init() async {

@@ -6,6 +6,7 @@ import '../models/user.dart';
 import '../services/secure_storage_service.dart';
 import '../services/sync_service.dart';
 import '../services/tenant_service.dart';
+import '../services/tenant_switch_helper.dart';
 
 class TenantProvider extends ChangeNotifier {
   List<BoutiqueModel> _boutiques = [];
@@ -165,7 +166,9 @@ class TenantProvider extends ChangeNotifier {
   }
 
   Future<void> selectBoutique(BoutiqueModel boutique, {bool triggerSync = true}) async {
-    final changed = _currentBoutique?.id != boutique.id;
+    final prevId = _currentBoutique?.id;
+    final changed = prevId != boutique.id;
+    await TenantSwitchHelper.prepareBoutiqueSwitchIfNeeded(currentBoutiqueId: prevId, nextBoutiqueId: boutique.id, triggerPush: triggerSync);
     _currentBoutique = boutique;
     _currentMagasin = null;
     _isConsolidatedMode = false;
@@ -175,7 +178,7 @@ class TenantProvider extends ChangeNotifier {
       await DatabaseHelper.instance.clearSyncCursor();
     }
     await _resolveMagasinOnBoutique(boutique);
-    await DatabaseHelper.instance.backfillTenantIds(boutique.id, _currentMagasin?.id);
+    await DatabaseHelper.instance.backfillTenantIds(boutique.id, null);
     notifyListeners();
 
     if (triggerSync) {
@@ -191,18 +194,11 @@ class TenantProvider extends ChangeNotifier {
     _currentMagasin = magasin;
     _isConsolidatedMode = false;
     _openConsolidatedReportsPending = false;
-    await SecureStorageService.saveTenantContext(
-      boutiqueId: _currentBoutique!.id,
-      magasinId: magasin.id,
-      isConsolidated: false,
-    );
-    await DatabaseHelper.instance.backfillTenantIds(_currentBoutique!.id, magasin.id);
+    await SecureStorageService.saveTenantContext(boutiqueId: _currentBoutique!.id, magasinId: magasin.id, isConsolidated: false);
+    await DatabaseHelper.instance.backfillTenantIds(_currentBoutique!.id, null);
     await DatabaseHelper.instance.clearSyncCursor();
     notifyListeners();
-
-    if (triggerSync) {
-      unawaited(SyncService.instance.syncNow(forceResyncIfBusy: true));
-    }
+    if (triggerSync) unawaited(SyncService.instance.syncNow(forceResyncIfBusy: true));
   }
 
   Future<void> enterConsolidatedMode({bool openReports = true, bool triggerSync = true}) async {
@@ -210,17 +206,10 @@ class TenantProvider extends ChangeNotifier {
     _currentMagasin = null;
     _isConsolidatedMode = true;
     _openConsolidatedReportsPending = openReports;
-    await SecureStorageService.saveTenantContext(
-      boutiqueId: _currentBoutique!.id,
-      magasinId: null,
-      isConsolidated: true,
-    );
+    await SecureStorageService.saveTenantContext(boutiqueId: _currentBoutique!.id, magasinId: null, isConsolidated: true);
     await DatabaseHelper.instance.clearSyncCursor();
     notifyListeners();
-
-    if (triggerSync) {
-      unawaited(SyncService.instance.syncNow(forceResyncIfBusy: true));
-    }
+    if (triggerSync) unawaited(SyncService.instance.syncNow(forceResyncIfBusy: true));
   }
 
   Future<void> refreshPlanStatus() async {

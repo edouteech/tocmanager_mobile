@@ -95,6 +95,10 @@ class ProductDao {
 
     final conditions = <String>[];
     final args = <dynamic>[];
+    if (tenant.boutiqueId != null) {
+      conditions.add('(p.boutique_id = ? OR p.boutique_id IS NULL)');
+      args.add(tenant.boutiqueId);
+    }
     if (tenant.magasinId != null) {
       conditions.add('(p.magasin_id = ? OR p.magasin_id IS NULL)');
       args.add(tenant.magasinId);
@@ -143,6 +147,7 @@ class ProductDao {
     String syncId,
     String now, {
     String? deletedAt,
+    String? magasinId,
   }) async {
     final catSyncId = await SyncDao.findSyncId(txn, 'categories', p.categoryId);
     return {
@@ -156,6 +161,7 @@ class ProductDao {
       'min_stock': p.alertQuantity,
       'barcode': p.barcode,
       'unit': p.unit,
+      if (magasinId != null && magasinId.isNotEmpty) 'magasin_id': magasinId,
       'is_active': deletedAt == null,
       'updated_at': now,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -174,25 +180,41 @@ class ProductDao {
       if (tenant.boutiqueId != null) map['boutique_id'] = tenant.boutiqueId;
       if (tenant.magasinId != null) map['magasin_id'] = tenant.magasinId;
       final id = await txn.insert('products', map);
-      await SyncDao.enqueueSync(txn, 'product', syncId, 'INSERT', await _productSyncPayload(txn, p, syncId, now));
+      await SyncDao.enqueueSync(
+        txn,
+        'product',
+        syncId,
+        'INSERT',
+        await _productSyncPayload(txn, p, syncId, now, magasinId: tenant.magasinId),
+      );
       return id;
     });
   }
 
   static Future<int> updateProduct(Database db, Product p) async {
+    final tenant = await SyncDao.activeTenantMeta();
     return db.transaction((txn) async {
       final now = DateTime.now().toIso8601String();
       final syncId = await SyncDao.resolveSyncId(txn, 'products', p.id!);
       final map = p.toMap();
       map['sync_status'] = 'pending_update';
       map['updated_at'] = now;
+      if (tenant.boutiqueId != null) map['boutique_id'] = tenant.boutiqueId;
+      if (tenant.magasinId != null) map['magasin_id'] = tenant.magasinId;
       final res = await txn.update('products', map, where: 'id = ?', whereArgs: [p.id]);
-      await SyncDao.enqueueSync(txn, 'product', syncId, 'UPDATE', await _productSyncPayload(txn, p, syncId, now));
+      await SyncDao.enqueueSync(
+        txn,
+        'product',
+        syncId,
+        'UPDATE',
+        await _productSyncPayload(txn, p, syncId, now, magasinId: tenant.magasinId),
+      );
       return res;
     });
   }
 
   static Future<int> deleteProduct(Database db, int id) async {
+    final tenant = await SyncDao.activeTenantMeta();
     return db.transaction((txn) async {
       final rows = await txn.query('products', where: 'id = ?', whereArgs: [id]);
       final res = await txn.delete('products', where: 'id = ?', whereArgs: [id]);
@@ -202,6 +224,7 @@ class ProductDao {
         if (syncId != null && syncId.isNotEmpty) {
           final now = DateTime.now().toIso8601String();
           final catSyncId = await SyncDao.findSyncId(txn, 'categories', r['category_id'] as int?);
+          final resolvedMagasinId = (r['magasin_id'] as String?) ?? tenant.magasinId;
           await SyncDao.enqueueSync(txn, 'product', syncId, 'DELETE', {
             'sync_id': syncId,
             'name': r['name'] ?? '',
@@ -212,6 +235,8 @@ class ProductDao {
             'min_stock': (r['alert_quantity'] as num?)?.toDouble() ?? 5.0,
             'unit': r['unit'] ?? 'pièce',
             'barcode': r['barcode'],
+            if (resolvedMagasinId != null && resolvedMagasinId.isNotEmpty)
+              'magasin_id': resolvedMagasinId,
             'is_active': false,
             'updated_at': now,
             'deleted_at': now,
