@@ -4,6 +4,8 @@ import subprocess
 import sys
 import uuid
 
+from alembic.config import Config as AlembicConfig
+from alembic.script import ScriptDirectory
 import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -440,8 +442,12 @@ def test_legacy_43e7954_sqlite_dry_run_and_live_migration_into_alembic_target(tm
         assert audit.details == {"price": 1000}
 
         # alembic_version remains intact and app seeders execute cleanly afterwards
+        backend_dir = Path(__file__).resolve().parents[1]
+        cfg = AlembicConfig(str(backend_dir / "alembic.ini"))
+        cfg.set_main_option("script_location", str(backend_dir / "alembic"))
+        expected_head = ScriptDirectory.from_config(cfg).get_current_head()
         ver = db.execute(text("SELECT version_num FROM alembic_version")).scalar()
-        assert ver == "0003_auth_tokens_and_2fa"
+        assert ver == expected_head
 
         seed_saas_plans(db)
         seed_default_payment_providers(db)

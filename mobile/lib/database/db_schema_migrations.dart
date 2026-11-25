@@ -22,6 +22,7 @@ class DbSchemaMigrations {
     await createV13Schema(db);
     await createV14Schema(db);
     await createV15Schema(db);
+    await createV16Schema(db);
     await DbSchemaBase.createIndexes(db);
   }
 
@@ -52,6 +53,7 @@ class DbSchemaMigrations {
     }
     if (oldVersion < 14) await createV14Schema(db);
     if (oldVersion < 15) await createV15Schema(db);
+    if (oldVersion < 16) await createV16Schema(db);
   }
 
   static Future<void> createV9Schema(Database db) async {}
@@ -187,6 +189,11 @@ class DbSchemaMigrations {
     } catch (e) {
       debugPrint('V15 migration notice: $e');
     }
+  }
+
+  static Future<void> createV16Schema(Database db) async {
+    await _addColumnIfMissing(db, 'suppliers', 'user_id', 'TEXT');
+    await _addColumnIfMissing(db, 'suppliers', 'user_name', 'TEXT');
   }
 
   static Future<void> _addColumnIfMissing(

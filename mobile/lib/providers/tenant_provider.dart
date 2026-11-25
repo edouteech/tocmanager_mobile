@@ -124,7 +124,9 @@ class TenantProvider extends ChangeNotifier {
         _planStatus = await TenantService.instance.loadCachedPlan();
         if (triggerSync && preloadedBoutiques == null) {
           unawaited(refreshPlanStatus());
-          unawaited(SyncService.instance.syncNow());
+          if (_isConsolidatedMode || _currentMagasin != null) {
+            unawaited(SyncService.instance.syncNow(forceResyncIfBusy: true));
+          }
         }
       }
     } catch (e) {
@@ -178,7 +180,9 @@ class TenantProvider extends ChangeNotifier {
 
     if (triggerSync) {
       unawaited(refreshPlanStatus());
-      unawaited(SyncService.instance.syncNow());
+      if (_isConsolidatedMode || _currentMagasin != null) {
+        unawaited(SyncService.instance.syncNow(forceResyncIfBusy: true));
+      }
     }
   }
 
@@ -197,7 +201,7 @@ class TenantProvider extends ChangeNotifier {
     notifyListeners();
 
     if (triggerSync) {
-      unawaited(SyncService.instance.syncNow());
+      unawaited(SyncService.instance.syncNow(forceResyncIfBusy: true));
     }
   }
 
@@ -215,7 +219,7 @@ class TenantProvider extends ChangeNotifier {
     notifyListeners();
 
     if (triggerSync) {
-      unawaited(SyncService.instance.syncNow());
+      unawaited(SyncService.instance.syncNow(forceResyncIfBusy: true));
     }
   }
 

@@ -1,4 +1,5 @@
 import 'package:sqflite/sqflite.dart';
+import 'sync_pull_master_service.dart';
 
 class SyncPullOperationsService {
   static Future<void> applyPulledDecaissements(
@@ -6,11 +7,17 @@ class SyncPullOperationsService {
     List<dynamic> decaissements,
     String nowIso,
   ) async {
+    if (decaissements.isEmpty) return;
+    final existingMap = await SyncPullMasterService.loadSyncIdMap(txn, 'decaissements');
     for (final d in decaissements) {
       final dMap = d as Map<String, dynamic>;
       final syncId = dMap['sync_id'] as String;
+      final existingId = existingMap[syncId];
       if (dMap['deleted_at'] != null) {
-        await txn.delete('decaissements', where: 'sync_id = ?', whereArgs: [syncId]);
+        if (existingId != null) {
+          await txn.delete('decaissements', where: 'id = ?', whereArgs: [existingId]);
+          existingMap.remove(syncId);
+        }
         continue;
       }
       final values = {
@@ -27,11 +34,10 @@ class SyncPullOperationsService {
         'updated_at': dMap['updated_at'] ?? nowIso,
         'sync_status': 'synced',
       };
-      final existing = await txn.query('decaissements', where: 'sync_id = ?', whereArgs: [syncId]);
-      if (existing.isEmpty) {
-        await txn.insert('decaissements', values);
+      if (existingId == null) {
+        existingMap[syncId] = await txn.insert('decaissements', values);
       } else {
-        await txn.update('decaissements', values, where: 'sync_id = ?', whereArgs: [syncId]);
+        await txn.update('decaissements', values, where: 'id = ?', whereArgs: [existingId]);
       }
     }
   }
@@ -41,23 +47,25 @@ class SyncPullOperationsService {
     List<dynamic> appros,
     String nowIso,
   ) async {
+    if (appros.isEmpty) return;
+    final existingMap = await SyncPullMasterService.loadSyncIdMap(txn, 'approvisionnements');
+    final prodMap = await SyncPullMasterService.loadSyncIdMap(txn, 'products');
+    final supMap = await SyncPullMasterService.loadSyncIdMap(txn, 'suppliers');
     for (final a in appros) {
       final aMap = a as Map<String, dynamic>;
       final syncId = aMap['sync_id'] as String;
+      final existingId = existingMap[syncId];
       if (aMap['deleted_at'] != null) {
-        await txn.delete('approvisionnements', where: 'sync_id = ?', whereArgs: [syncId]);
+        if (existingId != null) {
+          await txn.delete('approvisionnements', where: 'id = ?', whereArgs: [existingId]);
+          existingMap.remove(syncId);
+        }
         continue;
       }
-      int? localProdId;
-      if (aMap['product_sync_id'] != null) {
-        final pRes = await txn.query('products', columns: ['id'], where: 'sync_id = ?', whereArgs: [aMap['product_sync_id']]);
-        if (pRes.isNotEmpty) localProdId = pRes.first['id'] as int?;
-      }
-      int? localSupId;
-      if (aMap['supplier_sync_id'] != null) {
-        final sRes = await txn.query('suppliers', columns: ['id'], where: 'sync_id = ?', whereArgs: [aMap['supplier_sync_id']]);
-        if (sRes.isNotEmpty) localSupId = sRes.first['id'] as int?;
-      }
+      final prodSyncId = aMap['product_sync_id'] as String?;
+      final supSyncId = aMap['supplier_sync_id'] as String?;
+      final localProdId = prodSyncId != null ? prodMap[prodSyncId] : null;
+      final localSupId = supSyncId != null ? supMap[supSyncId] : null;
       final totalCost = (aMap['total_cost'] as num).toDouble();
       final status = (aMap['payment_status'] as String?) ?? 'Payé';
       final paidVal = aMap['paid_amount'] != null
@@ -81,11 +89,10 @@ class SyncPullOperationsService {
         'updated_at': aMap['updated_at'] ?? nowIso,
         'sync_status': 'synced',
       };
-      final existing = await txn.query('approvisionnements', where: 'sync_id = ?', whereArgs: [syncId]);
-      if (existing.isEmpty) {
-        await txn.insert('approvisionnements', values);
+      if (existingId == null) {
+        existingMap[syncId] = await txn.insert('approvisionnements', values);
       } else {
-        await txn.update('approvisionnements', values, where: 'sync_id = ?', whereArgs: [syncId]);
+        await txn.update('approvisionnements', values, where: 'id = ?', whereArgs: [existingId]);
       }
     }
   }
@@ -95,25 +102,26 @@ class SyncPullOperationsService {
     List<dynamic> ventes,
     String nowIso,
   ) async {
+    if (ventes.isEmpty) return;
+    final existingMap = await SyncPullMasterService.loadSyncIdMap(txn, 'ventes');
+    final clientMap = await SyncPullMasterService.loadSyncIdMap(txn, 'clients');
+    final prodMap = await SyncPullMasterService.loadSyncIdMap(txn, 'products');
+
     for (final v in ventes) {
       final vMap = v as Map<String, dynamic>;
       final syncId = vMap['sync_id'] as String;
-      final existing = await txn.query('ventes', where: 'sync_id = ?', whereArgs: [syncId]);
+      final existingId = existingMap[syncId];
       if (vMap['deleted_at'] != null || vMap['status'] == 'cancelled') {
-        if (existing.isNotEmpty) {
-          final localVId = existing.first['id'] as int;
-          await txn.delete('vente_items', where: 'vente_id = ?', whereArgs: [localVId]);
-          await txn.delete('ventes', where: 'id = ?', whereArgs: [localVId]);
+        if (existingId != null) {
+          await txn.delete('vente_items', where: 'vente_id = ?', whereArgs: [existingId]);
+          await txn.delete('ventes', where: 'id = ?', whereArgs: [existingId]);
+          existingMap.remove(syncId);
         }
         continue;
       }
 
-      int? localClientId;
-      if (vMap['client_sync_id'] != null) {
-        final cRes = await txn.query('clients', columns: ['id'], where: 'sync_id = ?', whereArgs: [vMap['client_sync_id']]);
-        if (cRes.isNotEmpty) localClientId = cRes.first['id'] as int?;
-      }
-
+      final clientSyncId = vMap['client_sync_id'] as String?;
+      final localClientId = clientSyncId != null ? clientMap[clientSyncId] : null;
       final values = {
         'sync_id': syncId,
         'magasin_id': vMap['magasin_id'],
@@ -133,10 +141,11 @@ class SyncPullOperationsService {
       };
 
       int localVenteId;
-      if (existing.isEmpty) {
+      if (existingId == null) {
         localVenteId = await txn.insert('ventes', values);
+        existingMap[syncId] = localVenteId;
       } else {
-        localVenteId = existing.first['id'] as int;
+        localVenteId = existingId;
         await txn.update('ventes', values, where: 'id = ?', whereArgs: [localVenteId]);
         await txn.delete('vente_items', where: 'vente_id = ?', whereArgs: [localVenteId]);
       }
@@ -144,11 +153,8 @@ class SyncPullOperationsService {
       final items = (vMap['items'] as List<dynamic>?) ?? [];
       for (final it in items) {
         final itMap = it as Map<String, dynamic>;
-        int? localProdId;
-        if (itMap['product_sync_id'] != null) {
-          final pRes = await txn.query('products', columns: ['id'], where: 'sync_id = ?', whereArgs: [itMap['product_sync_id']]);
-          if (pRes.isNotEmpty) localProdId = pRes.first['id'] as int?;
-        }
+        final prodSyncId = itMap['product_sync_id'] as String?;
+        final localProdId = prodSyncId != null ? prodMap[prodSyncId] : null;
         await txn.insert('vente_items', {
           'sync_id': itMap['sync_id'] ?? '${syncId}_${itMap['product_name']}',
           'vente_id': localVenteId,

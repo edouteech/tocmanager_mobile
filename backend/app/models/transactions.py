@@ -37,7 +37,9 @@ class VenteItem(Base):
     __tablename__ = "vente_items"
 
     sync_id = Column(String(36), primary_key=True, default=generate_uuid)
-    vente_sync_id = Column(String(36), ForeignKey("ventes.sync_id", ondelete="CASCADE"), nullable=False)
+    vente_sync_id = Column(
+        String(36), ForeignKey("ventes.sync_id", ondelete="CASCADE"), nullable=False, index=True
+    )
     product_sync_id = Column(String(36), nullable=True)
     product_name = Column(String(255), nullable=False)
     quantity = Column(Float, nullable=False, default=1.0)

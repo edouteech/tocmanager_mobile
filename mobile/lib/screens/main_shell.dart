@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/approvisionnement_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/category_provider.dart';
 import '../providers/client_provider.dart';
@@ -8,6 +9,7 @@ import '../providers/decaissement_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/supplier_provider.dart';
 import '../providers/tenant_provider.dart';
+import '../providers/vente_provider.dart';
 import '../services/api_client.dart';
 import '../services/sync_service.dart';
 import '../theme/app_theme.dart';
@@ -46,19 +48,12 @@ class _MainShellState extends State<MainShell> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      _reloadAllProviders();
       if (context.read<TenantProvider>().consumeOpenConsolidatedReports()) {
         _navigate(9);
       }
     });
-    _syncSub = SyncService.onSyncCompleted.listen((_) {
-      if (!mounted) return;
-      context.read<CategoryProvider>().load();
-      context.read<ProductProvider>().load();
-      context.read<ClientProvider>().loadClients();
-      context.read<SupplierProvider>().loadSuppliers();
-      context.read<DecaissementProvider>().load();
-      (_homeKey.currentState as dynamic)?.reload();
-    });
+    _syncSub = SyncService.onSyncCompleted.listen((_) => _reloadAllProviders());
     _planErrorSub = ApiClient.onPlanLimitError.listen((err) async {
       if (!mounted || _upsellDialogOpen) return;
       _upsellDialogOpen = true;
@@ -68,6 +63,18 @@ class _MainShellState extends State<MainShell> {
         _upsellDialogOpen = false;
       }
     });
+  }
+
+  void _reloadAllProviders() {
+    if (!mounted) return;
+    context.read<CategoryProvider>().load();
+    context.read<ProductProvider>().load();
+    context.read<ClientProvider>().loadClients();
+    context.read<SupplierProvider>().loadSuppliers();
+    context.read<DecaissementProvider>().load();
+    context.read<VenteProvider>().load();
+    context.read<ApprovisionnementProvider>().load();
+    (_homeKey.currentState as dynamic)?.reload();
   }
 
   @override
