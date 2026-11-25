@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { saasApi } from '../../lib/api';
 import { useAuthStore } from '../../stores/authStore';
 import { useTenantStore } from '../../stores/tenantStore';
 import { SaasPlan } from '../../types';
 import { BrandLogo } from '../../components/common/BrandLogo';
+import { SurfaceLink } from '../../components/common/SurfaceLink';
 import { RegisterStep1Form } from './RegisterStep1Form';
 import { RegisterStep2Form } from './RegisterStep2Form';
 
@@ -138,9 +139,9 @@ export const RegisterPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F5FAFD] dark:bg-dark-900 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 font-sans">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center space-y-3">
-        <Link to="/" aria-label="TocManager — Accueil" className="inline-flex items-center justify-center">
+        <SurfaceLink surface="public" to="/" aria-label="TocManager — Accueil" className="inline-flex items-center justify-center">
           <BrandLogo variant="full" size="lg" priority />
-        </Link>
+        </SurfaceLink>
 
         <div className="flex items-center justify-center gap-2 pt-2">
           <div className={`flex items-center gap-1.5 text-xs font-semibold ${step === 1 ? 'text-[#29ABE2]' : 'text-[#27AE60]'}`}>

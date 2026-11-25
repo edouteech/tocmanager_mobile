@@ -11,6 +11,7 @@ import { PricingBillingToggle } from './components/PricingBillingToggle';
 import { PricingPlanCard } from './components/PricingPlanCard';
 import { PricingComparisonMatrix } from './PricingComparisonMatrix';
 import type { BillingCycle } from './utils/pricingHelpers';
+import { navigateToSurface } from '../../lib/domainRouting';
 
 export const PricingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ export const PricingPage: React.FC = () => {
   }, []);
 
   const handleSelectPlan = (planCode: string) => {
-    navigate(`/inscription?plan=${planCode}&cycle=${billingCycle}`);
+    navigateToSurface('app', `/inscription?plan=${planCode}&cycle=${billingCycle}`, navigate);
   };
 
   return (

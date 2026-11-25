@@ -38,7 +38,9 @@ def test_nginx_and_backoffice_dockerfile_hardening():
     assert "resolver 127.0.0.11 valid=30s ipv6=off;" in nginx_conf
     assert "set $backend_upstream http://backend:8000;" in nginx_conf
     assert "proxy_pass $backend_upstream;" in nginx_conf
+    assert "server_name app.*;" in nginx_conf
     assert "server_name admin.*;" in nginx_conf
+    assert "absolute_redirect off;" in nginx_conf
     assert "location ^~ /admin" in nginx_conf
     assert "return 404;" in nginx_conf
     assert 'Cache-Control "no-cache, no-store, must-revalidate"' in nginx_conf

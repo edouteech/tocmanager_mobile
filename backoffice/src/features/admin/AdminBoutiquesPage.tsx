@@ -11,6 +11,8 @@ import { ChangePlanModal } from './ChangePlanModal';
 import { BoutiqueDetailDrawer } from './BoutiqueDetailDrawer';
 import { AdminBoutiquesTable } from './AdminBoutiquesTable';
 import { IconInput } from '../../components/common/IconInput';
+import { resolveAppSurface } from '../../lib/domainRouting';
+import { buildCrossDomainImpersonationUrl } from '../../lib/impersonationTransfer';
 
 export const AdminBoutiquesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -121,6 +123,20 @@ export const AdminBoutiquesPage: React.FC = () => {
     setSubmitting(true);
     try {
       const res = await adminApi.impersonateBoutique(boutiqueId);
+      if (resolveAppSurface() === 'admin') {
+        const supportUrl = buildCrossDomainImpersonationUrl({
+          access_token: res.access_token,
+          user: res.user,
+          boutique_id: res.boutique_id,
+          boutique_name: res.boutique_name,
+          expires_in_minutes: res.expires_in_minutes,
+        });
+        const popup = window.open(supportUrl, '_blank', 'noopener,noreferrer');
+        if (!popup) {
+          window.location.assign(supportUrl);
+        }
+        return;
+      }
       localStorage.setItem(
         'toc_admin_backup_session',
         JSON.stringify({

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useTenantStore } from '../../stores/tenantStore';
+import { navigateToSurface, resolveAppSurface } from '../../lib/domainRouting';
 import { queryClient } from '../../lib/queryClient';
 import { AuthResponse } from '../../types';
 
@@ -11,7 +12,7 @@ export const ImpersonationBanner: React.FC = () => {
   const rawMeta = localStorage.getItem('toc_impersonation_meta');
   if (!rawMeta) return null;
 
-  let meta: { boutique_name?: string; expires_in_minutes?: number } = {};
+  let meta: { boutique_name?: string; expires_in_minutes?: number; cross_domain?: boolean } = {};
   try {
     meta = JSON.parse(rawMeta);
   } catch {
@@ -19,6 +20,12 @@ export const ImpersonationBanner: React.FC = () => {
   }
 
   const handleExitSupport = () => {
+    if (meta.cross_domain || resolveAppSurface() === 'app') {
+      useAuthStore.getState().logout();
+      navigateToSurface('admin', '/admin/boutiques', navigate, true);
+      return;
+    }
+
     const rawBackup = localStorage.getItem('toc_admin_backup_session');
     localStorage.removeItem('toc_impersonation_meta');
     localStorage.removeItem('toc_admin_backup_session');

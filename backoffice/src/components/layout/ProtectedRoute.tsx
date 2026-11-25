@@ -3,13 +3,16 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
 import { authApi } from '../../lib/api';
+import { AppSurface, resolveAppSurface } from '../../lib/domainRouting';
 
 interface Props {
   children: React.ReactNode;
   allowedRoles?: string[];
+  surface?: AppSurface;
 }
 
-export const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
+export const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles, surface }) => {
+  const activeSurface = surface ?? resolveAppSurface();
   const { isAuthenticated, user, token, updateUser } = useAuthStore();
   const location = useLocation();
   const hasStoredToken = Boolean(token || localStorage.getItem('toc_access_token'));
@@ -46,13 +49,13 @@ export const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
 
     if (allowedRoles && allowedRoles.includes('superadmin')) {
       if (!isSuperAdmin) {
-        return <Navigate to="/" replace />;
+        return <Navigate to={activeSurface === 'admin' ? '/login' : '/'} replace />;
       }
       return <>{children}</>;
     }
 
     if (isSuperAdmin) {
-      return <Navigate to="/admin" replace />;
+      return <Navigate to={activeSurface === 'app' ? '/login' : '/admin'} replace />;
     }
 
     if (allowedRoles && allowedRoles.length > 0) {

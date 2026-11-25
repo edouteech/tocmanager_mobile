@@ -2,23 +2,50 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Lock, User, AlertCircle, ArrowRight, Sun, Moon } from 'lucide-react';
 import { authApi } from '../../lib/api';
+import { AppSurface, TargetSurface, resolveAppSurface } from '../../lib/domainRouting';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../context/ThemeContext';
 import { BrandLogo } from '../../components/common/BrandLogo';
 import { IconInput } from '../../components/common/IconInput';
+import { SurfaceLink } from '../../components/common/SurfaceLink';
 import { TwoFactorChallengeForm } from './TwoFactorChallengeForm';
 
-export const LoginPage: React.FC = () => {
+interface SurfaceMismatchInfo {
+  message: string;
+  label: string;
+  target: TargetSurface;
+}
+
+function getSurfaceMismatch(activeSurface: AppSurface, role: string): SurfaceMismatchInfo | null {
+  if (activeSurface === 'admin' && role !== 'superadmin') {
+    return {
+      message: "Cet espace est réservé aux super-administrateurs. Connectez-vous sur l'espace client.",
+      label: "Aller à l'espace client",
+      target: 'app',
+    };
+  }
+  if (activeSurface === 'app' && role === 'superadmin') {
+    return {
+      message: 'Un compte super-administrateur doit se connecter via la console dédiée.',
+      label: 'Aller à la console Super-Admin',
+      target: 'admin',
+    };
+  }
+  return null;
+}
+
+export const LoginPage: React.FC<{ surface?: AppSurface }> = ({ surface }) => {
+  const activeSurface = surface ?? resolveAppSurface();
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
   const { isAuthenticated, user } = useAuthStore();
   const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (isAuthenticated && user && !getSurfaceMismatch(activeSurface, user.role)) {
       navigate(user.role === 'superadmin' ? '/admin' : '/', { replace: true });
     }
-  }, [isAuthenticated, user, navigate]);
+  }, [isAuthenticated, user, navigate, activeSurface]);
 
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,6 +53,7 @@ export const LoginPage: React.FC = () => {
   const [challengeUser, setChallengeUser] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [mismatchLink, setMismatchLink] = useState<{ label: string; target: TargetSurface } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,12 +61,20 @@ export const LoginPage: React.FC = () => {
 
     setIsLoading(true);
     setErrorMessage(null);
+    setMismatchLink(null);
 
     try {
       const authData = await authApi.login({
         username_or_email: usernameOrEmail,
         password,
       });
+
+      const mismatch = getSurfaceMismatch(activeSurface, authData.user.role);
+      if (mismatch) {
+        setMismatchLink({ label: mismatch.label, target: mismatch.target });
+        setErrorMessage(mismatch.message);
+        return;
+      }
 
       if (authData.requires_2fa && authData.challenge_token) {
         setChallengeToken(authData.challenge_token);
@@ -60,8 +96,16 @@ export const LoginPage: React.FC = () => {
     if (!challengeToken) return;
     setIsLoading(true);
     setErrorMessage(null);
+    setMismatchLink(null);
     try {
       const authData = await authApi.verify2faChallenge(challengeToken, code);
+      const mismatch = getSurfaceMismatch(activeSurface, authData.user.role);
+      if (mismatch) {
+        setMismatchLink({ label: mismatch.label, target: mismatch.target });
+        setErrorMessage(mismatch.message);
+        setChallengeToken(null);
+        return;
+      }
       setAuth(authData);
       navigate(authData.user.role === 'superadmin' ? '/admin' : '/', { replace: true });
     } catch (err: unknown) {
@@ -90,13 +134,26 @@ export const LoginPage: React.FC = () => {
             <BrandLogo variant="full" size="lg" priority />
           </div>
           <h1 className="sr-only">TocManager</h1>
-          <p className="text-xs text-[#5A7184] dark:text-slate-400 mt-1">Portail d'Administration Central</p>
+          <p className="text-xs text-[#5A7184] dark:text-slate-400 mt-1">
+            {activeSurface === 'admin' ? 'Console Super-Administration' : "Portail d'Administration Central"}
+          </p>
         </div>
 
         {errorMessage && (
           <div className="mb-6 p-3.5 bg-[#FDEBE9] dark:bg-[#E74C3C]/20 border border-[#E74C3C]/30 rounded-2xl flex items-start gap-3 text-[#E74C3C] text-xs animate-fade-in font-medium">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>{errorMessage}</span>
+            <div className="space-y-1">
+              <div>{errorMessage}</div>
+              {mismatchLink && (
+                <SurfaceLink
+                  surface={mismatchLink.target}
+                  to="/login"
+                  className="inline-block font-bold underline"
+                >
+                  {mismatchLink.label}
+                </SurfaceLink>
+              )}
+            </div>
           </div>
         )}
 
@@ -108,6 +165,7 @@ export const LoginPage: React.FC = () => {
             onCancel={() => {
               setChallengeToken(null);
               setErrorMessage(null);
+              setMismatchLink(null);
             }}
           />
         ) : (

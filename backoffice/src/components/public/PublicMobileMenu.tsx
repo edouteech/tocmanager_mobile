@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Moon, Sun, X } from 'lucide-react';
 import { BrandLogo } from '../common/BrandLogo';
+import { SurfaceLink } from '../common/SurfaceLink';
 
 interface NavLinkItem {
   label: string;
@@ -111,21 +112,23 @@ export const PublicMobileMenu: React.FC<PublicMobileMenuProps> = ({
             </Link>
           ) : (
             <>
-              <Link
+              <SurfaceLink
+                surface="app"
                 to="/login"
                 onClick={onClose}
                 className="w-full btn-secondary py-2.5 text-sm"
               >
                 Connexion
-              </Link>
-              <Link
+              </SurfaceLink>
+              <SurfaceLink
+                surface="app"
                 to="/inscription"
                 onClick={onClose}
                 className="w-full btn-primary py-3 text-sm"
               >
                 <span>Essai gratuit</span>
                 <ArrowRight className="w-4 h-4" />
-              </Link>
+              </SurfaceLink>
             </>
           )}
         </div>

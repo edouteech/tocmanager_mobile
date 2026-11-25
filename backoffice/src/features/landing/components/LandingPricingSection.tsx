@@ -5,6 +5,7 @@ import { usePublicPlans } from '../hooks/usePublicPlans';
 import type { BillingCycle } from '../utils/pricingHelpers';
 import { PricingBillingToggle } from './PricingBillingToggle';
 import { PricingPlanCard } from './PricingPlanCard';
+import { navigateToSurface } from '../../../lib/domainRouting';
 
 export const LandingPricingSection: React.FC = () => {
   const navigate = useNavigate();
@@ -12,7 +13,7 @@ export const LandingPricingSection: React.FC = () => {
   const { plans, isLoading } = usePublicPlans();
 
   const handleSelectPlan = (planCode: string) => {
-    navigate(`/inscription?plan=${planCode}&cycle=${billingCycle}`);
+    navigateToSurface('app', `/inscription?plan=${planCode}&cycle=${billingCycle}`, navigate);
   };
 
   return (

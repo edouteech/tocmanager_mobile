@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, Sparkles } from 'lucide-react';
+import { SurfaceLink } from '../../../components/common/SurfaceLink';
 import { HeroProductShowcase } from './HeroProductShowcase';
 
 const HERO_REASSURANCE = [
@@ -35,10 +36,10 @@ export const LandingHeroSection: React.FC = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3.5 pt-1">
-            <Link to="/inscription" className="w-full sm:w-auto btn-primary px-7 py-3.5 text-sm sm:text-base">
+            <SurfaceLink surface="app" to="/inscription" className="w-full sm:w-auto btn-primary px-7 py-3.5 text-sm sm:text-base">
               <span>Démarrer gratuitement</span>
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </SurfaceLink>
             <Link to="/tarifs" className="w-full sm:w-auto btn-secondary px-7 py-3.5 text-sm sm:text-base">
               Voir les tarifs & forfaits
             </Link>
