@@ -17,6 +17,8 @@ router = APIRouter()
 @router.get("/pull", response_model=SyncPullResponse)
 def pull_changes(
     since: Optional[datetime] = Query(None, description="Timestamp UTC du dernier pull"),
+    limit: Optional[int] = Query(None, ge=1, le=2000, description="Taille max par lot d'entités"),
+    cursor: Optional[str] = Query(None, description="Curseur de pagination retourné par next_cursor"),
     ctx: TenantContext = Depends(deps.get_tenant_context),
     db: Session = Depends(get_db),
 ) -> Any:
@@ -24,7 +26,12 @@ def pull_changes(
     check_feature_access(db, ctx.boutique.id, "mobile_offline_sync")
     magasin_id = resolve_read_magasin_id(ctx)
     return pull_boutique_changes(
-        db=db, boutique_id=ctx.boutique.id, since=since, magasin_id=magasin_id
+        db=db,
+        boutique_id=ctx.boutique.id,
+        since=since,
+        magasin_id=magasin_id,
+        limit=limit,
+        cursor=cursor,
     )
 
 

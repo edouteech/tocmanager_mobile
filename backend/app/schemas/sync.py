@@ -156,3 +156,5 @@ class SyncPullResponse(BaseModel):
     ventes: List[VenteSync] = []
     decaissements: List[DecaissementSync] = []
     approvisionnements: List[ApprovisionnementSync] = []
+    has_more: bool = False
+    next_cursor: Optional[str] = None
