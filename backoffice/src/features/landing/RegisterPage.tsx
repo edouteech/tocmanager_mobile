@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Store } from 'lucide-react';
 import { saasApi } from '../../lib/api';
 import { useAuthStore } from '../../stores/authStore';
 import { useTenantStore } from '../../stores/tenantStore';
 import { SaasPlan } from '../../types';
+import { BrandLogo } from '../../components/common/BrandLogo';
 import { RegisterStep1Form } from './RegisterStep1Form';
 import { RegisterStep2Form } from './RegisterStep2Form';
 
@@ -138,13 +138,8 @@ export const RegisterPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F5FAFD] dark:bg-dark-900 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 font-sans">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center space-y-3">
-        <Link to="/" className="inline-flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl toc-gradient flex items-center justify-center text-white shadow-soft">
-            <Store className="w-6 h-6" />
-          </div>
-          <span className="text-2xl font-black text-[#1C2B3A] dark:text-white">
-            Toc<span className="text-[#29ABE2]">Manager</span>
-          </span>
+        <Link to="/" aria-label="TocManager — Accueil" className="inline-flex items-center justify-center">
+          <BrandLogo variant="full" size="lg" priority />
         </Link>
 
         <div className="flex items-center justify-center gap-2 pt-2">

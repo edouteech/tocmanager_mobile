@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Lock, User, AlertCircle, ArrowRight, Sun, Moon, Store } from 'lucide-react';
+import { Lock, User, AlertCircle, ArrowRight, Sun, Moon } from 'lucide-react';
 import { authApi } from '../../lib/api';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../context/ThemeContext';
+import { BrandLogo } from '../../components/common/BrandLogo';
 import { IconInput } from '../../components/common/IconInput';
 import { TwoFactorChallengeForm } from './TwoFactorChallengeForm';
 
@@ -86,11 +87,9 @@ export const LoginPage: React.FC = () => {
       <div className="w-full max-w-md bg-white dark:bg-dark-800 rounded-3xl shadow-soft p-8 sm:p-10 border border-[#E8EFF5] dark:border-dark-600 animate-fade-in transition-colors duration-200">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-3">
-            <div className="w-16 h-16 rounded-2xl bg-[#E8F5FD] dark:bg-[#29ABE2]/20 flex items-center justify-center text-[#29ABE2]">
-              <Store className="w-8 h-8" />
-            </div>
+            <BrandLogo variant="full" size="lg" priority />
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#1C2B3A] dark:text-white tracking-tight">TocManager</h2>
+          <h1 className="sr-only">TocManager</h1>
           <p className="text-xs text-[#5A7184] dark:text-slate-400 mt-1">Portail d'Administration Central</p>
         </div>
 
