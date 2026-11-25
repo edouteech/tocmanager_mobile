@@ -18,6 +18,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../context/ThemeContext';
 import { useDensity } from '../../context/DensityContext';
 import { useSidebar } from '../../context/SidebarContext';
+import { BrandLogo } from '../common/BrandLogo';
 
 interface AdminNavItem {
   to: string;
@@ -87,18 +88,16 @@ export const AdminLayout: React.FC = () => {
       >
         <div>
           <div className="h-16 flex items-center justify-between px-5 border-b border-[#E8EFF5] dark:border-dark-600">
-            <Link to="/admin" onClick={handleNavClick} className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl toc-gradient flex items-center justify-center font-black text-white text-xs shadow-sm">
-                TM
-              </div>
-              <div className="leading-tight">
-                <div className="font-bold text-sm text-[#1C2B3A] dark:text-white tracking-tight">
-                  Toc<span className="text-[#29ABE2]">Manager</span>
-                </div>
-                <span className="badge-toc-primary text-[9px] px-1.5 py-0.5 mt-0.5">
-                  Super-Admin
-                </span>
-              </div>
+            <Link
+              to="/admin"
+              onClick={handleNavClick}
+              aria-label="TocManager — Console Super-Admin"
+              className="flex flex-col items-start gap-1 min-w-0"
+            >
+              <BrandLogo variant="full" size="sm" priority />
+              <span className="badge-toc-primary text-[9px] px-1.5 py-0.5">
+                Super-Admin
+              </span>
             </Link>
           </div>
 

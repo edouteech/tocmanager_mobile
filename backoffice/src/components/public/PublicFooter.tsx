@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, Smartphone, Store, WifiOff } from 'lucide-react';
+import { ShieldCheck, Smartphone, WifiOff } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import { BrandLogo } from '../common/BrandLogo';
 
 export const PublicFooter: React.FC = () => {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -12,13 +13,8 @@ export const PublicFooter: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
           <div className="space-y-4">
-            <Link to={landingBase} className="inline-flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl toc-gradient flex items-center justify-center text-white shadow-soft">
-                <Store className="w-5 h-5" />
-              </div>
-              <span className="text-lg font-black text-[#1C2B3A] dark:text-white">
-                Toc<span className="text-[#29ABE2]">Manager</span>
-              </span>
+            <Link to={landingBase} aria-label="TocManager — Accueil" className="inline-flex items-center">
+              <BrandLogo variant="full" size="md" />
             </Link>
 
             <p className="text-xs leading-relaxed">

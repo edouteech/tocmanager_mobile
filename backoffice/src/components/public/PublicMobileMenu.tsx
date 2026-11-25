@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Moon, Store, Sun, X } from 'lucide-react';
+import { ArrowRight, Moon, Sun, X } from 'lucide-react';
+import { BrandLogo } from '../common/BrandLogo';
 
 interface NavLinkItem {
   label: string;
@@ -55,13 +56,8 @@ export const PublicMobileMenu: React.FC<PublicMobileMenuProps> = ({
       <div className="relative ml-auto h-full w-full max-w-xs bg-white dark:bg-dark-900 border-l border-[#E8EFF5] dark:border-dark-600 p-6 flex flex-col justify-between shadow-soft-lg">
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <Link to="/" onClick={onClose} className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl toc-gradient flex items-center justify-center text-white shadow-soft">
-                <Store className="w-5 h-5" />
-              </div>
-              <span className="text-lg font-black text-[#1C2B3A] dark:text-white">
-                Toc<span className="text-[#29ABE2]">Manager</span>
-              </span>
+            <Link to="/" onClick={onClose} aria-label="TocManager — Accueil" className="flex items-center">
+              <BrandLogo variant="full" size="sm" />
             </Link>
             <button
               type="button"

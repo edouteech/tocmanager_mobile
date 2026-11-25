@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Menu, Moon, Store, Sun } from 'lucide-react';
+import { ArrowRight, Menu, Moon, Sun } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuthStore } from '../../stores/authStore';
+import { BrandLogo } from '../common/BrandLogo';
 import { PublicMobileMenu } from './PublicMobileMenu';
 
 export const PublicNavbar: React.FC = () => {
@@ -34,13 +35,8 @@ export const PublicNavbar: React.FC = () => {
 
       <header className="sticky top-0 z-40 bg-white/90 dark:bg-dark-900/90 backdrop-blur-md border-b border-[#E8EFF5] dark:border-dark-600 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          <Link to={landingBase} className="flex items-center gap-3 shrink-0">
-            <div className="w-10 h-10 rounded-xl toc-gradient flex items-center justify-center text-white shadow-soft">
-              <Store className="w-6 h-6" />
-            </div>
-            <span className="text-xl font-black tracking-tight text-[#1C2B3A] dark:text-white">
-              Toc<span className="text-[#29ABE2]">Manager</span>
-            </span>
+          <Link to={landingBase} aria-label="TocManager — Accueil" className="flex items-center shrink-0">
+            <BrandLogo variant="full" size="md" priority />
           </Link>
 
           <nav className="hidden md:flex items-center gap-6 lg:gap-7 text-sm font-medium text-[#5A7184] dark:text-slate-300" aria-label="Navigation principale">

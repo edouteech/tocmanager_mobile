@@ -23,6 +23,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useTenantStore } from '../../stores/tenantStore';
 import { useSidebar } from '../../context/SidebarContext';
 import { useEntitlement } from '../../hooks/useEntitlement';
+import { BrandLogo } from '../common/BrandLogo';
 
 interface NavItem {
   to: string;
@@ -134,13 +135,8 @@ export const Sidebar: React.FC = () => {
     >
       {/* Brand logo header */}
       <div className="h-16 px-5 border-b border-[#E8EFF5] dark:border-dark-600 flex items-center justify-between shrink-0">
-        <Link to="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl toc-gradient flex items-center justify-center text-white shadow-sm font-black text-sm">
-            TM
-          </div>
-          <span className="font-bold text-[#1C2B3A] dark:text-white text-base tracking-tight">
-            Toc<span className="text-[#29ABE2]">Manager</span>
-          </span>
+        <Link to="/" aria-label="TocManager — Tableau de bord" className="flex items-center min-w-0">
+          <BrandLogo variant="full" size="sm" priority />
         </Link>
       </div>
 
