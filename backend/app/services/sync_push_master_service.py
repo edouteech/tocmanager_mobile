@@ -25,6 +25,7 @@ def push_master_entities(
     appro_qty_deltas: Optional[Dict[str, float]] = None,
     credit_vente_clients: Optional[Dict[str, Tuple[float, datetime]]] = None,
     credit_appro_suppliers: Optional[Dict[str, Tuple[float, datetime]]] = None,
+    quota_exceptions: Optional[List[HTTPException]] = None,
 ) -> Tuple[Set[str], Set[str]]:
     """Sync categories, products, suppliers, and clients for ctx.boutique.id."""
     boutique_id = ctx.boutique.id
@@ -115,8 +116,12 @@ def push_master_entities(
                         initial_stock=init_stock,
                     )
                 synced_uuids.append(prod.sync_id)
-        except HTTPException:
-            raise
+        except HTTPException as http_exc:
+            if quota_exceptions is not None:
+                quota_exceptions.append(http_exc)
+            detail = http_exc.detail
+            msg = detail.get("message") or detail.get("error") if isinstance(detail, dict) else str(detail)
+            errors.append(f"Product {prod.sync_id}: {msg}")
         except Exception as exc:
             errors.append(f"Product {prod.sync_id}: {exc}")
 
@@ -158,8 +163,12 @@ def push_master_entities(
                         deleted_at=sup.deleted_at,
                     ))
                 synced_uuids.append(sup.sync_id)
-        except HTTPException:
-            raise
+        except HTTPException as http_exc:
+            if quota_exceptions is not None:
+                quota_exceptions.append(http_exc)
+            detail = http_exc.detail
+            msg = detail.get("message") or detail.get("error") if isinstance(detail, dict) else str(detail)
+            errors.append(f"Supplier {sup.sync_id}: {msg}")
         except Exception as exc:
             errors.append(f"Supplier {sup.sync_id}: {exc}")
 
@@ -209,8 +218,12 @@ def push_master_entities(
                             created_at=cl.updated_at or now,
                         ))
                 synced_uuids.append(cl.sync_id)
-        except HTTPException:
-            raise
+        except HTTPException as http_exc:
+            if quota_exceptions is not None:
+                quota_exceptions.append(http_exc)
+            detail = http_exc.detail
+            msg = detail.get("message") or detail.get("error") if isinstance(detail, dict) else str(detail)
+            errors.append(f"Client {cl.sync_id}: {msg}")
         except Exception as exc:
             errors.append(f"Client {cl.sync_id}: {exc}")
 

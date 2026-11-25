@@ -122,7 +122,21 @@ class SyncService {
   Future<int> getPendingQueueCount() async {
     try {
       final db = await DatabaseHelper.instance.database;
-      final res = await db.rawQuery('SELECT COUNT(*) as count FROM sync_queue');
+      final res = await db.rawQuery(
+        "SELECT COUNT(*) as count FROM sync_queue WHERE status IS NULL OR status != 'quarantined'",
+      );
+      return Sqflite.firstIntValue(res) ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  Future<int> getQuarantinedQueueCount() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final res = await db.rawQuery(
+        "SELECT COUNT(*) as count FROM sync_queue WHERE status = 'quarantined'",
+      );
       return Sqflite.firstIntValue(res) ?? 0;
     } catch (_) {
       return 0;

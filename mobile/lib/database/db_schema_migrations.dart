@@ -23,6 +23,7 @@ class DbSchemaMigrations {
     await createV14Schema(db);
     await createV15Schema(db);
     await createV16Schema(db);
+    await createV17Schema(db);
     await DbSchemaBase.createIndexes(db);
   }
 
@@ -54,6 +55,7 @@ class DbSchemaMigrations {
     if (oldVersion < 14) await createV14Schema(db);
     if (oldVersion < 15) await createV15Schema(db);
     if (oldVersion < 16) await createV16Schema(db);
+    if (oldVersion < 17) await createV17Schema(db);
   }
 
   static Future<void> createV9Schema(Database db) async {}
@@ -194,6 +196,10 @@ class DbSchemaMigrations {
   static Future<void> createV16Schema(Database db) async {
     await _addColumnIfMissing(db, 'suppliers', 'user_id', 'TEXT');
     await _addColumnIfMissing(db, 'suppliers', 'user_name', 'TEXT');
+  }
+
+  static Future<void> createV17Schema(Database db) async {
+    await _addColumnIfMissing(db, 'sync_queue', 'status', "TEXT DEFAULT 'pending'");
   }
 
   static Future<void> _addColumnIfMissing(
