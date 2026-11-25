@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
 class NetworkService {
   static final NetworkService _instance = NetworkService._();
@@ -15,19 +16,41 @@ class NetworkService {
   Stream<bool> get onConnectivityChanged => _controller.stream;
 
   StreamSubscription? _sub;
+  Future<void>? _initFuture;
 
-  Future<void> initialize() async {
-    final results = await _connectivity.checkConnectivity();
-    _isOnline = await _checkRealInternet(results);
-    _controller.add(_isOnline);
+  Future<void> initialize() => ensureInitialized();
 
-    _sub = _connectivity.onConnectivityChanged.listen((results) async {
-      final online = await _checkRealInternet(results);
-      if (online != _isOnline) {
-        _isOnline = online;
+  Future<void> ensureInitialized() => _initFuture ??= _doInitialize();
+
+  Future<void> _doInitialize() async {
+    try {
+      final results = await _connectivity.checkConnectivity();
+      _isOnline = await _checkRealInternet(results);
+      if (!_controller.isClosed) {
         _controller.add(_isOnline);
       }
-    });
+
+      _sub ??= _connectivity.onConnectivityChanged.listen((results) async {
+        final online = await _checkRealInternet(results);
+        if (online != _isOnline) {
+          _isOnline = online;
+          if (!_controller.isClosed) {
+            _controller.add(_isOnline);
+          }
+        }
+      });
+    } catch (_) {
+      // Connectivity plugin may be unavailable in headless tests.
+    }
+  }
+
+  @visibleForTesting
+  void setOnlineForTesting(bool online) {
+    _initFuture ??= Future<void>.value();
+    _isOnline = online;
+    if (!_controller.isClosed) {
+      _controller.add(_isOnline);
+    }
   }
 
   Future<bool> _checkRealInternet(List<ConnectivityResult> results) async {

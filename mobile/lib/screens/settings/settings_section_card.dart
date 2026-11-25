@@ -107,8 +107,13 @@ class SettingsCloudSyncCard extends StatelessWidget {
                         ? null
                         : () async {
                             await syncProv.syncNow();
-                            if (context.mounted) {
+                            if (!context.mounted) return;
+                            if (syncProv.status == SyncStatus.synced) {
                               AppToast.showSuccess(context, 'Synchronisation terminée avec succès');
+                            } else if (syncProv.status == SyncStatus.offline) {
+                              AppToast.showWarning(context, 'Appareil hors-ligne : synchronisation reportée');
+                            } else if (syncProv.status == SyncStatus.error) {
+                              AppToast.showError(context, 'Échec de la synchronisation avec le serveur');
                             }
                           },
                     icon: const Icon(Icons.sync, size: 18),

@@ -4,16 +4,19 @@ import '../services/sync_service.dart';
 import '../services/network_service.dart';
 
 class SyncProvider extends ChangeNotifier {
-  SyncStatus _status = SyncStatus.idle;
+  SyncStatus _status = SyncService.instance.currentStatus;
   SyncStatus get status => _status;
 
   int _pendingCount = 0;
   int get pendingCount => _pendingCount;
 
-  bool _isOnline = false;
+  bool _isOnline = NetworkService.instance.isOnline;
   bool get isOnline => _isOnline;
 
-  StreamSubscription? _netSub;
+  String? get lastError => SyncService.instance.lastError;
+
+  StreamSubscription<bool>? _netSub;
+  StreamSubscription<SyncStatus>? _statusSub;
   Timer? _periodicTimer;
 
   SyncProvider() {
@@ -21,14 +24,21 @@ class SyncProvider extends ChangeNotifier {
   }
 
   Future<void> _init() async {
-    await NetworkService.instance.initialize();
+    await NetworkService.instance.ensureInitialized();
     _isOnline = NetworkService.instance.isOnline;
     await refreshPendingCount();
+
+    _statusSub = SyncService.onStatusChanged.listen((newStatus) {
+      _status = newStatus;
+      notifyListeners();
+      if (newStatus != SyncStatus.syncing) {
+        unawaited(refreshPendingCount());
+      }
+    });
 
     _netSub = NetworkService.instance.onConnectivityChanged.listen((online) async {
       _isOnline = online;
       if (online) {
-        // Retour en ligne : synchronisation automatique en arrière-plan
         await syncNow();
       } else {
         _status = SyncStatus.offline;
@@ -36,16 +46,14 @@ class SyncProvider extends ChangeNotifier {
       }
     });
 
-    // Synchronisation périodique toutes les 10 minutes si connecté
     _periodicTimer = Timer.periodic(const Duration(minutes: 10), (_) async {
       if (_isOnline && _status != SyncStatus.syncing) {
         await syncNow();
       }
     });
 
-    // Synchro initiale si déjà en ligne
     if (_isOnline) {
-      syncNow();
+      await syncNow();
     }
   }
 
@@ -68,6 +76,7 @@ class SyncProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _statusSub?.cancel();
     _netSub?.cancel();
     _periodicTimer?.cancel();
     super.dispose();

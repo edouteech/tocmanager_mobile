@@ -61,7 +61,6 @@ class AuthProvider extends ChangeNotifier {
           _expectedPinLength = await SecureStorageService.getPinLength();
           _isPinLocked = hasPin;
           unawaited(ApiClient.instance.checkAndProactiveRefresh());
-          unawaited(SyncService.instance.syncNow());
         }
       } else {
         _isAuthenticated = false;
@@ -95,7 +94,12 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
 
       unawaited(ApiClient.instance.checkAndProactiveRefresh());
-      unawaited(SyncService.instance.syncNow());
+      final boutiqueId = await SecureStorageService.getCurrentBoutiqueId();
+      final magasinId = await SecureStorageService.getCurrentMagasinId();
+      final isCons = await SecureStorageService.isConsolidatedMode();
+      if (boutiqueId != null && (isCons || magasinId != null)) {
+        unawaited(SyncService.instance.syncNow());
+      }
 
       return true;
     } else {
@@ -175,8 +179,6 @@ class AuthProvider extends ChangeNotifier {
         _expectedPinLength = await SecureStorageService.getPinLength();
         _isLoading = false;
         notifyListeners();
-
-        unawaited(SyncService.instance.syncNow());
 
         return true;
       } else {
