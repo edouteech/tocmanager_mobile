@@ -6,6 +6,7 @@ import time
 import uuid
 
 from fastapi import Request
+from fastapi.responses import JSONResponse
 from jose import JWTError, jwt
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -35,6 +36,8 @@ class JsonLogFormatter(logging.Formatter):
             val = getattr(record, key, None)
             if val is not None:
                 payload[key] = val
+        if record.exc_info:
+            payload["exception"] = self.formatException(record.exc_info)
         return json.dumps(payload, ensure_ascii=False)
 
 
@@ -91,7 +94,7 @@ class RequestObservabilityMiddleware(BaseHTTPMiddleware):
 
         try:
             response = await call_next(request)
-        except Exception:
+        except Exception as exc:
             duration_ms = round((time.perf_counter() - start) * 1000.0, 2)
             http_logger.exception(
                 "request_failed",
@@ -105,7 +108,19 @@ class RequestObservabilityMiddleware(BaseHTTPMiddleware):
                     "duration_ms": duration_ms,
                 },
             )
-            raise
+            if (settings.SENTRY_DSN or "").strip():
+                try:
+                    import sentry_sdk
+
+                    sentry_sdk.capture_exception(exc)
+                except Exception:
+                    pass
+            # Return JSON inside the CORS middleware boundary so allowed origins receive CORS headers on 500s.
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "Erreur interne du serveur.", "request_id": req_id},
+                headers={"X-Request-Id": req_id},
+            )
         finally:
             _request_id_ctx.reset(t_req)
             _user_id_ctx.reset(t_usr)

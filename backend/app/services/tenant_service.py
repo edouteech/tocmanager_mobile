@@ -6,10 +6,11 @@ from sqlalchemy.orm import Session
 
 from app.core.permissions import normalize_tenant_role
 from app.models import (
-    User, Boutique, BoutiqueUserMembership, Magasin, SaasPlan, SaasSubscription
+    User, Boutique, BoutiqueUserMembership, Magasin, SaasSubscription
 )
 from app.schemas.saas import BoutiqueCreate, MagasinCreate, MagasinUpdate
 from app.services.entitlements import check_quota_limit, resolve_effective_plan
+from app.services.onboarding_service import resolve_subscription_plan, set_pg_boutique_rls_context
 from app.services.tenant_context_service import TenantContext
 
 
@@ -91,15 +92,13 @@ def create_boutique_for_owner(db: Session, current_user: User, payload: Boutique
             )
 
     owner_has_used_trial = any(b.has_used_trial for b in existing_boutiques)
-    requested_plan = db.query(SaasPlan).filter(SaasPlan.code == (payload.plan_code or "free")).first()
-    free_plan = db.query(SaasPlan).filter(SaasPlan.code == "free").first()
+    requested_plan = resolve_subscription_plan(db, payload.plan_code or "free")
     use_trial = bool(
-        requested_plan
-        and requested_plan.code != "free"
+        requested_plan.code != "free"
         and requested_plan.trial_period_days > 0
         and not owner_has_used_trial
     )
-    assigned_plan = requested_plan if use_trial else (free_plan or requested_plan)
+    assigned_plan = requested_plan if use_trial else resolve_subscription_plan(db, "free")
 
     base_slug = payload.name.strip().lower().replace(" ", "-")
     unique_slug = f"{base_slug}-{uuid.uuid4().hex[:6]}"
@@ -118,6 +117,8 @@ def create_boutique_for_owner(db: Session, current_user: User, payload: Boutique
     )
     db.add(boutique)
     db.flush()
+
+    set_pg_boutique_rls_context(db, boutique.id)
 
     magasin = Magasin(
         boutique_id=boutique.id,
@@ -139,12 +140,12 @@ def create_boutique_for_owner(db: Session, current_user: User, payload: Boutique
     now = datetime.now(timezone.utc)
     db.add(SaasSubscription(
         boutique_id=boutique.id,
-        plan_id=assigned_plan.id if assigned_plan else "free",
+        plan_id=assigned_plan.id,
         status="trialing" if use_trial else "active",
         billing_cycle="monthly",
         has_used_trial=use_trial,
         trial_starts_at=now if use_trial else None,
-        trial_ends_at=(now + timedelta(days=assigned_plan.trial_period_days)) if use_trial and assigned_plan else None,
+        trial_ends_at=(now + timedelta(days=assigned_plan.trial_period_days)) if use_trial else None,
     ))
     db.commit()
     db.refresh(boutique)
