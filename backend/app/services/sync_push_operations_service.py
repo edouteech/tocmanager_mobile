@@ -2,11 +2,97 @@ from datetime import datetime
 from typing import List, Optional, Set
 from sqlalchemy.orm import Session
 
-from app.models import Approvisionnement, AuditLog, Decaissement, Product, Supplier
+from app.models import Approvisionnement, AuditLog, Decaissement, Product
 from app.schemas.sync import SyncPushRequest
 from app.services.stock_service import adjust_magasin_stock
-from app.services.sync_push_master_service import belongs_to_other_boutique
+from app.services.sync_push_helpers import (
+    adjust_supplier_debt_delta,
+    belongs_to_other_boutique,
+    compute_appro_debt,
+    is_stale_update,
+    recompute_magasin_pamp,
+)
 from app.services.tenant_context_service import TenantContext, resolve_operational_magasin
+
+
+def _apply_existing_appro_update(
+    db: Session,
+    ctx: TenantContext,
+    payload: SyncPushRequest,
+    existing: Approvisionnement,
+    a,
+    now: datetime,
+    a_uid: str,
+    a_uname: str,
+    sup_applied: Set[str],
+) -> None:
+    boutique_id = ctx.boutique.id
+    was_active = existing.deleted_at is None
+    now_active = a.deleted_at is None
+    old_qty = float(existing.quantity or 0.0) if was_active else 0.0
+    old_prod_id = existing.product_sync_id
+    old_sup_id = existing.supplier_sync_id
+    old_debt = compute_appro_debt(existing.total_cost, None, existing.payment_status) if was_active else 0.0
+    mag_id = existing.magasin_id or a.magasin_id or ctx.requested_magasin_id
+
+    existing.supplier_sync_id = a.supplier_sync_id
+    existing.supplier_name = a.supplier_name
+    existing.product_sync_id = a.product_sync_id
+    existing.product_name = a.product_name
+    existing.quantity = a.quantity
+    existing.unit_cost = a.unit_cost
+    existing.total_cost = a.total_cost
+    existing.payment_status = a.payment_status
+    existing.date = a.date
+    existing.notes = a.notes
+    existing.deleted_at = a.deleted_at
+    existing.updated_at = a.updated_at or now
+
+    if payload.is_initial_sync:
+        return
+
+    new_qty = float(a.quantity or 0.0) if now_active else 0.0
+    new_prod_id = a.product_sync_id
+    if mag_id:
+        if old_prod_id == new_prod_id and new_prod_id:
+            prod = db.query(Product).filter(Product.sync_id == new_prod_id, Product.boutique_id == boutique_id).first()
+            if prod:
+                delta_qty = round(new_qty - old_qty, 4)
+                if abs(delta_qty) > 1e-6:
+                    adjust_magasin_stock(
+                        db=db, boutique_id=boutique_id, magasin_id=mag_id, product=prod,
+                        quantity_delta=delta_qty, enforce_sufficient=False, movement_type="adjustment",
+                        reference_type="approvisionnement", reference_id=a.sync_id,
+                        reason=f"Sync appro edit {a.supplier_name or ''}".strip(), user_id=a_uid, user_name=a_uname,
+                    )
+                recompute_magasin_pamp(db, boutique_id, mag_id, prod)
+        else:
+            if old_prod_id and old_qty > 0:
+                old_prod = db.query(Product).filter(Product.sync_id == old_prod_id, Product.boutique_id == boutique_id).first()
+                if old_prod:
+                    adjust_magasin_stock(
+                        db=db, boutique_id=boutique_id, magasin_id=mag_id, product=old_prod,
+                        quantity_delta=-old_qty, enforce_sufficient=False, movement_type="adjustment",
+                        reference_type="approvisionnement", reference_id=a.sync_id, user_id=a_uid, user_name=a_uname,
+                    )
+                    recompute_magasin_pamp(db, boutique_id, mag_id, old_prod)
+            if new_prod_id and new_qty > 0:
+                new_prod = db.query(Product).filter(Product.sync_id == new_prod_id, Product.boutique_id == boutique_id).first()
+                if new_prod:
+                    adjust_magasin_stock(
+                        db=db, boutique_id=boutique_id, magasin_id=mag_id, product=new_prod,
+                        quantity_delta=new_qty, enforce_sufficient=False, new_unit_cost=a.unit_cost,
+                        movement_type="supply", reference_type="approvisionnement", reference_id=a.sync_id,
+                        user_id=a_uid, user_name=a_uname,
+                    )
+                    recompute_magasin_pamp(db, boutique_id, mag_id, new_prod)
+
+    new_debt = compute_appro_debt(a.total_cost, a.paid_amount, a.payment_status) if now_active else 0.0
+    if old_sup_id == a.supplier_sync_id:
+        adjust_supplier_debt_delta(db, boutique_id, old_sup_id, new_debt - old_debt, sup_applied, now)
+    else:
+        adjust_supplier_debt_delta(db, boutique_id, old_sup_id, -old_debt, sup_applied, now)
+        adjust_supplier_debt_delta(db, boutique_id, a.supplier_sync_id, new_debt, sup_applied, now)
 
 
 def push_decaissements_approvisionnements_and_audits(
@@ -21,7 +107,7 @@ def push_decaissements_approvisionnements_and_audits(
     """Sync offline decaissements, approvisionnements, and audit logs for ctx.boutique."""
     boutique_id = ctx.boutique.id
     current_user = ctx.user
-    sup_overwritten = suppliers_overwritten or set()
+    sup_applied = suppliers_overwritten or set()
 
     for d in payload.decaissements:
         try:
@@ -33,6 +119,9 @@ def push_decaissements_approvisionnements_and_audits(
                 d_uid = d.user_id or current_user.id
                 d_uname = d.user_name or (current_user.full_name or current_user.username)
                 if existing:
+                    if is_stale_update(existing.updated_at, d.updated_at):
+                        synced_uuids.append(d.sync_id)
+                        continue
                     existing.title = d.title
                     existing.amount = d.amount
                     existing.category = d.category
@@ -74,18 +163,10 @@ def push_decaissements_approvisionnements_and_audits(
                 a_uid = a.user_id or current_user.id
                 a_uname = a.user_name or (current_user.full_name or current_user.username)
                 if existing:
-                    existing.supplier_sync_id = a.supplier_sync_id
-                    existing.supplier_name = a.supplier_name
-                    existing.product_sync_id = a.product_sync_id
-                    existing.product_name = a.product_name
-                    existing.quantity = a.quantity
-                    existing.unit_cost = a.unit_cost
-                    existing.total_cost = a.total_cost
-                    existing.payment_status = a.payment_status
-                    existing.date = a.date
-                    existing.notes = a.notes
-                    existing.deleted_at = a.deleted_at
-                    existing.updated_at = a.updated_at or now
+                    if is_stale_update(existing.updated_at, a.updated_at):
+                        synced_uuids.append(a.sync_id)
+                        continue
+                    _apply_existing_appro_update(db, ctx, payload, existing, a, now, a_uid, a_uname, sup_applied)
                 else:
                     a_mag = resolve_operational_magasin(
                         db, ctx, body_magasin_id=a.magasin_id, allow_warehouse=True, allow_single_assigned_fallback=True
@@ -118,17 +199,8 @@ def push_decaissements_approvisionnements_and_audits(
                                     movement_type="supply", reference_type="approvisionnement", reference_id=a.sync_id,
                                     reason=f"Sync réception {a.supplier_name or ''}".strip(), user_id=a_uid, user_name=a_uname,
                                 )
-                        paid = a.paid_amount if a.paid_amount is not None else (
-                            float(a.total_cost) if (a.payment_status or "").lower().startswith("pay") else 0.0
-                        )
-                        debt = max(0.0, float(a.total_cost) - float(paid))
-                        if a.supplier_sync_id and debt > 0 and a.supplier_sync_id not in sup_overwritten:
-                            sup = db.query(Supplier).filter(
-                                Supplier.sync_id == a.supplier_sync_id, Supplier.boutique_id == boutique_id
-                            ).first()
-                            if sup:
-                                sup.balance = round(float(sup.balance or 0.0) + debt, 2)
-                                sup.updated_at = now
+                        debt = compute_appro_debt(a.total_cost, a.paid_amount, a.payment_status)
+                        adjust_supplier_debt_delta(db, boutique_id, a.supplier_sync_id, debt, sup_applied, now)
                 synced_uuids.append(a.sync_id)
         except Exception as exc:
             errors.append(f"Approvisionnement {a.sync_id}: {exc}")

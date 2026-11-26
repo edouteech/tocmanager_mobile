@@ -53,11 +53,11 @@ class ClientProvider extends ChangeNotifier {
     required Vente vente,
     required double paymentAmount,
   }) async {
-    if (vente.id != null) {
-      final newVentePaid = vente.paidAmount + paymentAmount;
-      await DatabaseHelper.instance.updateVentePaidAmount(vente.id!, newVentePaid);
-    }
-    await DatabaseHelper.instance.recordClientPayment(client.id!, 0);
+    await DatabaseHelper.instance.recordClientPayment(
+      client.id!,
+      paymentAmount,
+      specificVenteId: vente.id,
+    );
     await loadClients();
   }
 

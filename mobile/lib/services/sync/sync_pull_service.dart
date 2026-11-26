@@ -80,19 +80,63 @@ class SyncPullService {
 
     try {
       await db.transaction((txn) async {
-        await SyncPullMasterService.applyPulledCategories(txn, (data['categories'] as List<dynamic>?) ?? [], nowIso);
+        final pendingRows = await txn.query(
+          'sync_queue',
+          columns: ['entity_type', 'entity_uuid'],
+          where: "status IS NULL OR status != 'quarantined'",
+        );
+        final pendingByType = <String, Set<String>>{};
+        for (final r in pendingRows) {
+          final t = r['entity_type'] as String?;
+          final u = r['entity_uuid'] as String?;
+          if (t != null && u != null) {
+            pendingByType.putIfAbsent(t, () => <String>{}).add(u);
+          }
+        }
+        await SyncPullMasterService.applyPulledCategories(
+          txn,
+          (data['categories'] as List<dynamic>?) ?? [],
+          nowIso,
+          pendingUuids: pendingByType['category'] ?? const {},
+        );
         await SyncPullMasterService.applyPulledProducts(
           txn,
           (data['products'] as List<dynamic>?) ?? [],
           nowIso,
           boutiqueId: tenant.boutiqueId,
           magasinId: tenant.magasinId,
+          pendingUuids: pendingByType['product'] ?? const {},
         );
-        await SyncPullMasterService.applyPulledClients(txn, (data['clients'] as List<dynamic>?) ?? [], nowIso);
-        await SyncPullMasterService.applyPulledSuppliers(txn, (data['suppliers'] as List<dynamic>?) ?? [], nowIso);
-        await SyncPullOperationsService.applyPulledDecaissements(txn, (data['decaissements'] as List<dynamic>?) ?? [], nowIso);
-        await SyncPullOperationsService.applyPulledApprovisionnements(txn, (data['approvisionnements'] as List<dynamic>?) ?? [], nowIso);
-        await SyncPullOperationsService.applyPulledVentes(txn, (data['ventes'] as List<dynamic>?) ?? [], nowIso);
+        await SyncPullMasterService.applyPulledClients(
+          txn,
+          (data['clients'] as List<dynamic>?) ?? [],
+          nowIso,
+          pendingUuids: pendingByType['client'] ?? const {},
+        );
+        await SyncPullMasterService.applyPulledSuppliers(
+          txn,
+          (data['suppliers'] as List<dynamic>?) ?? [],
+          nowIso,
+          pendingUuids: pendingByType['supplier'] ?? const {},
+        );
+        await SyncPullOperationsService.applyPulledDecaissements(
+          txn,
+          (data['decaissements'] as List<dynamic>?) ?? [],
+          nowIso,
+          pendingUuids: pendingByType['decaissement'] ?? const {},
+        );
+        await SyncPullOperationsService.applyPulledApprovisionnements(
+          txn,
+          (data['approvisionnements'] as List<dynamic>?) ?? [],
+          nowIso,
+          pendingUuids: pendingByType['approvisionnement'] ?? const {},
+        );
+        await SyncPullOperationsService.applyPulledVentes(
+          txn,
+          (data['ventes'] as List<dynamic>?) ?? [],
+          nowIso,
+          pendingUuids: pendingByType['vente'] ?? const {},
+        );
 
         if (updateCursor) {
           await txn.insert(
