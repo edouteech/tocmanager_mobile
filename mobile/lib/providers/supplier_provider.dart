@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../database/database_helper.dart';
 import '../models/supplier.dart';
+import '../services/sync_service.dart';
 
 class SupplierProvider extends ChangeNotifier {
   List<Supplier> _suppliers = [];
@@ -23,6 +24,7 @@ class SupplierProvider extends ChangeNotifier {
     final id = await DatabaseHelper.instance.insertSupplier(supplier);
     _suppliers.insert(0, supplier.copyWith(id: id));
     notifyListeners();
+    SyncService.instance.notifyLocalMutation();
   }
 
   Future<void> updateSupplier(Supplier supplier) async {
@@ -32,16 +34,19 @@ class SupplierProvider extends ChangeNotifier {
       _suppliers[idx] = supplier;
       notifyListeners();
     }
+    SyncService.instance.notifyLocalMutation();
   }
 
   Future<void> deleteSupplier(int id) async {
     await DatabaseHelper.instance.deleteSupplier(id);
     _suppliers.removeWhere((s) => s.id == id);
     notifyListeners();
+    SyncService.instance.notifyLocalMutation();
   }
 
   Future<void> recordSupplierPayment(int supplierId, double amount) async {
     await DatabaseHelper.instance.recordSupplierPayment(supplierId, amount);
     await loadSuppliers();
+    SyncService.instance.notifyLocalMutation();
   }
 }

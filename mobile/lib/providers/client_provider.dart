@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../database/database_helper.dart';
 import '../models/client.dart';
 import '../models/vente.dart';
+import '../services/sync_service.dart';
 
 class ClientProvider extends ChangeNotifier {
   List<Client> _clients = [];
@@ -25,6 +26,7 @@ class ClientProvider extends ChangeNotifier {
     final id = await DatabaseHelper.instance.insertClient(client);
     _clients.insert(0, client.copyWith(id: id));
     notifyListeners();
+    SyncService.instance.notifyLocalMutation();
     return id;
   }
 
@@ -35,17 +37,20 @@ class ClientProvider extends ChangeNotifier {
       _clients[idx] = client;
       notifyListeners();
     }
+    SyncService.instance.notifyLocalMutation();
   }
 
   Future<void> deleteClient(int id) async {
     await DatabaseHelper.instance.deleteClient(id);
     _clients.removeWhere((c) => c.id == id);
     notifyListeners();
+    SyncService.instance.notifyLocalMutation();
   }
 
   Future<void> recordPayment(int clientId, double paymentAmount) async {
     await DatabaseHelper.instance.recordClientPayment(clientId, paymentAmount);
     await loadClients();
+    SyncService.instance.notifyLocalMutation();
   }
 
   Future<void> recordPaymentForVente({
@@ -59,6 +64,7 @@ class ClientProvider extends ChangeNotifier {
       specificVenteId: vente.id,
     );
     await loadClients();
+    SyncService.instance.notifyLocalMutation();
   }
 
   Future<void> recordGlobalPaymentAllocated({
@@ -68,6 +74,7 @@ class ClientProvider extends ChangeNotifier {
   }) async {
     await DatabaseHelper.instance.recordClientPayment(client.id!, paymentAmount);
     await loadClients();
+    SyncService.instance.notifyLocalMutation();
   }
 
   Future<void> recordAvoirRefund({

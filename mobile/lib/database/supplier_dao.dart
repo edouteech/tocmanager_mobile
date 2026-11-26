@@ -30,7 +30,7 @@ class SupplierDao {
 
   static Future<int> insertSupplier(Database db, Supplier supplier) async {
     return db.transaction((txn) async {
-      final now = DateTime.now().toIso8601String();
+      final now = SyncDao.nowUtcIso();
       final syncId = const Uuid().v4();
       final map = supplier.toMap();
       map['sync_id'] = syncId;
@@ -44,7 +44,7 @@ class SupplierDao {
 
   static Future<int> updateSupplier(Database db, Supplier supplier) async {
     return db.transaction((txn) async {
-      final now = DateTime.now().toIso8601String();
+      final now = SyncDao.nowUtcIso();
       final syncId = await SyncDao.resolveSyncId(txn, 'suppliers', supplier.id!);
       final map = supplier.toMap();
       map['sync_status'] = 'pending_update';
@@ -63,7 +63,7 @@ class SupplierDao {
         final r = rows.first;
         final syncId = r['sync_id'] as String?;
         if (syncId != null && syncId.isNotEmpty) {
-          final now = DateTime.now().toIso8601String();
+          final now = SyncDao.nowUtcIso();
           await SyncDao.enqueueSync(txn, 'supplier', syncId, 'DELETE', {
             'sync_id': syncId,
             'name': r['name'] ?? '',
@@ -84,7 +84,7 @@ class SupplierDao {
 
   static Future<void> recordSupplierPayment(Database db, int supplierId, double amount) async {
     await db.transaction((txn) async {
-      final now = DateTime.now().toIso8601String();
+      final now = SyncDao.nowUtcIso();
       final appMaps = await txn.query(
         'approvisionnements',
         where: 'supplier_id = ? AND paid_amount < total',
@@ -131,7 +131,7 @@ class SupplierDao {
             'total_cost': totVal,
             'paid_amount': paidVal,
             'payment_status': paidVal < totVal ? 'Crédit' : 'Payé',
-            'date': ar['date'] ?? now,
+            'date': SyncDao.toUtcIso(ar['date'], fallback: now),
             'notes': ar['notes'],
             'updated_at': now,
           });
@@ -156,7 +156,7 @@ class SupplierDao {
           'address': sr['address'],
           'balance': newBalance,
           'notes': sr['notes'],
-          'updated_at': DateTime.now().add(const Duration(milliseconds: 1)).toIso8601String(),
+          'updated_at': DateTime.now().toUtc().add(const Duration(milliseconds: 1)).toIso8601String(),
         });
       }
     });

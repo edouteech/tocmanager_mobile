@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/approvisionnement.dart';
 import '../database/database_helper.dart';
+import '../services/sync_service.dart';
 
 class ApprovisionnementProvider extends ChangeNotifier {
   List<Approvisionnement> _items = [];
@@ -25,15 +26,18 @@ class ApprovisionnementProvider extends ChangeNotifier {
   Future<void> add(Approvisionnement appro) async {
     await DatabaseHelper.instance.insertApprovisionnement(appro);
     await load(productId: _activeProductId);
+    SyncService.instance.notifyLocalMutation();
   }
 
   Future<void> update(Approvisionnement oldAppro, Approvisionnement newAppro) async {
     await DatabaseHelper.instance.updateApprovisionnement(oldAppro, newAppro);
     await load(productId: _activeProductId);
+    SyncService.instance.notifyLocalMutation();
   }
 
   Future<void> delete(Approvisionnement appro) async {
     await DatabaseHelper.instance.deleteApprovisionnement(appro);
     await load(productId: _activeProductId);
+    SyncService.instance.notifyLocalMutation();
   }
 }

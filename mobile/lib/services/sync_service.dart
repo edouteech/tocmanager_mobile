@@ -27,6 +27,10 @@ class SyncService {
       StreamController<void>.broadcast();
   static Stream<void> get onSyncCompleted => _syncCompletedController.stream;
 
+  static final StreamController<void> _queueChangedController =
+      StreamController<void>.broadcast();
+  static Stream<void> get onQueueChanged => _queueChangedController.stream;
+
   static final StreamController<SyncStatus> _statusController =
       StreamController<SyncStatus>.broadcast();
   static Stream<SyncStatus> get onStatusChanged => _statusController.stream;
@@ -43,6 +47,19 @@ class SyncService {
 
   static int parseCategoryColor(dynamic raw) => SyncParsers.parseCategoryColor(raw);
   static int parseCategoryIcon(dynamic raw) => SyncParsers.parseCategoryIcon(raw);
+
+  void notifyLocalMutation() {
+    if (!_queueChangedController.isClosed) {
+      _queueChangedController.add(null);
+    }
+    unawaited(syncNow(forceResyncIfBusy: true));
+  }
+
+  void notifyDataReloadNeeded() {
+    if (!_syncCompletedController.isClosed) {
+      _syncCompletedController.add(null);
+    }
+  }
 
   void _setStatus(SyncStatus status, {String? error}) {
     _currentStatus = status;

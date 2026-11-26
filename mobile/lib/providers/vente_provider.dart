@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/vente.dart';
 import '../models/product.dart';
@@ -100,17 +99,18 @@ class VenteProvider extends ChangeNotifier {
     await DatabaseHelper.instance.insertVente(vente);
     clearCart();
     await load(productId: _activeProductId);
-    // Déclenchement automatique de la synchronisation en arrière-plan (non bloquant)
-    unawaited(SyncService.instance.syncNow());
+    SyncService.instance.notifyLocalMutation();
   }
 
   Future<void> update(Vente vente) async {
     await DatabaseHelper.instance.updateVente(vente);
     await load(productId: _activeProductId);
+    SyncService.instance.notifyLocalMutation();
   }
 
   Future<void> delete(Vente vente) async {
     await DatabaseHelper.instance.deleteVente(vente);
     await load(productId: _activeProductId);
+    SyncService.instance.notifyLocalMutation();
   }
 }

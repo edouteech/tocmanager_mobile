@@ -4,6 +4,17 @@ import 'package:uuid/uuid.dart';
 import '../services/secure_storage_service.dart';
 
 class SyncDao {
+  static String nowUtcIso() => DateTime.now().toUtc().toIso8601String();
+
+  static String toUtcIso(dynamic raw, {String? fallback}) {
+    if (raw is DateTime) return raw.toUtc().toIso8601String();
+    if (raw is String && raw.isNotEmpty) {
+      final parsed = DateTime.tryParse(raw);
+      if (parsed != null) return parsed.toUtc().toIso8601String();
+    }
+    return fallback ?? nowUtcIso();
+  }
+
   static Future<({String? userId, String? userName})> activeUserMeta() async {
     try {
       final activeUser = await SecureStorageService.getUser();
@@ -61,7 +72,7 @@ class SyncDao {
       'entity_uuid': entityUuid,
       'action': action,
       'payload': jsonEncode(payload),
-      'created_at': DateTime.now().toIso8601String(),
+      'created_at': nowUtcIso(),
       'attempts': 0,
     });
   }

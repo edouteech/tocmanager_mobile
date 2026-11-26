@@ -41,8 +41,8 @@ Future<Map<String, dynamic>?> buildVenteSyncPayloadById(
     'payment_method': row['payment_method'] ?? 'Espèces',
     'status': status,
     'notes': row['notes'],
-    'created_at': row['date'] ?? DateTime.now().toIso8601String(),
-    'updated_at': row['updated_at'] ?? DateTime.now().toIso8601String(),
+    'created_at': SyncDao.toUtcIso(row['date']),
+    'updated_at': SyncDao.toUtcIso(row['updated_at']),
     if (deletedAt != null) 'deleted_at': deletedAt,
     'items': items,
   };

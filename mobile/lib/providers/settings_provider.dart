@@ -8,6 +8,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:sqflite/sqflite.dart';
 import '../database/database_helper.dart';
 import '../models/store_settings.dart';
+import '../services/secure_storage_service.dart';
+import '../services/sync_service.dart';
 
 export '../models/store_settings.dart';
 
@@ -130,6 +132,14 @@ class SettingsProvider extends ChangeNotifier {
     }
   }
 
+  @visibleForTesting
+  Future<void> finalizeRestoredDatabase() async {
+    await DatabaseHelper.instance.clearSyncCursor();
+    await SecureStorageService.clearInitialSeedDone();
+    await loadSettings();
+    SyncService.instance.notifyDataReloadNeeded();
+  }
+
   Future<bool> restoreDatabaseBackup() async {
     try {
       final result = await FilePicker.platform.pickFiles(type: FileType.any, withData: true);
@@ -166,7 +176,7 @@ class SettingsProvider extends ChangeNotifier {
 
       await File(targetPath).writeAsBytes(fileBytes);
       await DatabaseHelper.instance.database;
-      await loadSettings();
+      await finalizeRestoredDatabase();
       return true;
     } catch (_) {
       return false;

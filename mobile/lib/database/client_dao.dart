@@ -36,7 +36,7 @@ class ClientDao {
   static Future<int> insertClient(Database db, Client client) async {
     final userMeta = await SyncDao.activeUserMeta();
     return db.transaction((txn) async {
-      final now = DateTime.now().toIso8601String();
+      final now = SyncDao.nowUtcIso();
       final syncId = const Uuid().v4();
       final clientMap = client.toMap();
       clientMap['sync_id'] = syncId;
@@ -83,7 +83,7 @@ class ClientDao {
 
   static Future<int> updateClient(Database db, Client client) async {
     return db.transaction((txn) async {
-      final now = DateTime.now().toIso8601String();
+      final now = SyncDao.nowUtcIso();
       final syncId = await SyncDao.resolveSyncId(txn, 'clients', client.id!);
       final map = client.toMap();
       map['sync_status'] = 'pending_update';
@@ -102,7 +102,7 @@ class ClientDao {
         final r = rows.first;
         final syncId = r['sync_id'] as String?;
         if (syncId != null && syncId.isNotEmpty) {
-          final now = DateTime.now().toIso8601String();
+          final now = SyncDao.nowUtcIso();
           await SyncDao.enqueueSync(txn, 'client', syncId, 'DELETE', {
             'sync_id': syncId,
             'name': r['name'] ?? '',
@@ -128,7 +128,7 @@ class ClientDao {
   }) async {
     final userMeta = await SyncDao.activeUserMeta();
     await db.transaction((txn) async {
-      final now = DateTime.now().toIso8601String();
+      final now = SyncDao.nowUtcIso();
       final currentRows = await txn.query('clients', columns: ['balance'], where: 'id = ?', whereArgs: [clientId]);
       if (currentRows.isEmpty) return;
       final currentBalance = (currentRows.first['balance'] as num?)?.toDouble() ?? 0.0;
@@ -181,7 +181,7 @@ class ClientDao {
           'notes': cr['notes'],
           'user_id': cr['user_id'] ?? userMeta.userId,
           'user_name': cr['user_name'] ?? userMeta.userName,
-          'updated_at': DateTime.now().add(const Duration(milliseconds: 1)).toIso8601String(),
+          'updated_at': DateTime.now().toUtc().add(const Duration(milliseconds: 1)).toIso8601String(),
         });
       }
       final auditSyncId = const Uuid().v4();

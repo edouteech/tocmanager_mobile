@@ -17,6 +17,7 @@ class SyncProvider extends ChangeNotifier {
 
   StreamSubscription<bool>? _netSub;
   StreamSubscription<SyncStatus>? _statusSub;
+  StreamSubscription<void>? _queueSub;
   Timer? _periodicTimer;
 
   SyncProvider() {
@@ -35,6 +36,7 @@ class SyncProvider extends ChangeNotifier {
         unawaited(refreshPendingCount());
       }
     });
+    _queueSub = SyncService.onQueueChanged.listen((_) => unawaited(refreshPendingCount()));
 
     _netSub = NetworkService.instance.onConnectivityChanged.listen((online) async {
       _isOnline = online;
@@ -76,6 +78,7 @@ class SyncProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _queueSub?.cancel();
     _statusSub?.cancel();
     _netSub?.cancel();
     _periodicTimer?.cancel();
