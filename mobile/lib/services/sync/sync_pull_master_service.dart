@@ -82,17 +82,23 @@ class SyncPullMasterService {
       final catSyncId = pMap['category_sync_id'] as String?;
       final localCatId = (catSyncId != null && catSyncId.isNotEmpty) ? catMap[catSyncId] : null;
       final resolvedMagasinId = (pMap['magasin_id'] as String?) ?? magasinId;
+      final isAvailRaw = pMap['is_available'];
+      final isAvailInt = (isAvailRaw == false || isAvailRaw == 0) ? 0 : 1;
+      final effectivePrice =
+          (pMap['custom_price'] as num?)?.toDouble() ?? (pMap['price'] as num).toDouble();
       final values = <String, dynamic>{
         'sync_id': syncId,
         'category_id': localCatId,
         'name': pMap['name'],
-        'price': (pMap['price'] as num).toDouble(),
+        'price': effectivePrice,
         'cost_price': (pMap['cost_price'] as num?)?.toDouble() ?? 0.0,
         'average_cost_price': (pMap['average_cost_price'] as num?)?.toDouble() ?? 0.0,
         'quantity': (pMap['stock'] as num?)?.toDouble() ?? 0.0,
         'alert_quantity': (pMap['min_stock'] as num?)?.toDouble() ?? 5.0,
         'unit': pMap['unit'] ?? 'pce',
         'barcode': pMap['barcode'],
+        if (pMap['image_path'] != null) 'image_path': pMap['image_path'],
+        'is_available': isAvailInt,
         if (boutiqueId != null) 'boutique_id': boutiqueId,
         'magasin_id': resolvedMagasinId,
         'updated_at': pMap['updated_at'] ?? nowIso,

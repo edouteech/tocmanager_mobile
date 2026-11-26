@@ -61,7 +61,12 @@ class ProductDao {
     });
   }
 
-  static Future<List<Product>> getProducts(Database db, {int? categoryId, String? search}) async {
+  static Future<List<Product>> getProducts(
+    Database db, {
+    int? categoryId,
+    String? search,
+    bool includeUnavailable = false,
+  }) async {
     final tenant = await SyncDao.activeTenantMeta();
     var sql = '''
       SELECT 
@@ -79,6 +84,9 @@ class ProductDao {
 
     final conditions = <String>[];
     final args = <dynamic>[];
+    if (!includeUnavailable) {
+      conditions.add('COALESCE(p.is_available, 1) = 1');
+    }
     if (tenant.boutiqueId != null) {
       conditions.add('(p.boutique_id = ? OR p.boutique_id IS NULL)');
       args.add(tenant.boutiqueId);

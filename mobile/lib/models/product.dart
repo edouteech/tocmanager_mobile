@@ -18,6 +18,7 @@ class Product {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? imagePath;
+  final bool isAvailable;
 
   final double approQuantity;
   final double approTotalCost;
@@ -40,6 +41,7 @@ class Product {
     this.barcode,
     this.alertQuantity = 5,
     this.imagePath,
+    this.isAvailable = true,
     required this.createdAt,
     required this.updatedAt,
     this.approQuantity = 0,
@@ -93,6 +95,7 @@ class Product {
         barcode: map['barcode'] as String?,
         alertQuantity: (map['alert_quantity'] as num?)?.toDouble() ?? 5,
         imagePath: map['image_path'] as String?,
+        isAvailable: (map['is_available'] as int?) != 0,
         createdAt: DateTime.parse(map['created_at'] as String),
         updatedAt: DateTime.parse(map['updated_at'] as String),
         approQuantity: (map['appro_quantity'] as num?)?.toDouble() ?? 0,
@@ -117,6 +120,7 @@ class Product {
         'barcode': barcode,
         'alert_quantity': alertQuantity,
         'image_path': imagePath,
+        'is_available': isAvailable ? 1 : 0,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -139,6 +143,7 @@ class Product {
     String? barcode,
     double? alertQuantity,
     String? imagePath,
+    bool? isAvailable,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) =>
@@ -160,6 +165,7 @@ class Product {
         barcode: barcode ?? this.barcode,
         alertQuantity: alertQuantity ?? this.alertQuantity,
         imagePath: imagePath ?? this.imagePath,
+        isAvailable: isAvailable ?? this.isAvailable,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
