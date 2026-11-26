@@ -5,13 +5,15 @@ class SyncPullOperationsService {
   static Future<void> applyPulledDecaissements(
     Transaction txn,
     List<dynamic> decaissements,
-    String nowIso,
-  ) async {
+    String nowIso, {
+    Set<String> pendingUuids = const {},
+  }) async {
     if (decaissements.isEmpty) return;
     final existingMap = await SyncPullMasterService.loadSyncIdMap(txn, 'decaissements');
     for (final d in decaissements) {
       final dMap = d as Map<String, dynamic>;
       final syncId = dMap['sync_id'] as String;
+      if (pendingUuids.contains(syncId)) continue;
       final existingId = existingMap[syncId];
       if (dMap['deleted_at'] != null) {
         if (existingId != null) {
@@ -45,8 +47,9 @@ class SyncPullOperationsService {
   static Future<void> applyPulledApprovisionnements(
     Transaction txn,
     List<dynamic> appros,
-    String nowIso,
-  ) async {
+    String nowIso, {
+    Set<String> pendingUuids = const {},
+  }) async {
     if (appros.isEmpty) return;
     final existingMap = await SyncPullMasterService.loadSyncIdMap(txn, 'approvisionnements');
     final prodMap = await SyncPullMasterService.loadSyncIdMap(txn, 'products');
@@ -54,6 +57,7 @@ class SyncPullOperationsService {
     for (final a in appros) {
       final aMap = a as Map<String, dynamic>;
       final syncId = aMap['sync_id'] as String;
+      if (pendingUuids.contains(syncId)) continue;
       final existingId = existingMap[syncId];
       if (aMap['deleted_at'] != null) {
         if (existingId != null) {
@@ -100,8 +104,9 @@ class SyncPullOperationsService {
   static Future<void> applyPulledVentes(
     Transaction txn,
     List<dynamic> ventes,
-    String nowIso,
-  ) async {
+    String nowIso, {
+    Set<String> pendingUuids = const {},
+  }) async {
     if (ventes.isEmpty) return;
     final existingMap = await SyncPullMasterService.loadSyncIdMap(txn, 'ventes');
     final clientMap = await SyncPullMasterService.loadSyncIdMap(txn, 'clients');
@@ -110,6 +115,7 @@ class SyncPullOperationsService {
     for (final v in ventes) {
       final vMap = v as Map<String, dynamic>;
       final syncId = vMap['sync_id'] as String;
+      if (pendingUuids.contains(syncId)) continue;
       final existingId = existingMap[syncId];
       if (vMap['deleted_at'] != null || vMap['status'] == 'cancelled') {
         if (existingId != null) {

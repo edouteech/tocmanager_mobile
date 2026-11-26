@@ -170,8 +170,6 @@ Future<void> submitVenteForm(
 
   if (initialVente != null) {
     AppToast.showSuccess(context, 'Vente $ticketNumber mise à jour.');
-  } else if (paidAmount > totalAmount + 0.01 && clientName != null) {
-    AppToast.showSuccess(context, 'Vente enregistrée avec surplus ajouté en avoir pour $clientName.');
   } else {
     AppToast.showSuccess(context, 'Vente $ticketNumber enregistrée.');
   }

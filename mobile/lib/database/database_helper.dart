@@ -163,7 +163,8 @@ class DatabaseHelper {
   Future<int> insertClient(Client client) async => ClientDao.insertClient(await database, client);
   Future<int> updateClient(Client client) async => ClientDao.updateClient(await database, client);
   Future<int> deleteClient(int id) async => ClientDao.deleteClient(await database, id);
-  Future<void> recordClientPayment(int clientId, double amount) async => ClientDao.recordClientPayment(await database, clientId, amount);
+  Future<void> recordClientPayment(int clientId, double amount, {int? specificVenteId}) async =>
+      ClientDao.recordClientPayment(await database, clientId, amount, specificVenteId: specificVenteId);
 
   Future<List<Supplier>> getSuppliers() async => SupplierDao.getSuppliers(await database);
   Future<int> insertSupplier(Supplier supplier) async => SupplierDao.insertSupplier(await database, supplier);

@@ -120,14 +120,25 @@ class ClientDao {
     });
   }
 
-  static Future<void> recordClientPayment(Database db, int clientId, double amount) async {
+  static Future<void> recordClientPayment(
+    Database db,
+    int clientId,
+    double amount, {
+    int? specificVenteId,
+  }) async {
     final userMeta = await SyncDao.activeUserMeta();
     await db.transaction((txn) async {
       final now = DateTime.now().toIso8601String();
+      final currentRows = await txn.query('clients', columns: ['balance'], where: 'id = ?', whereArgs: [clientId]);
+      if (currentRows.isEmpty) return;
+      final currentBalance = (currentRows.first['balance'] as num?)?.toDouble() ?? 0.0;
+
       final salesMaps = await txn.query(
         'ventes',
-        where: 'client_id = ? AND paid_amount < total_amount',
-        whereArgs: [clientId],
+        where: specificVenteId != null
+            ? 'id = ? AND client_id = ? AND paid_amount < total_amount'
+            : 'client_id = ? AND paid_amount < total_amount',
+        whereArgs: specificVenteId != null ? [specificVenteId, clientId] : [clientId],
         orderBy: 'date ASC',
       );
       var remainingPayment = amount;
@@ -154,11 +165,7 @@ class ClientDao {
         final vPayload = await buildVenteSyncPayloadById(txn, vId);
         if (vPayload != null) await SyncDao.enqueueSync(txn, 'vente', vPayload['sync_id'] as String, 'UPDATE', vPayload);
       }
-      final sumRes = await txn.rawQuery(
-        'SELECT COALESCE(SUM(total_amount - paid_amount), 0) as total_debt FROM ventes WHERE client_id = ? AND paid_amount < total_amount',
-        [clientId],
-      );
-      final newBalance = (sumRes.first['total_debt'] as num?)?.toDouble() ?? 0.0;
+      final newBalance = double.parse((currentBalance - amount).toStringAsFixed(2));
       final clientSyncId = await SyncDao.resolveSyncId(txn, 'clients', clientId);
       await txn.rawUpdate("UPDATE clients SET balance = ?, updated_at = ?, sync_status = 'pending_update' WHERE id = ?", [newBalance, now, clientId]);
       final cRows = await txn.query('clients', where: 'id = ?', whereArgs: [clientId]);

@@ -15,12 +15,18 @@ class SyncPullMasterService {
     return map;
   }
 
-  static Future<void> applyPulledCategories(Transaction txn, List<dynamic> cats, String nowIso) async {
+  static Future<void> applyPulledCategories(
+    Transaction txn,
+    List<dynamic> cats,
+    String nowIso, {
+    Set<String> pendingUuids = const {},
+  }) async {
     if (cats.isEmpty) return;
     final existingMap = await loadSyncIdMap(txn, 'categories');
     for (final c in cats) {
       final catMap = c as Map<String, dynamic>;
       final syncId = catMap['sync_id'] as String;
+      if (pendingUuids.contains(syncId)) continue;
       final existingId = existingMap[syncId];
       if (catMap['deleted_at'] != null) {
         if (existingId != null) {
@@ -56,6 +62,7 @@ class SyncPullMasterService {
     String nowIso, {
     String? boutiqueId,
     String? magasinId,
+    Set<String> pendingUuids = const {},
   }) async {
     if (prods.isEmpty) return;
     final catMap = await loadSyncIdMap(txn, 'categories');
@@ -63,6 +70,7 @@ class SyncPullMasterService {
     for (final p in prods) {
       final pMap = p as Map<String, dynamic>;
       final syncId = pMap['sync_id'] as String;
+      if (pendingUuids.contains(syncId)) continue;
       final existingId = existingMap[syncId];
       if (pMap['deleted_at'] != null) {
         if (existingId != null) {
@@ -101,12 +109,18 @@ class SyncPullMasterService {
     }
   }
 
-  static Future<void> applyPulledClients(Transaction txn, List<dynamic> clients, String nowIso) async {
+  static Future<void> applyPulledClients(
+    Transaction txn,
+    List<dynamic> clients,
+    String nowIso, {
+    Set<String> pendingUuids = const {},
+  }) async {
     if (clients.isEmpty) return;
     final existingMap = await loadSyncIdMap(txn, 'clients');
     for (final cl in clients) {
       final clMap = cl as Map<String, dynamic>;
       final syncId = clMap['sync_id'] as String;
+      if (pendingUuids.contains(syncId)) continue;
       final existingId = existingMap[syncId];
       if (clMap['deleted_at'] != null) {
         if (existingId != null) {
@@ -139,12 +153,18 @@ class SyncPullMasterService {
     }
   }
 
-  static Future<void> applyPulledSuppliers(Transaction txn, List<dynamic> suppliers, String nowIso) async {
+  static Future<void> applyPulledSuppliers(
+    Transaction txn,
+    List<dynamic> suppliers,
+    String nowIso, {
+    Set<String> pendingUuids = const {},
+  }) async {
     if (suppliers.isEmpty) return;
     final existingMap = await loadSyncIdMap(txn, 'suppliers');
     for (final s in suppliers) {
       final sMap = s as Map<String, dynamic>;
       final syncId = sMap['sync_id'] as String;
+      if (pendingUuids.contains(syncId)) continue;
       final existingId = existingMap[syncId];
       if (sMap['deleted_at'] != null) {
         if (existingId != null) {

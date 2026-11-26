@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Dict, List, Optional, Set, Tuple
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -9,9 +9,24 @@ from app.services.stock_service import initialize_product_magasin_stocks
 from app.services.sync_push_helpers import (
     apply_pushed_product_stock,
     belongs_to_other_boutique,
+    is_stale_update,
     should_apply_incoming_balance as _should_apply_incoming_balance,
 )
 from app.services.tenant_context_service import TenantContext
+
+
+def _record_quota_error(
+    http_exc: HTTPException,
+    label: str,
+    sync_id: str,
+    errors: List[str],
+    quota_exceptions: Optional[List[HTTPException]],
+) -> None:
+    if quota_exceptions is not None:
+        quota_exceptions.append(http_exc)
+    detail = http_exc.detail
+    msg = detail.get("message") or detail.get("error") if isinstance(detail, dict) else str(detail)
+    errors.append(f"{label} {sync_id}: {msg}")
 
 
 def push_master_entities(
@@ -34,8 +49,8 @@ def push_master_entities(
     a_deltas = appro_qty_deltas or {}
     cv_clients = credit_vente_clients or {}
     ca_suppliers = credit_appro_suppliers or {}
-    clients_overwritten: Set[str] = set()
-    suppliers_overwritten: Set[str] = set()
+    clients_balance_applied: Set[str] = set()
+    suppliers_balance_applied: Set[str] = set()
 
     for cat in payload.categories:
         try:
@@ -45,6 +60,9 @@ def push_master_entities(
                     errors.append(f"Category {cat.sync_id}: cross-boutique access denied")
                     continue
                 if existing:
+                    if is_stale_update(existing.updated_at, cat.updated_at):
+                        synced_uuids.append(cat.sync_id)
+                        continue
                     existing.name = cat.name
                     existing.description = cat.description
                     existing.color = cat.color
@@ -79,6 +97,9 @@ def push_master_entities(
                         continue
                 touched = (prod.sync_id in v_deltas) or (prod.sync_id in a_deltas)
                 if existing:
+                    if is_stale_update(existing.updated_at, prod.updated_at):
+                        synced_uuids.append(prod.sync_id)
+                        continue
                     existing.name = prod.name
                     existing.category_sync_id = prod.category_sync_id
                     existing.price = prod.price
@@ -117,11 +138,7 @@ def push_master_entities(
                     )
                 synced_uuids.append(prod.sync_id)
         except HTTPException as http_exc:
-            if quota_exceptions is not None:
-                quota_exceptions.append(http_exc)
-            detail = http_exc.detail
-            msg = detail.get("message") or detail.get("error") if isinstance(detail, dict) else str(detail)
-            errors.append(f"Product {prod.sync_id}: {msg}")
+            _record_quota_error(http_exc, "Product", prod.sync_id, errors, quota_exceptions)
         except Exception as exc:
             errors.append(f"Product {prod.sync_id}: {exc}")
 
@@ -135,6 +152,9 @@ def push_master_entities(
                     continue
                 tx_info = ca_suppliers.get(sup.sync_id)
                 if existing:
+                    if is_stale_update(existing.updated_at, sup.updated_at):
+                        synced_uuids.append(sup.sync_id)
+                        continue
                     existing.name = sup.name
                     existing.contact_person = sup.contact_person
                     existing.phone = sup.phone
@@ -143,11 +163,9 @@ def push_master_entities(
                     existing.notes = sup.notes
                     existing.deleted_at = sup.deleted_at
                     existing.updated_at = sup.updated_at or now
-                    if payload.is_initial_sync or tx_info is None:
+                    if payload.is_initial_sync or tx_info is None or _should_apply_incoming_balance(sup.updated_at, tx_info[1]):
                         existing.balance = sup.balance
-                    elif _should_apply_incoming_balance(sup.updated_at, tx_info[1]):
-                        existing.balance = sup.balance
-                        suppliers_overwritten.add(sup.sync_id)
+                        suppliers_balance_applied.add(sup.sync_id)
                 else:
                     if sup.deleted_at is None:
                         check_quota_limit(db, boutique_id, "max_suppliers", sup_count)
@@ -164,11 +182,7 @@ def push_master_entities(
                     ))
                 synced_uuids.append(sup.sync_id)
         except HTTPException as http_exc:
-            if quota_exceptions is not None:
-                quota_exceptions.append(http_exc)
-            detail = http_exc.detail
-            msg = detail.get("message") or detail.get("error") if isinstance(detail, dict) else str(detail)
-            errors.append(f"Supplier {sup.sync_id}: {msg}")
+            _record_quota_error(http_exc, "Supplier", sup.sync_id, errors, quota_exceptions)
         except Exception as exc:
             errors.append(f"Supplier {sup.sync_id}: {exc}")
 
@@ -184,6 +198,9 @@ def push_master_entities(
                 cl_uname = cl.user_name or (current_user.full_name or current_user.username)
                 tx_info = cv_clients.get(cl.sync_id)
                 if existing:
+                    if is_stale_update(existing.updated_at, cl.updated_at):
+                        synced_uuids.append(cl.sync_id)
+                        continue
                     existing.name = cl.name
                     existing.phone = cl.phone
                     existing.email = cl.email
@@ -193,11 +210,9 @@ def push_master_entities(
                     existing.user_name = cl_uname
                     existing.deleted_at = cl.deleted_at
                     existing.updated_at = cl.updated_at or now
-                    if payload.is_initial_sync or tx_info is None:
+                    if payload.is_initial_sync or tx_info is None or _should_apply_incoming_balance(cl.updated_at, tx_info[1]):
                         existing.balance = cl.balance
-                    elif _should_apply_incoming_balance(cl.updated_at, tx_info[1]):
-                        existing.balance = cl.balance
-                        clients_overwritten.add(cl.sync_id)
+                        clients_balance_applied.add(cl.sync_id)
                 else:
                     if cl.deleted_at is None:
                         check_quota_limit(db, boutique_id, "max_clients", cl_count)
@@ -219,12 +234,8 @@ def push_master_entities(
                         ))
                 synced_uuids.append(cl.sync_id)
         except HTTPException as http_exc:
-            if quota_exceptions is not None:
-                quota_exceptions.append(http_exc)
-            detail = http_exc.detail
-            msg = detail.get("message") or detail.get("error") if isinstance(detail, dict) else str(detail)
-            errors.append(f"Client {cl.sync_id}: {msg}")
+            _record_quota_error(http_exc, "Client", cl.sync_id, errors, quota_exceptions)
         except Exception as exc:
             errors.append(f"Client {cl.sync_id}: {exc}")
 
-    return clients_overwritten, suppliers_overwritten
+    return clients_balance_applied, suppliers_balance_applied
