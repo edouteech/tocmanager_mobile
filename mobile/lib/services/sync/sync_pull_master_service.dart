@@ -50,7 +50,13 @@ class SyncPullMasterService {
     }
   }
 
-  static Future<void> applyPulledProducts(Transaction txn, List<dynamic> prods, String nowIso) async {
+  static Future<void> applyPulledProducts(
+    Transaction txn,
+    List<dynamic> prods,
+    String nowIso, {
+    String? boutiqueId,
+    String? magasinId,
+  }) async {
     if (prods.isEmpty) return;
     final catMap = await loadSyncIdMap(txn, 'categories');
     final existingMap = await loadSyncIdMap(txn, 'products');
@@ -67,7 +73,8 @@ class SyncPullMasterService {
       }
       final catSyncId = pMap['category_sync_id'] as String?;
       final localCatId = (catSyncId != null && catSyncId.isNotEmpty) ? catMap[catSyncId] : null;
-      final values = {
+      final resolvedMagasinId = (pMap['magasin_id'] as String?) ?? magasinId;
+      final values = <String, dynamic>{
         'sync_id': syncId,
         'category_id': localCatId,
         'name': pMap['name'],
@@ -78,6 +85,8 @@ class SyncPullMasterService {
         'alert_quantity': (pMap['min_stock'] as num?)?.toDouble() ?? 5.0,
         'unit': pMap['unit'] ?? 'pce',
         'barcode': pMap['barcode'],
+        if (boutiqueId != null) 'boutique_id': boutiqueId,
+        'magasin_id': resolvedMagasinId,
         'updated_at': pMap['updated_at'] ?? nowIso,
         'sync_status': 'synced',
       };

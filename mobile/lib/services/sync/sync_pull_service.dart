@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:sqflite/sqflite.dart';
 import '../../database/database_helper.dart';
+import '../../database/sync_dao.dart';
 import '../api_client.dart';
 import 'sync_pull_master_service.dart';
 import 'sync_pull_operations_service.dart';
@@ -67,6 +68,7 @@ class SyncPullService {
     String? cursorOverride,
   }) async {
     final db = await DatabaseHelper.instance.database;
+    final tenant = await SyncDao.activeTenantMeta();
     final serverTime = (data['server_time'] as String?) ?? DateTime.now().toIso8601String();
     final nowIso = DateTime.now().toIso8601String();
 
@@ -79,7 +81,13 @@ class SyncPullService {
     try {
       await db.transaction((txn) async {
         await SyncPullMasterService.applyPulledCategories(txn, (data['categories'] as List<dynamic>?) ?? [], nowIso);
-        await SyncPullMasterService.applyPulledProducts(txn, (data['products'] as List<dynamic>?) ?? [], nowIso);
+        await SyncPullMasterService.applyPulledProducts(
+          txn,
+          (data['products'] as List<dynamic>?) ?? [],
+          nowIso,
+          boutiqueId: tenant.boutiqueId,
+          magasinId: tenant.magasinId,
+        );
         await SyncPullMasterService.applyPulledClients(txn, (data['clients'] as List<dynamic>?) ?? [], nowIso);
         await SyncPullMasterService.applyPulledSuppliers(txn, (data['suppliers'] as List<dynamic>?) ?? [], nowIso);
         await SyncPullOperationsService.applyPulledDecaissements(txn, (data['decaissements'] as List<dynamic>?) ?? [], nowIso);

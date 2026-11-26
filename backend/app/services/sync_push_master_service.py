@@ -6,26 +6,12 @@ from app.models import AuditLog, Category, Client, Product, Supplier
 from app.schemas.sync import SyncPushRequest
 from app.services.entitlements import check_quota_limit
 from app.services.stock_service import initialize_product_magasin_stocks
+from app.services.sync_push_helpers import (
+    apply_pushed_product_stock,
+    belongs_to_other_boutique,
+    should_apply_incoming_balance as _should_apply_incoming_balance,
+)
 from app.services.tenant_context_service import TenantContext
-
-
-def belongs_to_other_boutique(record, boutique_id: str) -> bool:
-    return record is not None and record.boutique_id is not None and record.boutique_id != boutique_id
-
-
-def _aware_dt(dt: Optional[datetime]) -> Optional[datetime]:
-    if dt is None:
-        return None
-    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
-
-
-def _should_apply_incoming_balance(
-    incoming_updated_at: Optional[datetime],
-    latest_tx_dt: Optional[datetime],
-) -> bool:
-    inc = _aware_dt(incoming_updated_at)
-    tx = _aware_dt(latest_tx_dt)
-    return bool(inc and tx and inc > tx)
 
 
 def push_master_entities(
@@ -98,7 +84,9 @@ def push_master_entities(
                     existing.cost_price = prod.cost_price
                     existing.average_cost_price = prod.average_cost_price or 0.0
                     if payload.is_initial_sync or not touched:
-                        existing.stock = prod.stock
+                        apply_pushed_product_stock(
+                            db, ctx, existing, prod.stock, prod.min_stock, prod.magasin_id
+                        )
                     existing.min_stock = prod.min_stock
                     existing.barcode = prod.barcode
                     existing.unit = prod.unit
@@ -123,7 +111,8 @@ def push_master_entities(
                     db.flush()
                     initialize_product_magasin_stocks(
                         db=db, boutique_id=boutique_id, product=new_prod,
-                        target_magasin_id=ctx.requested_magasin_id, initial_stock=init_stock,
+                        target_magasin_id=prod.magasin_id or ctx.requested_magasin_id,
+                        initial_stock=init_stock,
                     )
                 synced_uuids.append(prod.sync_id)
         except HTTPException:
