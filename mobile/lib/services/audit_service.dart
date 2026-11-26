@@ -62,7 +62,7 @@ class AuditService {
     try {
       final user = await SecureStorageService.getUser();
       final syncId = const Uuid().v4();
-      final now = DateTime.now().toIso8601String();
+      final now = DateTime.now().toUtc().toIso8601String();
       final detailsJson = details != null ? jsonEncode(details) : null;
 
       final db = await DatabaseHelper.instance.database;

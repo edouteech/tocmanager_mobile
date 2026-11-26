@@ -31,7 +31,7 @@ class DecaissementDao {
         'category': d.category,
         'beneficiary': d.reference,
         'payment_method': 'Espèces',
-        'date': d.date.toIso8601String(),
+        'date': d.date.toUtc().toIso8601String(),
         'notes': d.notes,
         if (userId != null) 'user_id': userId,
         if (userName != null) 'user_name': userName,
@@ -44,7 +44,7 @@ class DecaissementDao {
     final tenant = await SyncDao.activeTenantMeta();
 
     return db.transaction((txn) async {
-      final now = DateTime.now().toIso8601String();
+      final now = SyncDao.nowUtcIso();
       final syncId = const Uuid().v4();
       final decMap = d.toMap();
       decMap['sync_id'] = syncId;
@@ -97,7 +97,7 @@ class DecaissementDao {
 
   static Future<int> updateDecaissement(Database db, Decaissement d) async {
     return db.transaction((txn) async {
-      final now = DateTime.now().toIso8601String();
+      final now = SyncDao.nowUtcIso();
       final syncId = await SyncDao.resolveSyncId(txn, 'decaissements', d.id!);
       final map = d.toMap();
       map['sync_status'] = 'pending_update';
@@ -116,7 +116,7 @@ class DecaissementDao {
         final r = rows.first;
         final syncId = r['sync_id'] as String?;
         if (syncId != null && syncId.isNotEmpty) {
-          final now = DateTime.now().toIso8601String();
+          final now = SyncDao.nowUtcIso();
           await SyncDao.enqueueSync(txn, 'decaissement', syncId, 'DELETE', {
             'sync_id': syncId,
             'title': r['description'] ?? 'Dépense',
@@ -124,7 +124,7 @@ class DecaissementDao {
             'category': r['category'] ?? 'Divers',
             'beneficiary': r['reference'],
             'payment_method': 'Espèces',
-            'date': r['date'] ?? now,
+            'date': SyncDao.toUtcIso(r['date'], fallback: now),
             'notes': r['notes'],
             'updated_at': now,
             'deleted_at': now,

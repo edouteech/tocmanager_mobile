@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/decaissement.dart';
 import '../database/database_helper.dart';
+import '../services/sync_service.dart';
 
 class DecaissementProvider extends ChangeNotifier {
   List<Decaissement> _items = [];
@@ -23,15 +24,18 @@ class DecaissementProvider extends ChangeNotifier {
   Future<void> add(Decaissement dec) async {
     await DatabaseHelper.instance.insertDecaissement(dec);
     await load();
+    SyncService.instance.notifyLocalMutation();
   }
 
   Future<void> update(Decaissement dec) async {
     await DatabaseHelper.instance.updateDecaissement(dec);
     await load();
+    SyncService.instance.notifyLocalMutation();
   }
 
   Future<void> delete(int id) async {
     await DatabaseHelper.instance.deleteDecaissement(id);
     await load();
+    SyncService.instance.notifyLocalMutation();
   }
 }

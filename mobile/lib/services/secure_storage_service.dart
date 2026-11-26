@@ -35,6 +35,10 @@ class SecureStorageService {
     await _storage.write(key: _kInitialSeedDone, value: 'true');
   }
 
+  static Future<void> clearInitialSeedDone() async {
+    await _storage.delete(key: _kInitialSeedDone);
+  }
+
   /// Sauvegarde les tokens d'authentification
   static Future<void> saveTokens({
     required String accessToken,

@@ -1,16 +1,53 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:http/http.dart' as http;
+import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../../database/database_helper.dart';
+import '../../database/sync_dao.dart';
 import '../api_client.dart';
 import '../secure_storage_service.dart';
+import 'sync_seed_payload_builder.dart';
 
 class SyncSeedService {
-  static String _resolveRowSyncId(Map<String, dynamic> row, Uuid uuid) {
-    final s = row['sync_id'] as String?;
-    return (s != null && s.isNotEmpty) ? s : uuid.v4();
+  static const int seedChunkSize = 100;
+  static const Duration seedTimeout = Duration(seconds: 60);
+
+  static Future<Map<int, String>> _ensureRowSyncIds(
+    Transaction txn,
+    String table,
+    List<Map<String, dynamic>> rows,
+    Uuid uuid,
+  ) async {
+    final map = <int, String>{};
+    for (final row in rows) {
+      final id = row['id'] as int;
+      final existing = row['sync_id'] as String?;
+      if (existing != null && existing.isNotEmpty) {
+        map[id] = existing;
+      } else {
+        final generated = uuid.v4();
+        map[id] = generated;
+        await txn.update(table, {'sync_id': generated}, where: 'id = ?', whereArgs: [id]);
+      }
+    }
+    return map;
   }
 
-  static Future<void> checkAndPerformInitialSeed(String baseUrl) async {
+  static Future<void> checkAndPerformInitialSeed(String baseUrl) {
+    return checkAndPerformInitialSeedWithPost(
+      (body) => ApiClient.instance.post(
+        Uri.parse('$baseUrl/sync/push'),
+        body: jsonEncode(body),
+        timeout: seedTimeout,
+      ),
+    );
+  }
+
+  @visibleForTesting
+  static Future<void> checkAndPerformInitialSeedWithPost(
+    Future<http.Response> Function(Map<String, dynamic> body) postBatch,
+  ) async {
     if (await SecureStorageService.hasInitialSeedDone()) return;
 
     final db = await DatabaseHelper.instance.database;
@@ -33,159 +70,76 @@ class SyncSeedService {
       return;
     }
 
-    const uuid = Uuid();
-    final nowIso = DateTime.now().toIso8601String();
-    final catSyncById = {for (final c in catRows) c['id'] as int: _resolveRowSyncId(c, uuid)};
-    final prodSyncById = <int, String>{};
-    final prodNameById = <int, String>{};
-    for (final p in prodRows) {
-      final pid = p['id'] as int;
-      prodSyncById[pid] = _resolveRowSyncId(p, uuid);
-      prodNameById[pid] = (p['name'] as String?) ?? 'Article';
-    }
-    final supSyncById = {for (final s in supRows) s['id'] as int: _resolveRowSyncId(s, uuid)};
-    final clientSyncById = {for (final cl in clientRows) cl['id'] as int: _resolveRowSyncId(cl, uuid)};
-
     final allItems = await db.query('vente_items');
+    const uuid = Uuid();
+    final nowUtc = SyncDao.nowUtcIso();
+
+    late Map<int, String> catSyncById;
+    late Map<int, String> prodSyncById;
+    late Map<int, String> supSyncById;
+    late Map<int, String> clientSyncById;
+    late Map<int, String> decSyncById;
+    late Map<int, String> approSyncById;
+    late Map<int, String> venteSyncById;
+    late Map<int, String> itemSyncById;
+
+    await db.transaction((txn) async {
+      catSyncById = await _ensureRowSyncIds(txn, 'categories', catRows, uuid);
+      prodSyncById = await _ensureRowSyncIds(txn, 'products', prodRows, uuid);
+      supSyncById = await _ensureRowSyncIds(txn, 'suppliers', supRows, uuid);
+      clientSyncById = await _ensureRowSyncIds(txn, 'clients', clientRows, uuid);
+      decSyncById = await _ensureRowSyncIds(txn, 'decaissements', decRows, uuid);
+      approSyncById = await _ensureRowSyncIds(txn, 'approvisionnements', appRows, uuid);
+      venteSyncById = await _ensureRowSyncIds(txn, 'ventes', venteRows, uuid);
+      itemSyncById = await _ensureRowSyncIds(txn, 'vente_items', allItems, uuid);
+    });
+
+    final prodNameById = {
+      for (final p in prodRows) p['id'] as int: (p['name'] as String?) ?? 'Article',
+    };
     final itemsByVente = <int, List<Map<String, dynamic>>>{};
     for (final it in allItems) {
       final vId = it['vente_id'] as int?;
       if (vId != null) itemsByVente.putIfAbsent(vId, () => []).add(it);
     }
 
-    final seedBody = {
-      'is_initial_sync': true,
-      'categories': catRows.map((c) {
-        final colorInt = (c['color'] as int?) ?? 0xFF2196F3;
-        return {
-          'sync_id': catSyncById[c['id'] as int],
-          'name': c['name'] ?? '',
-          'description': c['description'],
-          'color': '#${(colorInt & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}',
-          'icon': c['icon']?.toString(),
-          'updated_at': c['updated_at'] ?? nowIso,
-        };
-      }).toList(),
-      'products': prodRows.map((p) {
-        final cid = p['category_id'] as int?;
-        return {
-          'sync_id': prodSyncById[p['id'] as int],
-          'name': p['name'] ?? '',
-          'category_sync_id': cid != null ? catSyncById[cid] : null,
-          'price': (p['price'] as num?)?.toDouble() ?? 0.0,
-          'cost_price': (p['cost_price'] as num?)?.toDouble() ?? 0.0,
-          'average_cost_price': (p['average_cost_price'] as num?)?.toDouble() ?? 0.0,
-          'stock': (p['quantity'] as num?)?.toDouble() ?? 0.0,
-          'min_stock': (p['alert_quantity'] as num?)?.toDouble() ?? 5.0,
-          'barcode': p['barcode'],
-          'unit': p['unit'] ?? 'pièce',
-          'is_active': true,
-          'updated_at': p['updated_at'] ?? nowIso,
-        };
-      }).toList(),
-      'suppliers': supRows.map((s) => {
-            'sync_id': supSyncById[s['id'] as int],
-            'name': s['name'] ?? '',
-            'contact_person': s['contact_person'],
-            'phone': s['phone'],
-            'email': s['email'],
-            'address': s['address'],
-            'balance': (s['balance'] as num?)?.toDouble() ?? 0.0,
-            'notes': s['notes'],
-            'updated_at': s['updated_at'] ?? nowIso,
-          }).toList(),
-      'clients': clientRows.map((cl) => {
-            'sync_id': clientSyncById[cl['id'] as int],
-            'name': cl['name'] ?? '',
-            'phone': cl['phone'],
-            'email': cl['email'],
-            'address': cl['address'],
-            'balance': (cl['balance'] as num?)?.toDouble() ?? 0.0,
-            'notes': cl['notes'],
-            'user_id': cl['user_id'],
-            'user_name': cl['user_name'],
-            'updated_at': cl['updated_at'] ?? nowIso,
-          }).toList(),
-      'decaissements': decRows.map((d) => {
-            'sync_id': _resolveRowSyncId(d, uuid),
-            if (d['magasin_id'] != null) 'magasin_id': d['magasin_id'],
-            'title': d['description'] ?? 'Dépense',
-            'amount': (d['amount'] as num?)?.toDouble() ?? 0.0,
-            'category': d['category'] ?? 'Divers',
-            'beneficiary': d['reference'],
-            'payment_method': 'Espèces',
-            'date': d['date'] ?? nowIso,
-            'notes': d['notes'],
-            'user_id': d['user_id'],
-            'user_name': d['user_name'],
-            'updated_at': d['updated_at'] ?? nowIso,
-          }).toList(),
-      'approvisionnements': appRows.map((a) {
-        final pid = a['product_id'] as int?;
-        final sid = a['supplier_id'] as int?;
-        final totalVal = (a['total'] as num?)?.toDouble() ?? 0.0;
-        final paidVal = (a['paid_amount'] as num?)?.toDouble() ?? totalVal;
-        return {
-          'sync_id': _resolveRowSyncId(a, uuid),
-          if (a['magasin_id'] != null) 'magasin_id': a['magasin_id'],
-          'supplier_sync_id': sid != null ? supSyncById[sid] : null,
-          'supplier_name': a['supplier'],
-          'product_sync_id': pid != null ? prodSyncById[pid] : null,
-          'product_name': pid != null ? (prodNameById[pid] ?? 'Article') : 'Article',
-          'quantity': (a['quantity'] as num?)?.toDouble() ?? 0.0,
-          'unit_cost': (a['unit_price'] as num?)?.toDouble() ?? 0.0,
-          'total_cost': totalVal,
-          'paid_amount': paidVal,
-          'payment_status': paidVal < totalVal ? 'Crédit' : 'Payé',
-          'date': a['date'] ?? nowIso,
-          'notes': a['notes'],
-          'user_id': a['user_id'],
-          'user_name': a['user_name'],
-          'updated_at': a['updated_at'] ?? nowIso,
-        };
-      }).toList(),
-      'ventes': venteRows.map((v) {
-        final vid = v['id'] as int;
-        final cid = v['client_id'] as int?;
-        return {
-          'sync_id': _resolveRowSyncId(v, uuid),
-          if (v['magasin_id'] != null) 'magasin_id': v['magasin_id'],
-          'ticket_number': v['ticket_number'] ?? 'TICKET',
-          'client_sync_id': cid != null ? clientSyncById[cid] : null,
-          'client_name': v['client_name'] ?? 'Occasionnel',
-          'user_id': v['user_id'],
-          'user_name': v['user_name'],
-          'total_amount': (v['total_amount'] as num?)?.toDouble() ?? 0.0,
-          'paid_amount': (v['paid_amount'] as num?)?.toDouble() ?? 0.0,
-          'discount_amount': (v['discount_amount'] as num?)?.toDouble() ?? 0.0,
-          'payment_method': v['payment_method'] ?? 'Espèces',
-          'notes': v['notes'],
-          'created_at': v['date'] ?? nowIso,
-          'updated_at': v['updated_at'] ?? v['date'] ?? nowIso,
-          'items': (itemsByVente[vid] ?? const []).map((it) {
-            final pid = it['product_id'] as int?;
-            return {
-              'sync_id': _resolveRowSyncId(it, uuid),
-              'product_sync_id': pid != null ? prodSyncById[pid] : null,
-              'product_name': it['product_name'] ?? 'Article',
-              'quantity': (it['quantity'] as num?)?.toDouble() ?? 1.0,
-              'unit_price': (it['unit_price'] as num?)?.toDouble() ?? 0.0,
-              'cost_price': (it['cost_price'] as num?)?.toDouble() ?? 0.0,
-              'total': (it['total'] as num?)?.toDouble() ?? 0.0,
-            };
-          }).toList(),
-        };
-      }).toList(),
-    };
+    final orderedSections = <MapEntry<String, List<Map<String, dynamic>>>>[
+      MapEntry('categories', SyncSeedPayloadBuilder.buildCategories(catRows, catSyncById, nowUtc)),
+      MapEntry('products', SyncSeedPayloadBuilder.buildProducts(prodRows, prodSyncById, catSyncById, nowUtc)),
+      MapEntry('suppliers', SyncSeedPayloadBuilder.buildSuppliers(supRows, supSyncById, nowUtc)),
+      MapEntry('clients', SyncSeedPayloadBuilder.buildClients(clientRows, clientSyncById, nowUtc)),
+      MapEntry('ventes', SyncSeedPayloadBuilder.buildVentes(venteRows, venteSyncById, clientSyncById, prodSyncById, itemSyncById, itemsByVente, nowUtc)),
+      MapEntry('decaissements', SyncSeedPayloadBuilder.buildDecaissements(decRows, decSyncById, nowUtc)),
+      MapEntry('approvisionnements', SyncSeedPayloadBuilder.buildApprovisionnements(appRows, approSyncById, supSyncById, prodSyncById, prodNameById, nowUtc)),
+    ];
 
-    final response = await ApiClient.instance.post(
-      Uri.parse('$baseUrl/sync/push'),
-      body: jsonEncode(seedBody),
-    );
-    if (response.statusCode == 200) {
-      await SecureStorageService.setInitialSeedDone();
-    } else {
-      throw Exception('Initial seed failed (${response.statusCode}): ${response.body}');
+    var currentBatch = <String, dynamic>{'is_initial_sync': true};
+    var currentCount = 0;
+
+    Future<void> flushBatch() async {
+      if (currentCount == 0) return;
+      final res = await postBatch(currentBatch);
+      if (res.statusCode != 200) {
+        throw Exception('Initial seed failed (${res.statusCode}): ${res.body}');
+      }
+      currentBatch = <String, dynamic>{'is_initial_sync': true};
+      currentCount = 0;
     }
+
+    for (final section in orderedSections) {
+      var offset = 0;
+      while (offset < section.value.length) {
+        final room = seedChunkSize - currentCount;
+        final end = (offset + room < section.value.length) ? offset + room : section.value.length;
+        currentBatch[section.key] = section.value.sublist(offset, end);
+        currentCount += end - offset;
+        offset = end;
+        if (currentCount >= seedChunkSize) {
+          await flushBatch();
+        }
+      }
+    }
+    await flushBatch();
+    await SecureStorageService.setInitialSeedDone();
   }
 }

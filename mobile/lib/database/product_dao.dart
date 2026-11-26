@@ -2,6 +2,8 @@ import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../models/category.dart';
 import '../models/product.dart';
+import '../services/media_upload_service.dart';
+import 'product_sync_payload.dart';
 import 'sync_dao.dart';
 
 class ProductDao {
@@ -10,47 +12,29 @@ class ProductDao {
     return maps.map((m) => Category.fromMap(m)).toList();
   }
 
-  static Map<String, dynamic> _categorySyncPayload(
-    Category cat,
-    String syncId,
-    String now, {
-    String? deletedAt,
-  }) {
-    final hexColor = '#${(cat.color & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
-    return {
-      'sync_id': syncId,
-      'name': cat.name,
-      'description': cat.description,
-      'color': hexColor,
-      'icon': cat.icon.toString(),
-      'updated_at': now,
-      if (deletedAt != null) 'deleted_at': deletedAt,
-    };
-  }
-
   static Future<int> insertCategory(Database db, Category cat) async {
     return db.transaction((txn) async {
-      final now = DateTime.now().toIso8601String();
+      final now = SyncDao.nowUtcIso();
       final syncId = const Uuid().v4();
       final map = cat.toMap();
       map['sync_id'] = syncId;
       map['sync_status'] = 'pending_insert';
       map['updated_at'] = now;
       final id = await txn.insert('categories', map);
-      await SyncDao.enqueueSync(txn, 'category', syncId, 'INSERT', _categorySyncPayload(cat, syncId, now));
+      await SyncDao.enqueueSync(txn, 'category', syncId, 'INSERT', buildCategorySyncPayload(cat, syncId, now));
       return id;
     });
   }
 
   static Future<int> updateCategory(Database db, Category cat) async {
     return db.transaction((txn) async {
-      final now = DateTime.now().toIso8601String();
+      final now = SyncDao.nowUtcIso();
       final syncId = await SyncDao.resolveSyncId(txn, 'categories', cat.id!);
       final map = cat.toMap();
       map['sync_status'] = 'pending_update';
       map['updated_at'] = now;
       final res = await txn.update('categories', map, where: 'id = ?', whereArgs: [cat.id]);
-      await SyncDao.enqueueSync(txn, 'category', syncId, 'UPDATE', _categorySyncPayload(cat, syncId, now));
+      await SyncDao.enqueueSync(txn, 'category', syncId, 'UPDATE', buildCategorySyncPayload(cat, syncId, now));
       return res;
     });
   }
@@ -63,7 +47,7 @@ class ProductDao {
       if (existing.isNotEmpty) {
         final syncId = existing.first['sync_id'] as String?;
         if (syncId != null && syncId.isNotEmpty) {
-          final now = DateTime.now().toIso8601String();
+          final now = SyncDao.nowUtcIso();
           await SyncDao.enqueueSync(txn, 'category', syncId, 'DELETE', {
             'sync_id': syncId,
             'name': existing.first['name'] ?? '',
@@ -141,37 +125,10 @@ class ProductDao {
     return Product.fromMap(maps.first);
   }
 
-  static Future<Map<String, dynamic>> _productSyncPayload(
-    DatabaseExecutor txn,
-    Product p,
-    String syncId,
-    String now, {
-    String? deletedAt,
-    String? magasinId,
-  }) async {
-    final catSyncId = await SyncDao.findSyncId(txn, 'categories', p.categoryId);
-    return {
-      'sync_id': syncId,
-      'name': p.name,
-      'category_sync_id': catSyncId,
-      'price': p.price,
-      'cost_price': p.costPrice,
-      'average_cost_price': p.averageCostPrice ?? 0.0,
-      'stock': p.quantity,
-      'min_stock': p.alertQuantity,
-      'barcode': p.barcode,
-      'unit': p.unit,
-      if (magasinId != null && magasinId.isNotEmpty) 'magasin_id': magasinId,
-      'is_active': deletedAt == null,
-      'updated_at': now,
-      if (deletedAt != null) 'deleted_at': deletedAt,
-    };
-  }
-
   static Future<int> insertProduct(Database db, Product p) async {
     final tenant = await SyncDao.activeTenantMeta();
     return db.transaction((txn) async {
-      final now = DateTime.now().toIso8601String();
+      final now = SyncDao.nowUtcIso();
       final syncId = const Uuid().v4();
       final map = p.toMap();
       map['sync_id'] = syncId;
@@ -185,7 +142,7 @@ class ProductDao {
         'product',
         syncId,
         'INSERT',
-        await _productSyncPayload(txn, p, syncId, now, magasinId: tenant.magasinId),
+        await buildProductSyncPayload(txn, p, syncId, now, magasinId: tenant.magasinId),
       );
       return id;
     });
@@ -194,7 +151,7 @@ class ProductDao {
   static Future<int> updateProduct(Database db, Product p) async {
     final tenant = await SyncDao.activeTenantMeta();
     return db.transaction((txn) async {
-      final now = DateTime.now().toIso8601String();
+      final now = SyncDao.nowUtcIso();
       final syncId = await SyncDao.resolveSyncId(txn, 'products', p.id!);
       final map = p.toMap();
       map['sync_status'] = 'pending_update';
@@ -207,7 +164,7 @@ class ProductDao {
         'product',
         syncId,
         'UPDATE',
-        await _productSyncPayload(txn, p, syncId, now, magasinId: tenant.magasinId),
+        await buildProductSyncPayload(txn, p, syncId, now, magasinId: tenant.magasinId),
       );
       return res;
     });
@@ -222,9 +179,10 @@ class ProductDao {
         final r = rows.first;
         final syncId = r['sync_id'] as String?;
         if (syncId != null && syncId.isNotEmpty) {
-          final now = DateTime.now().toIso8601String();
+          final now = SyncDao.nowUtcIso();
           final catSyncId = await SyncDao.findSyncId(txn, 'categories', r['category_id'] as int?);
           final resolvedMagasinId = (r['magasin_id'] as String?) ?? tenant.magasinId;
+          final remoteImg = r['image_path'] as String?;
           await SyncDao.enqueueSync(txn, 'product', syncId, 'DELETE', {
             'sync_id': syncId,
             'name': r['name'] ?? '',
@@ -235,6 +193,7 @@ class ProductDao {
             'min_stock': (r['alert_quantity'] as num?)?.toDouble() ?? 5.0,
             'unit': r['unit'] ?? 'pièce',
             'barcode': r['barcode'],
+            if (MediaUploadService.isRemoteImagePath(remoteImg)) 'image_path': remoteImg,
             if (resolvedMagasinId != null && resolvedMagasinId.isNotEmpty)
               'magasin_id': resolvedMagasinId,
             'is_active': false,

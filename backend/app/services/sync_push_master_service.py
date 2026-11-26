@@ -112,6 +112,8 @@ def push_master_entities(
                     existing.min_stock = prod.min_stock
                     existing.barcode = prod.barcode
                     existing.unit = prod.unit
+                    if prod.image_path is not None:
+                        existing.image_path = prod.image_path
                     existing.is_active = prod.is_active
                     existing.deleted_at = prod.deleted_at
                     existing.updated_at = prod.updated_at or now
@@ -125,9 +127,9 @@ def push_master_entities(
                         sync_id=prod.sync_id, boutique_id=boutique_id, name=prod.name,
                         category_sync_id=prod.category_sync_id, price=prod.price, cost_price=prod.cost_price,
                         average_cost_price=prod.average_cost_price or 0.0, stock=init_stock, min_stock=prod.min_stock,
-                        barcode=prod.barcode, unit=prod.unit or "pièce", is_active=prod.is_active,
-                        created_at=prod.updated_at or now, updated_at=prod.updated_at or now,
-                        deleted_at=prod.deleted_at,
+                        barcode=prod.barcode, unit=prod.unit or "pièce", image_path=prod.image_path,
+                        is_active=prod.is_active, created_at=prod.updated_at or now,
+                        updated_at=prod.updated_at or now, deleted_at=prod.deleted_at,
                     )
                     db.add(new_prod)
                     db.flush()

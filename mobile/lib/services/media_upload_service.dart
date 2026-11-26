@@ -10,7 +10,10 @@ class MediaUploadService {
 
   static bool isRemoteImagePath(String? path) {
     if (path == null || path.isEmpty) return false;
-    return path.startsWith('http://') || path.startsWith('https://') || path.startsWith('/');
+    return path.startsWith('http://') ||
+        path.startsWith('https://') ||
+        path.startsWith('/api/') ||
+        path.startsWith('/uploads/');
   }
 
   static String resolveDisplayImageUrl(String path) {
@@ -26,13 +29,43 @@ class MediaUploadService {
     return path;
   }
 
+  Future<http.StreamedResponse> _sendMultipartUpload({
+    required String baseUrl,
+    required String token,
+    required String? boutiqueId,
+    required String? magasinId,
+    required bool isConsolidated,
+    required Uint8List imageBytes,
+    required String filename,
+    Future<http.StreamedResponse> Function(http.MultipartRequest)? sendRequest,
+  }) {
+    final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/uploads/images'));
+    request.headers['Authorization'] = 'Bearer $token';
+    request.headers.addAll(
+      ApiClient.buildTenantHeaders(
+        boutiqueId: boutiqueId,
+        magasinId: magasinId,
+        isConsolidated: isConsolidated,
+      ),
+    );
+    request.files.add(
+      http.MultipartFile.fromBytes('file', imageBytes, filename: filename),
+    );
+    final future = sendRequest != null ? sendRequest(request) : request.send();
+    return future.timeout(const Duration(seconds: 20));
+  }
+
   /// Upload image bytes to `/uploads/images`; returns remote URL or null when offline.
   Future<String?> uploadProductImage(
     Uint8List imageBytes, {
     String filename = 'product.png',
+    @visibleForTesting Future<http.StreamedResponse> Function(http.MultipartRequest)? sendRequest,
+    @visibleForTesting Future<bool> Function()? checkRefresh,
+    @visibleForTesting Future<bool> Function()? onRefreshTokens,
   }) async {
     try {
-      final token = await SecureStorageService.getAccessToken();
+      await (checkRefresh ?? ApiClient.instance.checkAndProactiveRefresh)();
+      var token = await SecureStorageService.getAccessToken();
       if (token == null || token.isEmpty) return null;
 
       final baseUrl = await SecureStorageService.getServerUrl();
@@ -40,24 +73,33 @@ class MediaUploadService {
       final magasinId = await SecureStorageService.getCurrentMagasinId();
       final isConsolidated = await SecureStorageService.isConsolidatedMode();
 
-      final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/uploads/images'));
-      request.headers['Authorization'] = 'Bearer $token';
-      request.headers.addAll(
-        ApiClient.buildTenantHeaders(
+      var streamed = await _sendMultipartUpload(
+        baseUrl: baseUrl,
+        token: token,
+        boutiqueId: boutiqueId,
+        magasinId: magasinId,
+        isConsolidated: isConsolidated,
+        imageBytes: imageBytes,
+        filename: filename,
+        sendRequest: sendRequest,
+      );
+
+      if (streamed.statusCode == 401 && await (onRefreshTokens ?? ApiClient.instance.refreshTokens)()) {
+        await streamed.stream.drain<void>();
+        token = await SecureStorageService.getAccessToken();
+        if (token == null || token.isEmpty) return null;
+        streamed = await _sendMultipartUpload(
+          baseUrl: baseUrl,
+          token: token,
           boutiqueId: boutiqueId,
           magasinId: magasinId,
           isConsolidated: isConsolidated,
-        ),
-      );
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'file',
-          imageBytes,
+          imageBytes: imageBytes,
           filename: filename,
-        ),
-      );
+          sendRequest: sendRequest,
+        );
+      }
 
-      final streamed = await request.send().timeout(const Duration(seconds: 20));
       final body = await streamed.stream.bytesToString();
       if (streamed.statusCode == 200 || streamed.statusCode == 201) {
         final decoded = jsonDecode(body) as Map<String, dynamic>;

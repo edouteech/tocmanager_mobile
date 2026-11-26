@@ -41,18 +41,19 @@ class VenteDao {
     final userName = userMeta.userName;
 
     return db.transaction((txn) async {
-      final now = DateTime.now();
+      final now = DateTime.now().toUtc();
+      final nowIso = now.toIso8601String();
       final countRes = Sqflite.firstIntValue(await txn.rawQuery('SELECT COUNT(*) FROM ventes')) ?? 0;
       final venteSyncId = v.syncId ?? const Uuid().v4();
       final suffix = venteSyncId.replaceAll('-', '').substring(0, 4).toUpperCase();
       final ticketNum = v.ticketNumber.isNotEmpty
           ? v.ticketNumber
-          : 'VNT-${DateFormat('yyyyMMdd').format(now)}-${(countRes + 1).toString().padLeft(4, '0')}-$suffix';
+          : 'VNT-${DateFormat('yyyyMMdd').format(now.toLocal())}-${(countRes + 1).toString().padLeft(4, '0')}-$suffix';
       final venteMap = v.toMap();
       venteMap['ticket_number'] = ticketNum;
       venteMap['sync_id'] = venteSyncId;
       venteMap['sync_status'] = 'pending_insert';
-      venteMap['updated_at'] = now.toIso8601String();
+      venteMap['updated_at'] = nowIso;
       if (userId != null) venteMap['user_id'] = userId;
       if (userName != null) venteMap['user_name'] = userName;
       if (tenant.boutiqueId != null) venteMap['boutique_id'] = tenant.boutiqueId;
@@ -69,7 +70,7 @@ class VenteDao {
         await txn.insert('vente_items', itemMap);
         await txn.rawUpdate(
           'UPDATE products SET quantity = max(0, quantity - ?), updated_at = ? WHERE id = ?',
-          [item.quantity, now.toIso8601String(), item.productId],
+          [item.quantity, nowIso, item.productId],
         );
         itemsPayload.add({
           'sync_id': itemSyncId,
@@ -87,7 +88,7 @@ class VenteDao {
         if (diff > 0) {
           await txn.rawUpdate(
             'UPDATE clients SET balance = balance + ?, updated_at = ? WHERE id = ?',
-            [diff, now.toIso8601String(), v.clientId],
+            [diff, nowIso, v.clientId],
           );
         }
       }
@@ -106,8 +107,8 @@ class VenteDao {
         'discount_amount': v.discountAmount,
         'payment_method': v.paymentMethod,
         'notes': v.notes,
-        'created_at': v.date.toIso8601String(),
-        'updated_at': now.toIso8601String(),
+        'created_at': v.date.toUtc().toIso8601String(),
+        'updated_at': nowIso,
         'items': itemsPayload,
       });
 
@@ -121,7 +122,7 @@ class VenteDao {
         'entity_type': 'vente',
         'entity_id': venteSyncId,
         'details': jsonEncode(auditDetails),
-        'created_at': now.toIso8601String(),
+        'created_at': nowIso,
         'sync_status': 'pending',
       });
       await SyncDao.enqueueSync(txn, 'audit_log', auditSyncId, 'INSERT', {
@@ -132,7 +133,7 @@ class VenteDao {
         'entity_type': 'vente',
         'entity_id': venteSyncId,
         'details': auditDetails,
-        'created_at': now.toIso8601String(),
+        'created_at': nowIso,
       });
       return venteId;
     });
@@ -140,7 +141,7 @@ class VenteDao {
 
   static Future<void> updateVentePaidAmount(Database db, int venteId, double newPaidAmount) async {
     await db.transaction((txn) async {
-      final now = DateTime.now().toIso8601String();
+      final now = SyncDao.nowUtcIso();
       await txn.rawUpdate(
         "UPDATE ventes SET paid_amount = ?, updated_at = ?, sync_status = 'pending_update' WHERE id = ?",
         [newPaidAmount, now, venteId],
@@ -154,7 +155,7 @@ class VenteDao {
 
   static Future<void> updateVente(Database db, Vente v) async {
     await db.transaction((txn) async {
-      final now = DateTime.now().toIso8601String();
+      final now = SyncDao.nowUtcIso();
       final venteSyncId = await SyncDao.resolveSyncId(txn, 'ventes', v.id!);
       final prevItems = (await txn.query('vente_items', where: 'vente_id = ?', whereArgs: [v.id]))
           .map((m) => VenteItem.fromMap(m));
@@ -197,7 +198,7 @@ class VenteDao {
 
   static Future<int> deleteVente(Database db, Vente v) async {
     return db.transaction((txn) async {
-      final now = DateTime.now().toIso8601String();
+      final now = SyncDao.nowUtcIso();
       final deletePayload = v.id != null ? await buildVenteSyncPayloadById(txn, v.id!, status: 'cancelled', deletedAt: now) : null;
       final itemMaps = await txn.query('vente_items', where: 'vente_id = ?', whereArgs: [v.id]);
       for (final item in itemMaps.map((m) => VenteItem.fromMap(m))) {

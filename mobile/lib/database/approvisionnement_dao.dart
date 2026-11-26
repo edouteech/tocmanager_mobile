@@ -53,7 +53,7 @@ class ApprovisionnementDao {
       'total_cost': a.total,
       'paid_amount': a.paidAmount,
       'payment_status': a.isCredit ? 'Crédit' : 'Payé',
-      'date': a.date.toIso8601String(),
+      'date': a.date.toUtc().toIso8601String(),
       'notes': a.notes,
       if (userId != null) 'user_id': userId,
       if (userName != null) 'user_name': userName,
@@ -67,7 +67,7 @@ class ApprovisionnementDao {
     final tenant = await SyncDao.activeTenantMeta();
 
     return db.transaction((txn) async {
-      final now = DateTime.now().toIso8601String();
+      final now = SyncDao.nowUtcIso();
       final syncId = const Uuid().v4();
       final approMap = a.toMap();
       approMap['sync_id'] = syncId;
@@ -116,7 +116,7 @@ class ApprovisionnementDao {
 
   static Future<int> deleteApprovisionnement(Database db, Approvisionnement a) async {
     return db.transaction((txn) async {
-      final now = DateTime.now().toIso8601String();
+      final now = SyncDao.nowUtcIso();
       final existing = await txn.query('approvisionnements', where: 'id = ?', whereArgs: [a.id]);
       await txn.rawUpdate('UPDATE products SET quantity = max(0, quantity - ?), updated_at = ? WHERE id = ?', [a.quantity, now, a.productId]);
       final result = await txn.delete('approvisionnements', where: 'id = ?', whereArgs: [a.id]);
@@ -138,7 +138,7 @@ class ApprovisionnementDao {
     Approvisionnement newAppro,
   ) async {
     return db.transaction((txn) async {
-      final now = DateTime.now().toIso8601String();
+      final now = SyncDao.nowUtcIso();
       final syncId = await SyncDao.resolveSyncId(txn, 'approvisionnements', newAppro.id!);
       if (oldAppro.productId == newAppro.productId) {
         final delta = newAppro.quantity - oldAppro.quantity;

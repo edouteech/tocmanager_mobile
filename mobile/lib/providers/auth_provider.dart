@@ -217,9 +217,13 @@ class AuthProvider extends ChangeNotifier {
     try {
       final refreshToken = await SecureStorageService.getRefreshToken();
       if (refreshToken != null && refreshToken.isNotEmpty) {
+        final accessToken = await SecureStorageService.getAccessToken();
         final baseUrl = await SecureStorageService.getServerUrl();
         final uri = Uri.parse('$baseUrl/auth/logout');
-        final headers = {'Content-Type': 'application/json'};
+        final headers = {
+          'Content-Type': 'application/json',
+          if (accessToken != null && accessToken.isNotEmpty) 'Authorization': 'Bearer $accessToken',
+        };
         final payload = jsonEncode({'refresh_token': refreshToken});
         final client = _httpClient;
         final logoutFuture = client != null

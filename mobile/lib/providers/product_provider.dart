@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../database/database_helper.dart';
 import '../models/product.dart';
+import '../services/sync_service.dart';
 
 class ProductProvider extends ChangeNotifier {
   List<Product> _products = [];
@@ -22,16 +23,19 @@ class ProductProvider extends ChangeNotifier {
     final id = await DatabaseHelper.instance.insertProduct(product);
     final newProduct = product.copyWith(id: id);
     await load();
+    SyncService.instance.notifyLocalMutation();
     return newProduct;
   }
 
   Future<void> update(Product product) async {
     await DatabaseHelper.instance.updateProduct(product);
     await load();
+    SyncService.instance.notifyLocalMutation();
   }
 
   Future<void> delete(int id) async {
     await DatabaseHelper.instance.deleteProduct(id);
     await load();
+    SyncService.instance.notifyLocalMutation();
   }
 }
