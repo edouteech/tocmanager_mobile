@@ -9,17 +9,16 @@ Ce document détaille l'adaptation de l'application mobile Flutter de TocManager
 ### 1.1 Écrans de Connexion & Routage
 1. **Écran d'Authentification (`login_screen.dart`)** :
    - Saisie de l'identifiant (email ou téléphone) et du mot de passe.
-   - En retour, le backend transmet le token JWT et la liste des boutiques/magasins autorisés pour ce profil.
+   - En retour, le backend transmet les tokens JWT et la liste des boutiques/magasins autorisés pour ce profil.
 2. **Écran de Sélection de la Boutique (`select_boutique_screen.dart`)** :
    - Si l'utilisateur est rattaché à une seule boutique : franchissement automatique transparent.
-   - S'il possède ou travaille pour plusieurs boutiques : présentation d'une liste de cartes élégantes avec logo et nom commercial.
+   - S'il possède ou travaille pour plusieurs boutiques : sélection explicite déclenchant l'isolation et la purge préalable des données métier locales (`TenantSwitchHelper`).
 3. **Écran de Sélection du Magasin (`select_magasin_screen.dart`)** :
    - Présentation de la liste des magasins/points de vente attribués au collaborateur.
    - **Pour les caissiers & gérants** : Sélection obligatoire d'un magasin pour charger sa caisse locale.
    - **Pour le propriétaire** :
-     - Présence d'un bouton bien en évidence en haut à droite : **« Passer ⏭️ »**.
-     - En cliquant sur "Passer", le propriétaire accède directement à l'écran **`consolidated_reports_screen.dart`** (indicateurs financiers consolidés, trésorerie et marges globales).
-     - Lorsqu'il bascule sur l'onglet Vente / Caisse, l'application lui propose de sélectionner le magasin sur lequel il souhaite encaisser.
+     - Bouton **« Passer »** donnant accès aux indicateurs financiers consolidés multi-magasins (`consolidated_reports_screen.dart`).
+     - Lors d'un passage sur l'onglet Vente / Caisse, sélection obligatoire d'un magasin opérationnel (hors entrepôt pour les ventes).
 
 ---
 
@@ -27,47 +26,53 @@ Ce document détaille l'adaptation de l'application mobile Flutter de TocManager
 
 Pour garantir un fonctionnement hors-ligne fluide et sans ambiguïté sur chaque terminal de caisse :
 
-### 2.1 Évolution du Schéma Local SQLite (Migration v14)
-1. **Table `magasins`** (locale) :
-   - `id TEXT PRIMARY KEY`, `name TEXT`, `is_active INTEGER`.
+### 2.1 Évolution du Schéma Local SQLite (Migrations v14 à v18)
+1. **Tables `boutiques` & `magasins`** (locales) :
+   - Référentiel tenant mis en cache localement pour permettre la navigation hors-ligne.
 2. **Table `products`** (locale) :
-   - Les articles stockés localement reflètent le catalogue disponible pour le magasin actif.
-   - Colonne `magasin_id TEXT` ajoutée pour lier formellement le produit et son stock à la succursale locale.
-   - Stock local `stock REAL` correspondant à la quantité disponible dans ce magasin spécifique.
-3. **Table `ventes` & `vente_items`** (locales) :
-   - Ajout de la colonne `magasin_id TEXT NOT NULL` sur chaque ticket de vente généré hors-ligne.
-4. **Table `approvisionnements` & `decaissements`** (locales) :
-   - Rattachement systématique au `magasin_id`.
+   - Colonnes `boutique_id TEXT`, `magasin_id TEXT`, `image_path TEXT`, `is_available INTEGER DEFAULT 1`.
+   - `quantity` reflète le stock spécifique au magasin actif (`StockMagasin`), et `price` prend en compte le tarif personnalisé du magasin (`custom_price`) lorsque configuré.
+3. **Tables transactionnelles (`ventes`, `vente_items`, `approvisionnements`, `decaissements`, `audit_logs`)** :
+   - Rattachement systématique au `boutique_id`, au `magasin_id`, à l'auteur (`user_id`, `user_name`), avec horodatage UTC ISO-8601 (`Z`).
+4. **Table `sync_queue`** (v13/v17) :
+   - File locale FIFO par lots de 100 opérations, avec colonne `status` (`pending` / `quarantined`) pour isoler les éléments en échec persistant sans bloquer la synchronisation.
 
 ---
 
 ## 3. Moteur de Synchronisation Offline-First (`sync_service.dart`)
 
-Le service de synchronisation client-serveur assure la réplication bidirectionnelle des données entre le terminal mobile et le schéma PostgreSQL de la boutique.
+Le service de synchronisation client-serveur assure la réplication bidirectionnelle des données entre le terminal mobile SQLite et PostgreSQL, cloisonnée par les en-têtes HTTP `X-Boutique-Id` et `X-Magasin-Id`.
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Mobile as Application Mobile Flutter (SQLite)
     participant SyncService as SyncService (Flutter)
-    participant Backend as API Backend FastAPI (Schéma Boutique)
+    participant Backend as API Backend FastAPI (/api/v1/sync)
 
-    Note over Mobile, Backend: Phase 1 : PUSH des données locales créées hors-ligne
-    SyncService->>Mobile: Lecture des ventes & mouvements créés hors-ligne
-    SyncService->>Backend: POST /api/v1/tenant/sync/push<br/>[Headers: X-Boutique-Id, X-Magasin-Id]<br/>(Ventes avec magasin_id, Déstockages)
-    Backend->>Backend: Écriture dans le schéma tenant_xxx<br/>Décrémentation stocks_magasin du magasin
-    Backend-->>SyncService: Statut 200 OK (IDs synchronisés confirmés)
-    SyncService->>Mobile: Marquage is_synced = 1
+    Note over Mobile, Backend: Phase 1 : Seed initial & PUSH des mutations locales
+    SyncService->>Mobile: Lecture sync_queue (status != 'quarantined', lots <= 100)
+    SyncService->>Backend: POST /api/v1/sync/push<br/>Headers: Authorization, X-Boutique-Id, X-Magasin-Id
+    Backend->>Backend: Validation tenant/LWW, StockMagasin, PAMP, balances
+    Backend-->>SyncService: Statut 200 OK (synced_uuids, errors)
+    SyncService->>Mobile: Purge sync_queue ou quarantaine apres 5 tentatives / rejet 4xx
 
-    Note over Mobile, Backend: Phase 2 : PULL des mises à jour distantes
-    SyncService->>Backend: GET /api/v1/tenant/sync/pull?magasin_id=...&last_sync_time=...
-    Backend->>Backend: Requête delta sur les produits du magasin et prix modifiés
-    Backend-->>SyncService: Delta des produits, stocks révisés et règlements
-    SyncService->>Mobile: Mise à jour atomique de la base locale SQLite
+    Note over Mobile, Backend: Phase 2 : PULL pagine par curseur delta
+    SyncService->>Backend: GET /api/v1/sync/pull?since=...&limit=500&cursor=...<br/>Headers: Authorization, X-Boutique-Id, X-Magasin-Id
+    Backend->>Backend: Delta sur entites maîtresses, StockMagasin et operations du magasin
+    Backend-->>SyncService: Lots pages (has_more, next_cursor, server_time)
+    SyncService->>Mobile: Mise a jour atomique SQLite (hors entity_uuid en attente)
 ```
 
 ### 3.1 Règles de Synchronisation par Rôle
-- **Caissier sur terminal dédié** :
-  - La synchronisation locale PULL ne télécharge que les produits actifs et les stocks du magasin assigné. Cela réduit la bande passante et accélère l'initialisation de l'appareil.
-- **Propriétaire sur smartphone personnel** :
-  - Peut télécharger les synthèses globales ou basculer dynamiquement de magasin (ce qui déclenche une synchronisation ciblée du magasin sélectionné).
+- **Caissier / Gérant sur magasin dédié** :
+  - `GET /api/v1/sync/pull?since=...&limit=500` retourne les produits enrichis (`stock`, `custom_price`, `is_available`, `magasin_id` du magasin actif) ainsi que les ventes, approvisionnements et décaissements de ce magasin.
+- **Propriétaire en mode consolidé** :
+  - En l'absence d'en-tête `X-Magasin-Id`, les totaux globaux boutique sont exposés en lecture ; une sélection de magasin reste requise avant toute écriture ambiguë.
+
+### 3.2 Arbitrage des Modules Secondaires hors `/sync`
+Les modules transactionnels avancés à fort couplage multi-magasins ou strictement centralisés restent exécutés uniquement via leurs endpoints REST dédiés (online-only) et ne sont pas répliqués dans `/api/v1/sync/*` :
+- **Sessions de caisse Z (`/api/v1/cash-sessions`)** : ouverture/clôture et comptage de caisse exigent une validation temps réel côté serveur.
+- **Transferts inter-magasins (`/api/v1/transfers`)** : impliquent deux magasins simultanément (source et destination) avec verrouillage atomique serveur.
+- **Journal brut des mouvements de stock (`/api/v1/stock-movements`)** : audit comptable en lecture généré côté serveur lors des ventes, réceptions et ajustements.
+- **Remboursements détaillés (`/api/v1/ventes/{id}/refund`)** : les annulations et modifications de tickets hors-ligne passent par le payload `VenteSync` standard dans `/api/v1/sync/push`.

@@ -21,7 +21,7 @@ import 'vente_dao.dart';
 
 class DatabaseHelper {
   static const _dbName = 'tocmanager.db';
-  static const _dbVersion = 17;
+  static const _dbVersion = 18;
 
   static DatabaseHelper? _instance;
   static Database? _database;
@@ -133,8 +133,17 @@ class DatabaseHelper {
   Future<int> updateCategory(Category cat) async => ProductDao.updateCategory(await database, cat);
   Future<int> deleteCategory(int id) async => ProductDao.deleteCategory(await database, id);
 
-  Future<List<Product>> getProducts({int? categoryId, String? search}) async =>
-      ProductDao.getProducts(await database, categoryId: categoryId, search: search);
+  Future<List<Product>> getProducts({
+    int? categoryId,
+    String? search,
+    bool includeUnavailable = false,
+  }) async =>
+      ProductDao.getProducts(
+        await database,
+        categoryId: categoryId,
+        search: search,
+        includeUnavailable: includeUnavailable,
+      );
   Future<Product?> getProductById(int id) async => ProductDao.getProductById(await database, id);
   Future<int> insertProduct(Product p) async => ProductDao.insertProduct(await database, p);
   Future<int> updateProduct(Product p) async => ProductDao.updateProduct(await database, p);

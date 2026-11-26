@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from fastapi import HTTPException
 from sqlalchemy import func, or_
@@ -188,5 +189,6 @@ def upsert_product_magasin_config(
     sm = ensure_stock_row(db, boutique_id, magasin_id, product)
     if min_stock is not None:
         sm.min_stock = min_stock
+    product.updated_at = datetime.now(timezone.utc)
     db.commit()
     return [row for row in get_product_magasins_matrix(db, boutique_id, product_sync_id) if row["magasin_id"] == magasin_id][0]

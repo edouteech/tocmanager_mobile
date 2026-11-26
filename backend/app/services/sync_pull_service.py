@@ -83,6 +83,7 @@ def _serialize_ventes(vente_rows: List[Vente]) -> List[VenteSync]:
             payment_method=v.payment_method,
             status=getattr(v, "status", "completed") or "completed",
             notes=v.notes, created_at=v.created_at, updated_at=v.updated_at,
+            deleted_at=v.deleted_at,
             items=[
                 VenteItemSync(
                     sync_id=it.sync_id, product_sync_id=it.product_sync_id,
@@ -138,6 +139,7 @@ def pull_boutique_changes(
             ClientSync(
                 sync_id=cl.sync_id, name=cl.name, phone=cl.phone, email=cl.email,
                 address=cl.address, balance=cl.balance, notes=cl.notes,
+                user_id=cl.user_id, user_name=cl.user_name,
                 updated_at=cl.updated_at, deleted_at=cl.deleted_at,
             )
             for cl in client_rows
@@ -148,7 +150,8 @@ def pull_boutique_changes(
             SupplierSync(
                 sync_id=s.sync_id, name=s.name, contact_person=s.contact_person,
                 phone=s.phone, email=s.email, address=s.address, balance=s.balance,
-                notes=s.notes, updated_at=s.updated_at, deleted_at=s.deleted_at,
+                notes=s.notes, user_id=s.user_id, user_name=s.user_name,
+                updated_at=s.updated_at, deleted_at=s.deleted_at,
             )
             for s in sup_rows
         ]
@@ -172,7 +175,8 @@ def pull_boutique_changes(
         DecaissementSync(
             sync_id=d.sync_id, magasin_id=d.magasin_id, title=d.title, amount=d.amount,
             category=d.category, beneficiary=d.beneficiary, payment_method=d.payment_method,
-            date=d.date, notes=d.notes, updated_at=d.updated_at, deleted_at=d.deleted_at,
+            date=d.date, notes=d.notes, user_id=d.user_id, user_name=d.user_name,
+            updated_at=d.updated_at, deleted_at=d.deleted_at,
         )
         for d in dec_rows
     ]
@@ -184,7 +188,8 @@ def pull_boutique_changes(
             supplier_name=a.supplier_name, product_sync_id=a.product_sync_id,
             product_name=a.product_name, quantity=a.quantity, unit_cost=a.unit_cost,
             total_cost=a.total_cost, payment_status=a.payment_status, date=a.date,
-            notes=a.notes, updated_at=a.updated_at, deleted_at=a.deleted_at,
+            notes=a.notes, user_id=a.user_id, user_name=a.user_name,
+            updated_at=a.updated_at, deleted_at=a.deleted_at,
         )
         for a in app_rows
     ]
