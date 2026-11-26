@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 from typing import Dict, List, Tuple
+import uuid
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models import Approvisionnement, AuditLog, Client, Product, Vente, VenteItem
@@ -62,6 +64,34 @@ def _collect_batch_movements(db: Session, payload: SyncPushRequest):
     return vente_qty_deltas, appro_qty_deltas, credit_vente_clients, credit_appro_suppliers
 
 
+def _resolve_unique_ticket_number(
+    db: Session,
+    boutique_id: str,
+    ticket_number: str,
+    vente_sync_id: str,
+) -> str:
+    conflict = (
+        db.query(Vente.sync_id)
+        .filter(
+            Vente.boutique_id == boutique_id,
+            Vente.ticket_number == ticket_number,
+            Vente.sync_id != vente_sync_id,
+        )
+        .first()
+    )
+    if not conflict:
+        return ticket_number
+    suffix = vente_sync_id.replace("-", "")[:4].upper() or uuid.uuid4().hex[:4].upper()
+    candidate = f"{ticket_number[:90]}-{suffix}"
+    while (
+        db.query(Vente.sync_id)
+        .filter(Vente.boutique_id == boutique_id, Vente.ticket_number == candidate)
+        .first()
+    ):
+        candidate = f"{ticket_number[:90]}-{uuid.uuid4().hex[:4].upper()}"
+    return candidate
+
+
 def push_boutique_changes(
     db: Session,
     ctx: TenantContext,
@@ -73,12 +103,14 @@ def push_boutique_changes(
     now = datetime.now(timezone.utc)
     synced_uuids: List[str] = []
     errors: List[str] = []
+    quota_exceptions: List[HTTPException] = []
 
     v_deltas, a_deltas, cv_clients, ca_suppliers = _collect_batch_movements(db, payload)
     clients_overwritten, suppliers_overwritten = push_master_entities(
         db, ctx, payload, now, synced_uuids, errors,
         vente_qty_deltas=v_deltas, appro_qty_deltas=a_deltas,
         credit_vente_clients=cv_clients, credit_appro_suppliers=ca_suppliers,
+        quota_exceptions=quota_exceptions,
     )
 
     for v in payload.ventes:
@@ -117,9 +149,10 @@ def push_boutique_changes(
                 v_uid = v.user_id or current_user.id
                 v_uname = v.user_name or (current_user.full_name or current_user.username)
                 v_status = "cancelled" if v.deleted_at is not None else v.status
+                resolved_ticket = _resolve_unique_ticket_number(db, boutique_id, v.ticket_number, v.sync_id)
                 db.add(Vente(
                     sync_id=v.sync_id, boutique_id=boutique_id, magasin_id=v_mag.id,
-                    ticket_number=v.ticket_number, client_sync_id=client_ref, client_name=v.client_name,
+                    ticket_number=resolved_ticket, client_sync_id=client_ref, client_name=v.client_name,
                     user_id=v_uid, user_name=v_uname, total_amount=v.total_amount, paid_amount=v.paid_amount,
                     discount_amount=v.discount_amount, payment_method=v.payment_method, status=v_status,
                     notes=v.notes, created_at=v.created_at, updated_at=v.updated_at or v.created_at,
@@ -141,7 +174,7 @@ def push_boutique_changes(
                                 db=db, boutique_id=boutique_id, magasin_id=v_mag.id, product=prod,
                                 quantity_delta=-item.quantity, enforce_sufficient=False,
                                 movement_type="sale", reference_type="vente", reference_id=v.sync_id,
-                                reason=f"Sync vente {v.ticket_number}", user_id=v_uid, user_name=v_uname,
+                                reason=f"Sync vente {resolved_ticket}", user_id=v_uid, user_name=v_uname,
                             )
 
                 if (
@@ -163,11 +196,12 @@ def push_boutique_changes(
                         id=f"audit-{v.sync_id}", boutique_id=boutique_id, user_id=v_uid, user_name=v_uname,
                         action="SALE_CREATE", entity_type="vente", entity_id=v.sync_id,
                         details={
-                            "ticket_number": v.ticket_number, "total_amount": v.total_amount, "paid_amount": v.paid_amount,
+                            "ticket_number": resolved_ticket, "total_amount": v.total_amount, "paid_amount": v.paid_amount,
                             "client_name": v.client_name, "payment_method": v.payment_method, "item_count": len(v.items),
                         },
                         created_at=v.created_at,
                     ))
+                db.flush()
                 synced_uuids.append(v.sync_id)
         except Exception as exc:
             errors.append(f"Vente {v.sync_id}: {exc}")
@@ -175,6 +209,9 @@ def push_boutique_changes(
     push_decaissements_approvisionnements_and_audits(
         db, ctx, payload, now, synced_uuids, errors, suppliers_overwritten=suppliers_overwritten
     )
+    if not synced_uuids and quota_exceptions:
+        db.rollback()
+        raise quota_exceptions[0]
     db.commit()
     return SyncPushResult(
         synced_count=len(synced_uuids), rejected_count=len(errors), synced_uuids=synced_uuids, errors=errors,

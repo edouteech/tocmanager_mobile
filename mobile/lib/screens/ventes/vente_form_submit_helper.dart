@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import '../../models/client.dart';
 import '../../models/product.dart';
 import '../../models/vente.dart';
@@ -143,13 +144,15 @@ Future<void> submitVenteForm(
     }
   }
 
+  final venteSyncId = initialVente?.syncId ?? const Uuid().v4();
+  final ticketSuffix = venteSyncId.replaceAll('-', '').substring(0, 4).toUpperCase();
   final ticketNumber = initialVente?.ticketNumber.isNotEmpty == true
       ? initialVente!.ticketNumber
-      : 'VNT-${DateFormat('yyyyMMddHHmmss').format(date)}';
+      : 'VNT-${DateFormat('yyyyMMddHHmmss').format(date)}-$ticketSuffix';
 
   final vente = Vente(
     id: initialVente?.id,
-    syncId: initialVente?.syncId,
+    syncId: venteSyncId,
     ticketNumber: ticketNumber,
     clientId: clientId,
     clientName: clientName,

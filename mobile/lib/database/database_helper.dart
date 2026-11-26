@@ -21,7 +21,7 @@ import 'vente_dao.dart';
 
 class DatabaseHelper {
   static const _dbName = 'tocmanager.db';
-  static const _dbVersion = 16;
+  static const _dbVersion = 17;
 
   static DatabaseHelper? _instance;
   static Database? _database;

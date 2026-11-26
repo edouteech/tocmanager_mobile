@@ -43,11 +43,11 @@ class VenteDao {
     return db.transaction((txn) async {
       final now = DateTime.now();
       final countRes = Sqflite.firstIntValue(await txn.rawQuery('SELECT COUNT(*) FROM ventes')) ?? 0;
+      final venteSyncId = v.syncId ?? const Uuid().v4();
+      final suffix = venteSyncId.replaceAll('-', '').substring(0, 4).toUpperCase();
       final ticketNum = v.ticketNumber.isNotEmpty
           ? v.ticketNumber
-          : 'VNT-${DateFormat('yyyyMMdd').format(now)}-${(countRes + 1).toString().padLeft(4, '0')}';
-
-      final venteSyncId = v.syncId ?? const Uuid().v4();
+          : 'VNT-${DateFormat('yyyyMMdd').format(now)}-${(countRes + 1).toString().padLeft(4, '0')}-$suffix';
       final venteMap = v.toMap();
       venteMap['ticket_number'] = ticketNum;
       venteMap['sync_id'] = venteSyncId;
